@@ -1,0 +1,16 @@
+# Development Dockerfile for Next.js
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Note: We don't copy the source code here because
+# we'll use volume mounting instead
+
+EXPOSE 3000
+
+# Run development server with hot reloading
+CMD ["npm", "run", "dev"]
