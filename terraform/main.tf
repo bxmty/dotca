@@ -14,9 +14,17 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-# Use existing SSH key by fingerprint
-data "digitalocean_ssh_key" "existing_ssh_key" {
-  fingerprint = var.ssh_key_fingerprint
+# Create a new Digital Ocean project
+resource "digitalocean_project" "project" {
+  name        = var.project_name
+  description = "${var.project_name} project created with Terraform"
+  purpose     = "Web Application"
+  environment = "Development"
+  
+  # Resources will be added to the project
+  resources = [
+    digitalocean_droplet.qa_nextjs.urn
+  ]
 }
 
 # Create a new Droplet for QA environment
@@ -25,7 +33,7 @@ resource "digitalocean_droplet" "qa_nextjs" {
   name     = "${var.project_name}-qa"
   region   = var.region
   size     = "s-1vcpu-1gb"   # Small droplet with 1 CPU, 1GB RAM
-  ssh_keys = [digitalocean_ssh_key.qa_ssh_key.fingerprint]
+  ssh_keys = [var.ssh_key_fingerprint]
   tags     = ["qa", "nextjs", var.project_name]
 
   # Script to set up the droplet for running the Next.js container
@@ -80,12 +88,11 @@ resource "digitalocean_droplet" "qa_nextjs" {
 # Create a firewall
 resource "digitalocean_firewall" "qa_firewall" {
   name = "${var.project_name}-qa-firewall"
-
   # Allow SSH
   inbound_rule {
     protocol         = "tcp"
     port_range       = "22"
-    source_addresses = var.allowed_ssh_ips
+    source_addresses = length(var.allowed_ssh_ips) > 0 ? var.allowed_ssh_ips : ["0.0.0.0/0", "::/0"]
   }
 
   # Allow HTTP
