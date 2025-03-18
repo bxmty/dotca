@@ -1,4 +1,4 @@
-name: Destroy QA Environment
+name: QA Destroy
 
 on:
   workflow_dispatch:
