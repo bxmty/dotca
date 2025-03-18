@@ -1,0 +1,51 @@
+name: Destroy QA Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "destroy" to confirm destruction of QA environment'
+        required: true
+
+jobs:
+  destroy-qa:
+    name: Destroy QA Environment
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirmation == 'destroy'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.0.0
+          
+      - name: Setup DigitalOcean CLI
+        run: |
+          curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
+          sudo mv doctl /usr/local/bin/
+          doctl auth init -t ${{ secrets.DO_TOKEN }}
+          
+      - name: Initialize Terraform
+        working-directory: ./terraform
+        run: terraform init
+        
+      - name: Terraform Plan Destroy
+        working-directory: ./terraform
+        run: |
+          terraform plan -destroy \
+            -var="do_token=${{ secrets.DO_TOKEN }}" \
+            -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
+            -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
+            -var="git_branch=qa" \
+            -out=tfdestroyplan
+        
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfdestroyplan
+        
+      - name: Destruction Notification
+        run: |
+          echo "🗑️ QA environment has been destroyed successfully!"
