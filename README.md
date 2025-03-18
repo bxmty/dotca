@@ -29,8 +29,58 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Local Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For local development, use the development Docker setup:
+
+```bash
+docker-compose -f docker-compose.dev.yml up
+```
+
+### Remote Deployment (QA, Staging, Production)
+
+This project includes a multi-environment deployment setup for Digital Ocean:
+
+1. Environment configuration files:
+   - `.env.qa` - QA environment variables
+   - `.env.staging` - Staging environment variables
+   - `.env.production` - Production environment variables
+
+2. Deploy to a specific environment:
+
+```bash
+# Deploy to QA
+./deploy.sh qa
+
+# Deploy to Staging
+./deploy.sh staging
+
+# Deploy to Production
+./deploy.sh production
+```
+
+### Manual Deployment
+
+If you need to manually build and deploy:
+
+```bash
+# Build the Docker image with environment-specific variables
+docker build \
+  --build-arg NODE_ENV=production \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
+  --build-arg NEXT_PUBLIC_ENVIRONMENT=production \
+  -t dotca-app .
+
+# Run the container
+docker run -p 3000:3000 dotca-app
+```
+
+The Dockerfile includes:
+- Multi-stage build for optimized image size
+- Environment variable configuration
+- Health checks for monitoring
+- Next.js standalone output mode
+
+For more deployment options, check out [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
