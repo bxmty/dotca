@@ -23,12 +23,12 @@ resource "digitalocean_project" "project" {
   
   # Resources will be added to the project
   resources = [
-    digitalocean_droplet.qa_nextjs.urn
+    digitalocean_droplet.qa_dotCA.urn
   ]
 }
 
 # Create a new Droplet for QA environment
-resource "digitalocean_droplet" "qa_nextjs" {
+resource "digitalocean_droplet" "qa_dotCA" {
   image    = "docker-20-04"  # Docker-ready Ubuntu image
   name     = "${var.project_name}-qa"
   region   = var.region
@@ -63,18 +63,18 @@ resource "digitalocean_droplet" "qa_nextjs" {
     git pull origin ${var.git_branch}
     
     # Build the Docker image locally
-    docker build -t nextjs-qa:latest .
+    docker build -t dotCA_qa:latest .
     
     # Stop and remove any existing container
-    docker stop nextjs-qa || true
-    docker rm nextjs-qa || true
+    docker stop dotCA_qa || true
+    docker rm dotCA_qa || true
     
     # Run the new container
     docker run -d \
-      --name nextjs-qa \
+      --name dotCA_qa \
       -p 80:3000 \
       -e NODE_ENV=production \
-      nextjs-qa:latest
+      dotCA_qa:latest
     SCRIPT
 
     # Make the script executable
@@ -128,20 +128,5 @@ resource "digitalocean_firewall" "qa_firewall" {
   }
 
   # Apply the firewall to the droplet
-  droplet_ids = [digitalocean_droplet.qa_nextjs.id]
-}
-
-# Optional: Create a domain record for easy access
-resource "digitalocean_domain" "qa_domain" {
-  count = var.create_domain ? 1 : 0
-  name  = "${var.subdomain}.${var.domain_name}"
-}
-
-resource "digitalocean_record" "qa_a_record" {
-  count  = var.create_domain ? 1 : 0
-  domain = digitalocean_domain.qa_domain[0].name
-  type   = "A"
-  name   = "@"
-  value  = digitalocean_droplet.qa_nextjs.ipv4_address
-  ttl    = 300
+  droplet_ids = [digitalocean_droplet.qa_dotCA.id]
 }
