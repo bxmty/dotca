@@ -24,8 +24,28 @@ set -a
 source "$ENV_FILE"
 set +a
 
-# Build and deploy using docker-compose
-docker-compose build
-docker-compose up -d
+if [ "$ENV" == "qa" ]; then
+  echo "Running qa deployment using Ansible..."
+  
+  # Set required environment variables for Ansible
+  export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/your-org/dotCA.git"}
+  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
+  export DROPLET_IP=${DROPLET_IP}
+  
+  # Check if DROPLET_IP is set
+  if [ -z "$DROPLET_IP" ]; then
+    echo "Error: DROPLET_IP environment variable must be set in $ENV_FILE"
+    exit 1
+  fi
+  
+  # Run Ansible playbook for qa deployment
+  cd ansible
+  ansible-playbook qa-deploy.yml -v
+  cd ..
+else
+  # Build and deploy using docker-compose for other environments
+  docker-compose build
+  docker-compose up -d
+fi
 
 echo "$ENV deployment completed!"

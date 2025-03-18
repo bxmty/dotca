@@ -1,0 +1,11 @@
+---
+# Ansible inventory for dotCA deployment
+
+all:
+  children:
+    digitalocean:
+      hosts:
+        qa-server:
+          ansible_host: "{{ lookup('env', 'DROPLET_IP') }}"
+          ansible_user: root
+          ansible_ssh_private_key_file: "{{ lookup('env', 'SSH_KEY_PATH') }}"
