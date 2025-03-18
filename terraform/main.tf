@@ -59,13 +59,16 @@ resource "digitalocean_droplet" "qa_dotCA" {
     #!/bin/bash
     cd /app/repo
     
+    # Get the public IP address
+    PUBLIC_IP=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address)
+    
     # Pull latest changes
     git pull origin ${var.git_branch}
     
     # Build the Docker image locally
     docker build \
       --build-arg NODE_ENV=production \
-      --build-arg NEXT_PUBLIC_API_URL=http://${self.ipv4_address}/api \
+      --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
       --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
       -t dotCA_qa:latest .
     
@@ -78,7 +81,7 @@ resource "digitalocean_droplet" "qa_dotCA" {
       --name dotCA_qa \
       -p 80:3000 \
       -e NODE_ENV=production \
-      -e NEXT_PUBLIC_API_URL=http://${self.ipv4_address}/api \
+      -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
       -e NEXT_PUBLIC_ENVIRONMENT=qa \
       dotCA_qa:latest
     SCRIPT
