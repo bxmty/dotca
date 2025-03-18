@@ -63,7 +63,11 @@ resource "digitalocean_droplet" "qa_dotCA" {
     git pull origin ${var.git_branch}
     
     # Build the Docker image locally
-    docker build -t dotCA_qa:latest .
+    docker build \
+      --build-arg NODE_ENV=production \
+      --build-arg NEXT_PUBLIC_API_URL=http://${self.ipv4_address}/api \
+      --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
+      -t dotCA_qa:latest .
     
     # Stop and remove any existing container
     docker stop dotCA_qa || true
@@ -74,6 +78,8 @@ resource "digitalocean_droplet" "qa_dotCA" {
       --name dotCA_qa \
       -p 80:3000 \
       -e NODE_ENV=production \
+      -e NEXT_PUBLIC_API_URL=http://${self.ipv4_address}/api \
+      -e NEXT_PUBLIC_ENVIRONMENT=qa \
       dotCA_qa:latest
     SCRIPT
 
