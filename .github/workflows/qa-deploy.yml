@@ -45,7 +45,9 @@ jobs:
         
       - name: Capture Droplet IP
         working-directory: ./terraform
-        run: echo "DROPLET_IP=$(terraform output -raw droplet_ip)" >> $GITHUB_ENV
+        run: |
+          DROPLET_IP=$(terraform output -raw droplet_ip)
+          echo "DROPLET_IP=${DROPLET_IP}" >> $GITHUB_ENV
       
       - name: QA Deployment Status
         run: |
