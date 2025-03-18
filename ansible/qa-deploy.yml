@@ -1,0 +1,101 @@
+---
+# Ansible playbook for setting up the QA environment for dotCA
+# This replaces the Terraform bootstrap process
+
+- name: Setup QA environment for dotCA
+  hosts: digitalocean
+  become: true
+  vars:
+    project_name: dotCA-nextjs
+    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
+    git_branch: qa
+    app_dir: /app
+    public_ip: "{{ ansible_host }}"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - docker.io
+          - python3-pip
+        state: present
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Clone the repository
+      git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+
+    - name: Create deploy script
+      copy:
+        dest: "{{ app_dir }}/deploy.sh"
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          cd {{ app_dir }}/repo
+          
+          # Get the public IP address
+          PUBLIC_IP={{ public_ip }}
+          
+          # Pull latest changes
+          git pull origin {{ git_branch }}
+          
+          # Build the Docker image locally
+          docker build \
+            --build-arg NODE_ENV=production \
+            --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
+            --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
+            -t dotCA_qa:latest .
+          
+          # Stop and remove any existing container
+          docker stop dotCA_qa || true
+          docker rm dotCA_qa || true
+          
+          # Run the new container
+          docker run -d \
+            --name dotCA_qa \
+            -p 80:3000 \
+            -e NODE_ENV=production \
+            -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
+            -e NEXT_PUBLIC_ENVIRONMENT=qa \
+            dotCA_qa:latest
+
+    - name: Run deploy script
+      command: "{{ app_dir }}/deploy.sh"
+
+    - name: Setup firewall (UFW)
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - '22'
+        - '80'
+        - '443'
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
