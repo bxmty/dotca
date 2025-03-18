@@ -14,9 +14,10 @@ The `qa-deploy.yml` playbook is used for setting up and deploying to the QA envi
    ```
 
 2. Environment variables set in `.env.qa`:
-   - `DROPLET_IP`: The IP address of your Digital Ocean droplet
    - `GIT_REPO_URL`: The Git repository URL for your project
    - `SSH_KEY_PATH`: Path to the SSH private key for accessing the droplet
+   
+   Note: `DROPLET_IP` is automatically obtained from Terraform outputs
 
 ### Deployment
 
@@ -41,8 +42,10 @@ This will:
 If you want to run the playbook manually:
 
 ```bash
-cd ansible
-export DROPLET_IP=your_droplet_ip
+# From project root
+cd terraform
+export DROPLET_IP=$(terraform output -raw droplet_ip)
+cd ../ansible
 export GIT_REPO_URL=your_repo_url
 export SSH_KEY_PATH=path_to_your_ssh_key
 ansible-playbook qa-deploy.yml -v

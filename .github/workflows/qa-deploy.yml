@@ -24,6 +24,17 @@ jobs:
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
+      
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+          
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           
       - name: Initialize Terraform
         working-directory: ./terraform
@@ -47,9 +58,24 @@ jobs:
         working-directory: ./terraform
         run: |
           echo "DROPLET_IP=$(terraform output -raw droplet_ip | tr -d '\n')" >> $GITHUB_ENV
+          
+      - name: Add host key to known hosts
+        run: |
+          # Wait a bit for the droplet to be ready
+          sleep 10
+          ssh-keyscan -H ${{ env.DROPLET_IP }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy using Ansible
+        env:
+          GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+          SSH_KEY_PATH: "~/.ssh/id_rsa"
+          GITHUB_ACTIONS: "true"
+          DROPLET_IP: ${{ env.DROPLET_IP }}
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh qa
       
       - name: QA Deployment Status
         run: |
-          echo "✅ QA environment is being deployed!"
-          echo "🌐 Access it at http://${{ env.DROPLET_IP }}/ once provisioning is complete"
-          echo "⏱️ Provisioning can take 3-5 minutes to complete"
+          echo "✅ QA environment has been deployed with Ansible!"
+          echo "🌐 Access it at http://${{ env.DROPLET_IP }}/"
