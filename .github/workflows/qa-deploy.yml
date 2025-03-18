@@ -1,4 +1,4 @@
-name: QA Environment Deployment
+name: QA Provision, Build, and Deploy
 
 on:
   push:
