@@ -1,16 +1,108 @@
-name: QA Deploy (Legacy)
+name: QA Provision, Build, and Deploy
 
 on:
-  # This workflow is kept for reference but is now disabled
-  # Use qa-terraform.yml and qa-ansible.yml instead
-  workflow_dispatch:
+  push:
+    branches:
+      - qa
 
 jobs:
-  deploy-qa-legacy:
-    name: Legacy QA Deployment (Disabled)
+  deploy-qa:
+    name: Deploy QA Environment
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Notice
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.0.0
+          
+      - name: Setup DigitalOcean CLI
         run: |
-          echo "⚠️ This workflow is deprecated. Please use the separate Terraform and Ansible workflows instead."
-          echo "See qa-terraform.yml and qa-ansible.yml for the new separated workflows."
+          curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
+          sudo mv doctl /usr/local/bin/
+          doctl auth init -t ${{ secrets.DO_TOKEN }}
+      
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+          
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+      - name: Initialize Terraform
+        working-directory: ./terraform
+        run: terraform init
+        
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: |
+          terraform plan \
+            -var="do_token=${{ secrets.DO_TOKEN }}" \
+            -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
+            -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
+            -var="git_branch=qa" \
+            -out=tfplan
+        
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+        
+      - name: Capture Droplet IP
+        working-directory: ./terraform
+        id: get_ip
+        run: |
+          # Clean and validate IP address
+          DROPLET_IP=$(terraform output -raw droplet_ip)
+          
+          # Trim and validate IP address
+          DROPLET_IP=$(echo "$DROPLET_IP" | tr -d '[:space:]')
+          
+          # Debugging output
+          echo "Raw Droplet IP: $DROPLET_IP"
+          echo "IP validation: $(echo $DROPLET_IP | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || echo 'INVALID FORMAT')"
+          
+          # Set outputs only if IP is valid
+          if [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+            echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Invalid IP format detected: $DROPLET_IP"
+            exit 1
+          fi
+          
+      - name: Add host key to known hosts
+        run: |
+          # Wait a bit for the droplet to be ready
+          sleep 45
+          echo "Connecting to IP: ${{ steps.get_ip.outputs.ip }}"
+          ssh-keyscan -H ${{ steps.get_ip.outputs.ip }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy using Ansible
+        env:
+          GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+          SSH_KEY_PATH: "~/.ssh/id_rsa"
+          GITHUB_ACTIONS: "true"
+        run: |
+          # Explicitly pass IP to deploy script
+          export DROPLET_IP="${{ steps.get_ip.outputs.ip }}"
+          echo "Using Droplet IP: $DROPLET_IP for deployment"
+          
+          # Set up ansible inventory dynamically
+          echo "[qa-server]" > inventory.ini
+          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa" >> inventory.ini
+          
+          chmod +x ./deploy.sh
+          ./deploy.sh qa
+      
+      - name: QA Deployment Status
+        if: success()
+        run: |
+          echo "✅ QA environment has been deployed with Ansible!"
+          echo "🌐 Access it at http://${{ steps.get_ip.outputs.ip }}/"
