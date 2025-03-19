@@ -45,12 +45,10 @@ EOF
   fi
   
   # Set required environment variables for Ansible
-  # Default values will be overridden if set in ENV_FILE
   export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotCA.git"}
   export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
   
-  # Use the DROPLET_IP from environment variable (passed from GitHub Actions)
-  # Do NOT try to get it from Terraform again
+  # Use the DROPLET_IP from environment variable
   if [ -z "$DROPLET_IP" ]; then
     echo "Error: DROPLET_IP environment variable not set"
     exit 1
@@ -58,27 +56,29 @@ EOF
   
   echo "Using Droplet IP: $DROPLET_IP"
   
-  # Create inventory file dynamically
-  echo "[qa-server]" > ../inventory.ini
-  echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=${SSH_KEY_PATH}" >> ../inventory.ini
+  # Update inventory.yml with the correct IP
+  # Create a backup of the original inventory file
+  cp ./ansible/inventory.yml ./ansible/inventory.yml.bak
   
-  # Run Ansible playbook for qa deployment with explicit inventory file
-  ansible-playbook -i ../inventory.ini qa-deploy.yml -v
+  # Update the IP in inventory.yml
+  sed -i "s/qa_server_ip:.*/qa_server_ip: $DROPLET_IP/" ./ansible/inventory.yml
+  
+  # Run Ansible playbook with the updated inventory
+  cd ansible
+  ansible-playbook -i inventory.yml qa-deploy.yml -v
+  cd ..
 else
-  # For other environments, require the env file to exist
+  # For other environments
   if [ ! -f "$ENV_FILE" ]; then
     echo "Error: Environment file $ENV_FILE not found"
     exit 1
   fi
 
   echo "Deploying to $ENV environment..."
-
-  # Load environment variables
   set -a
   source "$ENV_FILE"
   set +a
   
-  # Build and deploy using docker-compose for other environments
   docker-compose build
   docker-compose up -d
 fi
