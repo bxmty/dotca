@@ -49,29 +49,21 @@ EOF
   export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotCA.git"}
   export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
   
-  # Get the droplet IP from Terraform outputs or use hardcoded value for local testing
-  if [ -n "$GITHUB_ACTIONS" ]; then
-    echo "Getting droplet IP from Terraform outputs..."
-    cd terraform
-    export DROPLET_IP=$(terraform output -raw droplet_ip)
-    cd ..
-    
-    # Check if DROPLET_IP was successfully retrieved
-    if [ -z "$DROPLET_IP" ]; then
-      echo "Error: Could not get DROPLET_IP from Terraform outputs"
-      exit 1
-    fi
-  else
-    # Use hardcoded IP for local testing
-    export DROPLET_IP="165.22.234.57"
+  # Use the DROPLET_IP from environment variable (passed from GitHub Actions)
+  # Do NOT try to get it from Terraform again
+  if [ -z "$DROPLET_IP" ]; then
+    echo "Error: DROPLET_IP environment variable not set"
+    exit 1
   fi
   
   echo "Using Droplet IP: $DROPLET_IP"
   
-  # Run Ansible playbook for qa deployment
-  cd ansible
-  ansible-playbook qa-deploy.yml -v
-  cd ..
+  # Create inventory file dynamically
+  echo "[qa-server]" > ../inventory.ini
+  echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=${SSH_KEY_PATH}" >> ../inventory.ini
+  
+  # Run Ansible playbook for qa deployment with explicit inventory file
+  ansible-playbook -i ../inventory.ini qa-deploy.yml -v
 else
   # For other environments, require the env file to exist
   if [ ! -f "$ENV_FILE" ]; then
