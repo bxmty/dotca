@@ -49,16 +49,21 @@ EOF
   export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotCA.git"}
   export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
   
-  # Get the droplet IP from Terraform outputs
-  echo "Getting droplet IP from Terraform outputs..."
-  cd terraform
-  export DROPLET_IP=$(terraform output -raw droplet_ip)
-  cd ..
-  
-  # Check if DROPLET_IP was successfully retrieved
-  if [ -z "$DROPLET_IP" ]; then
-    echo "Error: Could not get DROPLET_IP from Terraform outputs"
-    exit 1
+  # Get the droplet IP from Terraform outputs or use hardcoded value for local testing
+  if [ -n "$GITHUB_ACTIONS" ]; then
+    echo "Getting droplet IP from Terraform outputs..."
+    cd terraform
+    export DROPLET_IP=$(terraform output -raw droplet_ip)
+    cd ..
+    
+    # Check if DROPLET_IP was successfully retrieved
+    if [ -z "$DROPLET_IP" ]; then
+      echo "Error: Could not get DROPLET_IP from Terraform outputs"
+      exit 1
+    fi
+  else
+    # Use hardcoded IP for local testing
+    export DROPLET_IP="165.22.234.57"
   fi
   
   echo "Using Droplet IP: $DROPLET_IP"
