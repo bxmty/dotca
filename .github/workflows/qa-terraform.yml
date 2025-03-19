@@ -59,7 +59,7 @@ jobs:
           echo "${{ steps.get_ip.outputs.ip }}" > terraform_ip.txt
           
       - name: Upload IP Address Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-output
           path: terraform_ip.txt
