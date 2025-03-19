@@ -1,0 +1,84 @@
+name: QA Ansible Configuration
+
+on:
+  repository_dispatch:
+    types: [terraform-completed]
+  workflow_dispatch:
+    inputs:
+      droplet_ip:
+        description: 'IP Address of the QA droplet'
+        required: true
+
+jobs:
+  configure-qa:
+    name: Configure QA Environment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+          
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+      
+      - name: Set Droplet IP
+        id: set_ip
+        run: |
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            echo "DROPLET_IP=${{ github.event.client_payload.droplet_ip }}" >> $GITHUB_ENV
+            echo "ip=${{ github.event.client_payload.droplet_ip }}" >> $GITHUB_OUTPUT
+          else
+            echo "DROPLET_IP=${{ github.event.inputs.droplet_ip }}" >> $GITHUB_ENV
+            echo "ip=${{ github.event.inputs.droplet_ip }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Download Terraform Output (if available)
+        if: github.event_name != 'repository_dispatch' && github.event_name != 'workflow_dispatch'
+        uses: actions/download-artifact@v3
+        with:
+          name: terraform-output
+          path: .
+      
+      - name: Read Terraform Output (if available)
+        if: github.event_name != 'repository_dispatch' && github.event_name != 'workflow_dispatch'
+        id: read_ip
+        run: |
+          if [ -f terraform_ip.txt ]; then
+            DROPLET_IP=$(cat terraform_ip.txt)
+            echo "DROPLET_IP=${DROPLET_IP}" >> $GITHUB_ENV
+            echo "ip=${DROPLET_IP}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Add host key to known hosts
+        run: |
+          # Wait a bit for the droplet to be ready
+          sleep 30
+          ssh-keyscan -H ${{ steps.set_ip.outputs.ip }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy using Ansible
+        env:
+          GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+          SSH_KEY_PATH: "~/.ssh/id_rsa"
+          GITHUB_ACTIONS: "true"
+          DROPLET_IP: ${{ env.DROPLET_IP }}
+        run: |
+          # Create a custom inventory file for Ansible
+          echo "[digitalocean]" > ansible/inventory.yml
+          echo "qa_droplet ansible_host=${{ env.DROPLET_IP }} ansible_user=root" >> ansible/inventory.yml
+          
+          # Run the Ansible playbook
+          cd ansible
+          ansible-playbook -i inventory.yml qa-config.yml -v
+      
+      - name: QA Deployment Status
+        run: |
+          echo "✅ QA environment has been deployed with Ansible!"
+          echo "🌐 Access it at http://${{ env.DROPLET_IP }}/"
