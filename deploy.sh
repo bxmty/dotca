@@ -46,7 +46,7 @@ EOF
   
   # Set required environment variables for Ansible
   # Default values will be overridden if set in ENV_FILE
-  export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/your-org/dotCA.git"}
+  export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotCA.git"}
   export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
   
   # Get the droplet IP from Terraform outputs
