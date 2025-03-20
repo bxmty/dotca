@@ -20,8 +20,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Install Tailwind CSS and related dependencies explicitly
+RUN npm install --save-dev tailwindcss postcss autoprefixer
+
 # Build the Next.js application
-RUN npm run build
+RUN npm run build || (echo "Build failed. Check tailwind configuration." && exit 1)
 
 # Production image
 FROM node:18-alpine AS runner
