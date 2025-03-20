@@ -1,12 +1,12 @@
 ---
-# Ansible playbook for configuring the QA environment for dotCA
+# Ansible playbook for configuring the QA environment for dotca
 # Runs after Terraform has provisioned the infrastructure
 
-- name: Configure QA environment for dotCA
+- name: Configure QA environment for dotca
   hosts: digitalocean
   become: true
   vars:
-    project_name: dotCA-nextjs
+    project_name: dotca-nextjs
     git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
     git_branch: qa
     app_dir: /app
@@ -92,20 +92,20 @@
             --build-arg NODE_ENV=production \
             --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
             --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
-            -t dotCA_qa:latest .
+            -t dotca_qa:latest .
           
           # Stop and remove any existing container
-          docker stop dotCA_qa || true
-          docker rm dotCA_qa || true
+          docker stop dotca_qa || true
+          docker rm dotca_qa || true
           
           # Run the new container
           docker run -d \
-            --name dotCA_qa \
+            --name dotca_qa \
             -p 80:3000 \
             -e NODE_ENV=production \
             -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
             -e NEXT_PUBLIC_ENVIRONMENT=qa \
-            dotCA_qa:latest
+            dotca_qa:latest
 
     - name: Run deploy script
       command: "{{ app_dir }}/deploy.sh"
