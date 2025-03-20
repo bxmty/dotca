@@ -56,7 +56,7 @@ EOF
   cat > ./ansible/inventory.yml << EOF
 all:
   children:
-    qa:
+    digitalocean:
       hosts:
         qa_server:
           ansible_host: $DROPLET_IP
