@@ -93,6 +93,11 @@
           echo "Pulling latest changes from {{ git_branch }} branch..."
           git pull origin {{ git_branch }}
           echo "Repository updated successfully."
+          
+          # Update package-lock.json to ensure it's in sync with package.json
+          echo "Updating package-lock.json..."
+          npm install --package-lock-only
+          echo "package-lock.json updated successfully."
 
           # Build the Docker image locally
           echo "Building Docker image with production configuration..."
