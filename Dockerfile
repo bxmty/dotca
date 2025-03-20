@@ -21,7 +21,19 @@ RUN npm ci
 COPY . .
 
 # Install Tailwind CSS and related dependencies explicitly
-RUN npm install --save-dev tailwindcss postcss autoprefixer
+RUN npm install --save-dev tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms
+
+# Create PostCSS and Tailwind config files if they don't exist
+RUN if [ ! -f ./postcss.config.js ]; then \
+      echo "module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } }" > postcss.config.js; \
+    fi && \
+    if [ ! -f ./tailwind.config.js ]; then \
+      npx tailwindcss init -p; \
+    fi
+
+# Print module versions for debugging
+RUN echo "Installed versions:" && \
+    npm list tailwindcss postcss autoprefixer
 
 # Build the Next.js application
 RUN npm run build || (echo "Build failed. Check tailwind configuration." && exit 1)
