@@ -18,7 +18,7 @@ variable "project_name" {
 variable "region" {
   description = "Digital Ocean region to deploy resources"
   type        = string
-  default     = "nyc1"
+  default     = "tor1"
 }
 
 variable "git_repo_url" {
