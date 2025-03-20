@@ -16,36 +16,22 @@ ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
-# Copy package files
-COPY package.json ./
-# Regenerate package-lock.json and then run clean install
-RUN npm install --package-lock-only
-COPY package-lock.json* ./
-# Use --legacy-peer-deps to avoid issues with conflicting peer dependencies
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+# Install dependencies, including dev dependencies needed for build
+RUN npm ci
 
-# Copy source code
+# Copy the entire project
 COPY . .
 
-# Check if Tailwind and related dependencies are installed correctly
-RUN npm list tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms || \
-    npm install --save-dev tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms
-
-# Use existing Tailwind configuration files
-RUN echo "Checking for config files:" && ls -la *.js *.mjs || echo "No config files found"
-
-# Print module versions for debugging
-RUN echo "Installed versions:" && \
-    npm list tailwindcss postcss autoprefixer
-
 # Build the Next.js application
-RUN npm run build || (echo "Build failed. Check tailwind configuration." && exit 1)
+RUN npm run build
 
 # Production image
 FROM node:22-alpine AS runner
 
-# Install git for potential npm package dependencies that require it
-RUN apk add --no-cache git
+# Install dependencies
+RUN apk add --no-cache curl
 
 WORKDIR /app
 
@@ -58,21 +44,22 @@ ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
-# Install curl for healthcheck
-RUN apk --no-cache add curl
-
 # Copy necessary files from builder stage
-COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Create a non-root user to run the application
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
 # Expose port
 EXPOSE 3000
-
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
 
 # Set the command to run the optimized app
 CMD ["node", "server.js"]

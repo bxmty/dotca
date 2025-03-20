@@ -94,7 +94,7 @@ EOF
   cat inventory.yml
   echo "Using SSH key: $SSH_KEY_PATH"
   ansible -i inventory.yml digitalocean -m ping -v
-  ansible-playbook -i inventory.yml qa-deploy.yml -v
+  ansible-playbook -i inventory.yml qa-deploy.yml
   cd ..
 else
   # For other environments
