@@ -39,33 +39,66 @@ resource "digitalocean_droplet" "qa_dotca" {
   # Script to set up the droplet for running the Next.js container
   user_data = <<-EOF
     #!/bin/bash
-    # Update system
-    apt-get update
-    apt-get upgrade -y
-    
-    # Install git
-    apt-get install -y git
+    set -e
 
+    # Create a startup log file
+    exec > >(tee /var/log/user-data.log) 2>&1
+    echo "Starting initialization: $(date)"
+    
+    # Wait until apt is available
+    echo "Waiting for apt to be available..."
+    until apt-get update -q; do
+      echo "Apt not ready yet, waiting..."
+      sleep 5
+    done
+    
+    # Update system
+    echo "Updating system packages..."
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+    
+    # Install required packages
+    echo "Installing required packages..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git curl wget apt-transport-https ca-certificates gnupg lsb-release
+    
+    # Install Docker
+    echo "Installing Docker..."
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io
+    systemctl enable docker
+    systemctl start docker
+    
     # Create directory for the app
+    echo "Creating application directory..."
     mkdir -p /app
     
     # Clone the repository
+    echo "Cloning repository: ${var.git_repo_url}..."
     git clone ${var.git_repo_url} /app/repo
     cd /app/repo
     git checkout ${var.git_branch}
     
     # Create a deploy script to build and run the Docker container
+    echo "Creating deployment script..."
     cat > /app/deploy.sh <<'SCRIPT'
     #!/bin/bash
+    set -e
+    
+    echo "Starting deployment: $(date)"
     cd /app/repo
     
     # Get the public IP address
     PUBLIC_IP=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address)
+    echo "Using public IP: $PUBLIC_IP"
     
     # Pull latest changes
+    echo "Pulling latest changes from ${var.git_branch}..."
     git pull origin ${var.git_branch}
     
     # Build the Docker image locally
+    echo "Building Docker image..."
     docker build \
       --build-arg NODE_ENV=production \
       --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
@@ -73,24 +106,35 @@ resource "digitalocean_droplet" "qa_dotca" {
       -t dotca_qa:latest .
     
     # Stop and remove any existing container
-    docker stop dotca_qa || true
-    docker rm dotca_qa || true
+    echo "Stopping and removing any existing container..."
+    docker stop dotca_qa 2>/dev/null || true
+    docker rm dotca_qa 2>/dev/null || true
     
     # Run the new container
+    echo "Starting new container..."
     docker run -d \
       --name dotca_qa \
+      --restart unless-stopped \
       -p 80:3000 \
       -e NODE_ENV=production \
       -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
       -e NEXT_PUBLIC_ENVIRONMENT=qa \
       dotca_qa:latest
+      
+    echo "Deployment completed: $(date)"
     SCRIPT
 
     # Make the script executable
     chmod +x /app/deploy.sh
 
-    # Run the deploy script
-    /app/deploy.sh
+    # Setup complete marker to help with troubleshooting
+    echo "System initialization complete: $(date)" > /var/log/tf-init-complete
+    
+    # Run the deploy script in the background to not block instance startup
+    echo "Starting deployment in the background..."
+    nohup /app/deploy.sh > /var/log/deploy.log 2>&1 &
+    
+    echo "Initialization script completed: $(date)"
   EOF
 }
 
