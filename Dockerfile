@@ -1,5 +1,5 @@
 # Multi-environment Dockerfile for Next.js deployment
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Install git for potential npm package dependencies that require it
 RUN apk add --no-cache git
@@ -42,7 +42,7 @@ RUN echo "Installed versions:" && \
 RUN npm run build || (echo "Build failed. Check tailwind configuration." && exit 1)
 
 # Production image
-FROM node:18-alpine AS runner
+FROM node:22-alpine AS runner
 
 # Install git for potential npm package dependencies that require it
 RUN apk add --no-cache git
