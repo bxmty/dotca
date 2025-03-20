@@ -139,19 +139,17 @@ jobs:
           # Try multiple methods to get the IP address
           echo "Attempting to get droplet IP address..."
           
-          # Method 1: Using -raw output
-          DROPLET_IP=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
+          # Method 1: Direct output to a file first to avoid pipe issues
+          terraform output > terraform_output.txt
+          cat terraform_output.txt
           
-          # Method 2: Using regular output and cleaning
-          if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Method 1 failed, trying method 2..."
-            DROPLET_IP=$(terraform output droplet_ip | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-          fi
+          # Extract IP using grep directly on the file
+          DROPLET_IP=$(grep -oE 'droplet_ip\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)"' terraform_output.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
           
-          # Method 3: Directly getting from the state file
+          # If that didn't work, try a simpler approach
           if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Method 2 failed, trying method 3..."
-            DROPLET_IP=$(terraform show -json | jq -r '.values.root_module.resources[] | select(.address=="digitalocean_droplet.qa_dotca") | .values.ipv4_address' 2>/dev/null || echo "")
+            echo "Trying alternative method..."
+            DROPLET_IP=$(cat terraform_output.txt | grep droplet_ip | awk -F '"' '{print $2}' || echo "")
           fi
           
           # Final validation and output
@@ -162,8 +160,7 @@ jobs:
           else
             echo "::error::Failed to extract valid IP address from Terraform output"
             echo "Raw terraform output was:"
-            terraform output
-            terraform show -json
+            cat terraform_output.txt
             exit 1
           fi
           
