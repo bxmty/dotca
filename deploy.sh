@@ -1,16 +1,13 @@
 #!/bin/bash
 # Deployment script for different environments
-
 # Check if environment argument is provided
 if [ -z "$1" ]; then
   echo "Usage: ./deploy.sh <environment>"
   echo "Available environments: qa, staging, production"
   exit 1
 fi
-
 ENV=$1
 ENV_FILE=".env.$ENV"
-
 if [ "$ENV" == "qa" ]; then
   echo "Running qa deployment using Ansible..."
   
@@ -25,7 +22,6 @@ if [ "$ENV" == "qa" ]; then
 # QA Environment Configuration
 NODE_ENV=production
 NEXT_PUBLIC_ENVIRONMENT=qa
-
 # Git and SSH Configuration
 GIT_REPO_URL=${GIT_REPO_URL}
 SSH_KEY_PATH=${SSH_KEY_PATH}
@@ -57,11 +53,18 @@ EOF
   echo "Using Droplet IP: $DROPLET_IP"
   
   # Update inventory.yml with the correct IP
-  # Create a backup of the original inventory file
-  cp ./ansible/inventory.yml ./ansible/inventory.yml.bak
-  
-  # Update the IP in inventory.yml
-  sed -i "s/qa_server_ip:.*/qa_server_ip: $DROPLET_IP/" ./ansible/inventory.yml
+  cat > ./ansible/inventory.yml << EOF
+all:
+  children:
+    qa:
+      hosts:
+        qa_server:
+          ansible_host: $DROPLET_IP
+          ansible_user: root
+          ansible_ssh_private_key_file: $SSH_KEY_PATH
+      vars:
+        qa_server_ip: $DROPLET_IP
+EOF
   
   # Run Ansible playbook with the updated inventory
   cd ansible
@@ -73,7 +76,6 @@ else
     echo "Error: Environment file $ENV_FILE not found"
     exit 1
   fi
-
   echo "Deploying to $ENV environment..."
   set -a
   source "$ENV_FILE"
@@ -82,5 +84,4 @@ else
   docker-compose build
   docker-compose up -d
 fi
-
 echo "$ENV deployment completed!"
