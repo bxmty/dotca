@@ -39,7 +39,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
 
       // Redirect to full onboarding form after successful submission
       router.push('/onboarding');
-    } catch (_error) {
+    } catch (error) {
       // Log error submitting form
       console.error('Contact form submission error:', error);
       setSubmitStatus({

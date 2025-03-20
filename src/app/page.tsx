@@ -149,7 +149,7 @@ export default function Home() {
                   </li>
                 </ul>
                 <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-700 rounded">
-                  <p className="font-medium">All managed by experts, so you don'&apos;t have to become one.</p>
+                  <p className="font-medium">All managed by experts, so you don&apos;t have to become one.</p>
                 </div>
               </div>
             </div>
