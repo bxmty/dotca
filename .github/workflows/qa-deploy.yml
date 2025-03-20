@@ -43,6 +43,20 @@ jobs:
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
             -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
         
+      - name: Check if project exists
+        id: check_project
+        run: |
+          # Check if the project exists in Digital Ocean
+          PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs" || echo "")
+          
+          if [ -n "$PROJECT_EXISTS" ]; then
+            echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
+            echo "Project 'dotca-nextjs' already exists"
+          else
+            echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
+            echo "Project 'dotca-nextjs' does not exist"
+          fi
+      
       - name: Check if resources exist
         working-directory: ./terraform
         id: check_resources
@@ -52,9 +66,11 @@ jobs:
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
           
-          # Try to get current state
-          terraform refresh
+          # Try to get current state - handle failure gracefully
+          terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
           
           # Check if resources exist by trying to get the IP
           DROPLET_IP=$(terraform output droplet_ip 2>/dev/null | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
@@ -81,7 +97,7 @@ jobs:
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="qa"
-          export TF_VAR_use_existing_project="true"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           
           # Create plan
@@ -96,7 +112,7 @@ jobs:
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="qa"
-          export TF_VAR_use_existing_project="true"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           
           # Apply the plan
@@ -116,6 +132,8 @@ jobs:
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
           terraform refresh
           
           # Try multiple methods to get the IP address
