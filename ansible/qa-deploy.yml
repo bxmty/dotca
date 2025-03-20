@@ -11,6 +11,7 @@
     git_branch: qa
     app_dir: /app
     public_ip: "{{ ansible_host }}"
+    node_version: "18.x"  # LTS version, adjust as needed
 
   tasks:
     - name: Update apt cache
@@ -31,6 +32,18 @@
           - lsb-release
           - git
           - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Add Node.js repository
+      shell: curl -fsSL https://deb.nodesource.com/setup_{{ node_version }} | bash -
+      args:
+        warn: false
+
+    - name: Install Node.js and npm
+      apt:
+        name:
+          - nodejs
         state: present
         update_cache: yes
 
