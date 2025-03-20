@@ -14,17 +14,28 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-# Create a new Digital Ocean project
+# Look up existing project
+data "digitalocean_project" "existing_project" {
+  name = var.project_name
+  count = var.use_existing_project ? 1 : 0
+}
+
+# Create a new Digital Ocean project if it doesn't exist
 resource "digitalocean_project" "project" {
+  count       = var.use_existing_project ? 0 : 1
   name        = var.project_name
   description = "${var.project_name} project created with Terraform"
   purpose     = "Web Application"
   environment = "Development"
-  
-  # Resources will be added to the project
+}
+
+# Add resources to project
+resource "digitalocean_project_resources" "project_resources" {
+  project = var.use_existing_project ? data.digitalocean_project.existing_project[0].id : digitalocean_project.project[0].id
   resources = [
     digitalocean_droplet.qa_dotca.urn
   ]
+  depends_on = [digitalocean_droplet.qa_dotca]
 }
 
 # Create a new Droplet for QA environment
@@ -140,7 +151,9 @@ resource "digitalocean_droplet" "qa_dotca" {
 
 # Create a firewall
 resource "digitalocean_firewall" "qa_firewall" {
-  name = "${var.project_name}-qa-firewall"
+  count = var.use_existing_firewall ? 0 : 1
+  name = "${var.project_name}-qa-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
+  
   # Allow SSH
   inbound_rule {
     protocol         = "tcp"
