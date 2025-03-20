@@ -55,6 +55,30 @@
         state: present
         update_cache: yes
 
+    - name: Install NTP for time synchronization
+      apt:
+        name: ntp
+        state: present
+        update_cache: yes
+
+    - name: Configure NTP to use time.nist.gov
+      lineinfile:
+        path: /etc/ntp.conf
+        regexp: '^server'
+        line: 'server time.nist.gov iburst'
+        state: present
+        backup: yes
+
+    - name: Restart NTP service
+      systemd:
+        name: ntp
+        state: restarted
+        enabled: yes
+
+    - name: Set timezone to Eastern Time
+      timezone:
+        name: America/New_York
+
     - name: Start and enable Docker service
       systemd:
         name: docker
