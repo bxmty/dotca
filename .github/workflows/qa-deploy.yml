@@ -40,7 +40,40 @@ jobs:
         working-directory: ./terraform
         run: terraform init
         
+      - name: Check if resources exist
+        working-directory: ./terraform
+        id: check_resources
+        run: |
+          # Configure terraform variables
+          terraform plan \
+            -var="do_token=${{ secrets.DO_TOKEN }}" \
+            -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
+            -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
+            -var="git_branch=qa" \
+            -refresh-only -detailed-exitcode -out=tfplan
+          
+          # Store exit code
+          TERRAFORM_EXIT_CODE=$?
+          echo "terraform_exit_code=$TERRAFORM_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Exit code 0 means no changes needed, 2 means changes needed
+          if [ $TERRAFORM_EXIT_CODE -eq 0 ]; then
+            echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
+            echo "resources_exist=true" >> $GITHUB_OUTPUT
+            # Get the current IP
+            DROPLET_IP=$(terraform output -raw droplet_ip)
+            echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+            echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+            echo "Resources already exist, using IP: $DROPLET_IP"
+          else
+            echo "RESOURCES_EXIST=false" >> $GITHUB_ENV
+            echo "resources_exist=false" >> $GITHUB_OUTPUT
+            echo "Resources need to be created or updated"
+          fi
+        continue-on-error: true
+        
       - name: Terraform Plan
+        if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         run: |
           terraform plan \
@@ -51,10 +84,12 @@ jobs:
             -out=tfplan
         
       - name: Terraform Apply
+        if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         run: terraform apply -auto-approve tfplan
         
       - name: Capture Droplet IP
+        if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         id: get_ip
         run: |
@@ -74,10 +109,17 @@ jobs:
           
       - name: Add host key to known hosts
         run: |
-          # Wait a bit for the droplet to be ready
-          sleep 45
-          echo "Connecting to IP: ${{ steps.get_ip.outputs.ip }}"
-          ssh-keyscan -H ${{ steps.get_ip.outputs.ip }} >> ~/.ssh/known_hosts
+          # Get IP address from either the check_resources or get_ip step
+          IP_ADDRESS="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
+          echo "Connecting to IP: $IP_ADDRESS"
+          
+          # Only wait if we created new resources
+          if [ "${{ env.RESOURCES_EXIST }}" != "true" ]; then
+            echo "Waiting for new droplet to be ready..."
+            sleep 45
+          fi
+          
+          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
       
       - name: Deploy using Ansible
         env:
@@ -85,8 +127,8 @@ jobs:
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
         run: |
-          # Explicitly pass IP to deploy script
-          export DROPLET_IP="${{ steps.get_ip.outputs.ip }}"
+          # Get IP address from either the check_resources or get_ip step
+          export DROPLET_IP="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
           echo "Using Droplet IP: $DROPLET_IP for deployment"
           
           # Set up ansible inventory dynamically
@@ -99,5 +141,7 @@ jobs:
       - name: QA Deployment Status
         if: success()
         run: |
+          # Get IP address from either the check_resources or get_ip step
+          IP_ADDRESS="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
           echo "✅ QA environment has been deployed with Ansible!"
-          echo "🌐 Access it at http://${{ steps.get_ip.outputs.ip }}/"
+          echo "🌐 Access it at http://$IP_ADDRESS/"
