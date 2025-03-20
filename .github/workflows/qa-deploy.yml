@@ -85,6 +85,8 @@ jobs:
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="true"
+          export TF_VAR_use_existing_firewall="false"
           
           # Create plan
           terraform plan -out=tfplan
@@ -98,6 +100,8 @@ jobs:
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="true"
+          export TF_VAR_use_existing_firewall="false"
           
           # Apply the plan
           terraform apply -auto-approve tfplan
