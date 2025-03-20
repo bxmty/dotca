@@ -17,12 +17,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
 # Copy package files
-COPY package.json ./
-# Regenerate package-lock.json and then run clean install
-RUN npm install --package-lock-only
-COPY package-lock.json* ./
-# Use --legacy-peer-deps to avoid issues with conflicting peer dependencies
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+COPY package.json package-lock.json ./
+RUN npm install
 
 # Copy source code
 COPY . .
