@@ -18,33 +18,11 @@ ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-# Install dependencies, ensuring dev dependencies are included for build
-RUN npm ci --include=dev || (echo "Lock file out of sync, updating..." && npm install --include=dev)
+# Install dependencies, including dev dependencies needed for build
+RUN npm ci
 
-# Install the new @tailwindcss/postcss package
-RUN npm install @tailwindcss/postcss --save-dev
-
-# Copy the entire project including Tailwind configuration files
+# Copy the entire project
 COPY . .
-
-# Verify Tailwind configuration files exist
-RUN if [ ! -f tailwind.config.js ] || [ ! -f postcss.config.mjs ]; then \
-      echo "Error: Missing Tailwind configuration files"; \
-      exit 1; \
-    fi
-
-# Update postcss.config.mjs to use @tailwindcss/postcss instead of tailwindcss
-RUN sed -i 's/require("tailwindcss")/require("@tailwindcss\/postcss")/g' postcss.config.mjs || true
-RUN sed -i "s/import tailwindcss from 'tailwindcss'/import tailwindcss from '@tailwindcss\/postcss'/g" postcss.config.mjs || true
-RUN sed -i "s/tailwindcss()/@tailwindcss\/postcss()/g" postcss.config.mjs || true
-
-# Debug: Show installed packages and configurations
-RUN echo "Installed versions:" && \
-    npm list tailwindcss @tailwindcss/postcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms && \
-    echo "Configuration files:" && \
-    ls -la tailwind.config.js postcss.config.mjs && \
-    echo "PostCSS Config content:" && \
-    cat postcss.config.mjs
 
 # Build the Next.js application
 RUN npm run build
@@ -67,7 +45,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
 # Copy necessary files from builder stage
-COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -82,10 +60,6 @@ USER nextjs
 
 # Expose port
 EXPOSE 3000
-
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
 
 # Set the command to run the optimized app
 CMD ["node", "server.js"]
