@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       message: 'Onboarding data received successfully' 
     });
     
-  } catch (_error) {
+  } catch (error) {
     // Error processing data
     console.error('Onboarding form submission error:', error);
     return NextResponse.json(
