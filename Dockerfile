@@ -23,12 +23,9 @@ COPY . .
 # Install Tailwind CSS and related dependencies explicitly
 RUN npm install --save-dev tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms
 
-# Create PostCSS and Tailwind config files if they don't exist
-RUN if [ ! -f ./postcss.config.js ]; then \
-      echo "module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } }" > postcss.config.js; \
-    fi && \
-    if [ ! -f ./tailwind.config.js ]; then \
-      npx tailwindcss init -p; \
+# Don't try to create PostCSS config as it already exists as .mjs
+RUN if [ ! -f ./tailwind.config.js ]; then \
+      npx --no tailwindcss init; \
     fi
 
 # Print module versions for debugging
