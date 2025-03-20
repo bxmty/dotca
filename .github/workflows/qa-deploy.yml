@@ -38,7 +38,10 @@ jobs:
           
       - name: Initialize Terraform
         working-directory: ./terraform
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="access_key=${{ secrets.SPACES_ACCESS_KEY }}" \
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
         
       - name: Check if resources exist
         working-directory: ./terraform
@@ -53,22 +56,15 @@ jobs:
           # Try to get current state
           terraform refresh
           
-          # Check if state file exists and has resources
-          if [ -f "terraform.tfstate" ] && grep -q "resources" terraform.tfstate; then
-            # Try to get droplet_ip output in a safer way
-            DROPLET_IP=$(terraform output droplet_ip | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-            
-            if [ -n "$DROPLET_IP" ]; then
-              echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
-              echo "resources_exist=true" >> $GITHUB_OUTPUT
-              echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
-              echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
-              echo "Resources already exist, using IP: $DROPLET_IP"
-            else
-              echo "RESOURCES_EXIST=false" >> $GITHUB_ENV
-              echo "resources_exist=false" >> $GITHUB_OUTPUT
-              echo "Could not retrieve valid IP address"
-            fi
+          # Check if resources exist by trying to get the IP
+          DROPLET_IP=$(terraform output droplet_ip 2>/dev/null | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          
+          if [ -n "$DROPLET_IP" ]; then
+            echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
+            echo "resources_exist=true" >> $GITHUB_OUTPUT
+            echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+            echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+            echo "Resources already exist, using IP: $DROPLET_IP"
           else
             echo "RESOURCES_EXIST=false" >> $GITHUB_ENV
             echo "resources_exist=false" >> $GITHUB_OUTPUT
