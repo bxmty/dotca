@@ -108,21 +108,34 @@ jobs:
         id: get_ip
         run: |
           # Get terraform output in a safer way
-          TERRAFORM_OUTPUT=$(terraform output droplet_ip || echo "")
+          TERRAFORM_OUTPUT=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
           
-          # Clean and extract IP address using grep
-          DROPLET_IP=$(echo "$TERRAFORM_OUTPUT" | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          # If we got empty output using -raw, try the regular output and clean it
+          if [ -z "$TERRAFORM_OUTPUT" ]; then
+            TERRAFORM_OUTPUT=$(terraform output droplet_ip | tr -d '"' || echo "")
+          fi
           
-          # Verify we got a valid IP
-          if [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          # Verify we got a valid IP (using simplified pattern matching)
+          if [[ $TERRAFORM_OUTPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            DROPLET_IP=$TERRAFORM_OUTPUT
             echo "Extracted IP: $DROPLET_IP"
             echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
             echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
           else
-            echo "::error::Failed to extract valid IP from output"
-            # Display the raw output for debugging
-            echo "Raw terraform output was: $TERRAFORM_OUTPUT"
-            exit 1
+            # Try an alternative approach to extract the IP if the direct output failed
+            DROPLET_IP=$(terraform output | grep "droplet_ip" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+            
+            if [ -n "$DROPLET_IP" ]; then
+              echo "Extracted IP using alternative method: $DROPLET_IP"
+              echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+              echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+            else
+              echo "::error::Failed to extract valid IP from output"
+              # Display the raw output for debugging
+              echo "Raw terraform output was:"
+              terraform output
+              exit 1
+            fi
           fi
           
       - name: Add host key to known hosts
