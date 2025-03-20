@@ -3,7 +3,11 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
-const ContactForm = () => {
+interface ContactFormProps {
+  className?: string;
+}
+
+const ContactForm = ({ className = '' }: ContactFormProps) => {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -14,7 +18,7 @@ const ContactForm = () => {
     message: ''
   });
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: '' });
@@ -46,7 +50,7 @@ const ContactForm = () => {
   };
 
   return (
-    <form className="md:w-1/2 md:pl-16" onSubmit={handleSubmit}>
+    <form className={`md:w-1/2 md:pl-16 ${className}`} onSubmit={handleSubmit}>
       {submitStatus.type && (
         <div className={`mb-4 p-3 rounded ${submitStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {submitStatus.message}
