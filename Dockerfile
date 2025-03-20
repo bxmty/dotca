@@ -18,8 +18,11 @@ ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-# Try to use npm ci, fall back to npm install if package-lock is out of sync
-RUN npm ci || (echo "Lock file out of sync, updating..." && npm install)
+# Install dependencies, ensuring dev dependencies are included for build
+RUN npm ci --include=dev || (echo "Lock file out of sync, updating..." && npm install --include=dev)
+
+# Install the new @tailwindcss/postcss package
+RUN npm install @tailwindcss/postcss --save-dev
 
 # Copy the entire project including Tailwind configuration files
 COPY . .
@@ -30,11 +33,18 @@ RUN if [ ! -f tailwind.config.js ] || [ ! -f postcss.config.mjs ]; then \
       exit 1; \
     fi
 
+# Update postcss.config.mjs to use @tailwindcss/postcss instead of tailwindcss
+RUN sed -i 's/require("tailwindcss")/require("@tailwindcss\/postcss")/g' postcss.config.mjs || true
+RUN sed -i "s/import tailwindcss from 'tailwindcss'/import tailwindcss from '@tailwindcss\/postcss'/g" postcss.config.mjs || true
+RUN sed -i "s/tailwindcss()/@tailwindcss\/postcss()/g" postcss.config.mjs || true
+
 # Debug: Show installed packages and configurations
 RUN echo "Installed versions:" && \
-    npm list tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms && \
+    npm list tailwindcss @tailwindcss/postcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms && \
     echo "Configuration files:" && \
-    ls -la tailwind.config.js postcss.config.mjs
+    ls -la tailwind.config.js postcss.config.mjs && \
+    echo "PostCSS Config content:" && \
+    cat postcss.config.mjs
 
 # Build the Next.js application
 RUN npm run build
