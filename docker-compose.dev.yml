@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  softStack:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reloading
+      - ./:/app
+      # Don't overwrite node_modules in container
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      # Optional: Add any environment variables your app needs
+      # - API_URL=http://api:8000
+    
+    # Uncomment if you need to connect to other services
+    # depends_on:
+    #   - api
+    #   - db
+  
+  # Example of additional services you might need
+  # db:
+  #   image: postgres:14
+  #   environment:
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_DB=myapp
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  
+  # api:
+  #   build:
+  #     context: ./api
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./api:/app
+  #   depends_on:
+  #     - db
+
+# Uncomment if using persistent volumes
+# volumes:
+#   postgres_data:

@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-pridi: var(--font-pridi);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-pridi), Arial, Helvetica, sans-serif;
+  font-weight: 400;
+}
+
+h1 {
+  font-family: var(--font-pridi);
+  font-weight: 700;
+}
+
+h2 {
+  font-family: var(--font-pridi);
+  font-weight: 600;
+}
+
+h3 {
+  font-family: var(--font-pridi);
+  font-weight: 500;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-pridi);
+  font-weight: 400;
+}
+
+.light-text {
+  font-family: var(--font-pridi);
+  font-weight: 300;
+}
+
+.very-light-text {
+  font-family: var(--font-pridi);
+  font-weight: 200;
+}
