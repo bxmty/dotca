@@ -12,7 +12,7 @@ variable "ssh_key_fingerprint" {
 variable "project_name" {
   description = "Name of the Next.js project"
   type        = string
-  default     = "dotCA-nextjs"
+  default     = "dotca-nextjs"
 }
 
 variable "region" {
@@ -54,4 +54,22 @@ variable "subdomain" {
   description = "Subdomain for the QA environment"
   type        = string
   default     = "qa"
+}
+
+variable "use_existing_project" {
+  description = "Whether to use an existing project instead of creating a new one"
+  type        = bool
+  default     = true
+}
+
+variable "use_existing_firewall" {
+  description = "Whether to use an existing firewall instead of creating a new one"
+  type        = bool
+  default     = false
+}
+
+variable "existing_firewall_id" {
+  description = "ID of an existing firewall to use if use_existing_firewall is true"
+  type        = string
+  default     = ""
 }

@@ -1,6 +1,6 @@
-# Ansible Deployment for dotCA
+# Ansible Deployment for dotca
 
-This directory contains Ansible playbooks for deploying the dotCA application to different environments.
+This directory contains Ansible playbooks for deploying the dotca application to different environments.
 
 ## QA Deployment
 

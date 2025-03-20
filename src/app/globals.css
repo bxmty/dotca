@@ -1,10 +1,6 @@
-@import "tailwindcss";
-
-@theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-pridi: var(--font-pridi);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
@@ -21,7 +17,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-pridi), Arial, Helvetica, sans-serif;
+  font-family: var(--font-pridi, Arial, Helvetica, sans-serif);
   font-weight: 400;
 }
 

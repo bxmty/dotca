@@ -1,6 +1,9 @@
 # Multi-environment Dockerfile for Next.js deployment
 FROM node:18-alpine AS builder
 
+# Install git for potential npm package dependencies that require it
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 # Set build arguments with defaults
@@ -14,17 +17,35 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
 # Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json ./
+# Regenerate package-lock.json and then run clean install
+RUN npm install --package-lock-only
+COPY package-lock.json* ./
+# Use --legacy-peer-deps to avoid issues with conflicting peer dependencies
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
+# Check if Tailwind and related dependencies are installed correctly
+RUN npm list tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms || \
+    npm install --save-dev tailwindcss postcss autoprefixer @tailwindcss/typography @tailwindcss/forms
+
+# Use existing Tailwind configuration files
+RUN echo "Checking for config files:" && ls -la *.js *.mjs || echo "No config files found"
+
+# Print module versions for debugging
+RUN echo "Installed versions:" && \
+    npm list tailwindcss postcss autoprefixer
+
 # Build the Next.js application
-RUN npm run build
+RUN npm run build || (echo "Build failed. Check tailwind configuration." && exit 1)
 
 # Production image
 FROM node:18-alpine AS runner
+
+# Install git for potential npm package dependencies that require it
+RUN apk add --no-cache git
 
 WORKDIR /app
 

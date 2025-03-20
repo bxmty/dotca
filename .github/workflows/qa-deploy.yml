@@ -1,4 +1,4 @@
-name: QA Provision, Build, and Deploy
+name: QA Pipeline
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.0.0
+          terraform_version: 1.5.7
           
       - name: Setup DigitalOcean CLI
         run: |
@@ -38,30 +38,46 @@ jobs:
           
       - name: Initialize Terraform
         working-directory: ./terraform
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
         
+      - name: Check if project exists
+        id: check_project
+        run: |
+          # Check if the project exists in Digital Ocean
+          PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs" || echo "")
+          
+          if [ -n "$PROJECT_EXISTS" ]; then
+            echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
+            echo "Project 'dotca-nextjs' already exists"
+          else
+            echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
+            echo "Project 'dotca-nextjs' does not exist"
+          fi
+      
       - name: Check if resources exist
         working-directory: ./terraform
         id: check_resources
         run: |
-          # Configure terraform variables
-          terraform plan \
-            -var="do_token=${{ secrets.DO_TOKEN }}" \
-            -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
-            -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
-            -var="git_branch=qa" \
-            -refresh-only -detailed-exitcode -out=tfplan
+          # Set terraform variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
           
-          # Store exit code
-          TERRAFORM_EXIT_CODE=$?
-          echo "terraform_exit_code=$TERRAFORM_EXIT_CODE" >> $GITHUB_OUTPUT
+          # Try to get current state - handle failure gracefully
+          terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
           
-          # Exit code 0 means no changes needed, 2 means changes needed
-          if [ $TERRAFORM_EXIT_CODE -eq 0 ]; then
+          # Check if resources exist by trying to get the IP
+          DROPLET_IP=$(terraform output droplet_ip 2>/dev/null | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          
+          if [ -n "$DROPLET_IP" ]; then
             echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
             echo "resources_exist=true" >> $GITHUB_OUTPUT
-            # Get the current IP
-            DROPLET_IP=$(terraform output -raw droplet_ip)
             echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
             echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
             echo "Resources already exist, using IP: $DROPLET_IP"
@@ -76,34 +92,75 @@ jobs:
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         run: |
-          terraform plan \
-            -var="do_token=${{ secrets.DO_TOKEN }}" \
-            -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
-            -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
-            -var="git_branch=qa" \
-            -out=tfplan
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          
+          # Create plan
+          terraform plan -out=tfplan
         
       - name: Terraform Apply
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
-        run: terraform apply -auto-approve tfplan
+        run: |
+          # Set terraform variables as environment variables (needed again in case of job step isolation)
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          
+          # Apply the plan
+          terraform apply -auto-approve tfplan
         
       - name: Capture Droplet IP
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         id: get_ip
         run: |
-          # Clean and focused extraction of IP address
-          RAW_OUTPUT=$(terraform output -raw droplet_ip)
+          # Wait a bit for Terraform state to settle
+          echo "Waiting for DigitalOcean resources to be fully provisioned..."
+          sleep 30
           
-          # Extract only the IPv4 address pattern using regex
-          if [[ $RAW_OUTPUT =~ ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}) ]]; then
-            DROPLET_IP="${BASH_REMATCH[1]}"
-            echo "Extracted IP: $DROPLET_IP"
+          # Force a refresh to ensure state is current
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          terraform refresh
+          
+          # Try multiple methods to get the IP address
+          echo "Attempting to get droplet IP address..."
+          
+          # Method 1: Direct output to a file first to avoid pipe issues
+          terraform output > terraform_output.txt
+          cat terraform_output.txt
+          
+          # Extract IP using grep directly on the file
+          DROPLET_IP=$(grep -oE 'droplet_ip\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)"' terraform_output.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          
+          # If that didn't work, try a simpler approach
+          if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Trying alternative method..."
+            DROPLET_IP=$(cat terraform_output.txt | grep droplet_ip | awk -F '"' '{print $2}' || echo "")
+          fi
+          
+          # Final validation and output
+          if [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Successfully extracted IP: $DROPLET_IP"
             echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
             echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
           else
-            echo "::error::Failed to extract valid IP from output: $RAW_OUTPUT"
+            echo "::error::Failed to extract valid IP address from Terraform output"
+            echo "Raw terraform output was:"
+            cat terraform_output.txt
             exit 1
           fi
           
@@ -111,15 +168,60 @@ jobs:
         run: |
           # Get IP address from either the check_resources or get_ip step
           IP_ADDRESS="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
-          echo "Connecting to IP: $IP_ADDRESS"
           
-          # Only wait if we created new resources
-          if [ "${{ env.RESOURCES_EXIST }}" != "true" ]; then
-            echo "Waiting for new droplet to be ready..."
-            sleep 45
+          # Fail if we don't have an IP address
+          if [ -z "$IP_ADDRESS" ]; then
+            echo "::error::Could not determine server IP address - both resource detection methods failed"
+            exit 1
           fi
           
-          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
+          echo "Connecting to IP: $IP_ADDRESS"
+          
+          # Wait longer for new resources to be fully ready
+          if [ "${{ env.RESOURCES_EXIST }}" != "true" ]; then
+            echo "Waiting for new droplet to be fully ready..."
+            # Try to ping the droplet until it's accessible
+            TIMEOUT=300
+            INTERVAL=10
+            ELAPSED=0
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              echo "Attempting to ping $IP_ADDRESS... (${ELAPSED}s elapsed)"
+              if ping -c 1 -W 5 $IP_ADDRESS &> /dev/null; then
+                echo "Successfully reached droplet at $IP_ADDRESS"
+                break
+              fi
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            done
+            
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "::warning::Droplet at $IP_ADDRESS is not responding to ping after ${TIMEOUT}s"
+              # Continue anyway, since SSH might still work
+            fi
+            
+            # Additional wait time for services to start
+            echo "Waiting additional time for services to start..."
+            sleep 30
+          fi
+          
+          # Export the IP for the deploy script
+          echo "DROPLET_IP=$IP_ADDRESS" >> $GITHUB_ENV
+          
+          # Add host key to known_hosts
+          echo "Adding host key for $IP_ADDRESS to known_hosts..."
+          for i in {1..5}; do
+            if ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "Successfully added host key on attempt $i"
+              break
+            else
+              echo "Attempt $i to add host key failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+            
+            if [ $i -eq 5 ]; then
+              echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
+            fi
+          done
       
       - name: Deploy using Ansible
         env:
@@ -127,21 +229,47 @@ jobs:
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
         run: |
-          # Get IP address from either the check_resources or get_ip step
-          export DROPLET_IP="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
+          # Verify IP address is set in the environment
+          if [ -z "$DROPLET_IP" ]; then
+            echo "::error::DROPLET_IP environment variable is not set"
+            exit 1
+          fi
+          
           echo "Using Droplet IP: $DROPLET_IP for deployment"
           
           # Set up ansible inventory dynamically
           echo "[qa-server]" > inventory.ini
-          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa" >> inventory.ini
+          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
+          cat inventory.ini
           
+          # Ensure script is executable
           chmod +x ./deploy.sh
-          ./deploy.sh qa
+          
+          # Test SSH connection
+          echo "Testing SSH connection to $DROPLET_IP..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
+          
+          # Run the deployment with retry logic
+          echo "Starting deployment..."
+          for i in {1..3}; do
+            echo "Deployment attempt $i..."
+            if ./deploy.sh qa; then
+              echo "Deployment successful on attempt $i"
+              break
+            else
+              echo "Deployment attempt $i failed. Waiting before retry..."
+              sleep 30
+              
+              if [ $i -eq 3 ]; then
+                echo "::error::All deployment attempts failed"
+                exit 1
+              fi
+            fi
+          done
       
       - name: QA Deployment Status
         if: success()
         run: |
-          # Get IP address from either the check_resources or get_ip step
-          IP_ADDRESS="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
+          # Use the DROPLET_IP from environment
           echo "✅ QA environment has been deployed with Ansible!"
-          echo "🌐 Access it at http://$IP_ADDRESS/"
+          echo "🌐 Access it at http://$DROPLET_IP/"
