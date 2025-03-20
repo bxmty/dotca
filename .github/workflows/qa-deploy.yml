@@ -40,7 +40,7 @@ jobs:
         working-directory: ./terraform
         run: |
           terraform init \
-            -backend-config="access_key=${{ secrets.SPACES_ACCESS_KEY }}" \
+            -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
             -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
         
       - name: Check if resources exist
