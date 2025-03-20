@@ -93,8 +93,8 @@ EOF
   echo "Running Ansible with inventory:"
   cat inventory.yml
   echo "Using SSH key: $SSH_KEY_PATH"
-  ansible -i inventory.yml digitalocean -m ping -vvv
-  ansible-playbook -i inventory.yml qa-deploy.yml -vvv
+  ansible -i inventory.yml digitalocean -m ping -v
+  ansible-playbook -i inventory.yml qa-deploy.yml -v
   cd ..
 else
   # For other environments
