@@ -41,7 +41,7 @@ EOF
   fi
   
   # Set required environment variables for Ansible
-  export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotCA.git"}
+  export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotca.git"}
   export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/do_key"}
   
   # Use the DROPLET_IP from environment variable
