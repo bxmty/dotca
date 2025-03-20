@@ -18,7 +18,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
     message: ''
   });
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: '' });
@@ -40,7 +40,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
       // Redirect to full onboarding form after successful submission
       router.push('/onboarding');
     } catch (error) {
-      console.error('Error submitting form:', error);
+      // Log error submitting form
       setSubmitStatus({
         type: 'error',
         message: 'Failed to submit request. Please try again.'
