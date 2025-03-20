@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -32,7 +32,7 @@ export default function Checkout() {
   });
 
   // Pricing plans data
-  const pricingPlans = [
+  const pricingPlans = useMemo(() => [
     {
       name: "Basic",
       price: "$99.00",
@@ -74,7 +74,7 @@ export default function Checkout() {
         "Unlimited Device Support"
       ]
     }
-  ];
+  ], []);
 
   useEffect(() => {
     const planName = searchParams.get('plan');
