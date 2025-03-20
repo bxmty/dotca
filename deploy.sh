@@ -42,7 +42,7 @@ EOF
   
   # Set required environment variables for Ansible
   export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotCA.git"}
-  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
+  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/do_key"}
   
   # Use the DROPLET_IP from environment variable
   if [ -z "$DROPLET_IP" ]; then
@@ -51,6 +51,25 @@ EOF
   fi
   
   echo "Using Droplet IP: $DROPLET_IP"
+  
+  # Check if SSH key exists and has correct permissions
+  if [ ! -f "$SSH_KEY_PATH" ]; then
+    echo "Warning: SSH key file $SSH_KEY_PATH does not exist"
+    # If running in CI/CD, we may need to create the key from a secret
+    if [ -n "$SSH_PRIVATE_KEY" ] && [ -n "$GITHUB_ACTIONS" ]; then
+      echo "Creating SSH key file from GITHUB_ACTIONS secret..."
+      mkdir -p $(dirname "$SSH_KEY_PATH")
+      echo "$SSH_PRIVATE_KEY" > "$SSH_KEY_PATH"
+      chmod 600 "$SSH_KEY_PATH"
+    else
+      echo "Error: SSH key file $SSH_KEY_PATH not found and no SSH_PRIVATE_KEY provided"
+      exit 1
+    fi
+  else
+    # Ensure correct permissions
+    chmod 600 "$SSH_KEY_PATH"
+    echo "SSH key file $SSH_KEY_PATH found and permissions set to 600"
+  fi
   
   # Update inventory.yml with the correct IP
   cat > ./ansible/inventory.yml << EOF
@@ -62,13 +81,20 @@ all:
           ansible_host: $DROPLET_IP
           ansible_user: root
           ansible_ssh_private_key_file: $SSH_KEY_PATH
+          ansible_connection: ssh
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
       vars:
         qa_server_ip: $DROPLET_IP
+        ansible_python_interpreter: /usr/bin/python3
 EOF
   
   # Run Ansible playbook with the updated inventory
   cd ansible
-  ansible-playbook -i inventory.yml qa-deploy.yml -v
+  echo "Running Ansible with inventory:"
+  cat inventory.yml
+  echo "Using SSH key: $SSH_KEY_PATH"
+  ansible -i inventory.yml digitalocean -m ping -vvv
+  ansible-playbook -i inventory.yml qa-deploy.yml -vvv
   cd ..
 else
   # For other environments
