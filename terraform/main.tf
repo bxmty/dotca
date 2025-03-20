@@ -7,6 +7,17 @@ terraform {
     }
   }
   required_version = ">= 1.0.0"
+  
+  backend "s3" {
+    endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
+    region                      = "tor1"
+    bucket                      = "bxtf"
+    key                         = "terraform.tfstate"
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    force_path_style            = true
+  }
 }
 
 # Configure the Digital Ocean Provider
@@ -14,21 +25,32 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-# Create a new Digital Ocean project
+# Look up existing project
+data "digitalocean_project" "existing_project" {
+  name = var.project_name
+  count = var.use_existing_project ? 1 : 0
+}
+
+# Create a new Digital Ocean project if it doesn't exist
 resource "digitalocean_project" "project" {
+  count       = var.use_existing_project ? 0 : 1
   name        = var.project_name
   description = "${var.project_name} project created with Terraform"
   purpose     = "Web Application"
   environment = "Development"
-  
-  # Resources will be added to the project
+}
+
+# Add resources to project
+resource "digitalocean_project_resources" "project_resources" {
+  project = var.use_existing_project ? data.digitalocean_project.existing_project[0].id : digitalocean_project.project[0].id
   resources = [
-    digitalocean_droplet.qa_dotCA.urn
+    digitalocean_droplet.qa_dotca.urn
   ]
+  depends_on = [digitalocean_droplet.qa_dotca]
 }
 
 # Create a new Droplet for QA environment
-resource "digitalocean_droplet" "qa_dotCA" {
+resource "digitalocean_droplet" "qa_dotca" {
   image    = "docker-20-04"  # Docker-ready Ubuntu image
   name     = "${var.project_name}-qa"
   region   = var.region
@@ -36,67 +58,41 @@ resource "digitalocean_droplet" "qa_dotCA" {
   ssh_keys = [var.ssh_key_fingerprint]
   tags     = ["qa", "nextjs", var.project_name]
 
-  # Script to set up the droplet for running the Next.js container
+  # Minimal setup script for Ansible compatibility
   user_data = <<-EOF
     #!/bin/bash
+    set -e
+
+    # Create a startup log file
+    exec > >(tee /var/log/user-data.log) 2>&1
+    echo "Starting minimal initialization: $(date)"
+    
+    # Wait until apt is available
+    echo "Waiting for apt to be available..."
+    until apt-get update -q; do
+      echo "Apt not ready yet, waiting..."
+      sleep 5
+    done
+    
     # Update system
+    echo "Updating system packages..."
     apt-get update
-    apt-get upgrade -y
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
     
-    # Install git
-    apt-get install -y git
-
-    # Create directory for the app
-    mkdir -p /app
+    # Install Python for Ansible
+    echo "Installing Python for Ansible..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip
     
-    # Clone the repository
-    git clone ${var.git_repo_url} /app/repo
-    cd /app/repo
-    git checkout ${var.git_branch}
-    
-    # Create a deploy script to build and run the Docker container
-    cat > /app/deploy.sh <<'SCRIPT'
-    #!/bin/bash
-    cd /app/repo
-    
-    # Get the public IP address
-    PUBLIC_IP=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address)
-    
-    # Pull latest changes
-    git pull origin ${var.git_branch}
-    
-    # Build the Docker image locally
-    docker build \
-      --build-arg NODE_ENV=production \
-      --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
-      --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
-      -t dotCA_qa:latest .
-    
-    # Stop and remove any existing container
-    docker stop dotCA_qa || true
-    docker rm dotCA_qa || true
-    
-    # Run the new container
-    docker run -d \
-      --name dotCA_qa \
-      -p 80:3000 \
-      -e NODE_ENV=production \
-      -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
-      -e NEXT_PUBLIC_ENVIRONMENT=qa \
-      dotCA_qa:latest
-    SCRIPT
-
-    # Make the script executable
-    chmod +x /app/deploy.sh
-
-    # Run the deploy script
-    /app/deploy.sh
+    # Mark initialization as complete
+    echo "Droplet initialized and ready for Ansible: $(date)" > /var/log/tf-init-complete
   EOF
 }
 
 # Create a firewall
 resource "digitalocean_firewall" "qa_firewall" {
-  name = "${var.project_name}-qa-firewall"
+  count = var.use_existing_firewall ? 0 : 1
+  name = "${var.project_name}-qa-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
+  
   # Allow SSH
   inbound_rule {
     protocol         = "tcp"
@@ -137,5 +133,5 @@ resource "digitalocean_firewall" "qa_firewall" {
   }
 
   # Apply the firewall to the droplet
-  droplet_ids = [digitalocean_droplet.qa_dotCA.id]
+  droplet_ids = [digitalocean_droplet.qa_dotca.id]
 }

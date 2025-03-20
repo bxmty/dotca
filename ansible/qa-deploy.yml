@@ -11,6 +11,7 @@
     git_branch: qa
     app_dir: /app
     public_ip: "{{ ansible_host }}"
+    node_version: "18.x"  # LTS version, adjust as needed
 
   tasks:
     - name: Update apt cache
@@ -31,6 +32,16 @@
           - lsb-release
           - git
           - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Add Node.js repository
+      shell: curl -fsSL https://deb.nodesource.com/setup_{{ node_version }} | bash -
+
+    - name: Install Node.js and npm
+      apt:
+        name:
+          - nodejs
         state: present
         update_cache: yes
 
@@ -73,6 +84,18 @@
         version: "{{ git_branch }}"
         force: yes
 
+    - name: Uninstall pip Docker Compose
+      pip:
+        name: 
+          - docker-compose
+        state: absent
+
+    - name: Install Docker Compose via official binary
+      get_url:
+        url: https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
     - name: Create deploy script
       copy:
         dest: "{{ app_dir }}/deploy.sh"
@@ -93,32 +116,32 @@
           echo "Pulling latest changes from {{ git_branch }} branch..."
           git pull origin {{ git_branch }}
           echo "Repository updated successfully."
+          
+          # Let Next.js handle dependencies
+          echo "Installing dependencies with npm..."
+          npm install
+          
+          # Create .env file for docker-compose
+          echo "Creating .env file with environment variables..."
+          cat > .env << EOF
+          NODE_ENV=production
+          NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
+          NEXT_PUBLIC_ENVIRONMENT=qa
+          EOF
+          echo ".env file created successfully."
 
-          # Build the Docker image locally
-          echo "Building Docker image with production configuration..."
-          docker build \
-            --build-arg NODE_ENV=production \
-            --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
-            --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
-            -t dotca_qa:latest .
-          echo "Docker image built successfully: dotca_qa:latest"
-
-          # Stop and remove any existing container
-          echo "Stopping any existing dotca_qa container..."
-          docker stop dotca_qa || echo "No container to stop."
-          echo "Removing any existing dotca_qa container..."
-          docker rm dotca_qa || echo "No container to remove."
-
-          # Run the new container
-          echo "Starting new dotca_qa container..."
-          docker run -d \
-            --name dotca_qa \
-            -p 80:3000 \
-            -e NODE_ENV=production \
-            -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
-            -e NEXT_PUBLIC_ENVIRONMENT=qa \
-            dotca_qa:latest
+          # Deploy with docker-compose
+          echo "Deploying with docker-compose..."
+          /usr/local/bin/docker-compose down || echo "No existing containers to stop."
+          /usr/local/bin/docker-compose build --no-cache
+          /usr/local/bin/docker-compose up -d
+          
           echo "Deployment completed successfully! Application is now available at http://$PUBLIC_IP"
+
+    - name: Install jq for JSON processing
+      apt:
+        name: jq
+        state: present
 
     - name: Run deploy script
       command: "{{ app_dir }}/deploy.sh"
