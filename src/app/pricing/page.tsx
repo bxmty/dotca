@@ -126,7 +126,7 @@ export default function Pricing() {
           <h2 className="text-3xl font-light mb-12 text-center">Frequently Asked Questions</h2>
           <div className="max-w-3xl mx-auto space-y-8">
             <div>
-              <h3 className="text-xl font-medium mb-3">What's included in the Password Manager?</h3>
+              <h3 className="text-xl font-medium mb-3">What&apos;s included in the Password Manager?</h3>
               <p className="text-gray-600 dark:text-gray-400">
                 Our Password Manager includes secure credential storage, password generation, multi-factor authentication, and admin controls to manage team access to company accounts.
               </p>
@@ -146,7 +146,7 @@ export default function Pricing() {
             <div>
               <h3 className="text-xl font-medium mb-3">What if my business needs change and I need to upgrade?</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                You can upgrade your plan at any time. We'll prorate the difference and apply any unused portion of your current subscription to your new plan.
+                You can upgrade your plan at any time. We&apos;ll prorate the difference and apply any unused portion of your current subscription to your new plan.
               </p>
             </div>
           </div>

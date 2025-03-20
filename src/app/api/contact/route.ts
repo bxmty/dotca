@@ -43,13 +43,13 @@ export async function POST(request: Request) {
     const response = await fetch(url, options);
     
     if (!response.ok) {
-      const errorData = await response.json();
+      // const errorData = await response.json();
       // API error occurred
       throw new Error('Failed to add contact to Brevo');
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (_error) {
     // Error occurred during form submission
     return NextResponse.json(
       { error: 'Failed to process contact form' },
