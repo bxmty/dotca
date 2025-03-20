@@ -41,6 +41,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
       router.push('/onboarding');
     } catch (_error) {
       // Log error submitting form
+      console.error('Contact form submission error:', error);
       setSubmitStatus({
         type: 'error',
         message: 'Failed to submit request. Please try again.'

@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     
   } catch (_error) {
     // Error processing data
+    console.error('Onboarding form submission error:', error);
     return NextResponse.json(
       { success: false, message: 'Failed to process onboarding data' },
       { status: 500 }

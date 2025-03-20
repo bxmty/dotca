@@ -49,8 +49,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (_error) {
+  } catch (error) {
     // Error occurred during form submission
+    console.error('Contact form submission error:', error);
     return NextResponse.json(
       { error: 'Failed to process contact form' },
       { status: 500 }
