@@ -18,7 +18,8 @@ ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+# Try to use npm ci, fall back to npm install if package-lock is out of sync
+RUN npm ci || (echo "Lock file out of sync, updating..." && npm install)
 
 # Copy the entire project including Tailwind configuration files
 COPY . .
