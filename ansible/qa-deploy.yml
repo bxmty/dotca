@@ -86,7 +86,9 @@
 
     - name: Install Docker Compose
       pip:
-        name: docker-compose
+        name: 
+          - docker-compose==1.29.2
+          - docker<6.0.0
         state: present
 
     - name: Create deploy script
