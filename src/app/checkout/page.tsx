@@ -85,7 +85,7 @@ export default function Checkout() {
       }
     }
     setLoading(false);
-  }, [searchParams]);
+  }, [searchParams, pricingPlans]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -430,7 +430,7 @@ export default function Checkout() {
                   {formData.paymentMethod === 'invoice' && (
                     <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
                       <p className="text-sm text-gray-700 dark:text-gray-300">
-                        You'll receive an invoice via email. Payment is due within 30 days of receipt.
+                        You&apos;ll receive an invoice via email. Payment is due within 30 days of receipt.
                       </p>
                     </div>
                   )}

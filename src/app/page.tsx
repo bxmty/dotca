@@ -99,10 +99,10 @@ export default function Home() {
             <div className="flex flex-col md:flex-row">
               <div className="md:w-1/2 md:pr-16 mb-12 md:mb-0">
                 <p className="mb-6 text-gray-700 dark:text-gray-300">
-                  Technology is advancing at an unprecedented pace, and it's completely understandable why keeping up can feel overwhelming, especially when you have a business to run.
+                  Technology is advancing at an unprecedented pace, and it&apos;s completely understandable why keeping up can feel overwhelming, especially when you have a business to run.
                 </p>
                 <p className="mb-6 text-gray-700 dark:text-gray-300">
-                  You're not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best.
+                  You&apos;re not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best.
                 </p>
                 <p className="text-gray-700 dark:text-gray-300">
                   With decades of experience in corporate technology solutions, we understand the rapid pace of technological advancement. Our team stays ahead of the latest developments, ensuring your business has the most effective solutions available.
@@ -169,12 +169,12 @@ export default function Home() {
               <div>
                 <div className="w-16 h-16 flex items-center justify-center bg-gray-200 dark:bg-gray-800 rounded-full mb-6">02</div>
                 <h3 className="text-xl font-medium mb-4">Review Your Current IT Investment</h3>
-                <p className="text-gray-600 dark:text-gray-400">Submit your past year's IT spend and information about your most recent technology purchases.</p>
+                <p className="text-gray-600 dark:text-gray-400">Submit your past year&apos;s IT spend and information about your most recent technology purchases.</p>
               </div>
               <div>
                 <div className="w-16 h-16 flex items-center justify-center bg-gray-200 dark:bg-gray-800 rounded-full mb-6">03</div>
                 <h3 className="text-xl font-medium mb-4">Simple Setup</h3>
-                <p className="text-gray-600 dark:text-gray-400">We'll email installation instructions for our management tool to your team, ensuring all systems are properly configured.</p>
+                <p className="text-gray-600 dark:text-gray-400">We&apos;ll email installation instructions for our management tool to your team, ensuring all systems are properly configured.</p>
               </div>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function Home() {
           <div className="container mx-auto">
             <div className="flex flex-col md:flex-row">
               <div className="md:w-1/2 mb-12 md:mb-0">
-                <h2 className="text-3xl font-light mb-8 border-b pb-4">What You'll Experience With Our Solution</h2>
+                <h2 className="text-3xl font-light mb-8 border-b pb-4">What You&apos;ll Experience With Our Solution</h2>
                 <div className="space-y-6">
                   <div className="flex">
                     <svg className="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,7 +249,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
               <div className="p-8 bg-gray-100 dark:bg-gray-800 rounded-lg">
                 <p className="text-lg italic mb-6 text-gray-700 dark:text-gray-300">
-                  "Since switching to their cloud bundle, we've eliminated at least 5 hours of IT headaches each week. Now we're focusing that time on serving our customers instead."
+                  &quot;Since switching to their cloud bundle, we&apos;ve eliminated at least 5 hours of IT headaches each week. Now we&apos;re focusing that time on serving our customers instead.&quot;
                 </p>
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-gray-300 dark:bg-gray-700 rounded-full mr-4"></div>
@@ -261,7 +261,7 @@ export default function Home() {
               </div>
               <div className="p-8 bg-gray-100 dark:bg-gray-800 rounded-lg">
                 <p className="text-lg italic mb-6 text-gray-700 dark:text-gray-300">
-                  "Their team made the transition painless. We're now more secure and productive than ever, all while spending less on technology."
+                  &quot;Their team made the transition painless. We&apos;re now more secure and productive than ever, all while spending less on technology.&quot;
                 </p>
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-gray-300 dark:bg-gray-700 rounded-full mr-4"></div>
@@ -357,7 +357,7 @@ export default function Home() {
               <div className="md:w-1/2 mb-12 md:mb-0">
                 <h2 className="text-3xl font-light mb-8 border-b pb-4">Take the First Step Today</h2>
                 <p className="mb-6 text-gray-700 dark:text-gray-300">
-                  We're ready to help your small business leverage the power of enterprise-grade technology without the enterprise-level complexity or cost.
+                  We&apos;re ready to help your small business leverage the power of enterprise-grade technology without the enterprise-level complexity or cost.
                 </p>
                 <div className="mb-6">
                   <h3 className="text-xl font-medium mb-2">Contact Us</h3>
@@ -370,7 +370,7 @@ export default function Home() {
                 </div>
                 <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded">
                   <p className="text-sm italic">
-                    "We value your confidence and the privilege to manage your corporate data and will not disclose any sensitive information."
+                    &quot;We value your confidence and the privilege to manage your corporate data and will not disclose any sensitive information.&quot;
                   </p>
                 </div>
               </div>

@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     // Parse the JSON request body
-    const data = await request.json();
+    // const data = await request.json();
+    await request.json();
     
     // Here you would typically:
     // 1. Validate the data
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
       message: 'Onboarding data received successfully' 
     });
     
-  } catch (error) {
+  } catch (_error) {
     // Error processing data
     return NextResponse.json(
       { success: false, message: 'Failed to process onboarding data' },
