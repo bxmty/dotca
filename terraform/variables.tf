@@ -12,7 +12,7 @@ variable "ssh_key_fingerprint" {
 variable "project_name" {
   description = "Name of the Next.js project"
   type        = string
-  default     = "dotCA-nextjs"
+  default     = "dotca-nextjs"
 }
 
 variable "region" {

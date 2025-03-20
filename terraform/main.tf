@@ -23,12 +23,12 @@ resource "digitalocean_project" "project" {
   
   # Resources will be added to the project
   resources = [
-    digitalocean_droplet.qa_dotCA.urn
+    digitalocean_droplet.qa_dotca.urn
   ]
 }
 
 # Create a new Droplet for QA environment
-resource "digitalocean_droplet" "qa_dotCA" {
+resource "digitalocean_droplet" "qa_dotca" {
   image    = "docker-20-04"  # Docker-ready Ubuntu image
   name     = "${var.project_name}-qa"
   region   = var.region
@@ -70,20 +70,20 @@ resource "digitalocean_droplet" "qa_dotCA" {
       --build-arg NODE_ENV=production \
       --build-arg NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
       --build-arg NEXT_PUBLIC_ENVIRONMENT=qa \
-      -t dotCA_qa:latest .
+      -t dotca_qa:latest .
     
     # Stop and remove any existing container
-    docker stop dotCA_qa || true
-    docker rm dotCA_qa || true
+    docker stop dotca_qa || true
+    docker rm dotca_qa || true
     
     # Run the new container
     docker run -d \
-      --name dotCA_qa \
+      --name dotca_qa \
       -p 80:3000 \
       -e NODE_ENV=production \
       -e NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api \
       -e NEXT_PUBLIC_ENVIRONMENT=qa \
-      dotCA_qa:latest
+      dotca_qa:latest
     SCRIPT
 
     # Make the script executable
@@ -137,5 +137,5 @@ resource "digitalocean_firewall" "qa_firewall" {
   }
 
   # Apply the firewall to the droplet
-  droplet_ids = [digitalocean_droplet.qa_dotCA.id]
+  droplet_ids = [digitalocean_droplet.qa_dotca.id]
 }
