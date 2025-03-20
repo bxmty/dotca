@@ -37,8 +37,6 @@
 
     - name: Add Node.js repository
       shell: curl -fsSL https://deb.nodesource.com/setup_{{ node_version }} | bash -
-      args:
-        no_log: false
 
     - name: Install Node.js and npm
       apt:
