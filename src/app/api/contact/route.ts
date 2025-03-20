@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.BREVO_API_KEY;
     if (!apiKey) {
-      console.error('Brevo API key is missing');
+      // API key is missing
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -44,13 +44,13 @@ export async function POST(request: Request) {
     
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Brevo API error:', errorData);
+      // API error occurred
       throw new Error('Failed to add contact to Brevo');
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error submitting contact form:', error);
+    // Error occurred during form submission
     return NextResponse.json(
       { error: 'Failed to process contact form' },
       { status: 500 }

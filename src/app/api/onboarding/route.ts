@@ -10,8 +10,6 @@ export async function POST(request: Request) {
     // 2. Store it in a database
     // 3. Maybe trigger email notifications or other processes
     
-    console.log('Received onboarding data:', data);
-    
     // For demonstration, we're just returning success
     // In a real app, you'd store this data somewhere
     return NextResponse.json({ 
@@ -20,7 +18,7 @@ export async function POST(request: Request) {
     });
     
   } catch (error) {
-    console.error('Error processing onboarding data:', error);
+    // Error processing data
     return NextResponse.json(
       { success: false, message: 'Failed to process onboarding data' },
       { status: 500 }

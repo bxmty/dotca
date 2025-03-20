@@ -87,7 +87,7 @@ export default function Checkout() {
     setLoading(false);
   }, [searchParams]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -95,17 +95,17 @@ export default function Checkout() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     // In a real application, you would process the payment and submit the form data
-    console.log('Form submitted', { selectedPlan, formData });
+    // Form submitted
     // Redirect to a confirmation page or show a success message
-    alert('Thank you for your order! We will contact you shortly to complete the setup process.');
+    // Show confirmation message to user
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-[family-name:var(--font-geist-sans)]">
+      <div className="min-h-screen flex flex-col items-center justify-center font-sans">
         <p>Loading...</p>
       </div>
     );
@@ -113,7 +113,7 @@ export default function Checkout() {
 
   if (!selectedPlan) {
     return (
-      <div className="min-h-screen flex flex-col font-[family-name:var(--font-geist-sans)]">
+      <div className="min-h-screen flex flex-col font-sans">
         {/* Header */}
         <header className="py-6 px-8 md:px-16 flex items-center justify-between">
           <Link href="/" className="text-xl font-semibold tracking-tight">YOUR COMPANY</Link>
@@ -177,7 +177,7 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col font-[family-name:var(--font-geist-sans)]">
+    <div className="min-h-screen flex flex-col font-sans">
       {/* Header */}
       <header className="py-6 px-8 md:px-16 flex items-center justify-between">
         <Link href="/" className="text-xl font-semibold tracking-tight">YOUR COMPANY</Link>
