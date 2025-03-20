@@ -148,59 +148,56 @@
           # Create default Tailwind config if it doesn't exist
           if [ ! -f tailwind.config.js ]; then
             echo "Creating tailwind.config.js..."
-            cat > tailwind.config.js << EOL
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [
-    require('@tailwindcss/typography'),
-    require('@tailwindcss/forms'),
-  ],
-}
-EOL
-          fi
-          
-          # Create default PostCSS config if it doesn't exist
-          if [ ! -f postcss.config.mjs ]; then
-            echo "Creating postcss.config.mjs..."
-            cat > postcss.config.mjs << EOL
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-EOL
-          fi
-          
-          echo "package.json and dependencies updated successfully."
+            cat > tailwind.config.js << 'TAILWINDCONFIG'
+          /** @type {import('tailwindcss').Config} */
+          module.exports = {
+            content: [
+              "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+              "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+              "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+            ],
+            theme: {
+              extend: {},
+            },
+            plugins: [
+              require('@tailwindcss/typography'),
+              require('@tailwindcss/forms'),
+            ],
+          }
+          TAILWINDCONFIG
+                    fi
+                    
+                    # Create default PostCSS config if it doesn't exist
+                    if [ ! -f postcss.config.mjs ]; then
+                      echo "Creating postcss.config.mjs..."
+                      cat > postcss.config.mjs << 'POSTCSSCONFIG'
+          export default {
+            plugins: {
+              tailwindcss: {},
+              autoprefixer: {},
+            },
+          }
+          POSTCSSCONFIG
+                    fi
+                    
+                    echo "package.json and dependencies updated successfully."
 
-          # Create .env file for docker-compose
-          echo "Creating .env file with environment variables..."
-          cat > .env << EOF
-          NODE_ENV=production
-          NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
-          NEXT_PUBLIC_ENVIRONMENT=qa
-          EOF
-          echo ".env file created successfully."
+                    # Create .env file for docker-compose
+                    echo "Creating .env file with environment variables..."
+                    cat > .env << EOF
+                    NODE_ENV=production
+                    NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
+                    NEXT_PUBLIC_ENVIRONMENT=qa
+                    EOF
+                    echo ".env file created successfully."
 
-          # Install jq for JSON manipulation
-          apt-get update && apt-get install -y jq || echo "jq is already installed"
-
-          # Deploy with docker-compose
-          echo "Deploying with docker-compose..."
-          /usr/local/bin/docker-compose down || echo "No existing containers to stop."
-          /usr/local/bin/docker-compose build --no-cache
-          /usr/local/bin/docker-compose up -d
-          
-          echo "Deployment completed successfully! Application is now available at http://$PUBLIC_IP"
+                    # Deploy with docker-compose
+                    echo "Deploying with docker-compose..."
+                    /usr/local/bin/docker-compose down || echo "No existing containers to stop."
+                    /usr/local/bin/docker-compose build --no-cache
+                    /usr/local/bin/docker-compose up -d
+                    
+                    echo "Deployment completed successfully! Application is now available at http://$PUBLIC_IP"
 
     - name: Install jq for JSON processing
       apt:
