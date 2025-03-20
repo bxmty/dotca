@@ -1,4 +1,4 @@
-name: QA Provision, Build, and Deploy
+name: QA Pipeline
 
 on:
   push:

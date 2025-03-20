@@ -84,12 +84,17 @@
         version: "{{ git_branch }}"
         force: yes
 
-    - name: Install Docker Compose
+    - name: Uninstall pip Docker Compose
       pip:
         name: 
-          - docker-compose==1.29.2
-          - docker<6.0.0
-        state: present
+          - docker-compose
+        state: absent
+
+    - name: Install Docker Compose via official binary
+      get_url:
+        url: https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
 
     - name: Create deploy script
       copy:
@@ -125,6 +130,9 @@
           NEXT_PUBLIC_ENVIRONMENT=qa
           EOF
           echo ".env file created successfully."
+
+          # Explicitly set Docker socket path
+          export DOCKER_HOST=unix:///var/run/docker.sock
 
           # Deploy with docker-compose
           echo "Deploying with docker-compose..."
