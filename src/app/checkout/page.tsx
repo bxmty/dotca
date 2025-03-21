@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import PlanSelector from './PlanSelector';
 
 interface PricingPlan {
   name: string;
@@ -12,7 +12,6 @@ interface PricingPlan {
 }
 
 export default function Checkout() {
-  const searchParams = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -76,16 +75,10 @@ export default function Checkout() {
     }
   ], []);
 
-  useEffect(() => {
-    const planName = searchParams.get('plan');
-    if (planName) {
-      const plan = pricingPlans.find(p => p.name.toLowerCase() === planName.toLowerCase());
-      if (plan) {
-        setSelectedPlan(plan);
-      }
-    }
+  const handlePlanSelected = (plan: PricingPlan | null) => {
+    setSelectedPlan(plan);
     setLoading(false);
-  }, [searchParams, pricingPlans]);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -106,7 +99,15 @@ export default function Checkout() {
   if (loading) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center">
-        <p>Loading...</p>
+        <div>
+          <Suspense fallback={<p>Loading plans...</p>}>
+            <PlanSelector 
+              pricingPlans={pricingPlans}
+              onPlanSelected={handlePlanSelected}
+            />
+          </Suspense>
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
@@ -114,6 +115,14 @@ export default function Checkout() {
   if (!selectedPlan) {
     return (
       <div className="min-vh-100 d-flex flex-column">
+        {/* Invisible component to handle URL params with suspense */}
+        <Suspense fallback={null}>
+          <PlanSelector 
+            pricingPlans={pricingPlans}
+            onPlanSelected={handlePlanSelected}
+          />
+        </Suspense>
+        
         {/* Header */}
         <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
           <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">YOUR COMPANY</Link>
@@ -182,6 +191,14 @@ export default function Checkout() {
 
   return (
     <div className="min-vh-100 d-flex flex-column">
+      {/* Invisible component to handle URL params with suspense */}
+      <Suspense fallback={null}>
+        <PlanSelector 
+          pricingPlans={pricingPlans}
+          onPlanSelected={handlePlanSelected}
+        />
+      </Suspense>
+      
       {/* Header */}
       <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
         <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">YOUR COMPANY</Link>
