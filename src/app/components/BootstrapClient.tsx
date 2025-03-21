@@ -5,7 +5,9 @@ import { useEffect } from "react";
 export default function BootstrapClient() {
   useEffect(() => {
     // Dynamic import of Bootstrap JS on the client side only
-    require("bootstrap/dist/js/bootstrap.bundle.min.js");
+    import("bootstrap/dist/js/bootstrap.bundle.min.js").catch(err => 
+      console.error("Error loading Bootstrap:", err)
+    );
     
     // Also add a class to body when the component mounts
     // to make it easier to detect client-side rendering
