@@ -18,7 +18,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
     message: ''
   });
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: '' });
@@ -40,7 +40,8 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
       // Redirect to full onboarding form after successful submission
       router.push('/onboarding');
     } catch (error) {
-      console.error('Error submitting form:', error);
+      // Log error submitting form
+      console.error('Contact form submission error:', error);
       setSubmitStatus({
         type: 'error',
         message: 'Failed to submit request. Please try again.'
@@ -50,49 +51,49 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
   };
 
   return (
-    <form className={`md:w-1/2 md:pl-16 ${className}`} onSubmit={handleSubmit}>
+    <form className={`col-md-6 ps-md-5 ${className}`} onSubmit={handleSubmit}>
       {submitStatus.type && (
-        <div className={`mb-4 p-3 rounded ${submitStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`mb-4 alert ${submitStatus.type === 'success' ? 'alert-success' : 'alert-danger'}`}>
           {submitStatus.message}
         </div>
       )}
-      <div className="mb-6">
-        <label htmlFor="name" className="block mb-2 text-gray-700 dark:text-gray-300">Name</label>
+      <div className="mb-3">
+        <label htmlFor="name" className="form-label">Name</label>
         <input 
           type="text" 
           id="name" 
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+          className="form-control"
           required
         />
       </div>
-      <div className="mb-6">
-        <label htmlFor="email" className="block mb-2 text-gray-700 dark:text-gray-300">Email</label>
+      <div className="mb-3">
+        <label htmlFor="email" className="form-label">Email</label>
         <input 
           type="email" 
           id="email" 
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+          className="form-control"
           required
         />
       </div>
-      <div className="mb-6">
-        <label htmlFor="phone" className="block mb-2 text-gray-700 dark:text-gray-300">Phone</label>
+      <div className="mb-3">
+        <label htmlFor="phone" className="form-label">Phone</label>
         <input 
           type="tel" 
           id="phone" 
           value={phone}
           onChange={(e) => setPhone(e.target.value)} 
-          className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+          className="form-control"
           required
         />
       </div>
       <button 
         type="submit"
         disabled={isSubmitting}
-        className="px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-100 transition-colors disabled:opacity-70"
+        className="btn btn-secondary btn-block"
       >
         {isSubmitting ? 'Submitting...' : 'Book Your Consult'}
       </button>

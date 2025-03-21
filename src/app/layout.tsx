@@ -1,22 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Pridi } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const pridiFont = Pridi({
-  weight: ["200", "300", "400", "500", "600", "700"],
-  variable: "--font-pridi",
-  subsets: ["latin"],
-});
+import "bootstrap/dist/css/bootstrap.min.css";
+import BootstrapClient from "./components/BootstrapClient";
 
 export const metadata: Metadata = {
   title: "Boximity MSP",
@@ -29,10 +14,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${pridiFont.variable} antialiased`}
-      >
+    <html lang="en" data-bs-theme="auto">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body>
+        <BootstrapClient />
         {children}
       </body>
     </html>

@@ -6,9 +6,41 @@ on:
       - qa
 
 jobs:
-  deploy-qa:
-    name: Deploy QA Environment
+  test:
+    name: Build and Test
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Update package-lock.json
+        run: npm install --package-lock-only
+          
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Test Docker Build
+        run: docker build -t dotca-test .
+  
+  setup-infra:
+    name: Setup Infrastructure
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
+      resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
     
     steps:
       - name: Checkout code
@@ -25,11 +57,6 @@ jobs:
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
       
-      - name: Install Ansible
-        run: |
-          sudo apt update
-          sudo apt install -y ansible
-          
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -59,7 +86,7 @@ jobs:
       
       - name: Check if resources exist
         working-directory: ./terraform
-        id: check_resources
+        id: resource_check
         run: |
           # Set terraform variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
@@ -107,7 +134,7 @@ jobs:
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         run: |
-          # Set terraform variables as environment variables (needed again in case of job step isolation)
+          # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
@@ -163,31 +190,51 @@ jobs:
             cat terraform_output.txt
             exit 1
           fi
-          
-      - name: Add host key to known hosts
+
+  deploy-app:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: setup-infra
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Ansible
         run: |
-          # Get IP address from either the check_resources or get_ip step
-          IP_ADDRESS="${{ steps.check_resources.outputs.ip || steps.get_ip.outputs.ip }}"
-          
+          sudo apt update
+          sudo apt install -y ansible
+      
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+      
+      - name: Add host key to known hosts
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
+        run: |
           # Fail if we don't have an IP address
-          if [ -z "$IP_ADDRESS" ]; then
-            echo "::error::Could not determine server IP address - both resource detection methods failed"
+          if [ -z "$DROPLET_IP" ]; then
+            echo "::error::Could not determine server IP address - infrastructure setup failed"
             exit 1
           fi
           
-          echo "Connecting to IP: $IP_ADDRESS"
+          echo "Connecting to IP: $DROPLET_IP"
           
           # Wait longer for new resources to be fully ready
-          if [ "${{ env.RESOURCES_EXIST }}" != "true" ]; then
+          if [ "$RESOURCES_EXIST" != "true" ]; then
             echo "Waiting for new droplet to be fully ready..."
             # Try to ping the droplet until it's accessible
             TIMEOUT=300
             INTERVAL=10
             ELAPSED=0
             while [ $ELAPSED -lt $TIMEOUT ]; do
-              echo "Attempting to ping $IP_ADDRESS... (${ELAPSED}s elapsed)"
-              if ping -c 1 -W 5 $IP_ADDRESS &> /dev/null; then
-                echo "Successfully reached droplet at $IP_ADDRESS"
+              echo "Attempting to ping $DROPLET_IP... (${ELAPSED}s elapsed)"
+              if ping -c 1 -W 5 $DROPLET_IP &> /dev/null; then
+                echo "Successfully reached droplet at $DROPLET_IP"
                 break
               fi
               sleep $INTERVAL
@@ -195,7 +242,7 @@ jobs:
             done
             
             if [ $ELAPSED -ge $TIMEOUT ]; then
-              echo "::warning::Droplet at $IP_ADDRESS is not responding to ping after ${TIMEOUT}s"
+              echo "::warning::Droplet at $DROPLET_IP is not responding to ping after ${TIMEOUT}s"
               # Continue anyway, since SSH might still work
             fi
             
@@ -204,13 +251,10 @@ jobs:
             sleep 30
           fi
           
-          # Export the IP for the deploy script
-          echo "DROPLET_IP=$IP_ADDRESS" >> $GITHUB_ENV
-          
           # Add host key to known_hosts
-          echo "Adding host key for $IP_ADDRESS to known_hosts..."
+          echo "Adding host key for $DROPLET_IP to known_hosts..."
           for i in {1..5}; do
-            if ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null; then
+            if ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts 2>/dev/null; then
               echo "Successfully added host key on attempt $i"
               break
             else
@@ -228,6 +272,7 @@ jobs:
           GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
@@ -266,10 +311,24 @@ jobs:
               fi
             fi
           done
-      
+  
+  deployment-verification:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deploy-app]
+    
+    steps:
       - name: QA Deployment Status
-        if: success()
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
-          # Use the DROPLET_IP from environment
           echo "✅ QA environment has been deployed with Ansible!"
           echo "🌐 Access it at http://$DROPLET_IP/"
+          
+          # Optional - could add health checks here
+          echo "Checking if application is responding..."
+          if curl -s --head --request GET http://$DROPLET_IP/ | grep "200 OK" > /dev/null; then
+            echo "✅ Application is up and running!"
+          else
+            echo "⚠️ Application might not be fully available yet"
+          fi
