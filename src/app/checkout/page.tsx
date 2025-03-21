@@ -125,7 +125,7 @@ export default function Checkout() {
         
         {/* Header */}
         <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
-          <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">YOUR COMPANY</Link>
+          <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">boximity msp</Link>
           <nav className="d-none d-md-flex gap-4">
             <Link href="/#solutions" className="text-decoration-none text-body">Solutions</Link>
             <Link href="/#benefits" className="text-decoration-none text-body">Benefits</Link>
@@ -157,8 +157,8 @@ export default function Checkout() {
           <div className="container">
             <div className="row align-items-center">
               <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
-                <div className="fs-4 fw-semibold mb-2">YOUR COMPANY</div>
-                <p className="small text-secondary mb-0">© 2025 Your Company. All rights reserved.</p>
+                <div className="fs-4 fw-semibold mb-2">boximity msp</div>
+                <p className="small text-secondary mb-0">© 2025 boximity msp. All rights reserved.</p>
               </div>
               <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
                 <div className="d-flex gap-4">
@@ -201,7 +201,7 @@ export default function Checkout() {
       
       {/* Header */}
       <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
-        <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">YOUR COMPANY</Link>
+        <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">boximity msp</Link>
         <nav className="d-none d-md-flex gap-4">
           <Link href="/#solutions" className="text-decoration-none text-body">Solutions</Link>
           <Link href="/#benefits" className="text-decoration-none text-body">Benefits</Link>
@@ -223,16 +223,16 @@ export default function Checkout() {
             <h1 className="fs-1 fw-light mb-5 border-bottom pb-3">Complete Your Purchase</h1>
             
             {/* Plan Summary */}
-            <div className="bg-light p-4 p-md-5 rounded mb-5">
+            <div className="bg-secondary p-4 p-md-5 rounded mb-5">
               <h2 className="fs-4 fw-medium mb-4">Your Selected Plan</h2>
               <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
                 <div>
                   <div className="fs-3 fw-medium mb-1">{selectedPlan.name} Plan</div>
-                  <div className="fs-4 text-secondary mb-1">{selectedPlan.price} per user per month</div>
-                  <p className="text-secondary">{selectedPlan.description}</p>
+                  <div className="fs-4 text-alt mb-1">{selectedPlan.price} per user per month</div>
+                  <p className="text-alt">{selectedPlan.description}</p>
                 </div>
                 <div className="mt-3 mt-md-0">
-                  <Link href="/pricing" className="text-secondary text-decoration-none">
+                  <Link href="/pricing" className="text-dark text-decoration-none">
                     Change Plan
                   </Link>
                 </div>
@@ -474,7 +474,7 @@ export default function Checkout() {
                       By completing this purchase, you agree to our <a href="#" className="text-decoration-none">Terms of Service</a> and <a href="#" className="text-decoration-none">Privacy Policy</a>.
                     </p>
                   </div>
-                  <button type="submit" className="btn btn-dark w-100 py-3 fs-5">
+                  <button type="submit" className="btn btn-success w-100 py-3 fs-5">
                     Complete Purchase
                   </button>
                 </div>
@@ -489,8 +489,8 @@ export default function Checkout() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
-              <div className="fs-4 fw-semibold mb-2">YOUR COMPANY</div>
-              <p className="small text-secondary mb-0">© 2025 Your Company. All rights reserved.</p>
+              <div className="fs-4 fw-semibold mb-2">boximity msp</div>
+              <p className="small text-secondary mb-0">© 2025 boximity msp. All rights reserved.</p>
             </div>
             <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
               <div className="d-flex gap-4">

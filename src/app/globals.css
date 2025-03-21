@@ -64,6 +64,8 @@ body {
 
 .object-fit-cover {
   object-fit: cover;
+  position: relative;
+  z-index: 0;
 }
 
 .z-index-1 {
@@ -72,6 +74,11 @@ body {
 
 .z-index-2 {
   z-index: 2;
+}
+
+.bg-alt {
+  background-color: #2b3035;
+  color: #f8f9fa;
 }
 
 /* Gap utility (useful for flex layouts) */

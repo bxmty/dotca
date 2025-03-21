@@ -4,6 +4,12 @@ const nextConfig = {
   output: 'standalone',
   // Enable CSS import in server components
   transpilePackages: ['bootstrap'],
+  // Image optimization configuration
+  images: {
+    domains: [],
+    remotePatterns: [],
+    unoptimized: false,
+  },
   // Custom error handling
   experimental: {
     // Disable automatic static error pages

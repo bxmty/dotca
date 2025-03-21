@@ -53,7 +53,7 @@ export default function Pricing() {
     <div className="min-vh-100 d-flex flex-column">
       {/* Header */}
       <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
-        <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">YOUR COMPANY</Link>
+        <Link href="/" className="fs-4 fw-semibold text-decoration-none text-body">boximity msp</Link>
         <nav className="d-none d-md-flex gap-4">
           <Link href="/#solutions" className="text-decoration-none text-body">Solutions</Link>
           <Link href="/#benefits" className="text-decoration-none text-body">Benefits</Link>
@@ -69,10 +69,10 @@ export default function Pricing() {
       </header>
 
       {/* Pricing Hero */}
-      <section className="bg-light py-5 py-md-7">
+      <section className="py-5 py-md-7 bg-alt text-white">
         <div className="container text-center">
           <h1 className="display-4 fw-light mb-4">Technology Solutions That Fit Your Budget</h1>
-          <p className="lead text-secondary mx-auto mb-4 col-md-8">
+          <p className="lead text-light mx-auto mb-4 col-md-8">
             Enterprise-grade technology solutions without enterprise-level complexity or cost. Choose the package that best fits your business needs.
           </p>
         </div>
@@ -125,7 +125,7 @@ export default function Pricing() {
       </section>
 
       {/* FAQ Section */}
-      <section className="bg-light py-5 py-md-7">
+      <section className="bg-alt py-5 py-md-7">
         <div className="container">
           <h2 className="fs-1 fw-light mb-5 text-center">Frequently Asked Questions</h2>
           <div className="row justify-content-center">
@@ -151,7 +151,7 @@ export default function Pricing() {
                   </h3>
                   <div id="faq2" className="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div className="accordion-body text-secondary">
-                      For most small businesses, our Basic package can be implemented within 1-2 business days, Standard within 3-5 days, and Premium within 5-7 days, depending on your team size and existing infrastructure.
+                      For most small businesses, our Basic package can be implemented within 1-2 weeks, Standard within 3-5 weeks, and Premium within 5-7 weeks, depending on your team size and existing infrastructure.
                     </div>
                   </div>
                 </div>
@@ -194,7 +194,7 @@ export default function Pricing() {
           </p>
           <Link 
             href="/#contact" 
-            className="btn btn-dark btn-lg px-5 py-3"
+            className="btn btn-secondary btn-lg px-5 py-3"
           >
             Get Your IT Assessment
           </Link>
@@ -206,8 +206,8 @@ export default function Pricing() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
-              <div className="fs-4 fw-semibold mb-2">YOUR COMPANY</div>
-              <p className="small text-secondary mb-0">© 2025 Your Company. All rights reserved.</p>
+              <div className="fs-4 fw-semibold mb-2">boximity msp</div>
+              <p className="small text-secondary mb-0">© 2025 boximity msp. All rights reserved.</p>
             </div>
             <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
               <div className="d-flex gap-4">
