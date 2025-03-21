@@ -1,6 +1,6 @@
 ---
-# Improved Ansible playbook for setting up the QA environment for dotca
-# With optimizations for Next.js and Tailwind deployment
+# Ansible playbook for setting up the QA environment for dotca
+# With optimizations for Next.js deployment
 
 - name: Setup QA environment for dotca
   hosts: digitalocean
@@ -112,18 +112,15 @@
         version: "{{ git_branch }}"
         force: yes
 
-    - name: Verify Tailwind configuration files
+    - name: Verify Next.js configuration file
       stat:
-        path: "{{ app_dir }}/repo/{{ item }}"
-      register: config_files
-      loop:
-        - tailwind.config.js
-        - postcss.config.mjs
+        path: "{{ app_dir }}/repo/next.config.js"
+      register: next_config
 
-    - name: Fail if Tailwind configuration is missing
+    - name: Fail if Next.js configuration is missing
       fail:
-        msg: "Missing Tailwind configuration files. Please ensure tailwind.config.js and postcss.config.mjs exist in the repository."
-      when: not config_files.results[0].stat.exists or not config_files.results[1].stat.exists
+        msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
+      when: not next_config.stat.exists
 
     - name: Create deploy script
       copy:
