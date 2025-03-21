@@ -1,5 +1,5 @@
 # Multi-environment Dockerfile for Next.js deployment
-FROM node:22-alpine AS builder
+FROM node:18-alpine AS builder
 
 # Install git for potential npm package dependencies that require it
 RUN apk add --no-cache git
@@ -28,7 +28,7 @@ COPY . .
 RUN npm run build
 
 # Production image
-FROM node:22-alpine AS runner
+FROM node:18-alpine AS runner
 
 # Install dependencies
 RUN apk add --no-cache curl
