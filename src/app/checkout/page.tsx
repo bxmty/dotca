@@ -429,7 +429,7 @@ export default function Checkout() {
                     {formData.paymentMethod === 'invoice' && (
                       <div className="alert alert-secondary">
                         <p className="mb-0">
-                          You'll receive an invoice via email. Payment is due within 30 days of receipt.
+                          You&apos;ll receive an invoice via email. Payment is due within 30 days of receipt.
                         </p>
                       </div>
                     )}
