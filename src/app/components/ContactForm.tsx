@@ -93,7 +93,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
       <button 
         type="submit"
         disabled={isSubmitting}
-        className="btn btn-dark"
+        className="btn btn-secondary btn-block"
       >
         {isSubmitting ? 'Submitting...' : 'Book Your Consult'}
       </button>
