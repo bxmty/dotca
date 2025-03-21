@@ -20,7 +20,7 @@ export default function PlanSelector({ pricingPlans, onPlanSelected }: PlanSelec
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const planName = searchParams.get('plan');
+    const planName = searchParams?.get('plan');
     if (planName) {
       const plan = pricingPlans.find(p => p.name.toLowerCase() === planName.toLowerCase());
       if (plan) {
