@@ -80,30 +80,30 @@ export default function OnboardingPage() {
   const prevStep = () => setStep(step - 1);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-vh-100 d-flex flex-column bg-light">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm py-4">
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <div className="flex items-center">
+      <header className="bg-white shadow-sm py-3">
+        <div className="container d-flex justify-content-between align-items-center">
+          <div className="d-flex align-items-center">
             <Image 
               src="/vercel.svg" 
               alt="Company Logo" 
               width={100} 
               height={24} 
-              className="dark:invert"
+              className="dark-invert"
             />
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="small text-secondary">
             Onboarding • Step {step} of 3
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-          <div className="p-8">
-            <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+      <main className="flex-grow-1 container py-5">
+        <div className="card mx-auto shadow rounded" style={{maxWidth: "800px"}}>
+          <div className="card-body p-4 p-md-5">
+            <h1 className="fs-3 fw-bold mb-4">
               {step === 1 && "Company Information"}
               {step === 2 && "Contact Details"}
               {step === 3 && "IT Environment"}
@@ -112,10 +112,10 @@ export default function OnboardingPage() {
             <form onSubmit={handleSubmit}>
               {/* Step 1: Company Information */}
               {step === 1 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="companyName" className="block mb-2 text-gray-700 dark:text-gray-300">
+                <div className="mb-4">
+                  <div className="row g-4">
+                    <div className="col-md-6">
+                      <label htmlFor="companyName" className="form-label">
                         Company Name
                       </label>
                       <input
@@ -124,12 +124,12 @@ export default function OnboardingPage() {
                         name="companyName"
                         value={formData.companyName}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
-                    <div>
-                      <label htmlFor="industry" className="block mb-2 text-gray-700 dark:text-gray-300">
+                    <div className="col-md-6">
+                      <label htmlFor="industry" className="form-label">
                         Industry
                       </label>
                       <input
@@ -138,13 +138,13 @@ export default function OnboardingPage() {
                         name="industry"
                         value={formData.industry}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
                   </div>
-                  <div>
-                    <label htmlFor="employeeCount" className="block mb-2 text-gray-700 dark:text-gray-300">
+                  <div className="mt-4">
+                    <label htmlFor="employeeCount" className="form-label">
                       Number of Employees
                     </label>
                     <select
@@ -152,7 +152,7 @@ export default function OnboardingPage() {
                       name="employeeCount"
                       value={formData.employeeCount}
                       onChange={handleChange}
-                      className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                      className="form-select"
                       required
                     >
                       <option value="">Select</option>
@@ -168,10 +168,10 @@ export default function OnboardingPage() {
 
               {/* Step 2: Contact Details */}
               {step === 2 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="contactName" className="block mb-2 text-gray-700 dark:text-gray-300">
+                <div className="mb-4">
+                  <div className="row g-4">
+                    <div className="col-md-6">
+                      <label htmlFor="contactName" className="form-label">
                         Contact Name
                       </label>
                       <input
@@ -180,12 +180,12 @@ export default function OnboardingPage() {
                         name="contactName"
                         value={formData.contactName}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
-                    <div>
-                      <label htmlFor="contactEmail" className="block mb-2 text-gray-700 dark:text-gray-300">
+                    <div className="col-md-6">
+                      <label htmlFor="contactEmail" className="form-label">
                         Email
                       </label>
                       <input
@@ -194,13 +194,13 @@ export default function OnboardingPage() {
                         name="contactEmail"
                         value={formData.contactEmail}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
                   </div>
-                  <div>
-                    <label htmlFor="contactPhone" className="block mb-2 text-gray-700 dark:text-gray-300">
+                  <div className="mt-4">
+                    <label htmlFor="contactPhone" className="form-label">
                       Phone Number
                     </label>
                     <input
@@ -209,29 +209,27 @@ export default function OnboardingPage() {
                       name="contactPhone"
                       value={formData.contactPhone}
                       onChange={handleChange}
-                      className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                      className="form-control"
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="address" className="block mb-2 text-gray-700 dark:text-gray-300">
-                        Address
-                      </label>
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
-                        required
-                      />
-                    </div>
+                  <div className="mt-4">
+                    <label htmlFor="address" className="form-label">
+                      Address
+                    </label>
+                    <input
+                      type="text"
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      className="form-control"
+                      required
+                    />
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div>
-                      <label htmlFor="city" className="block mb-2 text-gray-700 dark:text-gray-300">
+                  <div className="row g-4 mt-2">
+                    <div className="col-md-4">
+                      <label htmlFor="city" className="form-label">
                         City
                       </label>
                       <input
@@ -240,12 +238,12 @@ export default function OnboardingPage() {
                         name="city"
                         value={formData.city}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
-                    <div>
-                      <label htmlFor="state" className="block mb-2 text-gray-700 dark:text-gray-300">
+                    <div className="col-md-4">
+                      <label htmlFor="state" className="form-label">
                         State
                       </label>
                       <input
@@ -254,12 +252,12 @@ export default function OnboardingPage() {
                         name="state"
                         value={formData.state}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
-                    <div>
-                      <label htmlFor="zipCode" className="block mb-2 text-gray-700 dark:text-gray-300">
+                    <div className="col-md-4">
+                      <label htmlFor="zipCode" className="form-label">
                         ZIP Code
                       </label>
                       <input
@@ -268,7 +266,7 @@ export default function OnboardingPage() {
                         name="zipCode"
                         value={formData.zipCode}
                         onChange={handleChange}
-                        className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                        className="form-control"
                         required
                       />
                     </div>
@@ -278,9 +276,9 @@ export default function OnboardingPage() {
 
               {/* Step 3: IT Environment */}
               {step === 3 && (
-                <div className="space-y-6">
-                  <div>
-                    <label htmlFor="currentITProviders" className="block mb-2 text-gray-700 dark:text-gray-300">
+                <div className="mb-4">
+                  <div className="mb-4">
+                    <label htmlFor="currentITProviders" className="form-label">
                       Current IT Providers/Services
                     </label>
                     <textarea
@@ -289,11 +287,11 @@ export default function OnboardingPage() {
                       value={formData.currentITProviders}
                       onChange={handleChange}
                       rows={3}
-                      className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                      className="form-control"
                     />
                   </div>
-                  <div>
-                    <label htmlFor="softwareUsed" className="block mb-2 text-gray-700 dark:text-gray-300">
+                  <div className="mb-4">
+                    <label htmlFor="softwareUsed" className="form-label">
                       Key Software/Applications Used
                     </label>
                     <textarea
@@ -302,11 +300,11 @@ export default function OnboardingPage() {
                       value={formData.softwareUsed}
                       onChange={handleChange}
                       rows={3}
-                      className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                      className="form-control"
                     />
                   </div>
-                  <div>
-                    <label htmlFor="painPoints" className="block mb-2 text-gray-700 dark:text-gray-300">
+                  <div className="mb-4">
+                    <label htmlFor="painPoints" className="form-label">
                       Current IT Pain Points
                     </label>
                     <textarea
@@ -315,11 +313,11 @@ export default function OnboardingPage() {
                       value={formData.painPoints}
                       onChange={handleChange}
                       rows={3}
-                      className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                      className="form-control"
                     />
                   </div>
                   <div>
-                    <label htmlFor="goals" className="block mb-2 text-gray-700 dark:text-gray-300">
+                    <label htmlFor="goals" className="form-label">
                       IT Goals for Next 12 Months
                     </label>
                     <textarea
@@ -328,19 +326,19 @@ export default function OnboardingPage() {
                       value={formData.goals}
                       onChange={handleChange}
                       rows={3}
-                      className="w-full p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"
+                      className="form-control"
                     />
                   </div>
                 </div>
               )}
 
               {/* Navigation Buttons */}
-              <div className="mt-8 flex justify-between">
+              <div className="mt-5 d-flex justify-content-between">
                 {step > 1 && (
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="px-8 py-3 bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors rounded"
+                    className="btn btn-secondary px-4"
                   >
                     Back
                   </button>
@@ -349,7 +347,7 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="ml-auto px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-100 transition-colors rounded"
+                    className="btn btn-dark ms-auto px-4"
                   >
                     Next
                   </button>
@@ -357,7 +355,7 @@ export default function OnboardingPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="ml-auto px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-100 transition-colors rounded disabled:opacity-70"
+                    className="btn btn-dark ms-auto px-4"
                   >
                     {isSubmitting ? 'Submitting...' : 'Complete Onboarding'}
                   </button>
@@ -369,8 +367,8 @@ export default function OnboardingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 py-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
+      <footer className="py-3 bg-white border-top">
+        <div className="container text-center small text-secondary">
           &copy; {new Date().getFullYear()} Boximity MSP. All rights reserved.
         </div>
       </footer>
