@@ -1,5 +1,5 @@
 // tests/test-utils.tsx
-import React, { ReactElement } from 'react';
+import { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 
 // Add custom render method that could include providers, etc.
@@ -37,7 +37,12 @@ export const mockPricingPlans = [
 ];
 
 // Mock Next.js components
-export const mockNextComponents = () => {
+// These mocks should be moved to jest.setup.js 
+// or used with jest.doMock() inside individual test files
+
+// Example usage for individual tests
+export const mockNextComponentsExample = `
+  // Import the mocks at the top of your test file
   jest.mock('next/navigation', () => ({
     useRouter: () => ({
       push: jest.fn(),
@@ -49,18 +54,35 @@ export const mockNextComponents = () => {
 
   jest.mock('next/link', () => ({
     __esModule: true,
-    default: ({ children, href }: { children: React.ReactNode; href: string }) => {
+    default: ({ children, href }) => {
       return <a href={href}>{children}</a>;
     }
   }));
-
+  
   jest.mock('next/image', () => ({
     __esModule: true,
-    default: (props: { src: string; alt?: string; width?: number; height?: number; className?: string }) => {
-      return <img {...props} alt={props.alt || ''} />;
+    default: (props) => {
+      return <img 
+        src={props.src} 
+        alt={props.alt || ''} 
+        width={props.width} 
+        height={props.height} 
+        className={props.className} 
+      />;
     },
   }));
-};
+`;
+
+// Helper functions to use inside tests after mocks are set up
+export const getMockRouter = () => ({
+  push: jest.fn(),
+  back: jest.fn(),
+  forward: jest.fn(),
+});
+
+export const getMockSearchParams = () => ({
+  get: jest.fn(),
+});
 
 // Reset mocks
 export const resetMocks = () => {
@@ -68,12 +90,14 @@ export const resetMocks = () => {
 };
 
 // Mock fetch
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mockFetch = (mockResponse: Record<string, unknown> = { ok: true }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   global.fetch = jest.fn(() =>
     Promise.resolve({
       ok: true,
       json: () => Promise.resolve(mockResponse),
       ...mockResponse
     })
-  ) as jest.Mock;
+  );
 };
