@@ -6,7 +6,8 @@ import {
   mockFetch, 
   resetMocks, 
   mockPricingPlans,
-  mockNextComponents
+  getMockRouter,
+  getMockSearchParams
 } from './test-utils';
 
 // Create a test component for rendering tests
@@ -103,20 +104,16 @@ describe('Test Utilities', () => {
     });
   });
 
-  describe('mockNextComponents', () => {
+  describe('Next.js mocks', () => {
     beforeEach(() => {
       jest.resetModules();
     });
     
-    it('mocks Next.js router', () => {
-      // Setup the mock
-      mockNextComponents();
-      
-      // Import the mocked module
-      const { useRouter } = jest.requireActual('next/navigation');
+    it('provides mock router functions', () => {
+      // Get the mock router
+      const router = getMockRouter();
       
       // Check if mocked functions are available
-      const router = useRouter();
       expect(router.push).toBeDefined();
       expect(typeof router.push).toBe('function');
       
@@ -125,15 +122,11 @@ describe('Test Utilities', () => {
       expect(router.push).toHaveBeenCalledWith('/test');
     });
     
-    it('mocks Next.js searchParams', () => {
-      // Setup the mock
-      mockNextComponents();
-      
-      // Import the mocked module
-      const { useSearchParams } = jest.requireActual('next/navigation');
+    it('provides mock searchParams functions', () => {
+      // Get the mock search params
+      const searchParams = getMockSearchParams();
       
       // Check if mocked functions are available
-      const searchParams = useSearchParams();
       expect(searchParams.get).toBeDefined();
       expect(typeof searchParams.get).toBe('function');
       
@@ -142,10 +135,7 @@ describe('Test Utilities', () => {
       expect(searchParams.get).toHaveBeenCalledWith('test');
     });
     
-    it('mocks Next.js Link component', () => {
-      // Setup the mock
-      mockNextComponents();
-      
+    it('uses mocked Next.js Link component from setup', () => {
       // Import the mocked component
       const Link = jest.requireActual('next/link').default;
       
@@ -161,10 +151,7 @@ describe('Test Utilities', () => {
       expect(link).toHaveTextContent('Test Link');
     });
     
-    it('mocks Next.js Image component', () => {
-      // Setup the mock
-      mockNextComponents();
-      
+    it('uses mocked Next.js Image component from setup', () => {
       // Import the mocked component
       const Image = jest.requireActual('next/image').default;
       
