@@ -1,21 +1,21 @@
 // tests/page.test.tsx
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+// userEvent not used in this file
+// import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import Home from '@/app/page';
 
 // Mock the Next.js components and hooks
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => {
+  return function NextLink({ children, href }: { children: React.ReactNode; href: string }) {
     return <a href={href} data-testid="next-link">{children}</a>;
   };
 });
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
-    // eslint-disable-next-line jsx-a11y/alt-text
-    return <img data-testid="next-image" {...props} />;
+  default: (props: { src: string; alt?: string; width?: number; height?: number; className?: string }) => {
+    return <img data-testid="next-image" {...props} alt={props.alt || ''} />;
   },
 }));
 

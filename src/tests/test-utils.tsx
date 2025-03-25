@@ -56,9 +56,8 @@ export const mockNextComponents = () => {
 
   jest.mock('next/image', () => ({
     __esModule: true,
-    default: (props: any) => {
-      // eslint-disable-next-line jsx-a11y/alt-text
-      return <img {...props} />;
+    default: (props: { src: string; alt?: string; width?: number; height?: number; className?: string }) => {
+      return <img {...props} alt={props.alt || ''} />;
     },
   }));
 };
@@ -69,7 +68,7 @@ export const resetMocks = () => {
 };
 
 // Mock fetch
-export const mockFetch = (mockResponse: any = { ok: true }) => {
+export const mockFetch = (mockResponse: Record<string, unknown> = { ok: true }) => {
   global.fetch = jest.fn(() =>
     Promise.resolve({
       ok: true,

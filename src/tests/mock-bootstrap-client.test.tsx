@@ -15,7 +15,7 @@ const mockAddEventListener = jest.fn();
 const mockRemoveEventListener = jest.fn();
 
 // Setup mock functions for testing handleThemeChange
-let savedThemeChangeHandler: ((e: any) => void) | null = null;
+let savedThemeChangeHandler: ((e: { matches: boolean }) => void) | null = null;
 const createMockEvent = (isDarkMode: boolean) => ({ matches: isDarkMode });
 
 describe('BootstrapClient handleThemeChange Coverage Tests', () => {
@@ -28,7 +28,7 @@ describe('BootstrapClient handleThemeChange Coverage Tests', () => {
     window.matchMedia = jest.fn().mockImplementation(() => {
       return {
         matches: false,
-        addEventListener: (event: string, handler: any) => {
+        addEventListener: (event: string, handler: (e: { matches: boolean }) => void) => {
           mockAddEventListener(event, handler);
           savedThemeChangeHandler = handler; // Save the handler for later use
         },
@@ -42,7 +42,7 @@ describe('BootstrapClient handleThemeChange Coverage Tests', () => {
   });
   
   // Import actual component after mocks are set up
-  const BootstrapClient = require('@/app/components/BootstrapClient').default;
+  const BootstrapClient = jest.requireActual('@/app/components/BootstrapClient').default;
   
   it('correctly handles theme changes', () => {
     // Render the component to trigger the useEffect

@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Custom404 from '@/pages/404';
 import App from '@/pages/_app';
-import Document, { Html, Head, Main, NextScript } from '@/pages/_document';
+// Document imports commented out as they're not directly used
+// import Document, { Html, Head, Main, NextScript } from '@/pages/_document';
 
 // Mock next/link for 404 page
 jest.mock('next/link', () => ({
@@ -18,7 +19,7 @@ jest.mock('next/document', () => ({
   __esModule: true,
   Html: ({ lang, children }: { lang: string, children: React.ReactNode }) => 
     <html lang={lang}>{children}</html>,
-  Head: () => <head data-testid="document-head"></head>,
+  Head: () => <div data-testid="document-head"></div>,
   Main: () => <main data-testid="document-main"></main>,
   NextScript: () => <div data-testid="next-script"></div>,
   default: () => null
@@ -58,7 +59,7 @@ describe('Legacy Pages', () => {
       // Instead, we'll just verify that it exists and has the expected structure
       
       // Import the actual Document component directly
-      const DocumentComponent = require('@/pages/_document').default;
+      const DocumentComponent = jest.requireActual('@/pages/_document').default;
       expect(DocumentComponent).toBeDefined();
       
       // For coverage purposes, we'll manually test its exported elements

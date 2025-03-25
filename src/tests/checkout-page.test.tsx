@@ -5,7 +5,7 @@ import CheckoutPage from '@/app/checkout/page';
 
 // Mock the PlanSelector component
 jest.mock('@/app/checkout/PlanSelector', () => {
-  return function MockPlanSelector({ onPlanSelected, pricingPlans }: any) {
+  return function MockPlanSelector({ onPlanSelected, pricingPlans }: { onPlanSelected: (plan: unknown) => void; pricingPlans: unknown[] }) {
     // Auto-select the first plan after a small delay
     setTimeout(() => {
       onPlanSelected(pricingPlans[0]);

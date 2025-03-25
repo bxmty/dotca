@@ -113,7 +113,7 @@ describe('Test Utilities', () => {
       mockNextComponents();
       
       // Import the mocked module
-      const { useRouter } = require('next/navigation');
+      const { useRouter } = jest.requireActual('next/navigation');
       
       // Check if mocked functions are available
       const router = useRouter();
@@ -130,7 +130,7 @@ describe('Test Utilities', () => {
       mockNextComponents();
       
       // Import the mocked module
-      const { useSearchParams } = require('next/navigation');
+      const { useSearchParams } = jest.requireActual('next/navigation');
       
       // Check if mocked functions are available
       const searchParams = useSearchParams();
@@ -147,7 +147,7 @@ describe('Test Utilities', () => {
       mockNextComponents();
       
       // Import the mocked component
-      const Link = require('next/link').default;
+      const Link = jest.requireActual('next/link').default;
       
       // Render the Link component
       const { container } = reactRender(
@@ -166,7 +166,7 @@ describe('Test Utilities', () => {
       mockNextComponents();
       
       // Import the mocked component
-      const Image = require('next/image').default;
+      const Image = jest.requireActual('next/image').default;
       
       // Render the Image component
       const { container } = reactRender(
