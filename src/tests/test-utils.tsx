@@ -47,11 +47,12 @@ export const mockNextComponents = () => {
     }),
   }));
 
-  jest.mock('next/link', () => {
-    return ({ children, href }: { children: React.ReactNode; href: string }) => {
+  jest.mock('next/link', () => ({
+    __esModule: true,
+    default: ({ children, href }: { children: React.ReactNode; href: string }) => {
       return <a href={href}>{children}</a>;
-    };
-  });
+    }
+  }));
 
   jest.mock('next/image', () => ({
     __esModule: true,
