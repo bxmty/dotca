@@ -1,5 +1,5 @@
 // tests/PlanSelector.test.tsx
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PlanSelector from '@/app/checkout/PlanSelector';
 

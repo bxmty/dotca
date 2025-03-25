@@ -8,7 +8,7 @@ jest.mock('react', () => {
   const originalReact = jest.requireActual('react');
   return {
     ...originalReact,
-    useEffect: jest.fn((callback, deps) => callback()),
+    useEffect: jest.fn((callback) => callback()),
   };
 });
 
