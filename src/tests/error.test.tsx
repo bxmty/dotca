@@ -65,10 +65,17 @@ describe('Error Component', () => {
 
   it('handles errors with digest property', () => {
     const resetMock = jest.fn();
-    const testError = new Error('Test error') as Error & { digest?: string };
-    testError.digest = 'error-digest-123';
     
-    render(<Error error={testError} reset={resetMock} />);
+    // Use a plain object that satisfies the Error interface with digest property
+    const testError = {
+      name: 'Error',
+      message: 'Test error',
+      stack: 'Error: Test error\n    at Object.<anonymous>',
+      digest: 'error-digest-123',
+      toString: () => 'Error: Test error'
+    };
+    
+    render(<Error error={testError as Error} reset={resetMock} />);
     
     // Check if console.error was called with the error including digest
     expect(console.error).toHaveBeenCalledWith(testError);

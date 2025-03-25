@@ -3,17 +3,6 @@ import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import BootstrapClient from '@/app/components/BootstrapClient';
 
-// Mock the useEffect hook
-jest.mock('react', () => {
-  const originalReact = jest.requireActual('react');
-  return {
-    ...originalReact,
-    useEffect: jest.fn((callback) => {
-      return callback();
-    }),
-  };
-});
-
 // Mock the bootstrap import
 jest.mock('bootstrap/dist/js/bootstrap.bundle.min.js', () => ({}));
 
@@ -24,27 +13,17 @@ describe('BootstrapClient Component', () => {
   const mockAddEventListener = jest.fn();
   const mockRemoveEventListener = jest.fn();
   
-  // Store original methods
-  let originalDocumentBody;
-  let originalDocumentElement;
+  // Store original methods to restore later
   let originalMatchMedia;
   
   beforeAll(() => {
-    // Save original values
-    originalDocumentBody = document.body;
-    originalDocumentElement = document.documentElement;
+    // Save original matchMedia
     originalMatchMedia = window.matchMedia;
     
-    // Create mock elements
-    Object.defineProperty(document, 'body', {
-      value: { classList: { add: mockAddClass } },
-      writable: true
-    });
-    
-    Object.defineProperty(document, 'documentElement', {
-      value: { setAttribute: mockSetAttribute },
-      writable: true
-    });
+    // Setup DOM mocks safely - maintain the original object structure
+    // but override specific methods
+    document.body.classList.add = mockAddClass;
+    document.documentElement.setAttribute = mockSetAttribute;
     
     // Mock matchMedia
     window.matchMedia = jest.fn().mockImplementation((query) => {
@@ -58,18 +37,11 @@ describe('BootstrapClient Component', () => {
   });
   
   afterAll(() => {
-    // Restore original values
-    Object.defineProperty(document, 'body', {
-      value: originalDocumentBody,
-      writable: true
-    });
-    
-    Object.defineProperty(document, 'documentElement', {
-      value: originalDocumentElement,
-      writable: true
-    });
-    
+    // Restore original matchMedia only
     window.matchMedia = originalMatchMedia;
+    
+    // We don't need to restore document.body or document.documentElement
+    // since we only mocked their methods, not replaced the objects themselves
   });
   
   beforeEach(() => {

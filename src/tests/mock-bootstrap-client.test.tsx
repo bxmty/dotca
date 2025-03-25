@@ -2,58 +2,74 @@
 // This is a special test file that mocks the entire BootstrapClient component
 // to improve coverage metrics
 
-import { useEffect } from 'react';
+import { render } from '@testing-library/react';
+import '@testing-library/jest-dom';
 
-// Mock the component directly to test all code paths
-jest.mock('@/app/components/BootstrapClient', () => {
-  // Create a mock implementation that exposes the useEffect callback
-  const mockImpl = () => null;
+// Mock bootstrap import directly
+jest.mock('bootstrap/dist/js/bootstrap.bundle.min.js', () => ({}));
+
+// Create DOM mock functions to track calls
+const mockAddClass = jest.fn();
+const mockSetAttribute = jest.fn();
+const mockAddEventListener = jest.fn();
+const mockRemoveEventListener = jest.fn();
+
+// Setup mock functions for testing handleThemeChange
+let savedThemeChangeHandler: ((e: any) => void) | null = null;
+const createMockEvent = (isDarkMode: boolean) => ({ matches: isDarkMode });
+
+describe('BootstrapClient handleThemeChange Coverage Tests', () => {
+  beforeAll(() => {
+    // Setup safe DOM mocks
+    document.body.classList.add = mockAddClass;
+    document.documentElement.setAttribute = mockSetAttribute;
+    
+    // Setup matchMedia mock that captures the event handler
+    window.matchMedia = jest.fn().mockImplementation(() => {
+      return {
+        matches: false,
+        addEventListener: (event: string, handler: any) => {
+          mockAddEventListener(event, handler);
+          savedThemeChangeHandler = handler; // Save the handler for later use
+        },
+        removeEventListener: mockRemoveEventListener,
+      };
+    });
+  });
   
-  // The actual implementation from the component
-  mockImpl.implementation = () => {
-    useEffect(() => {
-      // Dynamic import of Bootstrap JS on the client side only
-      // Import is handled through mocking in the test
-      
-      // Also add a class to body when the component mounts
-      document.body.classList.add('bootstrap-loaded');
-      
-      // Set theme based on system preference
-      const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)');
-      if (darkModePreference.matches) {
-        document.documentElement.setAttribute('data-bs-theme', 'dark');
-      } else {
-        document.documentElement.setAttribute('data-bs-theme', 'light');
-      }
-      
-      // Listen for changes in system dark mode preference
-      const handleThemeChange = (e: MediaQueryListEvent) => {
-        document.documentElement.setAttribute('data-bs-theme', e.matches ? 'dark' : 'light');
-      };
-      
-      darkModePreference.addEventListener('change', handleThemeChange);
-      
-      return () => {
-        darkModePreference.removeEventListener('change', handleThemeChange);
-      };
-    }, []);
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  
+  // Import actual component after mocks are set up
+  const BootstrapClient = require('@/app/components/BootstrapClient').default;
+  
+  it('correctly handles theme changes', () => {
+    // Render the component to trigger the useEffect
+    render(<BootstrapClient />);
     
-    return null;
-  };
-
-  return mockImpl;
-});
-
-// Import the mocked component
-import BootstrapClient from '@/app/components/BootstrapClient';
-
-describe('BootstrapClient Coverage Tests', () => {
-  it('ensures the mocked implementation is registered for coverage', () => {
-    // This test doesn't actually do anything except ensure the component code
-    // is loaded and registered for coverage metrics
-    expect(BootstrapClient).toBeDefined();
+    // Verify initial setup
+    expect(mockAddClass).toHaveBeenCalledWith('bootstrap-loaded');
+    expect(mockSetAttribute).toHaveBeenCalledWith('data-bs-theme', 'light');
+    expect(mockAddEventListener).toHaveBeenCalledWith('change', expect.any(Function));
     
-    // Call the implementation directly to ensure it's covered
-    (BootstrapClient as any).implementation();
+    // Make sure we captured the handler
+    expect(savedThemeChangeHandler).not.toBeNull();
+    
+    // Test the theme change handler with light mode
+    if (savedThemeChangeHandler) {
+      savedThemeChangeHandler(createMockEvent(false));
+      expect(mockSetAttribute).toHaveBeenLastCalledWith('data-bs-theme', 'light');
+      
+      // Test with dark mode
+      savedThemeChangeHandler(createMockEvent(true));
+      expect(mockSetAttribute).toHaveBeenLastCalledWith('data-bs-theme', 'dark');
+    }
+  });
+  
+  it('removes event listener on unmount', () => {
+    const { unmount } = render(<BootstrapClient />);
+    unmount();
+    expect(mockRemoveEventListener).toHaveBeenCalledWith('change', expect.any(Function));
   });
 });
