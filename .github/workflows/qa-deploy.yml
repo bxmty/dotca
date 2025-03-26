@@ -33,6 +33,10 @@ jobs:
         
       - name: Test Docker Build
         run: docker build -t dotca-test .
+
+      - name: Run unit tests
+        run: npm test
+        continue-on-error: true
   
   setup-infra:
     name: Setup Infrastructure
@@ -273,6 +277,7 @@ jobs:
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then

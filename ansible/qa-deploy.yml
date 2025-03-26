@@ -151,7 +151,6 @@
           NEXT_PUBLIC_ENVIRONMENT=qa
           BREVO_API_KEY={{ brevo_api_key }}
           EOF
-          EOF
           echo ".env file created successfully."
 
           # Deploy with docker-compose v2
