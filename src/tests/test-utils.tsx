@@ -75,13 +75,13 @@ export const mockNextComponentsExample = `
 
 // Helper functions to use inside tests after mocks are set up
 export const getMockRouter = () => ({
-  push: function() { return () => {}; },
-  back: function() { return () => {}; },
-  forward: function() { return () => {}; },
+  push: jest.fn(),
+  back: jest.fn(),
+  forward: jest.fn(),
 });
 
 export const getMockSearchParams = () => ({
-  get: function() { return () => {}; },
+  get: jest.fn(),
 });
 
 // Reset mocks
@@ -91,8 +91,8 @@ export const resetMocks = () => {
 };
 
 // Mock fetch
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mockFetch = (mockResponse: Record<string, unknown> = { ok: true }) => {
+  // We need to use any here because global.fetch is complex to type correctly
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (global as any).fetch = () => 
     Promise.resolve({

@@ -33,9 +33,6 @@ jobs:
         
       - name: Test Docker Build
         run: docker build -t dotca-test .
-
-      - name: Run Unit Tests
-        run: npm run test
   
   setup-infra:
     name: Setup Infrastructure

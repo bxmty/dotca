@@ -14,8 +14,28 @@ jest.mock('next/link', () => {
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: { src: string; alt?: string; width?: number; height?: number; className?: string }) => {
-    return <img data-testid="next-image" {...props} alt={props.alt || ''} />;
+  default: (props: { 
+    src: string; 
+    alt?: string; 
+    width?: number; 
+    height?: number; 
+    className?: string; 
+    priority?: boolean;
+    fill?: boolean;
+    style?: React.CSSProperties;
+    quality?: number;
+  }) => {
+    // Convert boolean props to string
+    const imgProps = { ...props };
+    
+    // Convert all boolean attributes to strings
+    for (const [key, value] of Object.entries(imgProps)) {
+      if (typeof value === 'boolean') {
+        imgProps[key] = value.toString();
+      }
+    }
+    
+    return <img data-testid="next-image" {...imgProps} alt={props.alt || ''} />;
   },
 }));
 
