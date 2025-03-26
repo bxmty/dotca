@@ -3,6 +3,8 @@
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import PlanSelector from './PlanSelector';
+import StripeWrapper from '../components/StripeWrapper';
+import StripePaymentForm from '../components/StripePaymentForm';
 
 interface PricingPlan {
   name: string;
@@ -29,6 +31,8 @@ export default function Checkout() {
     cardExpiry: '',
     cardCvc: '',
   });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Pricing plans data
   const pricingPlans = useMemo(() => [
@@ -94,6 +98,11 @@ export default function Checkout() {
     // Form submitted
     // Redirect to a confirmation page or show a success message
     // Show confirmation message to user
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentSuccess(true);
+    // You might want to redirect or show a success message
   };
 
   if (loading) {
@@ -402,43 +411,16 @@ export default function Checkout() {
                     {formData.paymentMethod === 'credit' && (
                       <div className="row g-3">
                         <div className="col-12">
-                          <label htmlFor="cardNumber" className="form-label">Card Number</label>
-                          <input
-                            type="text"
-                            id="cardNumber"
-                            name="cardNumber"
-                            value={formData.cardNumber}
-                            onChange={handleInputChange}
-                            placeholder="1234 5678 9012 3456"
-                            className="form-control"
-                            required
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label htmlFor="cardExpiry" className="form-label">Expiration Date</label>
-                          <input
-                            type="text"
-                            id="cardExpiry"
-                            name="cardExpiry"
-                            value={formData.cardExpiry}
-                            onChange={handleInputChange}
-                            placeholder="MM/YY"
-                            className="form-control"
-                            required
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label htmlFor="cardCvc" className="form-label">CVC</label>
-                          <input
-                            type="text"
-                            id="cardCvc"
-                            name="cardCvc"
-                            value={formData.cardCvc}
-                            onChange={handleInputChange}
-                            placeholder="123"
-                            className="form-control"
-                            required
-                          />
+                          <StripeWrapper 
+                            amount={parseInt(selectedPlan.price.replace(/\D/g, ''))*100}
+                            metadata={{
+                              plan: selectedPlan.name,
+                              customer_email: formData.email,
+                              customer_name: `${formData.firstName} ${formData.lastName}`
+                            }}
+                          >
+                            <StripePaymentForm onSuccess={handlePaymentSuccess} />
+                          </StripeWrapper>
                         </div>
                       </div>
                     )}
