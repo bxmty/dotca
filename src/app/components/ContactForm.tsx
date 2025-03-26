@@ -33,8 +33,25 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         body: JSON.stringify({ name, email, phone }),
       });
 
+      const responseData = await response.json().catch(() => null);
+      
       if (!response.ok) {
-        throw new Error('Failed to submit form');
+        // Handle error case
+        if (responseData && responseData.error) {
+          throw new Error(`Error: ${responseData.error}`);
+        } else {
+          throw new Error(`Failed to submit form (Status: ${response.status})`);
+        }
+      }
+
+      // Handle custom success message if provided by the API
+      if (responseData && responseData.message) {
+        setSubmitStatus({
+          type: 'success',
+          message: responseData.message
+        });
+        setIsSubmitting(false);
+        return; // Don't redirect if we have a custom message
       }
 
       // Redirect to full onboarding form after successful submission
@@ -44,7 +61,9 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
       console.error('Contact form submission error:', error);
       setSubmitStatus({
         type: 'error',
-        message: 'Failed to submit request. Please try again.'
+        message: error instanceof Error 
+          ? `${error.message}. Please try again.` 
+          : 'Failed to submit request. Please try again.'
       });
       setIsSubmitting(false);
     }
