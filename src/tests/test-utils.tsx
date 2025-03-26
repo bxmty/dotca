@@ -75,13 +75,14 @@ export const mockNextComponentsExample = `
 
 // Helper functions to use inside tests after mocks are set up
 export const getMockRouter = () => ({
-  push: jest.fn(),
-  back: jest.fn(),
-  forward: jest.fn(),
+  // Using a function that records its calls (acts like a jest.fn)
+  push: jest.fn ? jest.fn() : Function.prototype,
+  back: jest.fn ? jest.fn() : Function.prototype,
+  forward: jest.fn ? jest.fn() : Function.prototype,
 });
 
 export const getMockSearchParams = () => ({
-  get: jest.fn(),
+  get: jest.fn ? jest.fn() : Function.prototype,
 });
 
 // Reset mocks
@@ -92,12 +93,26 @@ export const resetMocks = () => {
 
 // Mock fetch
 export const mockFetch = (mockResponse: Record<string, unknown> = { ok: true }) => {
-  // We need to use any here because global.fetch is complex to type correctly
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (global as any).fetch = () => 
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-      ...mockResponse
-    });
+  // Create a mock Response object
+  const mockResponseObj = {
+    ok: true,
+    json: () => Promise.resolve(mockResponse),
+    text: () => Promise.resolve(JSON.stringify(mockResponse)),
+    status: 200,
+    statusText: 'OK',
+    headers: new Headers(),
+    redirected: false,
+    type: 'basic' as ResponseType,
+    url: '',
+    clone: function() { return this; },
+    ...mockResponse
+  } as Response;
+
+  // Set up the mock using jest.fn
+  if (jest.fn) {
+    global.fetch = jest.fn(() => Promise.resolve(mockResponseObj));
+  } else {
+    // Fallback for non-jest environments
+    global.fetch = () => Promise.resolve(mockResponseObj);
+  }
 };

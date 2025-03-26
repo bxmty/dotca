@@ -82,7 +82,8 @@ describe('ContactForm Component', () => {
     (global.fetch as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ok: false,
-        json: () => Promise.resolve({ error: 'Failed to submit' }),
+        status: 500,
+        json: () => Promise.resolve({ error: 'Server configuration error - missing API key' }),
       })
     );
     
@@ -96,10 +97,41 @@ describe('ContactForm Component', () => {
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Book Your Consult/i }));
     
-    // Check for error message
+    // Check for specific error message that includes the server error
     await waitFor(() => {
-      expect(screen.getByText('Failed to submit request. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText(/Server configuration error - missing API key/)).toBeInTheDocument();
     });
+  });
+  
+  it('shows success message and does not redirect when API returns a message', async () => {
+    // Mock fetch to return success with a message
+    (global.fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ 
+          success: true, 
+          message: 'Your information has already been submitted. We will contact you soon.' 
+        }),
+      })
+    );
+    
+    render(<ContactForm />);
+    
+    // Fill in the form
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '123-456-7890' } });
+    
+    // Submit the form
+    fireEvent.click(screen.getByRole('button', { name: /Book Your Consult/i }));
+    
+    // Check for success message
+    await waitFor(() => {
+      expect(screen.getByText('Your information has already been submitted. We will contact you soon.')).toBeInTheDocument();
+    });
+    
+    // Router.push should not have been called
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('disables the submit button while submitting', async () => {

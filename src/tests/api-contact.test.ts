@@ -25,8 +25,13 @@ describe('Contact API Route', () => {
       })
     ) as jest.Mock;
     
-    // Setup process.env
-    process.env = { ...originalEnv, BREVO_API_KEY: 'test-api-key' };
+    // Setup process.env with all required variables
+    process.env = { 
+      ...originalEnv, 
+      BREVO_API_KEY: 'test-api-key',
+      NEXT_PUBLIC_BREVO_API_KEY: 'public-test-api-key',
+      NODE_ENV: 'test'
+    };
   });
 
   afterEach(() => {
@@ -53,9 +58,10 @@ describe('Contact API Route', () => {
     );
   });
 
-  it('returns 500 if API key is missing', async () => {
-    // Remove API key from environment
+  it('returns 500 if all API keys are missing', async () => {
+    // Remove all API keys from environment
     delete process.env.BREVO_API_KEY;
+    delete process.env.NEXT_PUBLIC_BREVO_API_KEY;
 
     // Create a mock request
     const request = {
@@ -70,8 +76,35 @@ describe('Contact API Route', () => {
 
     // Check if NextResponse.json was called with error message and status 500
     expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: 'Server configuration error' },
+      { error: 'Server configuration error - missing API key' },
       { status: 500 }
+    );
+  });
+  
+  it('uses fallback API key in development when main key is missing', async () => {
+    // Remove the main API key but keep the public one
+    delete process.env.BREVO_API_KEY;
+    process.env.NODE_ENV = 'development';
+    
+    // Create a mock request
+    const request = {
+      json: jest.fn().mockResolvedValue({
+        name: 'Test User',
+        email: 'test@example.com',
+        phone: '123-456-7890'
+      })
+    };
+
+    await POST(request as unknown as Request);
+    
+    // Check if fetch was called with the public API key
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.brevo.com/v3/contacts',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'api-key': 'public-test-api-key'
+        })
+      })
     );
   });
 
@@ -117,7 +150,11 @@ describe('Contact API Route', () => {
     (global.fetch as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ok: false,
-        json: () => Promise.resolve({ error: 'API error' })
+        status: 400,
+        json: () => Promise.resolve({ 
+          message: 'API error message',
+          code: 'api_error' 
+        })
       })
     );
 
@@ -137,6 +174,37 @@ describe('Contact API Route', () => {
       { error: 'Failed to process contact form' },
       { status: 500 }
     );
+  });
+  
+  it('handles duplicate contact submissions gracefully', async () => {
+    // Mock fetch to return a duplicate parameter error
+    (global.fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ 
+          code: 'duplicate_parameter',
+          message: 'Contact already exists'
+        })
+      })
+    );
+
+    // Create a mock request
+    const request = {
+      json: jest.fn().mockResolvedValue({
+        name: 'Test User',
+        email: 'test@example.com',
+        phone: '123-456-7890'
+      })
+    };
+
+    await POST(request as unknown as Request);
+
+    // Should return success with a message indicating the contact already exists
+    expect(NextResponse.json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Your information has already been submitted. We will contact you soon.'
+    });
   });
 
   it('handles exceptions during processing', async () => {
