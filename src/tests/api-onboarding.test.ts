@@ -55,9 +55,7 @@ describe('Onboarding API Route', () => {
   it('handles exceptions during processing', async () => {
     // Mock request.json to throw an error
     const request = {
-      json: jest.fn().mockImplementationOnce(() => {
-        throw new Error('JSON parsing error');
-      })
+      json: jest.fn().mockRejectedValueOnce(new Error('JSON parsing error'))
     };
 
     await POST(request as unknown as Request);
