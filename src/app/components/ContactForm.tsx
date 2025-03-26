@@ -8,6 +8,7 @@ interface ContactFormProps {
 }
 
 const ContactForm = ({ className = '' }: ContactFormProps) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -54,8 +55,17 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         return; // Don't redirect if we have a custom message
       }
 
-      // Redirect to full onboarding form after successful submission
-      router.push('/onboarding');
+      // Display success message
+      setSubmitStatus({
+        type: 'success',
+        message: 'Thank you! Your consultation request has been submitted successfully.'
+      });
+      
+      // Reset form fields
+      setName('');
+      setEmail('');
+      setPhone('');
+      setIsSubmitting(false);
     } catch (error) {
       // Log error submitting form
       console.error('Contact form submission error:', error);
