@@ -327,7 +327,7 @@ jobs:
           k6 run --out json=./test-results/load-test-results.json load-test.js -e TARGET_URL=http://$DROPLET_IP
       
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: load-test-results
           path: ./test-results
