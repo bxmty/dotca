@@ -1,19 +1,24 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { getServerStripe } from '@/lib/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-03-08',
-});
-
+// Server-side Stripe API implementation
 export async function POST(request: Request) {
   try {
-    const { amount, currency = 'usd', metadata } = await request.json();
+    // Parse request body
+    const { amount, currency = 'usd', metadata = {} } = await request.json();
+    
+    if (!amount || isNaN(amount)) {
+      throw new Error('A valid amount is required');
+    }
+
+    // Get Stripe instance (asynchronously)
+    const stripe = await getServerStripe();
 
     // Create a PaymentIntent with the order amount and currency
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: currency,
-      metadata: metadata,
+      amount,
+      currency,
+      metadata,
       automatic_payment_methods: {
         enabled: true,
       },
@@ -23,6 +28,7 @@ export async function POST(request: Request) {
       clientSecret: paymentIntent.client_secret 
     });
   } catch (error) {
+    console.error('Stripe error:', error);
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
