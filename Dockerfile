@@ -10,11 +10,15 @@ WORKDIR /app
 ARG NODE_ENV=production
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_ENVIRONMENT
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ARG STRIPE_SECRET_KEY
 
 # Set environment variables for build
 ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
@@ -23,6 +27,11 @@ RUN npm ci
 
 # Copy the entire project
 COPY . .
+
+# Fix import paths for Docker build
+RUN sed -i 's|@/lib/stripe|../../lib/stripe|g' src/app/components/StripeWrapper.tsx && \
+    sed -i 's|@/lib/stripe|../../../../lib/stripe|g' src/app/api/stripe/create-payment-intent/route.ts && \
+    echo "Fixed import paths for Docker build"
 
 # Build the Next.js application
 RUN npm run build
@@ -39,10 +48,14 @@ WORKDIR /app
 ARG NODE_ENV=production
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_ENVIRONMENT
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ARG STRIPE_SECRET_KEY
 
 ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ENVIRONMENT=$NEXT_PUBLIC_ENVIRONMENT
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 
 # Copy necessary files from builder stage
 COPY --from=builder /app/next.config.js ./
