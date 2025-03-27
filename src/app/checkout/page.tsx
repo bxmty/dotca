@@ -8,7 +8,7 @@ import StripePaymentForm from '../components/StripePaymentForm';
 
 interface PricingPlan {
   name: string;
-  price: string;
+  unit_price: string; // Changed from price to unit_price
   description: string;
   features: string[];
 }
@@ -33,12 +33,14 @@ export default function Checkout() {
   });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [employeeCount, setEmployeeCount] = useState(5);
+  const [billingCycle, setBillingCycle] = useState('monthly');
 
   // Pricing plans data
   const pricingPlans = useMemo(() => [
     {
       name: "Basic",
-      price: "$99.00",
+      unit_price: "$99.00", // Changed from price to unit_price
       description: "Perfect for small teams needing essential IT security and communication tools",
       features: [
         "Password Manager",
@@ -50,7 +52,7 @@ export default function Checkout() {
     },
     {
       name: "Standard",
-      price: "$249.00",
+      unit_price: "$249.00", // Changed from price to unit_price
       description: "Our most popular option for growing businesses needing comprehensive IT support",
       features: [
         "Everything in Basic",
@@ -64,7 +66,7 @@ export default function Checkout() {
     },
     {
       name: "Premium",
-      price: "$449.00",
+      unit_price: "$449.00", // Changed from price to unit_price
       description: "Complete IT management solution for businesses requiring enterprise-grade technology",
       features: [
         "Everything in Standard",
@@ -90,6 +92,36 @@ export default function Checkout() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleEmployeeCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (value >= 5 && value <= 20) {
+      setEmployeeCount(value);
+    }
+  };
+
+  const calculateTotal = (unitPrice: string, count: number) => {
+    const price = parseFloat(unitPrice.replace(/[^\d.]/g, ''));
+    const baseTotal = price * count;
+    
+    // Apply 10% discount for annual billing
+    if (billingCycle === 'annual') {
+      const annualTotal = baseTotal * 12;
+      const discountedTotal = annualTotal * 0.9;
+      return formatCurrency(discountedTotal);
+    }
+    
+    return formatCurrency(baseTotal);
+  };
+
+  // Helper function to format currency with commas and 2 decimal places
+  const formatCurrency = (amount: number): string => {
+    return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  };
+
+  const handleBillingCycleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBillingCycle(e.target.value);
   };
 
   const handleSubmit = (e: React.FormEvent): void => {
@@ -237,7 +269,7 @@ export default function Checkout() {
               <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
                 <div>
                   <div className="fs-3 fw-medium mb-1">{selectedPlan.name} Plan</div>
-                  <div className="fs-4 text-alt mb-1">{selectedPlan.price} per user per month</div>
+                  <div className="fs-4 text-alt mb-1">{selectedPlan.unit_price} per user per month</div>
                   <p className="text-alt">{selectedPlan.description}</p>
                 </div>
                 <div className="mt-3 mt-md-0">
@@ -246,6 +278,63 @@ export default function Checkout() {
                   </Link>
                 </div>
               </div>
+              
+              {/* Employee Count Form */}
+              <div className="mt-4 pt-4 border-top">
+                <div className="row align-items-end">
+                  <div className="col-md-6">
+                    <label htmlFor="employeeCount" className="form-label">Number of Employees (minimum 5)</label>
+                    <input
+                      type="number"
+                      id="employeeCount"
+                      min="5"
+                      max="20"
+                      value={employeeCount}
+                      onChange={handleEmployeeCountChange}
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                  <div className="col-md-6 mt-3 mt-md-0">
+                    <div className="mb-3">
+                      <label className="form-label">Billing Cycle</label>
+                      <div className="d-flex gap-4">
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            id="billingMonthly"
+                            name="billingCycle"
+                            value="monthly"
+                            checked={billingCycle === 'monthly'}
+                            onChange={handleBillingCycleChange}
+                          />
+                          <label className="form-check-label" htmlFor="billingMonthly">Monthly</label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            id="billingAnnual"
+                            name="billingCycle"
+                            value="annual"
+                            checked={billingCycle === 'annual'}
+                            onChange={handleBillingCycleChange}
+                          />
+                          <label className="form-check-label" htmlFor="billingAnnual">
+                            Annual <span className="badge bg-success ms-1">Save 10%</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="d-flex justify-content-between fw-medium">
+                      <span>{billingCycle === 'annual' ? 'Annual' : 'Monthly'} Total:</span>
+                      <span className="fs-4">{calculateTotal(selectedPlan.unit_price, employeeCount)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <div className="mt-4 pt-4 border-top">
                 <h3 className="fs-5 fw-medium mb-3">Includes:</h3>
                 <ul className="list-unstyled">
@@ -352,7 +441,7 @@ export default function Checkout() {
                       />
                     </div>
                     <div className="col-md-4">
-                      <label htmlFor="state" className="form-label">State</label>
+                      <label htmlFor="state" className="form-label">Province/State</label>
                       <input
                         type="text"
                         id="state"
@@ -364,7 +453,7 @@ export default function Checkout() {
                       />
                     </div>
                     <div className="col-md-4">
-                      <label htmlFor="zip" className="form-label">ZIP Code</label>
+                      <label htmlFor="zip" className="form-label">Postal Code</label>
                       <input
                         type="text"
                         id="zip"
@@ -394,7 +483,7 @@ export default function Checkout() {
                         />
                         <label className="form-check-label" htmlFor="creditCard">Credit Card</label>
                       </div>
-                      <div className="form-check">
+                        <div className="form-check">
                         <input
                           className="form-check-input"
                           type="radio"
@@ -403,8 +492,11 @@ export default function Checkout() {
                           value="invoice"
                           checked={formData.paymentMethod === 'invoice'}
                           onChange={handleInputChange}
+                          disabled
                         />
-                        <label className="form-check-label" htmlFor="invoice">Pay by Invoice</label>
+                        <label className="form-check-label text-muted" htmlFor="invoice">
+                          Pay by Invoice <small>(Coming soon)</small>
+                        </label>
                       </div>
                     </div>
                     
@@ -412,11 +504,14 @@ export default function Checkout() {
                       <div className="row g-3">
                         <div className="col-12">
                           <StripeWrapper 
-                            amount={parseInt(selectedPlan.price.replace(/\D/g, ''))*100}
+                            amount={Math.round(parseFloat(calculateTotal(selectedPlan.unit_price, employeeCount).replace(/[^0-9.]/g, '')) * 100)}
                             metadata={{
-                              plan: selectedPlan.name,
-                              customer_email: formData.email,
-                              customer_name: `${formData.firstName} ${formData.lastName}`
+                              plan: selectedPlan?.name || 'Unknown Plan',
+                              employees: employeeCount?.toString() || '0',
+                              billing_cycle: billingCycle || 'monthly',
+                              customer_email: formData.email || '',
+                              customer_name: formData.firstName && formData.lastName ? 
+                                `${formData.firstName} ${formData.lastName}` : 'Guest Customer'
                             }}
                           >
                             <StripePaymentForm onSuccess={handlePaymentSuccess} />
@@ -435,16 +530,33 @@ export default function Checkout() {
                     
                     <div className="mt-5 pt-4 border-top">
                       <div className="d-flex justify-content-between mb-2">
-                        <span>Subtotal</span>
-                        <span>{selectedPlan.price}</span>
+                        <span>
+                          {selectedPlan.name} Plan ({selectedPlan.unit_price} × {employeeCount} employees
+                          {billingCycle === 'annual' ? ' × 12 months' : ''})
+                        </span>
+                        <span>
+                          {formatCurrency(parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, '')) * 
+                            employeeCount * (billingCycle === 'annual' ? 12 : 1))}
+                        </span>
                       </div>
+                      
+                      {billingCycle === 'annual' && (
+                        <div className="d-flex justify-content-between mb-2 text-success">
+                          <span>Annual Discount (10%)</span>
+                          <span>
+                            -{formatCurrency(parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, '')) * 
+                              employeeCount * 12 * 0.1)}
+                          </span>
+                        </div>
+                      )}
+                      
                       <div className="d-flex justify-content-between small text-secondary mb-2">
                         <span>Tax</span>
                         <span>Calculated at next step</span>
                       </div>
                       <div className="d-flex justify-content-between fw-bold fs-5 mt-3 pt-3 border-top">
                         <span>Estimated Total</span>
-                        <span>{selectedPlan.price}</span>
+                        <span>{calculateTotal(selectedPlan.unit_price, employeeCount)}</span>
                       </div>
                     </div>
                   </div>
@@ -456,9 +568,6 @@ export default function Checkout() {
                       By completing this purchase, you agree to our <a href="#" className="text-decoration-none">Terms of Service</a> and <a href="#" className="text-decoration-none">Privacy Policy</a>.
                     </p>
                   </div>
-                  <button type="submit" className="btn btn-success w-100 py-3 fs-5">
-                    Complete Purchase
-                  </button>
                 </div>
               </div>
             </form>
