@@ -13,6 +13,7 @@
     public_ip: "{{ ansible_host }}"
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
+    stripe_publishable_key: "{{ lookup('env', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY') }}"
 
   tasks:
     - name: Update apt cache
@@ -152,6 +153,7 @@
           NEXT_PUBLIC_ENVIRONMENT=qa
           BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           EOF
           echo ".env file created successfully."
 
