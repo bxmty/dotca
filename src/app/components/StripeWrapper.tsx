@@ -2,10 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
-
-// Load Stripe publishable key from environment variable
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string);
+import { getStripe } from '@/lib/stripe';
 
 interface StripeWrapperProps {
   children: ReactNode;
@@ -20,28 +17,40 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
 
   useEffect(() => {
     // Create a payment intent as soon as the page loads
-    fetch('/api/stripe/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        amount: amount,
-        metadata: metadata || {},
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setClientSecret(data.clientSecret);
+    const createPaymentIntent = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/stripe/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            amount: amount,
+            metadata: metadata || {},
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to initialize payment');
         }
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setClientSecret(data.clientSecret);
+      } catch (err) {
+        console.error('Payment initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
+      } finally {
         setLoading(false);
-      })
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .catch((_err) => {
-        setError('Failed to initialize payment. Please try again.');
-        setLoading(false);
-      });
+      }
+    };
+    
+    createPaymentIntent();
   }, [amount, metadata]);
 
   const options = {
@@ -61,11 +70,24 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
   }
 
   if (error) {
-    return <div className="alert alert-danger">{error}</div>;
+    return (
+      <div className="alert alert-danger">
+        <p className="mb-2 fw-bold">Something went wrong!</p>
+        <p className="mb-0">{error}</p>
+      </div>
+    );
+  }
+
+  if (!clientSecret) {
+    return (
+      <div className="alert alert-danger">
+        <p className="mb-0">Failed to initialize payment. Please refresh the page or try again later.</p>
+      </div>
+    );
   }
 
   return (
-    <Elements stripe={stripePromise} options={options}>
+    <Elements stripe={getStripe()} options={options}>
       {children}
     </Elements>
   );
