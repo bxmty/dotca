@@ -13,7 +13,7 @@
     public_ip: "{{ ansible_host }}"
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
-    stripe_publishable_key: "{{ lookup('env', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY') }}"
+    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
 
   tasks:
     - name: Update apt cache
