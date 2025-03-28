@@ -277,6 +277,8 @@ jobs:
           GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
