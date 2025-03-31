@@ -12,7 +12,7 @@ terraform {
     endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
     region                      = "tor1"
     bucket                      = "bxtf"
-    key                         = "terraform.tfstate"
+    key                         = "dotca/terraform.tfstate"
     skip_credentials_validation = true
     skip_metadata_api_check     = true
     skip_region_validation      = true
