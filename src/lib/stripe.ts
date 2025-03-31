@@ -12,7 +12,9 @@ export const getStripe = () => {
   if (!stripePromise) {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     if (!key) {
-      throw new Error('Stripe publishable key is not set in environment variables');
+      console.error('Stripe publishable key is not set in environment variables');
+      // Fallback to a safer error that doesn't crash the UI
+      throw new Error('Payment processing is temporarily unavailable');
     }
     stripePromise = loadStripe(key);
   }

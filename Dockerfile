@@ -28,6 +28,9 @@ RUN npm ci
 # Copy the entire project
 COPY . .
 
+# Debug environment variables at build time
+RUN echo "Using NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: $NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+
 # Fix import paths for Docker build
 RUN sed -i 's|@/lib/stripe|../../lib/stripe|g' src/app/components/StripeWrapper.tsx && \
     sed -i 's|@/lib/stripe|../../../../lib/stripe|g' src/app/api/stripe/create-payment-intent/route.ts && \
