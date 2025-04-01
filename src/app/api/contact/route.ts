@@ -24,6 +24,38 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    
+    if (!name) {
+      return NextResponse.json(
+        { error: 'Name is required' },
+        { status: 400 }
+      );
+    }
+    
+    if (!phone) {
+      return NextResponse.json(
+        { error: 'Phone number is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Please enter a valid email address' },
+        { status: 400 }
+      );
+    }
+    
+    // Basic phone validation - allow different formats but ensure it has enough digits
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      return NextResponse.json(
+        { error: 'Please enter a valid phone number with at least 10 digits' },
+        { status: 400 }
+      );
+    }
 
     // Check for API key in various environments
     const apiKey = process.env.BREVO_API_KEY;
