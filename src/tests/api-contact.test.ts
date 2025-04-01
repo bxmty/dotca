@@ -134,7 +134,21 @@ describe('Contact API Route', () => {
           email: 'test@example.com',
           attributes: {
             FIRSTNAME: 'Test User',
-            PHONE: '123-456-7890'
+            PHONE: '123-456-7890',
+            COMPANY: '',
+            ADDRESS: '',
+            CITY: '',
+            STATE: '',
+            ZIP: '',
+            PLAN_NAME: '',
+            BILLING_CYCLE: '',
+            EMPLOYEE_COUNT: '',
+            IS_WAITLIST: 'No'
+          },
+          listIds: [9],
+          smtpBlacklistSender: undefined,
+          sms: {
+            SMS: "+11234567890"
           },
           updateEnabled: false
         })
