@@ -39,6 +39,56 @@ const WaitlistForm = ({
   const submitForm = async (): Promise<void> => {
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: '' });
+    
+    // Validate required fields
+    if (!customerInfo.firstName || !customerInfo.lastName) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Name is required. Please provide both first and last name.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!customerInfo.email) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Email address is required.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!customerInfo.phone) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Phone number is required.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerInfo.email)) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Please enter a valid email address.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Basic phone validation - allow different formats but ensure it has enough digits
+    const phoneDigits = customerInfo.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Please enter a valid phone number with at least 10 digits.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       // Send form data to API - using the same endpoint as contact form
