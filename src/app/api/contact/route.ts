@@ -72,7 +72,15 @@ export async function POST(request: Request) {
           EMPLOYEE_COUNT: employeeCount ? employeeCount.toString() : '',
           IS_WAITLIST: isWaitlist ? 'Yes' : 'No'
         },
-        listIds: [isWaitlist ? 3 : 2], // Assuming list ID 3 for waitlist and 2 for regular contacts
+        // Use list ID 9 for contact form and list ID 10 for waitlist form
+        listIds: [isWaitlist ? 10 : 9],
+        // Add SMS field for brevo to send text messages - using object format with proper country code
+        // Assuming US/Canada phone numbers (country code +1)
+        // If phone doesn't already have a country code, add +1
+        smtpBlacklistSender: undefined, // Needed for SMS to work properly
+        sms: phone ? {
+          SMS: phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`
+        } : undefined,
         updateEnabled: false
       })
     };
