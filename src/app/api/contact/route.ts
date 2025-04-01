@@ -2,7 +2,20 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { name, email, phone } = await request.json();
+    const { 
+      name, 
+      email, 
+      phone, 
+      company, 
+      address, 
+      city, 
+      state, 
+      zip, 
+      planName, 
+      billingCycle, 
+      employeeCount, 
+      isWaitlist 
+    } = await request.json();
 
     // Validate required fields
     if (!email) {
@@ -48,8 +61,18 @@ export async function POST(request: Request) {
         email: email,
         attributes: {
           FIRSTNAME: name,
-          PHONE: phone
+          PHONE: phone,
+          COMPANY: company || '',
+          ADDRESS: address || '',
+          CITY: city || '',
+          STATE: state || '',
+          ZIP: zip || '',
+          PLAN_NAME: planName || '',
+          BILLING_CYCLE: billingCycle || '',
+          EMPLOYEE_COUNT: employeeCount ? employeeCount.toString() : '',
+          IS_WAITLIST: isWaitlist ? 'Yes' : 'No'
         },
+        listIds: [isWaitlist ? 3 : 2], // Assuming list ID 3 for waitlist and 2 for regular contacts
         updateEnabled: false
       })
     };
