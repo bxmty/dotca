@@ -56,13 +56,28 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
   const options = {
     clientSecret,
     appearance: {
-      theme: 'flat' as const,
+      theme: 'night' as const,
       variables: {
         colorPrimary: '#198754', // Bootstrap success color
+        colorBackground: '#212529', // Bootstrap dark color
+        colorText: '#ffffff',
+        colorDanger: '#dc3545', // Bootstrap danger color
         fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         borderRadius: '0.375rem', // Match Bootstrap's border-radius
+        spacingUnit: '0.5rem',
+        spacingGridRow: '1rem',
       },
+      rules: {
+        '.Input': {
+          borderWidth: '1px',
+          borderColor: '#ffffff'
+        },
+        '.Label': {
+          color: '#ffffff'
+        }
+      }
     },
+    loader: 'auto' as const, // Show the loading UI
   };
 
   if (loading) {

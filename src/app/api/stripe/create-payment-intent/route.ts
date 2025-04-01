@@ -22,6 +22,17 @@ export async function POST(request: Request) {
       automatic_payment_methods: {
         enabled: true,
       },
+      shipping: {
+        name: metadata.customer_name || 'Customer', // Default to 'Customer' if name is not provided
+        phone: '',  // Will be collected by Address Element
+        address: {
+          line1: '',  // Will be collected by Address Element
+          city: '',   // Will be collected by Address Element
+          state: '',  // Will be collected by Address Element
+          postal_code: '', // Will be collected by Address Element
+          country: 'US', // Default to US, will be updated by Address Element
+        },
+      },
     });
 
     return NextResponse.json({ 

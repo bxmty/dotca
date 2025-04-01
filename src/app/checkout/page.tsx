@@ -8,7 +8,7 @@ import StripePaymentForm from '../components/StripePaymentForm';
 
 interface PricingPlan {
   name: string;
-  unit_price: string; // Changed from price to unit_price
+  unit_price: string;
   description: string;
   features: string[];
 }
@@ -21,15 +21,7 @@ export default function Checkout() {
     lastName: '',
     email: '',
     company: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zip: '',
     paymentMethod: 'credit',
-    cardNumber: '',
-    cardExpiry: '',
-    cardCvc: '',
   });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -352,223 +344,109 @@ export default function Checkout() {
             
             {/* Checkout Form */}
             <form onSubmit={handleSubmit}>
-              <div className="row g-5">
-                <div className="col-md-6">
-                  <h2 className="fs-4 fw-medium mb-4">Customer Information</h2>
-                  <div className="row g-3">
-                    <div className="col-sm-6">
-                      <label htmlFor="firstName" className="form-label">First Name</label>
-                      <input
-                        type="text"
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-sm-6">
-                      <label htmlFor="lastName" className="form-label">Last Name</label>
-                      <input
-                        type="text"
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="email" className="form-label">Email Address</label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="company" className="form-label">Company Name</label>
-                      <input
-                        type="text"
-                        id="company"
-                        name="company"
-                        value={formData.company}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="phone" className="form-label">Phone Number</label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="address" className="form-label">Address</label>
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label htmlFor="city" className="form-label">City</label>
-                      <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label htmlFor="state" className="form-label">Province/State</label>
-                      <input
-                        type="text"
-                        id="state"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label htmlFor="zip" className="form-label">Postal Code</label>
-                      <input
-                        type="text"
-                        id="zip"
-                        name="zip"
-                        value={formData.zip}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
+              <div className="row">
+              <div className="col-12">
+                <h2 className="fs-4 fw-medium mb-4">Payment Information</h2>
+                <div>
+                <div className="d-flex gap-4 mb-4">
+                  <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="radio"
+                    id="creditCard"
+                    name="paymentMethod"
+                    value="credit"
+                    checked={formData.paymentMethod === 'credit'}
+                    onChange={handleInputChange}
+                  />
+                  <label className="form-check-label" htmlFor="creditCard">Credit Card</label>
+                  </div>
+                  <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="radio"
+                    id="invoice"
+                    name="paymentMethod"
+                    value="invoice"
+                    checked={formData.paymentMethod === 'invoice'}
+                    onChange={handleInputChange}
+                    disabled
+                  />
+                  <label className="form-check-label text-muted" htmlFor="invoice">
+                    Pay by Invoice <small>(Coming soon)</small>
+                  </label>
                   </div>
                 </div>
                 
-                <div className="col-md-6">
-                  <h2 className="fs-4 fw-medium mb-4">Payment Information</h2>
-                  <div>
-                    <div className="d-flex gap-4 mb-4">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="creditCard"
-                          name="paymentMethod"
-                          value="credit"
-                          checked={formData.paymentMethod === 'credit'}
-                          onChange={handleInputChange}
-                        />
-                        <label className="form-check-label" htmlFor="creditCard">Credit Card</label>
-                      </div>
-                        <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="invoice"
-                          name="paymentMethod"
-                          value="invoice"
-                          checked={formData.paymentMethod === 'invoice'}
-                          onChange={handleInputChange}
-                          disabled
-                        />
-                        <label className="form-check-label text-muted" htmlFor="invoice">
-                          Pay by Invoice <small>(Coming soon)</small>
-                        </label>
-                      </div>
-                    </div>
-                    
-                    {formData.paymentMethod === 'credit' && (
-                      <div className="row g-3">
-                        <div className="col-12">
-                          <StripeWrapper 
-                            amount={Math.round(parseFloat(calculateTotal(selectedPlan.unit_price, employeeCount).replace(/[^0-9.]/g, '')) * 100)}
-                            metadata={{
-                              plan: selectedPlan?.name || 'Unknown Plan',
-                              employees: employeeCount?.toString() || '0',
-                              billing_cycle: billingCycle || 'monthly',
-                              customer_email: formData.email || '',
-                              customer_name: formData.firstName && formData.lastName ? 
-                                `${formData.firstName} ${formData.lastName}` : 'Guest Customer'
-                            }}
-                          >
-                            <StripePaymentForm onSuccess={handlePaymentSuccess} />
-                          </StripeWrapper>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {formData.paymentMethod === 'invoice' && (
-                      <div className="alert alert-secondary">
-                        <p className="mb-0">
-                          You&apos;ll receive an invoice via email. Payment is due within 30 days of receipt.
-                        </p>
-                      </div>
-                    )}
-                    
-                    <div className="mt-5 pt-4 border-top">
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>
-                          {selectedPlan.name} Plan ({selectedPlan.unit_price} × {employeeCount} employees
-                          {billingCycle === 'annual' ? ' × 12 months' : ''})
-                        </span>
-                        <span>
-                          {formatCurrency(parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, '')) * 
-                            employeeCount * (billingCycle === 'annual' ? 12 : 1))}
-                        </span>
-                      </div>
-                      
-                      {billingCycle === 'annual' && (
-                        <div className="d-flex justify-content-between mb-2 text-success">
-                          <span>Annual Discount (10%)</span>
-                          <span>
-                            -{formatCurrency(parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, '')) * 
-                              employeeCount * 12 * 0.1)}
-                          </span>
-                        </div>
-                      )}
-                      
-                      <div className="d-flex justify-content-between small text-secondary mb-2">
-                        <span>Tax</span>
-                        <span>Calculated at next step</span>
-                      </div>
-                      <div className="d-flex justify-content-between fw-bold fs-5 mt-3 pt-3 border-top">
-                        <span>Estimated Total</span>
-                        <span>{calculateTotal(selectedPlan.unit_price, employeeCount)}</span>
-                      </div>
-                    </div>
+                {formData.paymentMethod === 'credit' && (
+                  <div className="row">
+                  <div className="col-12">
+                    <StripeWrapper 
+                    amount={Math.round(parseFloat(calculateTotal(selectedPlan.unit_price, employeeCount).replace(/[^0-9.]/g, '')) * 100)}
+                    metadata={{
+                      plan: selectedPlan?.name || 'Unknown Plan',
+                      employees: employeeCount?.toString() || '0',
+                      billing_cycle: billingCycle || 'monthly',
+                      customer_email: formData.email || '',
+                      customer_name: formData.firstName && formData.lastName ? 
+                      `${formData.firstName} ${formData.lastName}` : 'Guest Customer'
+                    }}
+                    >
+                    <StripePaymentForm onSuccess={handlePaymentSuccess} />
+                    </StripeWrapper>
                   </div>
-                </div>
+                  </div>
+                )}
                 
-                <div className="col-12 mt-4">
-                  <div className="alert alert-secondary mb-4">
-                    <p className="mb-0 small">
-                      By completing this purchase, you agree to our <a href="#" className="text-decoration-none">Terms of Service</a> and <a href="#" className="text-decoration-none">Privacy Policy</a>.
-                    </p>
+                {formData.paymentMethod === 'invoice' && (
+                  <div className="alert alert-secondary">
+                  <p className="mb-0">
+                    You&apos;ll receive an invoice via email. Payment is due within 30 days of receipt.
+                  </p>
+                  </div>
+                )}
+                
+                <div className="mt-5 pt-4 border-top">
+                  <div className="d-flex justify-content-between mb-2">
+                  <span>
+                    {selectedPlan.name} Plan ({selectedPlan.unit_price} × {employeeCount} employees
+                    {billingCycle === 'annual' ? ' × 12 months' : ''})
+                  </span>
+                  <span>
+                    {formatCurrency(parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, '')) * 
+                    employeeCount * (billingCycle === 'annual' ? 12 : 1))}
+                  </span>
+                  </div>
+                  
+                  {billingCycle === 'annual' && (
+                  <div className="d-flex justify-content-between mb-2 text-success">
+                    <span>Annual Discount (10%)</span>
+                    <span>
+                    -{formatCurrency(parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, '')) * 
+                      employeeCount * 12 * 0.1)}
+                    </span>
+                  </div>
+                  )}
+                  
+                  <div className="d-flex justify-content-between small text-secondary mb-2">
+                  <span>Tax</span>
+                  <span>Calculated at next step</span>
+                  </div>
+                  <div className="d-flex justify-content-between fw-bold fs-5 mt-3 pt-3 border-top">
+                  <span>Estimated Total</span>
+                  <span>{calculateTotal(selectedPlan.unit_price, employeeCount)}</span>
                   </div>
                 </div>
+                </div>
+              </div>
+              
+              <div className="col-12 mt-4">
+                <div className="alert alert-secondary mb-4">
+                <p className="mb-0 small">
+                  By completing this purchase, you agree to our <a href="#" className="text-decoration-none">Terms of Service</a> and <a href="#" className="text-decoration-none">Privacy Policy</a>.
+                </p>
+                </div>
+              </div>
               </div>
             </form>
           </div>

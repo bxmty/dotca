@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 
 interface PricingPlan {
   name: string;
-  price: string;
+  unit_price: string;
   description: string;
   features: string[];
 }
