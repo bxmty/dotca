@@ -116,13 +116,7 @@ export default function Checkout() {
     setBillingCycle(e.target.value);
   };
 
-  const handleSubmit = (e: React.FormEvent): void => {
-    e.preventDefault();
-    // In a real application, you would process the payment and submit the form data
-    // Form submitted
-    // Redirect to a confirmation page or show a success message
-    // Show confirmation message to user
-  };
+  // Removed handleSubmit since Stripe handles the payment process directly
 
   const handlePaymentSuccess = () => {
     setPaymentSuccess(true);
@@ -343,8 +337,7 @@ export default function Checkout() {
             </div>
             
             {/* Checkout Form */}
-            <form onSubmit={handleSubmit}>
-              <div className="row">
+            <div className="row">
               <div className="col-12">
                 <h2 className="fs-4 fw-medium mb-4">Payment Information</h2>
                 <div>
@@ -428,13 +421,16 @@ export default function Checkout() {
                   </div>
                   )}
                   
-                  <div className="d-flex justify-content-between small text-secondary mb-2">
-                  <span>Tax</span>
-                  <span>Calculated at next step</span>
+                  <div className="d-flex justify-content-between small mb-2">
+                    <span>Tax</span>
+                    <span>Calculated based on your location</span>
                   </div>
                   <div className="d-flex justify-content-between fw-bold fs-5 mt-3 pt-3 border-top">
-                  <span>Estimated Total</span>
-                  <span>{calculateTotal(selectedPlan.unit_price, employeeCount)}</span>
+                    <span>Estimated Total</span>
+                    <span>{calculateTotal(selectedPlan.unit_price, employeeCount)}</span>
+                  </div>
+                  <div className="mt-2 small text-secondary">
+                    <p className="mb-0">* Final tax will be calculated when you enter your billing address</p>
                   </div>
                 </div>
                 </div>
@@ -447,8 +443,7 @@ export default function Checkout() {
                 </p>
                 </div>
               </div>
-              </div>
-            </form>
+            </div>
           </div>
         </section>
       </main>

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, createContext } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
 
@@ -10,47 +10,80 @@ interface StripeWrapperProps {
   metadata?: Record<string, string>;
 }
 
+interface TaxInfo {
+  enabled: boolean;
+  status?: string;
+  amount_decimal?: string;
+  amount?: number;
+}
+
+interface StripeContextValue {
+  taxInfo: TaxInfo | null;
+  updateAddress: (address: Record<string, unknown>) => Promise<void>;
+}
+
+// Create a context to share tax information with child components
+export const StripeContext = createContext<StripeContextValue>({
+  taxInfo: null,
+  updateAddress: async () => {}
+});
+
 export default function StripeWrapper({ children, amount, metadata }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [taxInfo, setTaxInfo] = useState<TaxInfo | null>(null);
+  const [customerAddress, setCustomerAddress] = useState<Record<string, unknown> | null>(null);
+
+  const createOrUpdatePaymentIntent = async (address?: Record<string, unknown>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          amount: amount,
+          metadata: metadata || {},
+          address: address || customerAddress
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initialize payment');
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      setClientSecret(data.clientSecret);
+      setTaxInfo(data.tax);
+      return data;
+    } catch (err) {
+      console.error('Payment initialization error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Method to update address and recalculate tax
+  const updateAddress = async (address: Record<string, unknown>) => {
+    if (!address || !address.country || !address.postal_code) return;
+    
+    setCustomerAddress(address);
+    await createOrUpdatePaymentIntent(address);
+  };
 
   useEffect(() => {
     // Create a payment intent as soon as the page loads
-    const createPaymentIntent = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch('/api/stripe/create-payment-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            amount: amount,
-            metadata: metadata || {},
-          }),
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to initialize payment');
-        }
-        
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        setClientSecret(data.clientSecret);
-      } catch (err) {
-        console.error('Payment initialization error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    createPaymentIntent();
+    createOrUpdatePaymentIntent();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amount, metadata]);
 
   const options = {
@@ -108,9 +141,17 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
     );
   }
 
+  // Context value with tax information and methods
+  const contextValue: StripeContextValue = {
+    taxInfo,
+    updateAddress
+  };
+
   return (
-    <Elements stripe={getStripe()} options={options}>
-      {children}
-    </Elements>
+    <StripeContext.Provider value={contextValue}>
+      <Elements stripe={getStripe()} options={options}>
+        {children}
+      </Elements>
+    </StripeContext.Provider>
   );
 }
