@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PlanSelector from './PlanSelector';
 import StripeWrapper from '../components/StripeWrapper';
 import StripePaymentForm from '../components/StripePaymentForm';
+import WaitlistForm from '../components/WaitlistForm';
 
 interface PricingPlan {
   name: string;
@@ -30,6 +31,7 @@ export default function Checkout() {
     cardNumber: '',
     cardExpiry: '',
     cardCvc: '',
+    joinWaitlist: true, // Default to waitlist
   });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -126,10 +128,26 @@ export default function Checkout() {
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
+    
+    // Validate all required fields are filled
+    const requiredFields = [
+      'firstName', 'lastName', 'email', 'company', 'phone',
+      'address', 'city', 'state', 'zip'
+    ];
+    
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+    
+    if (missingFields.length > 0) {
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+    
     // In a real application, you would process the payment and submit the form data
-    // Form submitted
-    // Redirect to a confirmation page or show a success message
-    // Show confirmation message to user
+    // For now, auto-click the waitlist button if all fields are filled
+    const waitlistButton = document.querySelector('[data-waitlist-button]') as HTMLButtonElement;
+    if (waitlistButton) {
+      waitlistButton.click();
+    }
   };
 
   const handlePaymentSuccess = () => {
@@ -261,7 +279,7 @@ export default function Checkout() {
         {/* Checkout Section */}
         <section className="py-5 py-md-7">
           <div className="container">
-            <h1 className="fs-1 fw-light mb-5 border-bottom pb-3">Complete Your Purchase</h1>
+            <h1 className="fs-1 fw-light mb-5 border-bottom pb-3">Join Our Waitlist</h1>
             
             {/* Plan Summary */}
             <div className="bg-secondary p-4 p-md-5 rounded mb-5">
@@ -468,64 +486,121 @@ export default function Checkout() {
                 </div>
                 
                 <div className="col-md-6">
-                  <h2 className="fs-4 fw-medium mb-4">Payment Information</h2>
+                  <h2 className="fs-4 fw-medium mb-4">Next Steps</h2>
                   <div>
                     <div className="d-flex gap-4 mb-4">
                       <div className="form-check">
                         <input
                           className="form-check-input"
                           type="radio"
-                          id="creditCard"
-                          name="paymentMethod"
-                          value="credit"
-                          checked={formData.paymentMethod === 'credit'}
-                          onChange={handleInputChange}
+                          id="payNow"
+                          name="joinWaitlist"
+                          value="false"
+                          checked={!formData.joinWaitlist}
+                          onChange={(e) => setFormData({...formData, joinWaitlist: e.target.value !== "false"})}
+                          disabled
                         />
-                        <label className="form-check-label" htmlFor="creditCard">Credit Card</label>
+                        <label className="form-check-label text-muted" htmlFor="payNow">
+                          Complete Purchase <small>(Coming soon)</small>
+                        </label>
                       </div>
-                        <div className="form-check">
+                      <div className="form-check">
                         <input
                           className="form-check-input"
                           type="radio"
-                          id="invoice"
-                          name="paymentMethod"
-                          value="invoice"
-                          checked={formData.paymentMethod === 'invoice'}
-                          onChange={handleInputChange}
-                          disabled
+                          id="joinWaitlist"
+                          name="joinWaitlist"
+                          value="true"
+                          checked={true} /* Force waitlist to be selected */
+                          onChange={() => setFormData({...formData, joinWaitlist: true})}
                         />
-                        <label className="form-check-label text-muted" htmlFor="invoice">
-                          Pay by Invoice <small>(Coming soon)</small>
+                        <label className="form-check-label" htmlFor="joinWaitlist">
+                          Join Waitlist <span className="badge bg-info ms-1">New</span>
                         </label>
                       </div>
                     </div>
                     
-                    {formData.paymentMethod === 'credit' && (
-                      <div className="row g-3">
-                        <div className="col-12">
-                          <StripeWrapper 
-                            amount={Math.round(parseFloat(calculateTotal(selectedPlan.unit_price, employeeCount).replace(/[^0-9.]/g, '')) * 100)}
-                            metadata={{
-                              plan: selectedPlan?.name || 'Unknown Plan',
-                              employees: employeeCount?.toString() || '0',
-                              billing_cycle: billingCycle || 'monthly',
-                              customer_email: formData.email || '',
-                              customer_name: formData.firstName && formData.lastName ? 
-                                `${formData.firstName} ${formData.lastName}` : 'Guest Customer'
-                            }}
-                          >
-                            <StripePaymentForm onSuccess={handlePaymentSuccess} />
-                          </StripeWrapper>
+                    {/* Payment section is temporarily hidden while we only use waitlist */}
+                    {false && !formData.joinWaitlist && (
+                      <div>
+                        <div className="d-flex gap-4 mb-4">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              id="creditCard"
+                              name="paymentMethod"
+                              value="credit"
+                              checked={formData.paymentMethod === 'credit'}
+                              onChange={handleInputChange}
+                            />
+                            <label className="form-check-label" htmlFor="creditCard">Credit Card</label>
+                          </div>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              id="invoice"
+                              name="paymentMethod"
+                              value="invoice"
+                              checked={formData.paymentMethod === 'invoice'}
+                              onChange={handleInputChange}
+                              disabled
+                            />
+                            <label className="form-check-label text-muted" htmlFor="invoice">
+                              Pay by Invoice <small>(Coming soon)</small>
+                            </label>
+                          </div>
                         </div>
+                        
+                        {formData.paymentMethod === 'credit' && (
+                          <div className="row g-3">
+                            <div className="col-12">
+                              <StripeWrapper 
+                                amount={Math.round(parseFloat(calculateTotal(selectedPlan.unit_price, employeeCount).replace(/[^0-9.]/g, '')) * 100)}
+                                metadata={{
+                                  plan: selectedPlan?.name || 'Unknown Plan',
+                                  employees: employeeCount?.toString() || '0',
+                                  billing_cycle: billingCycle || 'monthly',
+                                  customer_email: formData.email || '',
+                                  customer_name: formData.firstName && formData.lastName ? 
+                                    `${formData.firstName} ${formData.lastName}` : 'Guest Customer'
+                                }}
+                              >
+                                <StripePaymentForm onSuccess={handlePaymentSuccess} />
+                              </StripeWrapper>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {formData.paymentMethod === 'invoice' && (
+                          <div className="alert alert-secondary">
+                            <p className="mb-0">
+                              You&apos;ll receive an invoice via email. Payment is due within 30 days of receipt.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                     
-                    {formData.paymentMethod === 'invoice' && (
-                      <div className="alert alert-secondary">
-                        <p className="mb-0">
-                          You&apos;ll receive an invoice via email. Payment is due within 30 days of receipt.
-                        </p>
-                      </div>
+                    {formData.joinWaitlist && (
+                      <WaitlistForm
+                        className="mt-3"
+                        planName={selectedPlan.name}
+                        billingCycle={billingCycle}
+                        employeeCount={employeeCount}
+                        customerInfo={{
+                          firstName: formData.firstName,
+                          lastName: formData.lastName,
+                          email: formData.email,
+                          company: formData.company,
+                          phone: formData.phone,
+                          address: formData.address,
+                          city: formData.city,
+                          state: formData.state,
+                          zip: formData.zip
+                        }}
+                      />
                     )}
                     
                     <div className="mt-5 pt-4 border-top">
@@ -565,9 +640,15 @@ export default function Checkout() {
                 <div className="col-12 mt-4">
                   <div className="alert alert-secondary mb-4">
                     <p className="mb-0 small">
-                      By completing this purchase, you agree to our <a href="#" className="text-decoration-none">Terms of Service</a> and <a href="#" className="text-decoration-none">Privacy Policy</a>.
+                      By joining our waitlist, you agree to our <a href="#" className="text-decoration-none">Terms of Service</a> and <a href="#" className="text-decoration-none">Privacy Policy</a>.
                     </p>
                   </div>
+                  <button 
+                    type="submit"
+                    className="btn btn-dark w-100 py-3 fs-5 d-md-none"
+                  >
+                    Continue to Join Waitlist
+                  </button>
                 </div>
               </div>
             </form>
