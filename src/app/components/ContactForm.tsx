@@ -87,7 +87,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         </div>
       )}
       <div className="mb-3">
-        <label htmlFor="name" className="form-label">Name</label>
+        <label htmlFor="name" className="form-label">Name*</label>
         <input 
           type="text" 
           id="name" 
@@ -98,7 +98,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         />
       </div>
       <div className="mb-3">
-        <label htmlFor="email" className="form-label">Email</label>
+        <label htmlFor="email" className="form-label">Email*</label>
         <input 
           type="email" 
           id="email" 
@@ -109,7 +109,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         />
       </div>
       <div className="mb-3">
-        <label htmlFor="phone" className="form-label">Phone</label>
+        <label htmlFor="phone" className="form-label">Phone*</label>
         <input 
           type="tel" 
           id="phone" 

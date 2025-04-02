@@ -375,7 +375,7 @@ export default function Checkout() {
                   <h2 className="fs-4 fw-medium mb-4">Customer Information</h2>
                   <div className="row g-3">
                     <div className="col-sm-6">
-                      <label htmlFor="firstName" className="form-label">First Name</label>
+                      <label htmlFor="firstName" className="form-label">First Name*</label>
                       <input
                         type="text"
                         id="firstName"
@@ -387,7 +387,7 @@ export default function Checkout() {
                       />
                     </div>
                     <div className="col-sm-6">
-                      <label htmlFor="lastName" className="form-label">Last Name</label>
+                      <label htmlFor="lastName" className="form-label">Last Name*</label>
                       <input
                         type="text"
                         id="lastName"
@@ -399,7 +399,7 @@ export default function Checkout() {
                       />
                     </div>
                     <div className="col-12">
-                      <label htmlFor="email" className="form-label">Email Address</label>
+                      <label htmlFor="email" className="form-label">Email Address*</label>
                       <input
                         type="email"
                         id="email"
@@ -423,7 +423,7 @@ export default function Checkout() {
                       />
                     </div>
                     <div className="col-12">
-                      <label htmlFor="phone" className="form-label">Phone Number</label>
+                      <label htmlFor="phone" className="form-label">Phone Number*</label>
                       <input
                         type="tel"
                         id="phone"
