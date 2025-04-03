@@ -1,6 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import ContactForm from './components/ContactForm';
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Enterprise IT Solutions for Small Businesses",
+  description: "Make your whole team tech-savvy without the headache. Secure password management, web hosting, business email solutions, and Microsoft collaboration tools for small businesses.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    url: "/",
+  }
+};
 
 export default function Home() {
   return (
@@ -16,11 +28,13 @@ export default function Home() {
             alt="Office setting with technology" 
             fill 
             priority
+            loading="eager"
+            sizes="100vw"
             style={{
               objectFit: 'cover',
               objectPosition: 'center',
             }}
-            quality={90}
+            quality={85}
           />
         </div>
         <div className="container position-relative z-index-2">
