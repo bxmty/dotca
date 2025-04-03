@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import BootstrapClient from "./components/BootstrapClient";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 export const metadata: Metadata = {
   title: "Boximity MSP",
@@ -20,7 +22,13 @@ export default function RootLayout({
       </head>
       <body>
         <BootstrapClient />
-        {children}
+        <div className="min-vh-100 d-flex flex-column">
+          <Navbar />
+          <main className="flex-grow-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
       </body>
     </html>
   );
