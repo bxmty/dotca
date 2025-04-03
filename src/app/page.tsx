@@ -20,7 +20,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="position-relative vh-75 d-flex align-items-center">
         <div className="position-absolute top-0 start-0 w-100 h-100">
-          <div className="w-100 h-100 bg-dark bg-opacity-75 position-absolute z-index-1"></div>
+          <div className="w-100 h-100 position-absolute" style={{ zIndex: 1, backgroundColor: 'rgba(0, 0, 0, 0.75)' }}></div>
         </div>
         <div className="position-absolute top-0 start-0 w-100 h-100" style={{ zIndex: 0 }}>
           <Image 
@@ -33,11 +33,14 @@ export default function Home() {
             style={{
               objectFit: 'cover',
               objectPosition: 'center',
+              opacity: 1, /* Ensure image is visible */
+              maxWidth: '100%',
+              maxHeight: '100%'
             }}
             quality={85}
           />
         </div>
-        <div className="container position-relative z-index-2">
+        <div className="container position-relative" style={{ zIndex: 2 }}>
           <div className="row">
             <div className="col-md-8 col-lg-6">
               <h1 className="display-4 fw-light mb-4 text-white">
@@ -73,7 +76,7 @@ export default function Home() {
                     </svg>
                   </div>
                   <h3 className="fs-4 fw-medium mb-3">Security Threats</h3>
-                  <p className="text-secondary">Bad actors are constantly targeting your valuable business and customer data.</p>
+                  <p>Bad actors are constantly targeting your valuable business and customer data.</p>
                 </div>
               </div>
             </div>
@@ -86,7 +89,7 @@ export default function Home() {
                     </svg>
                   </div>
                   <h3 className="fs-4 fw-medium mb-3">Wasted Time</h3>
-                  <p className="text-secondary">Hours spent troubleshooting technology issues instead of serving your customers and growing your business.</p>
+                  <p>Hours spent troubleshooting technology issues instead of serving your customers and growing your business.</p>
                 </div>
               </div>
             </div>
@@ -99,7 +102,7 @@ export default function Home() {
                     </svg>
                   </div>
                   <h3 className="fs-4 fw-medium mb-3">Employee Frustration</h3>
-                  <p className="text-secondary">Staff turnover increases when technology consistently fails and prevents efficient work.</p>
+                  <p>Staff turnover increases when technology consistently fails and prevents efficient work.</p>
                 </div>
               </div>
             </div>
@@ -113,18 +116,18 @@ export default function Home() {
           <h2 className="fs-1 fw-light mb-5 border-bottom pb-3">Our Small Business Cloud Bundle</h2>
           <div className="row">
             <div className="col-md-6 mb-5 mb-md-0">
-              <p className="mb-4 text-body">
+              <p className="mb-4">
                 Technology is advancing at an unprecedented pace, and it&apos;s completely understandable why keeping up can feel overwhelming, especially when you have a business to run.
               </p>
-              <p className="mb-4 text-body">
+              <p className="mb-4">
                 You&apos;re not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best.
               </p>
-              <p className="text-body">
+              <p className="mb-0">
                 With decades of experience in corporate technology solutions, we understand the rapid pace of technological advancement. Our team stays ahead of the latest developments, ensuring your business has the most effective solutions available.
               </p>
             </div>
             <div className="col-md-6">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm bg-white">
                 <div className="card-body">
                   <h3 className="fs-4 fw-medium mb-4">Everything your 5-10 person team needs:</h3>
                   <ul className="list-unstyled">
@@ -134,7 +137,7 @@ export default function Home() {
                       </svg>
                       <div>
                         <span className="fw-medium">Secure Password Management</span>
-                        <p className="text-secondary small mb-0">Protect critical business accounts with enterprise-grade security</p>
+                        <p className="small mb-0">Protect critical business accounts with enterprise-grade security</p>
                       </div>
                     </li>
                     <li className="d-flex mb-3">
@@ -143,7 +146,7 @@ export default function Home() {
                       </svg>
                       <div>
                         <span className="fw-medium">Professional Web Hosting</span>
-                        <p className="text-secondary small mb-0">Keep your online presence reliable and fast</p>
+                        <p className="small mb-0">Keep your online presence reliable and fast</p>
                       </div>
                     </li>
                     <li className="d-flex mb-3">
@@ -152,7 +155,7 @@ export default function Home() {
                       </svg>
                       <div>
                         <span className="fw-medium">Business Email Solutions</span>
-                        <p className="text-secondary small mb-0">Communicate professionally with customers and partners</p>
+                        <p className="small mb-0">Communicate professionally with customers and partners</p>
                       </div>
                     </li>
                     <li className="d-flex">
@@ -161,7 +164,7 @@ export default function Home() {
                       </svg>
                       <div>
                         <span className="fw-medium">Microsoft Collaboration Tools</span>
-                        <p className="text-secondary small mb-0">Enable your team to work together seamlessly</p>
+                        <p className="small mb-0">Enable your team to work together seamlessly</p>
                       </div>
                     </li>
                   </ul>
@@ -183,17 +186,17 @@ export default function Home() {
             <div className="col-md-4">
               <div className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-4" style={{width: "4rem", height: "4rem"}}>01</div>
               <h3 className="fs-4 fw-medium mb-3">Share Your Team Structure</h3>
-              <p className="text-secondary">Outline staff in a contact list including job functions, contact information, and systems currently used.</p>
+              <p>Outline staff in a contact list including job functions, contact information, and systems currently used.</p>
             </div>
             <div className="col-md-4">
               <div className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-4" style={{width: "4rem", height: "4rem"}}>02</div>
               <h3 className="fs-4 fw-medium mb-3">Review Your Current IT Investment</h3>
-              <p className="text-secondary">Submit your past year&apos;s IT spend and information about your most recent technology purchases.</p>
+              <p>Submit your past year&apos;s IT spend and information about your most recent technology purchases.</p>
             </div>
             <div className="col-md-4">
               <div className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-4" style={{width: "4rem", height: "4rem"}}>03</div>
               <h3 className="fs-4 fw-medium mb-3">Simple Setup</h3>
-              <p className="text-secondary">We&apos;ll email installation instructions for our management tool to your team, ensuring all systems are properly configured.</p>
+              <p>We&apos;ll email installation instructions for our management tool to your team, ensuring all systems are properly configured.</p>
             </div>
           </div>
         </div>
@@ -210,31 +213,31 @@ export default function Home() {
                   <svg className="text-success flex-shrink-0 me-3" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <p className="text-body mb-0"><span className="fw-medium">Reduced stress and anxiety</span> - No more worrying about security or system failures</p>
+                  <p className="mb-0"><span className="fw-medium">Reduced stress and anxiety</span> - No more worrying about security or system failures</p>
                 </div>
                 <div className="d-flex">
                   <svg className="text-success flex-shrink-0 me-3" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <p className="text-body mb-0"><span className="fw-medium">Increased productivity</span> - Less time troubleshooting, more time growing your business</p>
+                  <p className="mb-0"><span className="fw-medium">Increased productivity</span> - Less time troubleshooting, more time growing your business</p>
                 </div>
                 <div className="d-flex">
                   <svg className="text-success flex-shrink-0 me-3" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <p className="text-body mb-0"><span className="fw-medium">Enhanced security</span> - Professional protection for your critical business data</p>
+                  <p className="mb-0"><span className="fw-medium">Enhanced security</span> - Professional protection for your critical business data</p>
                 </div>
                 <div className="d-flex">
                   <svg className="text-success flex-shrink-0 me-3" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <p className="text-body mb-0"><span className="fw-medium">Streamlined communication</span> - Better tools mean better teamwork</p>
+                  <p className="mb-0"><span className="fw-medium">Streamlined communication</span> - Better tools mean better teamwork</p>
                 </div>
                 <div className="d-flex">
                   <svg className="text-success flex-shrink-0 me-3" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <p className="text-body mb-0"><span className="fw-medium">Competitive advantage</span> - Access to technology usually reserved for larger companies</p>
+                  <p className="mb-0"><span className="fw-medium">Competitive advantage</span> - Access to technology usually reserved for larger companies</p>
                 </div>
               </div>
             </div>
@@ -242,26 +245,26 @@ export default function Home() {
               <h2 className="fs-1 fw-light mb-4 border-bottom pb-3">The Real Cost of Inadequate Technology</h2>
               <div className="card mb-3">
                 <div className="card-body bg-dark">
-                  <p className="fs-3 fw-light mb-2">Up to <span className="fw-bold text-danger">2 weeks</span></p>
-                  <p className="text-secondary mb-0">of downtime after a cyber incident</p>
+                  <p className="fs-3 fw-light mb-2 text-white">Up to <span className="fw-bold text-danger">2 weeks</span></p>
+                  <p className="text-white-50 mb-0">of downtime after a cyber incident</p>
                 </div>
               </div>
               <div className="card mb-3">
                 <div className="card-body bg-dark">
-                  <p className="fs-3 fw-light mb-2">Employee productivity losses of <span className="fw-bold text-danger">up to 22%</span></p>
-                  <p className="text-secondary mb-0">due to technology issues</p>
+                  <p className="fs-3 fw-light mb-2 text-white">Employee productivity losses of <span className="fw-bold text-danger">up to 22%</span></p>
+                  <p className="text-white-50 mb-0">due to technology issues</p>
                 </div>
               </div>
               <div className="card mb-3">
                 <div className="card-body bg-dark">
-                  <p className="fs-3 fw-light mb-2">Average data breach costs of <span className="fw-bold text-danger">$108,000</span></p>
-                  <p className="text-secondary mb-0">for small businesses</p>
+                  <p className="fs-3 fw-light mb-2 text-white">Average data breach costs of <span className="fw-bold text-danger">$108,000</span></p>
+                  <p className="text-white-50 mb-0">for small businesses</p>
                 </div>
               </div>
               <div className="card">
                 <div className="card-body bg-dark">
-                  <p className="fs-3 fw-light mb-2"><span className="fw-bold text-danger">60% higher</span> employee turnover</p>
-                  <p className="text-secondary mb-0">when technology consistently fails</p>
+                  <p className="fs-3 fw-light mb-2 text-white"><span className="fw-bold text-danger">60% higher</span> employee turnover</p>
+                  <p className="text-white-50 mb-0">when technology consistently fails</p>
                 </div>
               </div>
             </div>
@@ -284,7 +287,7 @@ export default function Home() {
                     <div className="bg-secondary rounded-circle me-3" style={{width: "3rem", height: "3rem"}}></div>
                     <div>
                       <p className="fw-medium mb-0">Sarah K.</p>
-                      <p className="small text-secondary mb-0">Accounting Firm Owner</p>
+                      <p className="small mb-0">Accounting Firm Owner</p>
                     </div>
                   </div>
                 </div>
@@ -300,7 +303,7 @@ export default function Home() {
                     <div className="bg-secondary rounded-circle me-3" style={{width: "3rem", height: "3rem"}}></div>
                     <div>
                       <p className="fw-medium mb-0">Michael T.</p>
-                      <p className="small text-secondary mb-0">Legal Practice</p>
+                      <p className="small mb-0">Legal Practice</p>
                     </div>
                   </div>
                 </div>
@@ -310,10 +313,10 @@ export default function Home() {
           <div className="text-center">
             <p className="fw-medium mb-4">Trusted by over 200 small businesses in your region</p>
             <div className="d-flex justify-content-center gap-4">
-              <div className="bg-dark rounded" style={{width: "6rem", height: "3rem"}}></div>
-              <div className="bg-dark rounded" style={{width: "6rem", height: "3rem"}}></div>
-              <div className="bg-dark rounded" style={{width: "6rem", height: "3rem"}}></div>
-              <div className="bg-dark rounded" style={{width: "6rem", height: "3rem"}}></div>
+              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
+              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
+              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
+              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
             </div>
           </div>
         </div>
@@ -402,12 +405,12 @@ export default function Home() {
               </p>
               <div className="mb-4">
                 <h3 className="fs-4 fw-medium mb-2">Contact Us</h3>
-                <p className="text-secondary mb-1">Toronto</p>
-                <p className="text-secondary mb-0">Ontario, Canada</p>
+                <p className="mb-1">Toronto</p>
+                <p className="mb-0">Ontario, Canada</p>
               </div>
               <div className="mb-4">
-                <p className="text-secondary mb-1">hi@boximity.ca</p>
-                <p className="text-secondary mb-0">(289) 539-0098</p>
+                <p className="mb-1">hi@boximity.ca</p>
+                <p className="mb-0">(289) 539-0098</p>
               </div>
               <div className="alert alert-secondary">
                 <p className="small fst-italic mb-0">

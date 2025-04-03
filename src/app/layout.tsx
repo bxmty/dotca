@@ -4,6 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import BootstrapClient from "./components/BootstrapClient";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import WebVitalsReporter from "./components/WebVitalsReporter";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -73,6 +74,7 @@ export default function RootLayout({
     <html lang="en" data-bs-theme="auto">
       <body>
         <BootstrapClient />
+        <WebVitalsReporter />
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
           <main className="flex-grow-1">
