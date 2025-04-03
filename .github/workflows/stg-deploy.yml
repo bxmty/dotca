@@ -1,0 +1,374 @@
+name: Staging Pipeline
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Update package-lock.json
+        run: npm install --package-lock-only
+          
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Test Docker Build
+        run: docker build -t dotca-test .
+
+      - name: Run unit tests
+        run: npm test
+        continue-on-error: true
+  
+  setup-infra:
+    name: Setup Infrastructure
+    runs-on: ubuntu-latest
+    outputs:
+      droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
+      resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+          
+      - name: Setup DigitalOcean CLI
+        run: |
+          curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
+          sudo mv doctl /usr/local/bin/
+          doctl auth init -t ${{ secrets.DO_TOKEN }}
+      
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+      - name: Initialize Terraform
+        working-directory: ./terraform
+        run: |
+          terraform init \
+            -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -backend-config="key=dotca/terraform-staging.tfstate"
+          
+      - name: Check if project exists
+        id: check_project
+        run: |
+            # Check if the project exists in Digital Ocean
+            PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs" || echo "")
+            
+            if [ -n "$PROJECT_EXISTS" ]; then
+              echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
+              echo "Project 'dotca-nextjs' already exists"
+            else
+              echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
+              echo "Project 'dotca-nextjs' does not exist"
+            fi
+        
+      - name: Check if resources exist
+        working-directory: ./terraform
+        id: resource_check
+        run: |
+          # Set terraform variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="staging"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="staging"
+          
+          # Try to get current state - handle failure gracefully
+          terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
+          
+          # Check if resources exist by trying to get the IP
+          DROPLET_IP=$(terraform output droplet_ip 2>/dev/null | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          
+          if [ -n "$DROPLET_IP" ]; then
+            echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
+            echo "resources_exist=true" >> $GITHUB_OUTPUT
+            echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+            echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+            echo "Resources already exist, using IP: $DROPLET_IP"
+          else
+            echo "RESOURCES_EXIST=false" >> $GITHUB_ENV
+            echo "resources_exist=false" >> $GITHUB_OUTPUT
+            echo "Resources need to be created or updated"
+          fi
+        continue-on-error: true
+          
+      - name: Terraform Plan
+        if: env.RESOURCES_EXIST != 'true'
+        working-directory: ./terraform
+        run: |
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="staging"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="staging"
+          
+          # Create plan
+          terraform plan -out=tfplan
+        
+      - name: Terraform Apply
+        if: env.RESOURCES_EXIST != 'true'
+        working-directory: ./terraform
+        run: |
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="staging"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          
+          # Apply the plan
+          terraform apply -auto-approve tfplan
+        
+      - name: Capture Droplet IP
+        if: env.RESOURCES_EXIST != 'true'
+        working-directory: ./terraform
+        id: get_ip
+        run: |
+          # Wait a bit for Terraform state to settle
+          echo "Waiting for DigitalOcean resources to be fully provisioned..."
+          sleep 30
+          
+          # Force a refresh to ensure state is current
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="staging"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          terraform refresh
+          
+          # Try multiple methods to get the IP address
+          echo "Attempting to get droplet IP address..."
+          
+          # Method 1: Direct output to a file first to avoid pipe issues
+          terraform output > terraform_output.txt
+          cat terraform_output.txt
+          
+          # Extract IP using grep directly on the file
+          DROPLET_IP=$(grep -oE 'droplet_ip\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)"' terraform_output.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          
+          # If that didn't work, try a simpler approach
+          if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Trying alternative method..."
+            DROPLET_IP=$(cat terraform_output.txt | grep droplet_ip | awk -F '"' '{print $2}' || echo "")
+          fi
+          
+          # Final validation and output
+          if [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Successfully extracted IP: $DROPLET_IP"
+            echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+            echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Failed to extract valid IP address from Terraform output"
+            echo "Raw terraform output was:"
+            cat terraform_output.txt
+            exit 1
+          fi
+
+  deploy-app:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [test, setup-infra]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+      
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+      
+      - name: Add host key to known hosts
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
+        run: |
+          # Fail if we don't have an IP address
+          if [ -z "$DROPLET_IP" ]; then
+            echo "::error::Could not determine server IP address - infrastructure setup failed"
+            exit 1
+          fi
+          
+          echo "Connecting to IP: $DROPLET_IP"
+          
+          # Wait longer for new resources to be fully ready
+          if [ "$RESOURCES_EXIST" != "true" ]; then
+            echo "Waiting for new droplet to be fully ready..."
+            # Try to ping the droplet until it's accessible
+            TIMEOUT=300
+            INTERVAL=10
+            ELAPSED=0
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              echo "Attempting to ping $DROPLET_IP... (${ELAPSED}s elapsed)"
+              if ping -c 1 -W 5 $DROPLET_IP &> /dev/null; then
+                echo "Successfully reached droplet at $DROPLET_IP"
+                break
+              fi
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            done
+            
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "::warning::Droplet at $DROPLET_IP is not responding to ping after ${TIMEOUT}s"
+              # Continue anyway, since SSH might still work
+            fi
+            
+            # Additional wait time for services to start
+            echo "Waiting additional time for services to start..."
+            sleep 30
+          fi
+          
+          # Add host key to known_hosts
+          echo "Adding host key for $DROPLET_IP to known_hosts..."
+          for i in {1..5}; do
+            if ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "Successfully added host key on attempt $i"
+              break
+            else
+              echo "Attempt $i to add host key failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+            
+            if [ $i -eq 5 ]; then
+              echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
+            fi
+          done
+      
+      - name: Deploy using Ansible
+        env:
+          GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+          SSH_KEY_PATH: "~/.ssh/id_rsa"
+          GITHUB_ACTIONS: "true"
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        run: |
+          # Verify IP address is set in the environment
+          if [ -z "$DROPLET_IP" ]; then
+            echo "::error::DROPLET_IP environment variable is not set"
+            exit 1
+          fi
+          
+          echo "Using Droplet IP: $DROPLET_IP for deployment"
+          
+          # Set up ansible inventory dynamically
+          echo "[staging-server]" > inventory.ini
+          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
+          cat inventory.ini
+          
+          # Ensure script is executable
+          chmod +x ./deploy.sh
+          
+          # Test SSH connection
+          echo "Testing SSH connection to $DROPLET_IP..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
+          
+          # Run the deployment with retry logic
+          echo "Starting deployment..."
+          for i in {1..3}; do
+            echo "Deployment attempt $i..."
+            if ./deploy.sh staging; then
+              echo "Deployment successful on attempt $i"
+              break
+            else
+              echo "Deployment attempt $i failed. Waiting before retry..."
+              sleep 30
+              
+              if [ $i -eq 3 ]; then
+                echo "::error::All deployment attempts failed"
+                exit 1
+              fi
+            fi
+          done
+  
+  deployment-verification:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deploy-app]
+    
+    steps:
+      - name: Staging Deployment Status
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+        run: |
+          echo "✅ Staging environment has been deployed with Ansible!"
+          echo "🌐 Access it at http://$DROPLET_IP/"
+          
+          # Optional - could add health checks here
+          echo "Checking if application is responding..."
+          if curl -s --head --request GET http://$DROPLET_IP/ | grep "200 OK" > /dev/null; then
+            echo "✅ Application is up and running!"
+          else
+            echo "⚠️ Application might not be fully available yet"
+          fi
+
+  selenium-tests:
+    name: Run Selenium Tests
+    runs-on: ubuntu-latest
+    needs: [deployment-verification]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+      
+      - name: Run Selenium tests
+        env:
+          APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
+        run: npm run test:e2e
+        continue-on-error: true

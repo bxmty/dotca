@@ -1,0 +1,214 @@
+---
+# Ansible playbook for setting up the QA environment for dotca
+# With optimizations for Next.js deployment
+
+- name: Setup QA environment for dotca
+  hosts: digitalocean
+  become: true
+  vars:
+    project_name: dotca-nextjs
+    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
+    git_branch: qa
+    app_dir: /app
+    public_ip: "{{ ansible_host }}"
+    brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
+    stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
+    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - python3-pip
+          - jq
+        state: present
+        update_cache: yes
+
+    - name: Add Docker's official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Engine
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Install NTP for time synchronization
+      apt:
+        name: ntp
+        state: present
+        update_cache: yes
+
+    - name: Configure NTP to use time.nist.gov
+      lineinfile:
+        path: /etc/ntp.conf
+        regexp: '^server'
+        line: 'server time.nist.gov iburst'
+        state: present
+        backup: yes
+
+    - name: Restart NTP service
+      systemd:
+        name: ntp
+        state: restarted
+        enabled: yes
+
+    - name: Set timezone to Eastern Time
+      timezone:
+        name: America/New_York
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Docker Compose V2
+      block:
+        - name: Create Docker CLI plugins directory
+          file:
+            path: /usr/local/lib/docker/cli-plugins
+            state: directory
+            mode: '0755'
+        
+        - name: Download Docker Compose V2
+          get_url:
+            url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
+            dest: /usr/local/lib/docker/cli-plugins/docker-compose
+            mode: '0755'
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Clone the repository
+      git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+
+    - name: Verify Next.js configuration file
+      stat:
+        path: "{{ app_dir }}/repo/next.config.js"
+      register: next_config
+
+    - name: Fail if Next.js configuration is missing
+      fail:
+        msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
+      when: not next_config.stat.exists
+
+    - name: Create deploy script
+      copy:
+        dest: "{{ app_dir }}/deploy.sh"
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          set -e
+
+          echo "Starting deployment process for dotca QA environment..."
+          cd {{ app_dir }}/repo
+          echo "Changed to repository directory: {{ app_dir }}/repo"
+
+          # Get the public IP address
+          PUBLIC_IP={{ public_ip }}
+          echo "Using public IP address: $PUBLIC_IP"
+
+          # Pull latest changes
+          echo "Pulling latest changes from {{ git_branch }} branch..."
+          git pull origin {{ git_branch }}
+          echo "Repository updated successfully."
+          
+          # Create .env file for docker-compose
+          cat > .env << EOF
+          NODE_ENV=production
+          NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
+          NEXT_PUBLIC_ENVIRONMENT=qa
+          BREVO_API_KEY={{ brevo_api_key }}
+          STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+          EOF
+          echo ".env file created successfully."
+
+          # Deploy with docker-compose v2
+          echo "Deploying with docker compose..."
+          docker compose down || echo "No existing containers to stop."
+          docker compose build --no-cache
+          docker compose up -d
+          
+          echo "Deployment completed successfully! Application is now available at http://$PUBLIC_IP"
+
+    - name: Run deploy script
+      command: "{{ app_dir }}/deploy.sh"
+
+    - name: Setup firewall (UFW)
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - '22'
+        - '80'
+        - '443'
+        - '6080'
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Set up Cron job for regular deployments (optional)
+      cron:
+        name: "Regular deployment of dotca-nextjs"
+        special_time: daily
+        job: "{{ app_dir }}/deploy.sh >> {{ app_dir }}/deployment.log 2>&1"
+        state: absent  # Change to 'present' if you want to enable this
+
+    - name: Create monitoring script (for basic health checks)
+      copy:
+        dest: "{{ app_dir }}/monitor.sh"
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          
+          # Simple monitoring script for the Next.js application
+          if ! curl -s -f http://localhost:80 > /dev/null; then
+            echo "[$(date)] Application not responding. Attempting restart..."
+            cd {{ app_dir }}/repo && docker compose restart web
+          else
+            echo "[$(date)] Application is healthy."
+          fi
+      
+    - name: Set up monitoring cron job
+      cron:
+        name: "Monitor dotca-nextjs"
+        minute: "*/15"
+        job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
+        state: present
