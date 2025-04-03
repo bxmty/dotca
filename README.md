@@ -31,6 +31,18 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Web Vitals Monitoring
+
+This project includes Web Vitals monitoring to track Core Web Vitals metrics:
+
+- **CLS (Cumulative Layout Shift)**: Measures visual stability
+- **FID (First Input Delay)**: Measures interactivity
+- **LCP (Largest Contentful Paint)**: Measures loading performance
+- **FCP (First Contentful Paint)**: Measures when the first content is painted
+- **TTFB (Time to First Byte)**: Measures time until first byte is received
+
+Web Vitals are automatically collected on the client side and sent to the `/api/analytics/web-vitals` endpoint. In production, you can connect this endpoint to your analytics platform of choice.
+
 ## Deployment
 
 ### Local Development
