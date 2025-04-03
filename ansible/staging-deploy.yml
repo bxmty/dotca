@@ -162,6 +162,7 @@
           echo "Deploying with docker compose..."
           docker compose down || echo "No existing containers to stop."
           docker compose build --no-cache
+          # Ensure Next.js container only binds to localhost on port 3000 and doesn't publish to host port 80
           docker compose up -d
           
           echo "Deployment completed successfully! Application is now behind nginx at http://$PUBLIC_IP"
@@ -176,7 +177,7 @@
               server_name _;
               
               location / {
-                  proxy_pass http://localhost:3000;
+                  proxy_pass http://localhost:8080;
                   proxy_http_version 1.1;
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection 'upgrade';
