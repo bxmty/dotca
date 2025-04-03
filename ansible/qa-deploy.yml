@@ -216,7 +216,20 @@
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent
-      notify: Restart Nginx
+      ignore_errors: yes
+
+    - name: Test Nginx configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: nginx_test.rc == 0
 
     - name: Set up Cron job for regular deployments (optional)
       cron:
