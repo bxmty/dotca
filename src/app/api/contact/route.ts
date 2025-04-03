@@ -4,18 +4,19 @@ export async function POST(request: Request) {
   try {
     const { 
       name, 
+      firstName,
+      lastName,
       email, 
       phone, 
       company, 
       address, 
       city, 
       state, 
-      zip, 
-      planName, 
-      billingCycle, 
-      employeeCount, 
-      isWaitlist 
+      zip
     } = await request.json();
+
+    // Determine full name based on input
+    const fullName = name || (firstName && lastName ? `${firstName} ${lastName}` : firstName || '');
 
     // Validate required fields
     if (!email) {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
     
-    if (!name) {
+    if (!fullName) {
       return NextResponse.json(
         { error: 'Name is required' },
         { status: 400 }
@@ -92,7 +93,9 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         email: email,
         attributes: {
-          FIRSTNAME: name,
+          FULLNAME: fullName,
+          FIRSTNAME: firstName || fullName.split(' ')[0] || '',
+          LASTNAME: lastName || (fullName.split(' ').length > 1 ? fullName.split(' ').slice(1).join(' ') : ''),
           PHONE: phone,
           COMPANY: company || '',
           ADDRESS: address || '',
