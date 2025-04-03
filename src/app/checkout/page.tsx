@@ -6,10 +6,12 @@ import PlanSelector from './PlanSelector';
 import StripeWrapper from '../components/StripeWrapper';
 import StripePaymentForm from '../components/StripePaymentForm';
 import WaitlistForm from '../components/WaitlistForm';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 interface PricingPlan {
   name: string;
-  unit_price: string; // Changed from price to unit_price
+  unit_price: string;
   description: string;
   features: string[];
 }
@@ -93,6 +95,13 @@ export default function Checkout() {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+  
+  const handlePhoneChange = (phone: string): void => {
+    setFormData(prev => ({
+      ...prev,
+      phone: `+${phone}` // Add + prefix for E.164 format
     }));
   };
 
@@ -424,14 +433,19 @@ export default function Checkout() {
                     </div>
                     <div className="col-12">
                       <label htmlFor="phone" className="form-label">Phone Number*</label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
+                      <PhoneInput
+                        country={'us'} // Default country
+                        value={formData.phone.replace(/^\+/, '')} // Remove + prefix for the component
+                        onChange={handlePhoneChange}
+                        inputClass="form-control bg-secondary bg-opacity-25 text-white border-secondary"
+                        containerClass="phone-input-container"
+                        buttonClass="phone-input-dropdown bg-secondary border-secondary"
+                        inputProps={{
+                          id: 'phone',
+                          name: 'phone',
+                          required: true,
+                          autoFocus: false
+                        }}
                       />
                     </div>
                     <div className="col-12">
