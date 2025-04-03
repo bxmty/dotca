@@ -116,3 +116,48 @@ body {
     --bs-card-bg: #2b3035;
   }
 }
+
+/* Add to your global CSS file or create a new module */
+.phone-input-container {
+  width: 100%;
+}
+
+.phone-input-container .form-control {
+  width: 100% !important;
+  height: calc(1.5em + 0.75rem + 2px);
+  padding: 0.375rem 0.75rem;
+  padding-left: 52px !important;
+}
+
+.phone-input-dropdown {
+  padding: 6px 10px;
+  border-radius: 4px 0 0 4px;
+  border: 1px solid #ced4da;
+  border-right: none;
+}
+
+/* Dark theme styles for phone input */
+.bg-dark .phone-input-container .form-control {
+  background-color: rgba(108, 117, 125, 0.25) !important;
+  color: #fff !important;
+  border-color: #6c757d !important;
+}
+
+.bg-dark .phone-input-dropdown {
+  background-color: rgba(108, 117, 125, 0.5) !important;
+  border-color: #6c757d !important;
+}
+
+.bg-dark .phone-input-dropdown .selected-flag {
+  background-color: transparent !important;
+}
+
+.bg-dark .country-list {
+  background-color: #2b3035 !important;
+  color: #fff !important;
+  border-color: #6c757d !important;
+}
+
+.bg-dark .country-list .country:hover {
+  background-color: #495057 !important;
+}

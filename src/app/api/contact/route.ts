@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isPossiblePhoneNumber, parsePhoneNumber } from 'libphonenumber-js';
 
 export async function POST(request: Request) {
   try {
@@ -53,11 +54,26 @@ export async function POST(request: Request) {
       );
     }
     
-    // Basic phone validation - allow different formats but ensure it has enough digits
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
+    // More robust phone validation and formatting
+    let formattedPhone = '';
+    try {
+      // Default to US if no country code is provided
+      const phoneInput = phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`;
+      
+      // Check if it's a valid phone number
+      if (!isPossiblePhoneNumber(phoneInput)) {
+        return NextResponse.json(
+          { error: 'Please enter a valid phone number' },
+          { status: 400 }
+        );
+      }
+      
+      // Format according to E.164 standard which Brevo expects
+      const parsedPhone = parsePhoneNumber(phoneInput);
+      formattedPhone = parsedPhone.format('E.164');
+    } catch {
       return NextResponse.json(
-        { error: 'Please enter a valid phone number with at least 10 digits' },
+        { error: 'Please enter a valid phone number' },
         { status: 400 }
       );
     }
@@ -84,9 +100,6 @@ export async function POST(request: Request) {
     if (!isProd && !apiKey && publicApiKey) {
       console.warn('Using fallback NEXT_PUBLIC_BREVO_API_KEY - set BREVO_API_KEY for production');
     }
-
-    // Format phone number for SMS
-    const formattedPhone = phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`;
 
     // Use direct API endpoint for Brevo
     const url = 'https://api.brevo.com/v3/contacts';
@@ -141,6 +154,15 @@ export async function POST(request: Request) {
               success: true, 
               message: 'Your information has already been submitted. We will contact you soon.' 
             }
+          );
+        }
+        
+        // Handle phone number specific errors
+        if (errorData.code === 'invalid_parameter' && 
+            errorData.message?.toLowerCase().includes('phone')) {
+          return NextResponse.json(
+            { error: 'The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.' },
+            { status: 400 }
           );
         }
         
