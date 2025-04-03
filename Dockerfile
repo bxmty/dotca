@@ -34,6 +34,8 @@ RUN echo "Using NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: $NEXT_PUBLIC_STRIPE_PUBLISHA
 # Fix import paths for Docker build
 RUN sed -i 's|@/lib/stripe|../../lib/stripe|g' src/app/components/StripeWrapper.tsx && \
     sed -i 's|@/lib/stripe|../../../../lib/stripe|g' src/app/api/stripe/create-payment-intent/route.ts && \
+    sed -i 's|@/lib/web-vitals|../../lib/web-vitals|g' src/app/components/WebVitalsReporter.tsx && \
+    sed -i 's|@/lib/web-vitals|../../../../lib/web-vitals|g' src/app/api/analytics/web-vitals/route.ts && \
     echo "Fixed import paths for Docker build"
 
 # Build the Next.js application
