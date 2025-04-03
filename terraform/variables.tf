@@ -15,6 +15,12 @@ variable "project_name" {
   default     = "dotca-nextjs"
 }
 
+variable "environment" {
+  description = "Deployment environment (qa, staging, production)"
+  type        = string
+  default     = "qa"
+}
+
 variable "region" {
   description = "Digital Ocean region to deploy resources"
   type        = string
@@ -39,21 +45,21 @@ variable "allowed_ssh_ips" {
 }
 
 variable "create_domain" {
-  description = "Whether to create a domain record for the QA environment"
+  description = "Whether to create a domain record for the environment"
   type        = bool
   default     = false
 }
 
 variable "domain_name" {
-  description = "Base domain name for the QA environment"
+  description = "Base domain name for the environment"
   type        = string
   default     = "boximity.ca"
 }
 
 variable "subdomain" {
-  description = "Subdomain for the QA environment"
+  description = "Subdomain for the environment (defaults to environment value)"
   type        = string
-  default     = "qa"
+  default     = ""
 }
 
 variable "use_existing_project" {
