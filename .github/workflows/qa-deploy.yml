@@ -71,7 +71,9 @@ jobs:
         run: |
           terraform init \
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
-            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -backend-config="key=dotca/terraform-qa.tfstate"
+        
         
       - name: Check if project exists
         id: check_project
@@ -98,7 +100,8 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
-          
+          export TF_VAR_environment="qa"  # Add this line
+
           # Try to get current state - handle failure gracefully
           terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
           

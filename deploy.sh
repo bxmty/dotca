@@ -8,8 +8,13 @@ if [ -z "$1" ]; then
 fi
 ENV=$1
 ENV_FILE=".env.$ENV"
-if [ "$ENV" == "qa" ]; then
-  echo "Running qa deployment using Ansible..."
+
+# Function to handle Ansible-based deployments (for QA and Staging)
+function deploy_with_ansible() {
+  local env=$1
+  local ansible_playbook="$env-deploy.yml"
+  
+  echo "Running $env deployment using Ansible..."
   
   # Create environment file from GitHub secrets if it doesn't exist
   if [ ! -f "$ENV_FILE" ]; then
@@ -17,11 +22,11 @@ if [ "$ENV" == "qa" ]; then
     
     # Check if running in GitHub Actions context
     if [ -n "$GITHUB_ACTIONS" ]; then
-      # Create .env.qa file from GitHub secrets
+      # Create environment file from GitHub secrets
       cat > "$ENV_FILE" << EOF
-# QA Environment Configuration
+# $env Environment Configuration
 NODE_ENV=production
-NEXT_PUBLIC_ENVIRONMENT=qa
+NEXT_PUBLIC_ENVIRONMENT=$env
 # Git and SSH Configuration
 GIT_REPO_URL=${GIT_REPO_URL}
 SSH_KEY_PATH=${SSH_KEY_PATH}
@@ -77,14 +82,14 @@ all:
   children:
     digitalocean:
       hosts:
-        qa_server:
+        ${env}_server:
           ansible_host: $DROPLET_IP
           ansible_user: root
           ansible_ssh_private_key_file: $SSH_KEY_PATH
           ansible_connection: ssh
           ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
       vars:
-        qa_server_ip: $DROPLET_IP
+        ${env}_server_ip: $DROPLET_IP
         ansible_python_interpreter: /usr/bin/python3
 EOF
   
@@ -94,10 +99,15 @@ EOF
   cat inventory.yml
   echo "Using SSH key: $SSH_KEY_PATH"
   ansible -i inventory.yml digitalocean -m ping -v
-  ansible-playbook -i inventory.yml qa-deploy.yml
+  ansible-playbook -i inventory.yml $ansible_playbook
   cd ..
+}
+
+# Main deployment logic
+if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ]; then
+  deploy_with_ansible $ENV
 else
-  # For other environments
+  # For other environments (e.g., production)
   if [ ! -f "$ENV_FILE" ]; then
     echo "Error: Environment file $ENV_FILE not found"
     exit 1
@@ -110,4 +120,5 @@ else
   docker-compose build
   docker-compose up -d
 fi
+
 echo "$ENV deployment completed!"
