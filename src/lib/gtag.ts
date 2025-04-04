@@ -5,7 +5,7 @@ export const GA_MEASUREMENT_ID = process.env.NODE_PUBLIC_ENVIRONMENT === 'produc
   ? process.env.NEXT_PUBLIC_PROD_GA_ID  // Production GA4 property
   : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
     ? process.env.NEXT_PUBLIC_STAGING_GA_ID  // Staging GA4 property
-    : process.env.NEXT_PUBLIC_DEV_GA_ID;     // Development GA4 property (optional)
+    : process.env.NEXT_PUBLIC_DEV_GA_ID || '';     // Development GA4 property (optional)
 
 // Determine environment
 const isProduction = process.env.NODE_ENV === 'production' && process.env.NEXT_ENV !== 'staging';
@@ -19,7 +19,7 @@ export const initGA = () => {
   // Add Google Analytics script to the document
   window.dataLayer = window.dataLayer || [];
   
-  function gtag(...args) {
+  function gtag(...args: any[]) {
     window.dataLayer.push(args);
   }
   
@@ -47,7 +47,7 @@ export const initGA = () => {
 };
 
 // Track page views
-export const pageview = (url) => {
+export const pageview = (url: string) => {
   if (!GA_MEASUREMENT_ID || (!isProduction && !isStaging)) return;
   
   window.gtag('config', GA_MEASUREMENT_ID, {
@@ -56,7 +56,12 @@ export const pageview = (url) => {
 };
 
 // Track custom events
-export const event = ({ action, category, label, value }) => {
+export const event = ({ action, category, label, value }: {
+  action: string;
+  category: string;
+  label: string;
+  value?: number;
+}) => {
   if (!GA_MEASUREMENT_ID || (!isProduction && !isStaging)) return;
   
   window.gtag('event', action, {

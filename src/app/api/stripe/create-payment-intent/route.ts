@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerStripe } from '@/lib/stripe';
+import { getServerStripe } from '../../../../lib/stripe';
 
 // Server-side Stripe API implementation
 export async function POST(request: Request) {
