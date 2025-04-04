@@ -57,11 +57,10 @@
       until: job_result.finished
       retries: 100
       delay: 15
-      with_items:
+      loop:
         - "{{ apt_update }}"
         - "{{ apt_upgrade }}"
         - "{{ pkg_install }}"
-      when: item.ansible_job_id is defined
 
     - name: Add Docker's official GPG key
       apt_key:
