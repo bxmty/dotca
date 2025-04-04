@@ -14,16 +14,22 @@
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
-    ga_staging_id: "{{ lookup('env', 'NEXT_PUBLIC_STAGING_GA_ID') }}"
+    ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
 
   tasks:
     - name: Update apt cache
       apt:
         update_cache: yes
+      async: 60
+      poll: 0
+      register: apt_update
 
     - name: Upgrade all packages
       apt:
         upgrade: yes
+      async: 1800  # 30 minutes timeout
+      poll: 30     # Check status every 30 seconds
+      register: apt_upgrade
 
     - name: Install required packages
       apt:
@@ -39,6 +45,23 @@
           - nginx
         state: present
         update_cache: yes
+      async: 600   # 10 minutes timeout
+      poll: 15     # Check status every 15 seconds
+      register: pkg_install
+
+    # Wait for apt operations to complete before continuing
+    - name: Wait for apt operations
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 15
+      with_items:
+        - "{{ apt_update }}"
+        - "{{ apt_upgrade }}"
+        - "{{ pkg_install }}"
+      when: item.ansible_job_id is defined
 
     - name: Add Docker's official GPG key
       apt_key:
@@ -59,12 +82,16 @@
           - containerd.io
         state: present
         update_cache: yes
+      async: 600
+      poll: 15
 
     - name: Install NTP for time synchronization
       apt:
         name: ntp
         state: present
         update_cache: yes
+      async: 300
+      poll: 10
 
     - name: Configure NTP to use time.nist.gov
       lineinfile:
@@ -116,6 +143,8 @@
         dest: "{{ app_dir }}/repo"
         version: "{{ git_branch }}"
         force: yes
+      async: 300
+      poll: 10
 
     - name: Verify Next.js configuration file
       stat:
@@ -134,6 +163,8 @@
         version: "{{ git_branch }}"
         force: yes
         update: yes
+      async: 300
+      poll: 10
 
     - name: Create .env file for docker-compose
       copy:
@@ -159,6 +190,8 @@
         project_src: "{{ app_dir }}/repo" 
         build: yes
         nocache: yes
+      async: 1800  # 30 minutes timeout for build
+      poll: 30
 
     - name: Start Docker containers
       community.docker.docker_compose_v2:
@@ -265,7 +298,7 @@
 
 # Create a separate play for Let's Encrypt setup
 - name: Setup Let's Encrypt with Nginx
-  hosts: digitalocean  # Changed from webservers to match the host group in your first play
+  hosts: digitalocean
   become: yes
   vars:
     domain_name: "staging19.boximity.ca"
@@ -278,6 +311,8 @@
           - certbot
           - python3-certbot-nginx
         state: present
+      async: 300
+      poll: 10
 
     - name: Check if certificate already exists
       stat:
