@@ -1,7 +1,7 @@
 // 1. First, create a lib/gtag.js file
 
 // Environment-specific GA4 Measurement IDs
-export const GA_MEASUREMENT_ID = process.env.NODE_ENV === 'production' 
+export const GA_MEASUREMENT_ID = process.env.NODE_PUBLIC_ENVIRONMENT === 'production' 
   ? process.env.NEXT_PUBLIC_PROD_GA_ID  // Production GA4 property
   : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
     ? process.env.NEXT_PUBLIC_STAGING_GA_ID  // Staging GA4 property
