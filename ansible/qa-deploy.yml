@@ -265,8 +265,8 @@
       hosts: webservers
       become: yes
       vars:
-        domain_name: "yourdomain.com"
-        email_address: "your-email@example.com"
+        domain_name: "boximity.com"
+        email_address: "matticem@boximity.ca"
       
 
     - name: Install Certbot and Nginx plugin
