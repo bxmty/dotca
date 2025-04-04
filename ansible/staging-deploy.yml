@@ -15,21 +15,15 @@
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
-
+    
   tasks:
     - name: Update apt cache
       apt:
         update_cache: yes
-      async: 60
-      poll: 0
-      register: apt_update
 
     - name: Upgrade all packages
       apt:
         upgrade: yes
-      async: 1800  # 30 minutes timeout
-      poll: 30     # Check status every 30 seconds
-      register: apt_upgrade
 
     - name: Install required packages
       apt:
@@ -45,22 +39,6 @@
           - nginx
         state: present
         update_cache: yes
-      async: 600   # 10 minutes timeout
-      poll: 15     # Check status every 15 seconds
-      register: pkg_install
-
-    # Wait for apt operations to complete before continuing
-    - name: Wait for apt operations
-      async_status:
-        jid: "{{ item.ansible_job_id }}"
-      register: job_result
-      until: job_result.finished
-      retries: 100
-      delay: 15
-      loop:
-        - "{{ apt_update }}"
-        - "{{ apt_upgrade }}"
-        - "{{ pkg_install }}"
 
     - name: Add Docker's official GPG key
       apt_key:
@@ -81,16 +59,12 @@
           - containerd.io
         state: present
         update_cache: yes
-      async: 600
-      poll: 15
 
     - name: Install NTP for time synchronization
       apt:
         name: ntp
         state: present
         update_cache: yes
-      async: 300
-      poll: 10
 
     - name: Configure NTP to use time.nist.gov
       lineinfile:
@@ -142,8 +116,6 @@
         dest: "{{ app_dir }}/repo"
         version: "{{ git_branch }}"
         force: yes
-      async: 300
-      poll: 10
 
     - name: Verify Next.js configuration file
       stat:
@@ -155,47 +127,47 @@
         msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
       when: not next_config.stat.exists
 
-    - name: Pull latest changes from repository
-      git:
-        repo: "{{ git_repo_url }}"
-        dest: "{{ app_dir }}/repo"
-        version: "{{ git_branch }}"
-        force: yes
-        update: yes
-      async: 300
-      poll: 10
-
-    - name: Create .env file for docker-compose
+    - name: Create deploy script
       copy:
-        dest: "{{ app_dir }}/repo/.env"
+        dest: "{{ app_dir }}/deploy.sh"
+        mode: '0755'
         content: |
+          #!/bin/bash
+          set -e
+
+          echo "Starting deployment process for dotca Staging environment..."
+          cd {{ app_dir }}/repo
+          echo "Changed to repository directory: {{ app_dir }}/repo"
+
+          # Get the public IP address
+          PUBLIC_IP={{ public_ip }}
+          echo "Using public IP address: $PUBLIC_IP"
+
+          # Pull latest changes
+          echo "Pulling latest changes from {{ git_branch }} branch..."
+          git pull origin {{ git_branch }}
+          echo "Repository updated successfully."
+          
+          # Create .env file for docker-compose
+          cat > .env << EOF
           NODE_ENV=production
-          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+          NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
           NEXT_PUBLIC_ENVIRONMENT=staging
           BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
-        mode: '0600'
+          EOF
+          echo ".env file created successfully."
 
-    - name: Stop existing docker containers
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_dir }}/repo"
-        state: absent
-      ignore_errors: yes
-
-    - name: Build Docker containers with no cache
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_dir }}/repo" 
-        build: yes
-        nocache: yes
-      async: 1800  # 30 minutes timeout for build
-      poll: 30
-
-    - name: Start Docker containers
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_dir }}/repo"
-        state: present
+          # Deploy with docker-compose v2
+          echo "Deploying with docker compose..."
+          docker compose down || echo "No existing containers to stop."
+          docker compose build --no-cache
+          # Ensure Next.js container only binds to localhost on port 3000 and doesn't publish to host port 80
+          docker compose up -d
+          
+          echo "Deployment completed successfully! Application is now behind nginx at http://$PUBLIC_IP"
 
     # Configure Nginx as reverse proxy
     - name: Configure Nginx as reverse proxy
@@ -249,6 +221,9 @@
         enabled: yes
       when: nginx_test.rc == 0
 
+    - name: Run deploy script
+      command: "{{ app_dir }}/deploy.sh"
+
     - name: Setup firewall (UFW)
       ufw:
         rule: allow
@@ -297,7 +272,7 @@
 
 # Create a separate play for Let's Encrypt setup
 - name: Setup Let's Encrypt with Nginx
-  hosts: digitalocean
+  hosts: digitalocean  # Changed from webservers to match the host group in your first play
   become: yes
   vars:
     domain_name: "staging19.boximity.ca"
@@ -310,8 +285,6 @@
           - certbot
           - python3-certbot-nginx
         state: present
-      async: 300
-      poll: 10
 
     - name: Check if certificate already exists
       stat:
