@@ -268,7 +268,6 @@
         domain_name: "boximity.com"
         email_address: "matticem@boximity.ca"
       
-
     - name: Install Certbot and Nginx plugin
       package:
         name:
