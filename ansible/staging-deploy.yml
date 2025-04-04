@@ -14,6 +14,7 @@
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
+    ga_staging_id: "{{ lookup('env', 'NEXT_PUBLIC_STAGING_GA_ID') }}"
 
   tasks:
     - name: Update apt cache
@@ -155,6 +156,7 @@
           BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
           EOF
           echo ".env file created successfully."
 
@@ -267,3 +269,36 @@
         minute: "*/15"
         job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
         state: present
+
+    - name: Setup Let's Encrypt with Nginx
+      hosts: webservers
+      become: yes
+      vars:
+        domain_name: "yourdomain.com"
+        email_address: "your-email@example.com"
+      
+
+    - name: Install Certbot and Nginx plugin
+      package:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Check if certificate already exists
+      stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
+      register: cert_file
+
+    - name: Obtain SSL certificate
+      command: >
+        certbot --nginx -d {{ domain_name }} -d www.{{ domain_name }}
+        --non-interactive --agree-tos --email {{ email_address }}
+        --redirect
+      when: not cert_file.stat.exists
+
+    - name: Add cron job for auto-renewal
+      cron:
+        name: "Let's Encrypt renewal"
+        special_time: daily
+        job: "certbot renew --quiet --nginx"
