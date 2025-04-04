@@ -38,6 +38,8 @@ RUN sed -i 's|@/lib/stripe|../../lib/stripe|g' src/app/components/StripeWrapper.
     sed -i 's|@/lib/stripe|../../../../lib/stripe|g' src/app/api/stripe/create-payment-intent/route.ts && \
     sed -i 's|@/lib/web-vitals|../../lib/web-vitals|g' src/app/components/WebVitalsReporter.tsx && \
     sed -i 's|@/lib/web-vitals|../../../../lib/web-vitals|g' src/app/api/analytics/web-vitals/route.ts && \
+    sed -i 's|@/lib/gtag|../../lib/gtag|g' src/app/components/GoogleAnalytics.tsx && \
+    sed -i 's|@/lib/gtag|../../lib/gtag|g' src/app/layout.tsx && \
     echo "Fixed import paths for Docker build"
 
 # Build the Next.js application
