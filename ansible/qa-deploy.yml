@@ -148,7 +148,7 @@
           
           # Create .env file for docker-compose
           cat > .env << EOF
-          NODE_ENV=development
+          NODE_ENV=production
           NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
           NEXT_PUBLIC_ENVIRONMENT=qa
           BREVO_API_KEY={{ brevo_api_key }}
