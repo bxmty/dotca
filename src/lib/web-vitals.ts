@@ -1,4 +1,5 @@
 import { CLSMetric, FCPMetric, FIDMetric, LCPMetric, TTFBMetric, onCLS, onFCP, onFID, onLCP, onTTFB } from 'web-vitals';
+import * as gtag from './gtag';
 
 /**
  * Interface for web vitals metric reporting
@@ -18,9 +19,21 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
   }
 
   // Example of sending to a custom analytics endpoint
-  // In production, replace with your actual analytics reporting
   try {
-    // Send to analytics
+    // Send to Google Analytics if available
+    if (gtag.GA_MEASUREMENT_ID) {
+      gtag.event({
+        action: 'web_vitals',
+        category: 'Web Vitals',
+        label: metric.id,
+        value: Math.round(metric.name === 'CLS' ? metric.delta * 1000 : metric.value),
+        metric_name: metric.name,
+        rating: metric.rating,
+        non_interaction: 1,
+      });
+    }
+    
+    // Also send metrics to the API endpoint
     const body = JSON.stringify({
       name: metric.name,
       id: metric.id,
@@ -30,7 +43,6 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
       navigationType: metric.navigationType
     });
 
-    // Send metrics to the API endpoint
     await fetch('/api/analytics/web-vitals', {
       body,
       method: 'POST',
