@@ -33,14 +33,8 @@ COPY . .
 # Debug environment variables at build time
 RUN echo "Using NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: $NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
 
-# Fix import paths for Docker build
-RUN sed -i 's|@/lib/stripe|../../lib/stripe|g' src/app/components/StripeWrapper.tsx && \
-    sed -i 's|@/lib/stripe|../../../../lib/stripe|g' src/app/api/stripe/create-payment-intent/route.ts && \
-    sed -i 's|@/lib/web-vitals|../../lib/web-vitals|g' src/app/components/WebVitalsReporter.tsx && \
-    sed -i 's|@/lib/web-vitals|../../../../lib/web-vitals|g' src/app/api/analytics/web-vitals/route.ts && \
-    sed -i 's|@/lib/gtag|../../lib/gtag|g' src/app/components/GoogleAnalytics.tsx && \
-    sed -i 's|@/lib/gtag|../../lib/gtag|g' src/app/layout.tsx && \
-    echo "Fixed import paths for Docker build"
+# Removed path replacements as they're not needed with proper Next.js alias configuration
+RUN echo "Using Next.js path aliases for imports"
 
 # Build the Next.js application
 RUN npm run build
