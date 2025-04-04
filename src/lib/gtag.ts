@@ -1,5 +1,13 @@
 // 1. First, create a lib/gtag.js file
 
+// Add type definition for window with gtag
+declare global {
+  interface Window {
+    dataLayer: any[];
+    gtag: (...args: any[]) => void;
+  }
+}
+
 // Environment-specific GA4 Measurement IDs
 export const GA_MEASUREMENT_ID = process.env.NODE_PUBLIC_ENVIRONMENT === 'production' 
   ? process.env.NEXT_PUBLIC_PROD_GA_ID  // Production GA4 property
@@ -19,27 +27,28 @@ export const initGA = () => {
   // Add Google Analytics script to the document
   window.dataLayer = window.dataLayer || [];
   
-  function gtag(...args: any[]) {
-    window.dataLayer.push(arguments);
-  }
+  // Define gtag function properly using rest parameters
+  window.gtag = function(...args) {
+    window.dataLayer.push(args);
+  };
   
-  gtag('js', new Date());
+  window.gtag('js', new Date());
   
   // Configure with environment-specific settings
   if (isProduction) {
     // Production setup with production GA4 property
-    gtag('config', GA_MEASUREMENT_ID, {
+    window.gtag('config', GA_MEASUREMENT_ID, {
       send_page_view: true,
       transport_type: 'beacon',
     });
   } else if (isStaging) {
     // Staging setup with staging GA4 property
-    gtag('config', GA_MEASUREMENT_ID, {
+    window.gtag('config', GA_MEASUREMENT_ID, {
       send_page_view: true,
     });
   } else if (isDevelopment && GA_MEASUREMENT_ID) {
     // Development setup with optional development GA4 property
-    gtag('config', GA_MEASUREMENT_ID, {
+    window.gtag('config', GA_MEASUREMENT_ID, {
       debug_mode: true,
       send_page_view: false, // Optional: Disable page views in development
     });
