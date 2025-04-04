@@ -35,6 +35,7 @@
           - git
           - python3-pip
           - jq
+          - nginx
         state: present
         update_cache: yes
 
@@ -178,11 +179,57 @@
         - '80'
         - '443'
         - '6080'
+        - '8080'
 
     - name: Enable UFW
       ufw:
         state: enabled
         policy: deny
+
+    - name: Configure Nginx as reverse proxy
+      copy:
+        dest: /etc/nginx/sites-available/dotca
+        content: |
+          server {
+            listen 80;
+            server_name {{ public_ip }};
+            
+            location / {
+                proxy_pass http://localhost:8080;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host $host;
+                proxy_cache_bypass $http_upgrade;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            }
+          }
+
+    - name: Enable Nginx site configuration
+      file:
+        src: /etc/nginx/sites-available/dotca
+        dest: /etc/nginx/sites-enabled/dotca
+        state: link
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      ignore_errors: yes
+
+    - name: Test Nginx configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: nginx_test.rc == 0
 
     - name: Set up Cron job for regular deployments (optional)
       cron:
@@ -198,9 +245,10 @@
         content: |
           #!/bin/bash
           
-          # Simple monitoring script for the Next.js application
+          # Enhanced monitoring script for Nginx and Next.js application
           if ! curl -s -f http://localhost:80 > /dev/null; then
-            echo "[$(date)] Application not responding. Attempting restart..."
+            echo "[$(date)] Nginx or application not responding. Attempting restart..."
+            systemctl restart nginx
             cd {{ app_dir }}/repo && docker compose restart web
           else
             echo "[$(date)] Application is healthy."
@@ -212,3 +260,36 @@
         minute: "*/15"
         job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
         state: present
+
+    - name: Setup Let's Encrypt with Nginx
+      hosts: webservers
+      become: yes
+      vars:
+        domain_name: "yourdomain.com"
+        email_address: "your-email@example.com"
+      
+
+    - name: Install Certbot and Nginx plugin
+      package:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Check if certificate already exists
+      stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
+      register: cert_file
+
+    - name: Obtain SSL certificate
+      command: >
+        certbot --nginx -d {{ domain_name }} -d www.{{ domain_name }}
+        --non-interactive --agree-tos --email {{ email_address }}
+        --redirect
+      when: not cert_file.stat.exists
+
+    - name: Add cron job for auto-renewal
+      cron:
+        name: "Let's Encrypt renewal"
+        special_time: daily
+        job: "certbot renew --quiet --nginx"
