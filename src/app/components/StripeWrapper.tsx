@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
-import { getStripe } from '@/lib/stripe';
+import { getStripe } from '../../lib/stripe';
 
 interface StripeWrapperProps {
   children: ReactNode;
