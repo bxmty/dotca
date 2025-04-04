@@ -23,6 +23,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Add this section for ACME challenge handling
+  async rewrites() {
+    return [
+      {
+        source: '/.well-known/acme-challenge/:path*',
+        destination: '/.well-known/acme-challenge/:path*'
+      }
+    ]
+  }
 };
 
 module.exports = nextConfig;
