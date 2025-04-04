@@ -1,68 +1,105 @@
+'use client';
+
 import Link from "next/link";
-import { Metadata } from "next";
+import { Suspense } from "react";
 
-export const metadata: Metadata = {
-  title: "Pricing Plans",
-  description: "Choose the IT service package that fits your small business needs. Basic, Standard, and Premium plans available with features including password management, web hosting, and Microsoft tools.",
-  alternates: {
-    canonical: "/pricing",
+// Shared pricing plans data
+const pricingPlans = [
+  {
+    name: "Basic",
+    price: "$99.00",
+    description: "Perfect for small teams needing essential IT security and communication tools",
+    features: [
+      "Password Manager",
+      "Business Email Solution",
+      "Email Support (Business Hours)",
+      "Basic Security Monitoring",
+      "Setup & Onboarding Assistance"
+    ],
+    cta: "Choose Basic"
   },
-  openGraph: {
-    url: "/pricing",
-    title: "IT Service Pricing Plans | Boximity MSP",
-    description: "Enterprise-grade technology solutions without enterprise-level complexity or cost. Choose the package that best fits your business needs."
+  {
+    name: "Standard",
+    price: "$249.00",
+    description: "Our most popular option for growing businesses needing comprehensive IT support",
+    features: [
+      "Everything in Basic",
+      "Professional Web Hosting",
+      "Microsoft Collaboration Tools",
+      "Quarterly IT Assessment",
+      "Extended Technical Support",
+      "Cloud Backup Solutions",
+      "30-day email & phone support"
+    ],
+    highlighted: true,
+    cta: "Choose Standard"
+  },
+  {
+    name: "Premium",
+    price: "$449.00",
+    description: "Complete IT management solution for businesses requiring enterprise-grade technology",
+    features: [
+      "Everything in Standard",
+      "24/7 Priority Support",
+      "Server Monitoring & Management",
+      "Reduced Web Design Rates",
+      "Advanced Security Suite",
+      "Dedicated Account Manager",
+      "On-site Consultations",
+      "Unlimited Device Support"
+    ],
+    cta: "Choose Premium"
   }
-};
+];
 
+// Client component to handle the Link with searchParams
+function PricingCards() {
+  return (
+    <div className="row g-4">
+      {pricingPlans.map((plan) => (
+        <div 
+          key={plan.name} 
+          className="col-md-4"
+        >
+          <div className={`card h-100 ${plan.highlighted ? 'border-primary shadow position-relative' : 'border'}`}>
+            {plan.highlighted && (
+              <div className="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill">
+                Most Popular
+              </div>
+            )}
+            <div className="card-body p-4">
+              <h3 className="fs-3 fw-medium mb-2">{plan.name}</h3>
+              <div className="fs-2 fw-light mb-1">{plan.price}</div>
+              <p className="small fst-italic text-secondary mb-3">per user per month</p>
+              <p className="text-secondary mb-4">{plan.description}</p>
+              <ul className="list-unstyled mb-4">
+                {plan.features.map((feature, index) => (
+                  <li key={index} className="d-flex align-items-start mb-2">
+                    <svg className="text-success flex-shrink-0 me-2 mt-1" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="card-footer border-0 bg-transparent p-4 pt-0">
+              <Link 
+                href={`/checkout?plan=${plan.name}`}
+                className={`btn ${plan.highlighted ? 'btn-primary' : 'btn-outline-primary'} w-100`}
+              >
+                {plan.cta}
+              </Link>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Main page component
 export default function Pricing() {
-  const pricingPlans = [
-    {
-      name: "Basic",
-      price: "$99.00",
-      description: "Perfect for small teams needing essential IT security and communication tools",
-      features: [
-        "Password Manager",
-        "Business Email Solution",
-        "Email Support (Business Hours)",
-        "Basic Security Monitoring",
-        "Setup & Onboarding Assistance"
-      ],
-      cta: "Choose Basic"
-    },
-    {
-      name: "Standard",
-      price: "$249.00",
-      description: "Our most popular option for growing businesses needing comprehensive IT support",
-      features: [
-        "Everything in Basic",
-        "Professional Web Hosting",
-        "Microsoft Collaboration Tools",
-        "Quarterly IT Assessment",
-        "Extended Technical Support",
-        "Cloud Backup Solutions",
-        "30-day email & phone support"
-      ],
-      highlighted: true,
-      cta: "Choose Standard"
-    },
-    {
-      name: "Premium",
-      price: "$449.00",
-      description: "Complete IT management solution for businesses requiring enterprise-grade technology",
-      features: [
-        "Everything in Standard",
-        "24/7 Priority Support",
-        "Server Monitoring & Management",
-        "Reduced Web Design Rates",
-        "Advanced Security Suite",
-        "Dedicated Account Manager",
-        "On-site Consultations",
-        "Unlimited Device Support"
-      ],
-      cta: "Choose Premium"
-    }
-  ];
-
   return (
     <>
       {/* Pricing Hero */}
@@ -78,46 +115,9 @@ export default function Pricing() {
       {/* Pricing Plans */}
       <section className="py-5 py-md-7">
         <div className="container">
-          <div className="row g-4">
-            {pricingPlans.map((plan) => (
-              <div 
-                key={plan.name} 
-                className="col-md-4"
-              >
-                <div className={`card h-100 ${plan.highlighted ? 'border-primary shadow position-relative' : 'border'}`}>
-                  {plan.highlighted && (
-                    <div className="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill">
-                      Most Popular
-                    </div>
-                  )}
-                  <div className="card-body p-4">
-                    <h3 className="fs-3 fw-medium mb-2">{plan.name}</h3>
-                    <div className="fs-2 fw-light mb-1">{plan.price}</div>
-                    <p className="small fst-italic text-secondary mb-3">per user per month</p>
-                    <p className="text-secondary mb-4">{plan.description}</p>
-                    <ul className="list-unstyled mb-4">
-                      {plan.features.map((feature, index) => (
-                        <li key={index} className="d-flex align-items-start mb-2">
-                          <svg className="text-success flex-shrink-0 me-2 mt-1" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="card-footer border-0 bg-transparent p-4 pt-0">
-                    <Link 
-                      href={`/checkout?plan=${plan.name}`}
-                      className={`btn ${plan.highlighted ? 'btn-primary' : 'btn-outline-primary'} w-100`}
-                    >
-                      {plan.cta}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Suspense fallback={<div>Loading pricing plans...</div>}>
+            <PricingCards />
+          </Suspense>
         </div>
       </section>
 
