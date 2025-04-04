@@ -279,16 +279,17 @@
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
 
     - name: Stop existing Docker containers
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
         state: absent
       ignore_errors: yes
 
     - name: Build and start Docker containers
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
         build: yes
-        nocache: yes
+        build_args:
+          nocache: yes
         state: present
 
 # Create a separate play for Let's Encrypt setup
