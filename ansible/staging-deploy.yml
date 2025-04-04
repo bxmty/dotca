@@ -277,7 +277,6 @@
         domain_name: "yourdomain.com"
         email_address: "your-email@example.com"
       
-
     - name: Install Certbot and Nginx plugin
       package:
         name:
