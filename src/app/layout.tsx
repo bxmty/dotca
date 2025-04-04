@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import Script from "next/script";
 import BootstrapClient from "./components/BootstrapClient";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
+import GoogleAnalytics from "./components/GoogleAnalytics";
+import { GA_MEASUREMENT_ID } from "@/lib/gtag";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -73,8 +76,31 @@ export default function RootLayout({
   return (
     <html lang="en" data-bs-theme="auto">
       <body>
+        {GA_MEASUREMENT_ID && (
+          <>
+            <Script
+              strategy="afterInteractive"
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            />
+            <Script
+              id="google-analytics"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${GA_MEASUREMENT_ID}', {
+                    page_path: window.location.pathname,
+                  });
+                `,
+              }}
+            />
+          </>
+        )}
         <BootstrapClient />
         <WebVitalsReporter />
+        <GoogleAnalytics />
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
           <main className="flex-grow-1">
