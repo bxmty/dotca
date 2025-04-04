@@ -129,41 +129,41 @@
 
     - name: Pull latest changes from repository
       git:
-      repo: "{{ git_repo_url }}"
-      dest: "{{ app_dir }}/repo"
-      version: "{{ git_branch }}"
-      force: yes
-      update: yes
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+        update: yes
 
     - name: Create .env file for docker-compose
       copy:
-      dest: "{{ app_dir }}/repo/.env"
-      content: |
-        NODE_ENV=production
-        NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-        NEXT_PUBLIC_ENVIRONMENT=staging
-        BREVO_API_KEY={{ brevo_api_key }}
-        STRIPE_SECRET_KEY={{ stripe_secret_key }}
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-        NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
-      mode: '0600'
+        dest: "{{ app_dir }}/repo/.env"
+        content: |
+          NODE_ENV=production
+          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+          NEXT_PUBLIC_ENVIRONMENT=staging
+          BREVO_API_KEY={{ brevo_api_key }}
+          STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
+        mode: '0600'
 
     - name: Stop existing docker containers
-      community.docker.docker_compose:
-      project_src: "{{ app_dir }}/repo"
-      state: absent
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}/repo"
+        state: absent
       ignore_errors: yes
 
     - name: Build Docker containers with no cache
-      community.docker.docker_compose:
-      project_src: "{{ app_dir }}/repo" 
-      build: yes
-      nocache: yes
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}/repo" 
+        build: yes
+        nocache: yes
 
     - name: Start Docker containers
-      community.docker.docker_compose:
-      project_src: "{{ app_dir }}/repo"
-      state: present
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}/repo"
+        state: present
 
     # Configure Nginx as reverse proxy
     - name: Configure Nginx as reverse proxy
