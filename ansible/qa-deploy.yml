@@ -260,6 +260,37 @@
         job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
         state: present
 
+    - name: Pull latest changes from git repository
+      git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        update: yes
+
+    - name: Create .env file for docker-compose
+      copy:
+        dest: "{{ app_dir }}/repo/.env"
+        content: |
+          NODE_ENV=production
+          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+          NEXT_PUBLIC_ENVIRONMENT=qa
+          BREVO_API_KEY={{ brevo_api_key }}
+          STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+
+    - name: Stop existing Docker containers
+      docker_compose:
+        project_src: "{{ app_dir }}/repo"
+        state: absent
+      ignore_errors: yes
+
+    - name: Build and start Docker containers
+      docker_compose:
+        project_src: "{{ app_dir }}/repo"
+        build: yes
+        nocache: yes
+        state: present
+
 # Create a separate play for Let's Encrypt setup
 - name: Setup Let's Encrypt with Nginx
   hosts: digitalocean  # Changed from webservers to match the host group in your first play
