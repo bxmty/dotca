@@ -1,10 +1,22 @@
 // 1. First, create a lib/gtag.js file
 
+// Define types for Google Analytics
+interface GtagEventParams {
+  event_category?: string;
+  event_label?: string;
+  value?: number;
+  [key: string]: unknown; // For other valid gtag event parameters
+}
+
 // Add type definition for window with gtag
 declare global {
   interface Window {
-    dataLayer: any[];
-    gtag: (...args: any[]) => void;
+    dataLayer: Array<IArguments | unknown[]>;
+    gtag: (
+      command: 'js' | 'config' | 'event' | string,
+      target: Date | string,
+      ...args: Array<{[key: string]: unknown}>
+    ) => void;
   }
 }
 
@@ -28,8 +40,8 @@ export const initGA = () => {
   window.dataLayer = window.dataLayer || [];
   
   // Define gtag function properly using rest parameters
-  window.gtag = function(...args) {
-    window.dataLayer.push(args);
+  window.gtag = function(command: string, target: string | Date, ...rest) {
+    window.dataLayer.push({ command, target, ...rest });
   };
   
   window.gtag('js', new Date());
@@ -73,10 +85,12 @@ export const event = ({ action, category, label, value }: {
 }) => {
   if (!GA_MEASUREMENT_ID || (!isProduction && !isStaging)) return;
   
-  window.gtag('event', action, {
+  const eventParams: GtagEventParams = {
     event_category: category,
     event_label: label,
     value: value,
     environment: isStaging ? 'staging' : 'production',
-  });
+  };
+  
+  window.gtag('event', action, eventParams);
 };
