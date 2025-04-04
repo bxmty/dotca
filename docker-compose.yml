@@ -20,6 +20,7 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       - BREVO_API_KEY=${BREVO_API_KEY}
+      - NEXT_PUBLIC_STAGING_GA_ID=${NEXT_PUBLIC_STAGING_GA_ID}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
