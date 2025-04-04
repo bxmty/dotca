@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Script from "next/script";
+import { Suspense } from "react";
 import BootstrapClient from "./components/BootstrapClient";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -100,7 +101,9 @@ export default function RootLayout({
         )}
         <BootstrapClient />
         <WebVitalsReporter />
-        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
           <main className="flex-grow-1">
