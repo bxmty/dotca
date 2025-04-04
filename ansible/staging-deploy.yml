@@ -270,13 +270,15 @@
         job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
         state: present
 
-    - name: Setup Let's Encrypt with Nginx
-      hosts: webservers
-      become: yes
-      vars:
-        domain_name: "yourdomain.com"
-        email_address: "your-email@example.com"
-      
+# Create a separate play for Let's Encrypt setup
+- name: Setup Let's Encrypt with Nginx
+  hosts: digitalocean  # Changed from webservers to match the host group in your first play
+  become: yes
+  vars:
+    domain_name: "boximity.com"
+    email_address: "matticem@boximity.ca"
+  
+  tasks:
     - name: Install Certbot and Nginx plugin
       package:
         name:
