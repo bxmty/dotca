@@ -21,15 +21,15 @@ declare global {
 }
 
 // Environment-specific GA4 Measurement IDs
-export const GA_MEASUREMENT_ID = process.env.NODE_PUBLIC_ENVIRONMENT === 'production' 
+export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production' 
   ? process.env.NEXT_PUBLIC_PROD_GA_ID  // Production GA4 property
   : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
     ? process.env.NEXT_PUBLIC_STAGING_GA_ID  // Staging GA4 property
     : process.env.NEXT_PUBLIC_DEV_GA_ID || '';     // Development GA4 property (optional)
 
 // Determine environment
-const isProduction = process.env.NODE_ENV === 'production' && process.env.NEXT_ENV !== 'staging';
-const isStaging = process.env.NEXT_ENV === 'staging';
+const isProduction = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ENVIRONMENT !== 'staging';
+const isStaging = process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging';
 const isDevelopment = !isProduction && !isStaging;
 
 // Initialize Google Analytics if the measurement ID is available
