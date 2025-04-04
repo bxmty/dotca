@@ -20,7 +20,7 @@ export const initGA = () => {
   window.dataLayer = window.dataLayer || [];
   
   function gtag(...args: any[]) {
-    window.dataLayer.push(args);
+    window.dataLayer.push(arguments);
   }
   
   gtag('js', new Date());
