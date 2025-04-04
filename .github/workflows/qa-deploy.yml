@@ -293,7 +293,7 @@ jobs:
           
           # Set up ansible inventory dynamically
           echo "[qa-server]" > inventory.ini
-          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
+          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_pipelining=True" >> inventory.ini
           cat inventory.ini
           
           # Ensure script is executable
