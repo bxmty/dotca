@@ -8,7 +8,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
-import { GA_MEASUREMENT_ID } from "@/lib/gtag";
+import { GA_MEASUREMENT_ID } from "../lib/gtag";
 
 export const viewport: Viewport = {
   width: "device-width",
