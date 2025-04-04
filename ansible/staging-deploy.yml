@@ -275,7 +275,7 @@
   hosts: digitalocean  # Changed from webservers to match the host group in your first play
   become: yes
   vars:
-    domain_name: "staging19.boximity.com"
+    domain_name: "staging19.boximity.ca"
     email_address: "matticem@boximity.ca"
   
   tasks:
