@@ -245,8 +245,6 @@
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
         build: always
-        build_args:
-          nocache: yes
         state: present
 
 # Create a separate play for Let's Encrypt setup
