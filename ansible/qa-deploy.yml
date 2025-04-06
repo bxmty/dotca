@@ -156,7 +156,7 @@
     - name: Build Docker Compose services
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
-        build: yes
+        build: always
         nocache: yes
       register: output
 
