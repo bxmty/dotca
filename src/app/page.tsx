@@ -52,9 +52,9 @@ export default function Home() {
                 <Link href="/pricing" className="btn btn-light">
                   See Pricing Options
                 </Link>
-                <button className="btn btn-outline-light">
+                <link href="#contact" className="btn btn-outline-light">
                   Get Your IT Assessment
-                </button>
+                </link>
               </div>
             </div>
           </div>
