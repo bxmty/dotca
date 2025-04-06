@@ -129,15 +129,15 @@
 
     - name: Create .env file for docker-compose
       copy:
-      dest: "{{ app_dir }}/repo/.env"
-      content: |
-        NODE_ENV=production
-        NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-        NEXT_PUBLIC_ENVIRONMENT=staging
-        BREVO_API_KEY={{ brevo_api_key }}
-        STRIPE_SECRET_KEY={{ stripe_secret_key }}
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-        NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
+        dest: "{{ app_dir }}/repo/.env"
+        content: |
+          NODE_ENV=production
+          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+          NEXT_PUBLIC_ENVIRONMENT=staging
+          BREVO_API_KEY={{ brevo_api_key }}
+          STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
       
     - name: Pull latest changes from repository
       git:
