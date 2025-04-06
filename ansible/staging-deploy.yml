@@ -141,31 +141,31 @@
       
     - name: Pull latest changes from repository
       git:
-      repo: "{{ git_repo_url }}"
-      dest: "{{ app_dir }}/repo"
-      version: "{{ git_branch }}"
-      force: yes
-      update: yes
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+        update: yes
       
     - name: Stop any running containers
       ansible.builtin.command:
-      cmd: docker compose down
-      chdir: "{{ app_dir }}/repo"
+        cmd: docker compose down
+        chdir: "{{ app_dir }}/repo"
       ignore_errors: yes
       
     - name: Build Docker images
       ansible.builtin.command:
-      cmd: docker compose build --no-cache
-      chdir: "{{ app_dir }}/repo"
+        cmd: docker compose build --no-cache
+        chdir: "{{ app_dir }}/repo"
       
     - name: Start Docker containers
       ansible.builtin.command:
-      cmd: docker compose up -d
-      chdir: "{{ app_dir }}/repo"
+        cmd: docker compose up -d
+        chdir: "{{ app_dir }}/repo"
       
     - name: Display completion message
       debug:
-      msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
+        msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
 
     # Configure Nginx as reverse proxy
     - name: Configure Nginx as reverse proxy
@@ -219,8 +219,7 @@
         enabled: yes
       when: nginx_test.rc == 0
 
-    - name: Run deploy script
-      command: "{{ app_dir }}/deploy.sh"
+# Removed redundant deploy script call - already handled by docker compose steps above
 
     - name: Setup firewall (UFW)
       ufw:
