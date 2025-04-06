@@ -147,6 +147,7 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
           
           # Apply the plan
           terraform apply -auto-approve tfplan
@@ -167,6 +168,7 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
           terraform refresh
           
           # Try multiple methods to get the IP address
@@ -295,7 +297,7 @@ jobs:
           
           # Set up ansible inventory dynamically
           echo "[qa-server]" > inventory.ini
-          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_pipelining=True" >> inventory.ini
+          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
           cat inventory.ini
           
           # Ensure script is executable
@@ -310,7 +312,7 @@ jobs:
           DEPLOY_SUCCESS=false
           for i in {1..3}; do
             echo "Deployment attempt $i..."
-            if ./deploy.sh qa; then
+            if ANSIBLE_HOST_KEY_CHECKING=False ./deploy.sh qa; then
               echo "Deployment successful on attempt $i"
               DEPLOY_SUCCESS=true
               break
