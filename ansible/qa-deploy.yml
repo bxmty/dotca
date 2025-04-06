@@ -14,6 +14,7 @@
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
+    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"  # Added explicit file path
 
   tasks:
     - name: Update apt cache
@@ -150,18 +151,24 @@
     - name: Stop existing Docker Compose services
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
+        files:
+          - docker-compose.yml
         state: absent
       ignore_errors: yes
 
     - name: Build Docker Compose services
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
+        files:
+          - docker-compose.yml
         build: always
       register: output
 
     - name: Start Docker Compose services
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
+        files:
+          - docker-compose.yml
         state: present
 
     - name: Display deployment completion message
