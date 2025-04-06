@@ -37,6 +37,25 @@ jobs:
       - name: Run unit tests
         run: npm test
         continue-on-error: true
+        
+      # New step to validate Ansible playbook
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+      
+      - name: Validate Ansible playbook
+        run: |
+          # Check if the playbook exists
+          if [ -f "qa-deploy.yml" ]; then
+            echo "Validating qa-deploy.yml playbook..."
+            ansible-playbook --syntax-check qa-deploy.yml
+            echo "✅ Ansible playbook syntax is valid"
+          else
+            echo "Checking for other playbooks in current directory..."
+            find . -maxdepth 2 -name "*.yml" -o -name "*.yaml" | grep -v "github/workflows" | xargs -I{} sh -c 'echo "Validating {}..."; ansible-playbook --syntax-check {} || exit 1'
+            echo "✅ All found Ansible playbooks have valid syntax"
+          fi
   
   setup-infra:
     name: Setup Infrastructure
@@ -44,6 +63,7 @@ jobs:
     outputs:
       droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
       resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
+      terraform_changes: ${{ steps.check_terraform_changes.outputs.has_changes }}
     
     steps:
       - name: Checkout code
@@ -120,6 +140,70 @@ jobs:
             echo "Resources need to be created or updated"
           fi
         continue-on-error: true
+      
+      # New step to check for Terraform changes in existing resources
+      - name: Check for Terraform changes
+        id: check_terraform_changes
+        working-directory: ./terraform
+        if: env.RESOURCES_EXIST == 'true'
+        run: |
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
+          
+          # Create a plan and check if there are any changes
+          terraform plan -detailed-exitcode -out=tfplan > plan_output.txt 2>&1
+          PLAN_EXIT_CODE=$?
+          
+          # Terraform plan exit codes:
+          # 0 = No changes
+          # 1 = Error
+          # 2 = Changes present
+          
+          if [ $PLAN_EXIT_CODE -eq 2 ]; then
+            echo "HAS_CHANGES=true" >> $GITHUB_ENV
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in Terraform plan"
+          elif [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "HAS_CHANGES=false" >> $GITHUB_ENV
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in Terraform plan"
+          else
+            echo "::error::Terraform plan failed with exit code $PLAN_EXIT_CODE"
+            cat plan_output.txt
+            exit 1
+          fi
+        continue-on-error: true
+      
+      # New step to apply Terraform changes if they exist
+      - name: Apply Terraform changes
+        if: env.RESOURCES_EXIST == 'true' && env.HAS_CHANGES == 'true'
+        working-directory: ./terraform
+        run: |
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
+          
+          # Apply the changes
+          echo "Applying changes to existing infrastructure..."
+          terraform apply -auto-approve tfplan
+          
+          # Update the droplet IP in case it changed
+          UPDATED_IP=$(terraform output droplet_ip | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+          if [ -n "$UPDATED_IP" ]; then
+            echo "DROPLET_IP=$UPDATED_IP" >> $GITHUB_ENV
+            echo "Updated droplet IP: $UPDATED_IP"
+          fi
         
       - name: Terraform Plan
         if: env.RESOURCES_EXIST != 'true'
@@ -132,6 +216,7 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
           
           # Create plan
           terraform plan -out=tfplan
@@ -223,6 +308,7 @@ jobs:
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
+          TERRAFORM_CHANGES: ${{ needs.setup-infra.outputs.terraform_changes }}
         run: |
           # Fail if we don't have an IP address
           if [ -z "$DROPLET_IP" ]; then
@@ -232,9 +318,9 @@ jobs:
           
           echo "Connecting to IP: $DROPLET_IP"
           
-          # Wait longer for new resources to be fully ready
-          if [ "$RESOURCES_EXIST" != "true" ]; then
-            echo "Waiting for new droplet to be fully ready..."
+          # Wait longer for new or updated resources to be fully ready
+          if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
+            echo "Waiting for droplet to be fully ready..."
             # Try to ping the droplet until it's accessible
             TIMEOUT=300
             INTERVAL=10
