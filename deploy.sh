@@ -98,7 +98,17 @@ EOF
   echo "Running Ansible with inventory:"
   cat inventory.yml
   echo "Using SSH key: $SSH_KEY_PATH"
+  
+  # Setup environment variables for Ansible
+  export ANSIBLE_HOST_KEY_CHECKING=False
+  export ANSIBLE_PYTHON_INTERPRETER=auto_silent
+  export ANSIBLE_STDOUT_CALLBACK=yaml
+  export ANSIBLE_TIMEOUT=60
+  
+  # Test connection first
   ansible -i inventory.yml digitalocean -m ping -v
+  
+  # Run the playbook
   ansible-playbook -i inventory.yml $ansible_playbook
   cd ..
 }
