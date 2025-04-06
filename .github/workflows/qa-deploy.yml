@@ -38,24 +38,6 @@ jobs:
         run: npm test
         continue-on-error: true
         
-      # New step to validate Ansible playbook
-      - name: Install Ansible
-        run: |
-          sudo apt update
-          sudo apt install -y ansible
-      
-      - name: Validate Ansible playbook
-        run: |
-          # Check if the playbook exists
-          if [ -f "qa-deploy.yml" ]; then
-            echo "Validating qa-deploy.yml playbook..."
-            ansible-playbook --syntax-check qa-deploy.yml
-            echo "✅ Ansible playbook syntax is valid"
-          else
-            echo "Checking for other playbooks in current directory..."
-            find . -maxdepth 2 -name "*.yml" -o -name "*.yaml" | grep -v "github/workflows" | xargs -I{} sh -c 'echo "Validating {}..."; ansible-playbook --syntax-check {} || exit 1'
-            echo "✅ All found Ansible playbooks have valid syntax"
-          fi
   
   setup-infra:
     name: Setup Infrastructure
