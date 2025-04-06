@@ -59,7 +59,7 @@ resource "digitalocean_droplet" "app_droplet" {
   image    = "docker-20-04"  # Docker-ready Ubuntu image
   name     = "${var.project_name}-${var.environment}"
   region   = var.region
-  size     = "s-1vcpu-1gb"   # Small droplet with 1 CPU, 1GB RAM
+  size     = "s-1vcpu-2gb"   # Small droplet with 1 CPU, 2GB RAM
   ssh_keys = [var.ssh_key_fingerprint]
   tags     = [var.environment, "nextjs", var.project_name]
 
