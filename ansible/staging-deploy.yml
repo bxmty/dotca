@@ -127,47 +127,45 @@
         msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
       when: not next_config.stat.exists
 
-    - name: Create deploy script
+    - name: Create .env file for docker-compose
       copy:
-        dest: "{{ app_dir }}/deploy.sh"
-        mode: '0755'
-        content: |
-          #!/bin/bash
-          set -e
-
-          echo "Starting deployment process for dotca Staging environment..."
-          cd {{ app_dir }}/repo
-          echo "Changed to repository directory: {{ app_dir }}/repo"
-
-          # Get the public IP address
-          PUBLIC_IP={{ public_ip }}
-          echo "Using public IP address: $PUBLIC_IP"
-
-          # Pull latest changes
-          echo "Pulling latest changes from {{ git_branch }} branch..."
-          git pull origin {{ git_branch }}
-          echo "Repository updated successfully."
-          
-          # Create .env file for docker-compose
-          cat > .env << EOF
-          NODE_ENV=production
-          NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
-          NEXT_PUBLIC_ENVIRONMENT=staging
-          BREVO_API_KEY={{ brevo_api_key }}
-          STRIPE_SECRET_KEY={{ stripe_secret_key }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
-          EOF
-          echo ".env file created successfully."
-
-          # Deploy with docker-compose v2
-          echo "Deploying with docker compose..."
-          docker compose down || echo "No existing containers to stop."
-          docker compose build --no-cache
-          # Ensure Next.js container only binds to localhost on port 3000 and doesn't publish to host port 80
-          docker compose up -d
-          
-          echo "Deployment completed successfully! Application is now behind nginx at http://$PUBLIC_IP"
+      dest: "{{ app_dir }}/repo/.env"
+      content: |
+        NODE_ENV=production
+        NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+        NEXT_PUBLIC_ENVIRONMENT=staging
+        BREVO_API_KEY={{ brevo_api_key }}
+        STRIPE_SECRET_KEY={{ stripe_secret_key }}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+        NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
+      
+    - name: Pull latest changes from repository
+      git:
+      repo: "{{ git_repo_url }}"
+      dest: "{{ app_dir }}/repo"
+      version: "{{ git_branch }}"
+      force: yes
+      update: yes
+      
+    - name: Stop any running containers
+      ansible.builtin.command:
+      cmd: docker compose down
+      chdir: "{{ app_dir }}/repo"
+      ignore_errors: yes
+      
+    - name: Build Docker images
+      ansible.builtin.command:
+      cmd: docker compose build --no-cache
+      chdir: "{{ app_dir }}/repo"
+      
+    - name: Start Docker containers
+      ansible.builtin.command:
+      cmd: docker compose up -d
+      chdir: "{{ app_dir }}/repo"
+      
+    - name: Display completion message
+      debug:
+      msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
 
     # Configure Nginx as reverse proxy
     - name: Configure Nginx as reverse proxy
