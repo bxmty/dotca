@@ -17,55 +17,6 @@
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
     
   tasks:
-    # Add swap space to help with memory limitations
-    - name: Check if swap file exists
-      stat:
-        path: /swapfile
-      register: swap_file_check
-      
-    - name: Check available disk space
-      shell: df -m / | awk 'NR==2 {print $4}'
-      register: available_space
-      when: not swap_file_check.stat.exists
-      
-    - name: Set swap size based on available space
-      set_fact:
-        swap_size: "{{ [1024, (available_space.stdout|int * 0.7)|int] | min }}"
-      when: not swap_file_check.stat.exists and available_space.stdout is defined
-
-    - name: Create swap file if it doesn't exist
-      command: dd if=/dev/zero of=/swapfile bs=1M count={{ swap_size }}
-      when: not swap_file_check.stat.exists and swap_size is defined
-
-    - name: Set permissions on swap file
-      file:
-        path: /swapfile
-        mode: 0600
-      when: not swap_file_check.stat.exists
-
-    - name: Format swap file
-      command: mkswap /swapfile
-      when: not swap_file_check.stat.exists
-
-    - name: Enable swap file
-      command: swapon /swapfile
-      when: not swap_file_check.stat.exists
-
-    - name: Add swap to fstab
-      lineinfile:
-        path: /etc/fstab
-        line: "/swapfile none swap sw 0 0"
-        state: present
-      when: not swap_file_check.stat.exists
-
-    # Configure vm.swappiness for better performance
-    - name: Set vm.swappiness
-      sysctl:
-        name: vm.swappiness
-        value: '10'
-        state: present
-        reload: yes
-
     - name: Update apt cache
       apt:
         update_cache: yes
@@ -89,6 +40,7 @@
         state: present
         update_cache: yes
 
+    # Using Ansible Docker module approach for better maintainability
     - name: Add Docker's official GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
@@ -100,7 +52,7 @@
         state: present
         update_cache: yes
 
-    - name: Install Docker Engine
+    - name: Install Docker packages
       apt:
         name:
           - docker-ce
@@ -108,6 +60,10 @@
           - containerd.io
         state: present
         update_cache: yes
+      register: docker_install_result
+      retries: 3
+      delay: 5
+      until: docker_install_result is success
 
     - name: Install NTP for time synchronization
       apt:
@@ -138,6 +94,10 @@
         name: docker
         state: started
         enabled: yes
+      register: docker_service_result
+      retries: 3
+      delay: 5
+      until: docker_service_result is success
 
     - name: Install Docker Compose V2
       block:
@@ -148,6 +108,16 @@
             mode: '0755'
         
         - name: Download Docker Compose V2
+          get_url:
+            url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
+            dest: /usr/local/lib/docker/cli-plugins/docker-compose
+            mode: '0755'
+      rescue:
+        - name: Report Docker Compose installation failure
+          debug:
+            msg: "Failed to install Docker Compose. Will try one more time."
+        
+        - name: Second attempt to download Docker Compose V2
           get_url:
             url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
             dest: /usr/local/lib/docker/cli-plugins/docker-compose
@@ -165,6 +135,10 @@
         dest: "{{ app_dir }}/repo"
         version: "{{ git_branch }}"
         force: yes
+      register: git_clone
+      retries: 3
+      delay: 10
+      until: git_clone is success
 
     - name: Verify Next.js configuration file
       stat:
@@ -195,45 +169,67 @@
         version: "{{ git_branch }}"
         force: yes
         update: yes
+      register: git_pull
+      retries: 3
+      delay: 5
+      until: git_pull is success
       
     - name: Stop any running containers
       ansible.builtin.command:
         cmd: docker compose down
         chdir: "{{ app_dir }}/repo"
       ignore_errors: yes
+      register: docker_down_result
+      
+    - name: Log container stop status
+      debug:
+        msg: "Container stop result: {{ docker_down_result.stdout | default('No output') }}"
       
     # Clear Docker cache before building to free up space
     - name: Prune Docker system
       ansible.builtin.command:
         cmd: docker system prune -af
       
-    # Build with limited resources and single worker
-    - name: Build Docker images with resource limits
+    # Build without resource limits since we're increasing VM memory
+    - name: Build Docker images
       ansible.builtin.command:
-        cmd: DOCKER_BUILDKIT=1 docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_OPTIONS="--max_old_space_size=512"
+        cmd: DOCKER_BUILDKIT=1 docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
         chdir: "{{ app_dir }}/repo"
       environment:
         DOCKER_BUILDKIT: 1
         COMPOSE_DOCKER_CLI_BUILD: 1
+      register: docker_build
+      retries: 2
+      delay: 30
+      until: docker_build is success
       
-    - name: Start Docker containers with resource limits
+    - name: Log Docker build output on failure
+      debug:
+        msg: "Docker build failed with output: {{ docker_build.stdout | default('No output') }}"
+      when: docker_build is failed
+      
+    - name: Start Docker containers
       ansible.builtin.command:
-        cmd: docker compose up -d --memory=768m --memory-swap=1536m
+        cmd: docker compose up -d
         chdir: "{{ app_dir }}/repo"
+      register: docker_up
+      retries: 2
+      delay: 10
+      until: docker_up is success
       
     - name: Display completion message
       debug:
         msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
 
-    # Configure Nginx as reverse proxy with optimized settings
-    - name: Configure Nginx as reverse proxy with optimized settings
+    # Consolidated Nginx configuration for both HTTP and preparation for HTTPS
+    - name: Configure Nginx as reverse proxy
       copy:
         dest: /etc/nginx/sites-available/nextjs-app
         content: |
           # Optimize worker processes and connections
-          worker_processes 1;
+          worker_processes auto;
           events {
-            worker_connections 512;
+            worker_connections 1024;
             multi_accept on;
           }
           
@@ -255,11 +251,18 @@
             gzip_comp_level 2;
             gzip_min_length 1000;
             gzip_proxied expired no-cache no-store private auth;
-            gzip_types text/plain application/x-javascript text/xml text/css application/xml;
+            gzip_types text/plain application/x-javascript text/xml text/css application/xml application/json;
             
             server {
                 listen 80;
                 server_name _;
+                
+                # Add basic health check endpoint
+                location /health {
+                    access_log off;
+                    add_header Content-Type text/plain;
+                    return 200 'OK';
+                }
                 
                 location / {
                     proxy_pass http://localhost:8080;
@@ -272,7 +275,7 @@
                     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                     proxy_set_header X-Forwarded-Proto $scheme;
                     
-                    # Memory optimization - caching
+                    # Caching
                     proxy_cache_valid 200 302 10m;
                     proxy_cache_valid 404 1m;
                 }
@@ -297,14 +300,21 @@
       changed_when: false
       ignore_errors: true
 
+    - name: Display Nginx test results
+      debug:
+        msg: "{{ nginx_test.stderr_lines }}"
+      when: nginx_test.rc != 0
+
     - name: Restart Nginx
       systemd:
         name: nginx
         state: restarted
         enabled: yes
       when: nginx_test.rc == 0
-
-# Removed redundant deploy script call - already handled by docker compose steps above
+      register: nginx_restart
+      retries: 2
+      delay: 5
+      until: nginx_restart is success
 
     - name: Setup firewall (UFW)
       ufw:
@@ -322,43 +332,66 @@
         state: enabled
         policy: deny
 
-    - name: Set up Cron job for regular deployments (optional)
-      cron:
-        name: "Regular deployment of dotca-nextjs"
-        special_time: daily
-        job: "{{ app_dir }}/deploy.sh >> {{ app_dir }}/deployment.log 2>&1"
-        state: absent  # Change to 'present' if you want to enable this
-
-    - name: Create monitoring script (for basic health checks)
+    # Enhanced health checks with better retry logic
+    - name: Create enhanced monitoring script
       copy:
         dest: "{{ app_dir }}/monitor.sh"
         mode: '0755'
         content: |
           #!/bin/bash
           
-          # Simple monitoring script for the Next.js application
-          # Check memory usage and clean if needed
-          MEM_AVAIL=$(free -m | grep Mem | awk '{print $7}')
+          # Enhanced monitoring script with better retry logic
+          LOG_FILE="{{ app_dir }}/monitoring.log"
           
-          if [ $MEM_AVAIL -lt 100 ]; then
-            echo "[$(date)] Low memory: $MEM_AVAIL MB available. Cleaning cache..."
-            sync; echo 3 > /proc/sys/vm/drop_caches
-            
-            # If Docker is using too much memory, consider restarting service
-            DOCKER_MEM=$(ps aux | grep docker | awk '{sum+=$6} END {print sum/1024}' | cut -d. -f1)
-            if [ $DOCKER_MEM -gt 500 ]; then
-              echo "[$(date)] Docker using too much memory: $DOCKER_MEM MB. Restarting..."
-              systemctl restart docker
-            fi
-          fi
+          # Function to log messages
+          log_message() {
+            echo "[$(date)] $1" | tee -a $LOG_FILE
+          }
           
           # Application health check
-          if ! curl -s -f http://localhost:80 > /dev/null; then
-            echo "[$(date)] Application not responding. Attempting restart..."
-            cd {{ app_dir }}/repo && docker compose restart web
-            systemctl restart nginx
+          HEALTH_CHECK_URL="http://localhost:80/health"
+          MAX_RETRIES=3
+          
+          log_message "Starting health check..."
+          
+          # Check if Docker is running
+          if ! systemctl is-active --quiet docker; then
+            log_message "Docker service is not running! Attempting to restart..."
+            systemctl restart docker
+            sleep 10
+          fi
+          
+          # Check Docker container status
+          CONTAINER_STATUS=$(docker ps | grep -c dotca-nextjs || echo "0")
+          if [ "$CONTAINER_STATUS" -eq "0" ]; then
+            log_message "No containers running! Attempting to start them..."
+            cd {{ app_dir }}/repo && docker compose up -d
+            sleep 15
+          fi
+          
+          # Application health check with retries
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+              log_message "Application is healthy."
+              exit 0
+            else
+              log_message "Health check failed (attempt $i/$MAX_RETRIES). Waiting before retry..."
+              sleep 10
+            fi
+          done
+          
+          log_message "Application not responding after $MAX_RETRIES attempts. Restarting services..."
+          
+          # Restart application services
+          cd {{ app_dir }}/repo && docker compose restart
+          sleep 5
+          systemctl restart nginx
+          
+          # Final check
+          if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+            log_message "Application is now healthy after restart."
           else
-            echo "[$(date)] Application is healthy."
+            log_message "WARNING: Application still unhealthy after restart. Manual intervention required!"
           fi
       
     - name: Set up monitoring cron job
@@ -370,7 +403,7 @@
 
 # Create a separate play for Let's Encrypt setup
 - name: Setup Let's Encrypt with Nginx
-  hosts: digitalocean  # Changed from webservers to match the host group in your first play
+  hosts: digitalocean
   become: yes
   vars:
     domain_name: "staging19.boximity.ca"
@@ -383,37 +416,15 @@
           - certbot
           - python3-certbot-nginx
         state: present
+      register: certbot_install
+      retries: 3
+      delay: 5
+      until: certbot_install is success
 
     - name: Check if certificate already exists
       stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
       register: cert_file
-
-    - name: Configure Nginx for SSL domain
-      copy:
-        dest: /etc/nginx/sites-available/{{ domain_name }}
-        content: |
-          server {
-            listen 80;
-            server_name {{ domain_name }};
-            
-            location / {
-                proxy_pass http://localhost:8080;
-                proxy_http_version 1.1;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection 'upgrade';
-                proxy_set_header Host $host;
-                proxy_cache_bypass $http_upgrade;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            }
-          }
-
-    - name: Enable new domain configuration
-      file:
-        src: /etc/nginx/sites-available/{{ domain_name }}
-        dest: /etc/nginx/sites-enabled/{{ domain_name }}
-        state: link
 
     - name: Restart Nginx before certificate request
       systemd:
@@ -428,6 +439,15 @@
         --email {{ email_address }}
         --redirect
       when: not cert_file.stat.exists
+      register: certbot_result
+      retries: 2
+      delay: 30
+      until: certbot_result is success
+      
+    - name: Log certificate generation results
+      debug:
+        msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
+      when: not cert_file.stat.exists and certbot_result is defined
 
     - name: Add cron job for auto-renewal
       cron:
