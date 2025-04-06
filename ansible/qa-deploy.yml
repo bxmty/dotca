@@ -136,7 +136,7 @@
         update: yes
 
     - name: Create .env file for docker-compose
-      template:
+      copy:
         dest: "{{ app_dir }}/repo/.env"
         mode: '0644'
         content: |
@@ -156,8 +156,7 @@
     - name: Build Docker Compose services
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
-        build: yes
-        nocache: yes
+        build: always
       register: output
 
     - name: Start Docker Compose services
