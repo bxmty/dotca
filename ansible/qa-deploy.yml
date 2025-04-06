@@ -16,15 +16,15 @@
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
 
   tasks:
-    - name: Update apt cache & upgrade packages
+    - name: Update apt cache
       apt:
         update_cache: yes
-        upgrade: yes
-      async: 600
-      poll: 0
-      register: apt_update
 
-    - name: Install packages asynchronously
+    - name: Upgrade all packages
+      apt:
+        upgrade: yes
+
+    - name: Install required packages
       apt:
         name:
           - apt-transport-https
@@ -37,9 +37,7 @@
           - jq
           - nginx
         state: present
-      async: 900
-      poll: 0
-      register: apt_install
+        update_cache: yes
 
     - name: Add Docker's official GPG key
       apt_key:
@@ -52,17 +50,6 @@
         state: present
         update_cache: yes
 
-    - name: Wait for apt update & install tasks to finish
-      async_status:
-        jid: "{{ item }}"
-      register: async_poll_results
-      until: async_poll_results.finished
-      retries: 30
-      delay: 10
-      with_items:
-        - "{{ apt_update.ansible_job_id }}"
-        - "{{ apt_install.ansible_job_id }}"
-      
     - name: Install Docker Engine
       apt:
         name:
@@ -72,22 +59,25 @@
         state: present
         update_cache: yes
 
-    - name: Install and configure NTP
-      block:
-        - name: Install NTP
-          apt:
-            name: ntp
-            state: present
-        - name: Configure NTP
-          lineinfile:
-            path: /etc/ntp.conf
-            regexp: '^server'
-            line: 'server time.nist.gov iburst'
-        - name: Restart NTP 
-          systemd:
-            name: ntp
-            state: restarted
-            enabled: yes
+    - name: Install NTP for time synchronization
+      apt:
+        name: ntp
+        state: present
+        update_cache: yes
+
+    - name: Configure NTP to use time.nist.gov
+      lineinfile:
+        path: /etc/ntp.conf
+        regexp: '^server'
+        line: 'server time.nist.gov iburst'
+        state: present
+        backup: yes
+
+    - name: Restart NTP service
+      systemd:
+        name: ntp
+        state: restarted
+        enabled: yes
 
     - name: Set timezone to Eastern Time
       timezone:
@@ -178,22 +168,13 @@
 
     - name: Run deploy script
       command: "{{ app_dir }}/deploy.sh"
-      async: 600
-      poll: 15
-      register: deploy_result
-      ignore_errors: true
-
-    - name: Check deploy script result
-      debug:
-        var: deploy_result
-      failed_when: deploy_result.rc is defined and deploy_result.rc != 0
 
     - name: Setup firewall (UFW)
       ufw:
         rule: allow
         port: "{{ item }}"
         proto: tcp
-      with_items:
+      loop:
         - '22'
         - '80'
         - '443'
