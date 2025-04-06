@@ -282,6 +282,8 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          ANSIBLE_FAILED: "false"  # Add tracking variable
+        id: deploy_ansible
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
@@ -305,21 +307,24 @@ jobs:
           
           # Run the deployment with retry logic
           echo "Starting deployment..."
+          DEPLOY_SUCCESS=false
           for i in {1..3}; do
             echo "Deployment attempt $i..."
             if ./deploy.sh qa; then
               echo "Deployment successful on attempt $i"
+              DEPLOY_SUCCESS=true
               break
             else
               echo "Deployment attempt $i failed. Waiting before retry..."
               sleep 30
-              
-              if [ $i -eq 3 ]; then
-                echo "::error::All deployment attempts failed"
-                exit 1
-              fi
             fi
           done
+          
+          if [ "$DEPLOY_SUCCESS" != "true" ]; then
+            echo "::error::All deployment attempts failed"
+            echo "ansible_failed=true" >> $GITHUB_OUTPUT
+            exit 1  # This ensures the job fails if all deployment attempts fail
+          fi
   
   deployment-verification:
     name: Verify Deployment
@@ -372,4 +377,3 @@ jobs:
           APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
         run: npm run test:e2e
         continue-on-error: true
-        
