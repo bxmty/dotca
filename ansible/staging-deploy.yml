@@ -22,10 +22,20 @@
       stat:
         path: /swapfile
       register: swap_file_check
+      
+    - name: Check available disk space
+      shell: df -m / | awk 'NR==2 {print $4}'
+      register: available_space
+      when: not swap_file_check.stat.exists
+      
+    - name: Set swap size based on available space
+      set_fact:
+        swap_size: "{{ [1024, (available_space.stdout|int * 0.7)|int] | min }}"
+      when: not swap_file_check.stat.exists and available_space.stdout is defined
 
     - name: Create swap file if it doesn't exist
-      command: dd if=/dev/zero of=/swapfile bs=1M count=2048
-      when: not swap_file_check.stat.exists
+      command: dd if=/dev/zero of=/swapfile bs=1M count={{ swap_size }}
+      when: not swap_file_check.stat.exists and swap_size is defined
 
     - name: Set permissions on swap file
       file:
