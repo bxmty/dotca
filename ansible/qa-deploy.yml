@@ -163,7 +163,6 @@
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
         state: present
-        detached: yes
 
     - name: Display deployment completion message
       debug:
