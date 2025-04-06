@@ -136,7 +136,7 @@
         update: yes
 
     - name: Create .env file for docker-compose
-      template:
+      copy:
         dest: "{{ app_dir }}/repo/.env"
         mode: '0644'
         content: |
