@@ -52,6 +52,17 @@
         state: present
         update_cache: yes
 
+    - name: Wait for apt update & install tasks to finish
+      async_status:
+        jid: "{{ item }}"
+      register: async_poll_results
+      until: async_poll_results.finished
+      retries: 30
+      delay: 10
+      with_items:
+        - "{{ apt_update.ansible_job_id }}"
+        - "{{ apt_install.ansible_job_id }}"
+      
     - name: Install Docker Engine
       apt:
         name:
