@@ -2,6 +2,18 @@
 # Ansible playbook for setting up the Staging environment for dotca
 # With optimizations for Next.js deployment and Nginx reverse proxy
 
+# Add a pre-task to fix temporary directory
+- name: Fix temporary directory issues
+  hosts: digitalocean
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure /tmp directory exists with proper permissions
+      ansible.builtin.raw: |
+        mkdir -p /tmp
+        chmod 1777 /tmp
+        df -h /tmp
+
 - name: Setup Staging environment for dotca
   hosts: digitalocean
   become: true
@@ -174,9 +186,33 @@
       delay: 5
       until: git_pull is success
       
+    - name: Check if docker-compose or docker compose is available
+      ansible.builtin.shell: |
+        if command -v docker-compose &> /dev/null; then
+          echo "docker-compose"
+        elif docker compose version &> /dev/null; then
+          echo "docker compose"
+        else
+          echo "none"
+        fi
+      register: docker_compose_cmd
+      changed_when: false
+
+    - name: Set docker compose command fact
+      ansible.builtin.set_fact:
+        compose_cmd: "{{ docker_compose_cmd.stdout }}"
+
     - name: Stop any running containers
-      ansible.builtin.command:
-        cmd: docker compose down
+      ansible.builtin.shell: |
+        {% if compose_cmd == "docker-compose" %}
+        docker-compose down
+        {% elif compose_cmd == "docker compose" %}
+        docker compose down
+        {% else %}
+        echo "No docker compose available"
+        exit 1
+        {% endif %}
+      args:
         chdir: "{{ app_dir }}/repo"
       ignore_errors: yes
       register: docker_down_result
@@ -192,8 +228,16 @@
       
     # Build without resource limits since we're increasing VM memory
     - name: Build Docker images
-      ansible.builtin.command:
-        cmd: DOCKER_BUILDKIT=1 docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+      ansible.builtin.shell: |
+        {% if compose_cmd == "docker-compose" %}
+        DOCKER_BUILDKIT=1 docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        {% elif compose_cmd == "docker compose" %}
+        DOCKER_BUILDKIT=1 docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        {% else %}
+        echo "No docker compose available"
+        exit 1
+        {% endif %}
+      args:
         chdir: "{{ app_dir }}/repo"
       environment:
         DOCKER_BUILDKIT: 1
@@ -209,8 +253,16 @@
       when: docker_build is failed
       
     - name: Start Docker containers
-      ansible.builtin.command:
-        cmd: docker compose up -d
+      ansible.builtin.shell: |
+        {% if compose_cmd == "docker-compose" %}
+        docker-compose up -d
+        {% elif compose_cmd == "docker compose" %}
+        docker compose up -d
+        {% else %}
+        echo "No docker compose available"
+        exit 1
+        {% endif %}
+      args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
       retries: 2
@@ -222,18 +274,31 @@
         msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
 
     # Consolidated Nginx configuration for both HTTP and preparation for HTTPS
-    - name: Configure Nginx as reverse proxy
+    - name: Configure Nginx worker processes
       copy:
-        dest: /etc/nginx/sites-available/nextjs-app
+        dest: /etc/nginx/nginx.conf
         content: |
-          # Optimize worker processes and connections
+          user www-data;
           worker_processes auto;
+          pid /run/nginx.pid;
+          include /etc/nginx/modules-enabled/*.conf;
+
           events {
             worker_connections 1024;
             multi_accept on;
           }
-          
+
           http {
+            sendfile on;
+            tcp_nopush on;
+            tcp_nodelay on;
+            keepalive_timeout 65;
+            types_hash_max_size 2048;
+            server_tokens off;
+            
+            include /etc/nginx/mime.types;
+            default_type application/octet-stream;
+
             # Optimize buffers
             client_body_buffer_size 10K;
             client_header_buffer_size 1k;
@@ -253,33 +318,46 @@
             gzip_proxied expired no-cache no-store private auth;
             gzip_types text/plain application/x-javascript text/xml text/css application/xml application/json;
             
-            server {
-                listen 80;
-                server_name _;
-                
-                # Add basic health check endpoint
-                location /health {
-                    access_log off;
-                    add_header Content-Type text/plain;
-                    return 200 'OK';
-                }
-                
-                location / {
-                    proxy_pass http://localhost:8080;
-                    proxy_http_version 1.1;
-                    proxy_set_header Upgrade $http_upgrade;
-                    proxy_set_header Connection 'upgrade';
-                    proxy_set_header Host $host;
-                    proxy_cache_bypass $http_upgrade;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                    
-                    # Caching
-                    proxy_cache_valid 200 302 10m;
-                    proxy_cache_valid 404 1m;
-                }
-            }
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_prefer_server_ciphers on;
+            
+            access_log /var/log/nginx/access.log;
+            error_log /var/log/nginx/error.log;
+
+            include /etc/nginx/conf.d/*.conf;
+            include /etc/nginx/sites-enabled/*;
+          }
+
+    - name: Configure Nginx app site
+      copy:
+        dest: /etc/nginx/sites-available/nextjs-app
+        content: |
+          server {
+              listen 80;
+              server_name _;
+              
+              # Add basic health check endpoint
+              location /health {
+                  access_log off;
+                  add_header Content-Type text/plain;
+                  return 200 'OK';
+              }
+              
+              location / {
+                  proxy_pass http://localhost:8080;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  
+                  # Caching
+                  proxy_cache_valid 200 302 10m;
+                  proxy_cache_valid 404 1m;
+              }
           }
 
     - name: Enable the Nginx site
@@ -349,7 +427,7 @@
           }
           
           # Application health check
-          HEALTH_CHECK_URL="http://localhost:80/health"
+          HEALTH_CHECK_URL="http://localhost/health"
           MAX_RETRIES=3
           
           log_message "Starting health check..."
@@ -361,11 +439,19 @@
             sleep 10
           fi
           
-          # Check Docker container status
-          CONTAINER_STATUS=$(docker ps | grep -c dotca-nextjs || echo "0")
-          if [ "$CONTAINER_STATUS" -eq "0" ]; then
-            log_message "No containers running! Attempting to start them..."
-            cd {{ app_dir }}/repo && docker compose up -d
+          # Check available disk space
+          DISK_SPACE=$(df -h /tmp | awk 'NR==2 {print $5}' | sed 's/%//')
+          if [ "$DISK_SPACE" -gt 90 ]; then
+            log_message "Disk space low ($DISK_SPACE%). Cleaning up Docker..."
+            docker system prune -af --volumes
+          fi
+          
+          # Check Docker container status using docker-compose format
+          cd {{ app_dir }}/repo
+          if ! docker compose ps | grep -q "Up"; then
+            log_message "Containers not running properly! Attempting to restart..."
+            docker compose down
+            docker compose up -d
             sleep 15
           fi
           
@@ -383,7 +469,7 @@
           log_message "Application not responding after $MAX_RETRIES attempts. Restarting services..."
           
           # Restart application services
-          cd {{ app_dir }}/repo && docker compose restart
+          cd {{ app_dir }}/repo && docker compose down && docker compose up -d
           sleep 5
           systemctl restart nginx
           
