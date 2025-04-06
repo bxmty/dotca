@@ -17,6 +17,45 @@
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
     
   tasks:
+    # Add swap space to help with memory limitations
+    - name: Check if swap file exists
+      stat:
+        path: /swapfile
+      register: swap_file_check
+
+    - name: Create swap file if it doesn't exist
+      command: dd if=/dev/zero of=/swapfile bs=1M count=2048
+      when: not swap_file_check.stat.exists
+
+    - name: Set permissions on swap file
+      file:
+        path: /swapfile
+        mode: 0600
+      when: not swap_file_check.stat.exists
+
+    - name: Format swap file
+      command: mkswap /swapfile
+      when: not swap_file_check.stat.exists
+
+    - name: Enable swap file
+      command: swapon /swapfile
+      when: not swap_file_check.stat.exists
+
+    - name: Add swap to fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "/swapfile none swap sw 0 0"
+        state: present
+      when: not swap_file_check.stat.exists
+
+    # Configure vm.swappiness for better performance
+    - name: Set vm.swappiness
+      sysctl:
+        name: vm.swappiness
+        value: '10'
+        state: present
+        reload: yes
+
     - name: Update apt cache
       apt:
         update_cache: yes
@@ -153,45 +192,81 @@
         chdir: "{{ app_dir }}/repo"
       ignore_errors: yes
       
-    - name: Build Docker images
+    # Clear Docker cache before building to free up space
+    - name: Prune Docker system
       ansible.builtin.command:
-        cmd: docker compose build --no-cache
-        chdir: "{{ app_dir }}/repo"
+        cmd: docker system prune -af
       
-    - name: Start Docker containers
+    # Build with limited resources and single worker
+    - name: Build Docker images with resource limits
       ansible.builtin.command:
-        cmd: docker compose up -d
+        cmd: DOCKER_BUILDKIT=1 docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_OPTIONS="--max_old_space_size=512"
+        chdir: "{{ app_dir }}/repo"
+      environment:
+        DOCKER_BUILDKIT: 1
+        COMPOSE_DOCKER_CLI_BUILD: 1
+      
+    - name: Start Docker containers with resource limits
+      ansible.builtin.command:
+        cmd: docker compose up -d --memory=768m --memory-swap=1536m
         chdir: "{{ app_dir }}/repo"
       
     - name: Display completion message
       debug:
         msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
 
-    # Configure Nginx as reverse proxy
-    - name: Configure Nginx as reverse proxy
+    # Configure Nginx as reverse proxy with optimized settings
+    - name: Configure Nginx as reverse proxy with optimized settings
       copy:
         dest: /etc/nginx/sites-available/nextjs-app
         content: |
-          server {
-              listen 80;
-              server_name _;
-              
-              location / {
-                  proxy_pass http://localhost:8080;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_cache_bypass $http_upgrade;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-              }
-              
-              # Add SSL configuration later if needed
-              # listen 443 ssl;
-              # ssl_certificate /path/to/cert.pem;
-              # ssl_certificate_key /path/to/key.pem;
+          # Optimize worker processes and connections
+          worker_processes 1;
+          events {
+            worker_connections 512;
+            multi_accept on;
+          }
+          
+          http {
+            # Optimize buffers
+            client_body_buffer_size 10K;
+            client_header_buffer_size 1k;
+            client_max_body_size 8m;
+            large_client_header_buffers 2 1k;
+            
+            # Timeouts
+            client_body_timeout 12;
+            client_header_timeout 12;
+            keepalive_timeout 15;
+            send_timeout 10;
+            
+            # Enable gzip
+            gzip on;
+            gzip_comp_level 2;
+            gzip_min_length 1000;
+            gzip_proxied expired no-cache no-store private auth;
+            gzip_types text/plain application/x-javascript text/xml text/css application/xml;
+            
+            server {
+                listen 80;
+                server_name _;
+                
+                location / {
+                    proxy_pass http://localhost:8080;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_cache_bypass $http_upgrade;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                    
+                    # Memory optimization - caching
+                    proxy_cache_valid 200 302 10m;
+                    proxy_cache_valid 404 1m;
+                }
+            }
           }
 
     - name: Enable the Nginx site
@@ -252,6 +327,22 @@
           #!/bin/bash
           
           # Simple monitoring script for the Next.js application
+          # Check memory usage and clean if needed
+          MEM_AVAIL=$(free -m | grep Mem | awk '{print $7}')
+          
+          if [ $MEM_AVAIL -lt 100 ]; then
+            echo "[$(date)] Low memory: $MEM_AVAIL MB available. Cleaning cache..."
+            sync; echo 3 > /proc/sys/vm/drop_caches
+            
+            # If Docker is using too much memory, consider restarting service
+            DOCKER_MEM=$(ps aux | grep docker | awk '{sum+=$6} END {print sum/1024}' | cut -d. -f1)
+            if [ $DOCKER_MEM -gt 500 ]; then
+              echo "[$(date)] Docker using too much memory: $DOCKER_MEM MB. Restarting..."
+              systemctl restart docker
+            fi
+          fi
+          
+          # Application health check
           if ! curl -s -f http://localhost:80 > /dev/null; then
             echo "[$(date)] Application not responding. Attempting restart..."
             cd {{ app_dir }}/repo && docker compose restart web
