@@ -126,48 +126,50 @@
         msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
       when: not next_config.stat.exists
 
-    - name: Create deploy script
-      copy:
-        dest: "{{ app_dir }}/deploy.sh"
-        mode: '0755'
+    # REPLACEMENT FOR DEPLOY.SH STARTS HERE
+    - name: Pull latest changes from git
+      git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+        update: yes
+
+    - name: Create .env file for docker-compose
+      template:
+        dest: "{{ app_dir }}/repo/.env"
+        mode: '0644'
         content: |
-          #!/bin/bash
-          set -e
-
-          echo "Starting deployment process for dotca QA environment..."
-          cd {{ app_dir }}/repo
-          echo "Changed to repository directory: {{ app_dir }}/repo"
-
-          # Get the public IP address
-          PUBLIC_IP={{ public_ip }}
-          echo "Using public IP address: $PUBLIC_IP"
-
-          # Pull latest changes
-          echo "Pulling latest changes from {{ git_branch }} branch..."
-          git pull origin {{ git_branch }}
-          echo "Repository updated successfully."
-          
-          # Create .env file for docker-compose
-          cat > .env << EOF
           NODE_ENV=production
-          NEXT_PUBLIC_API_URL=http://$PUBLIC_IP/api
+          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
           NEXT_PUBLIC_ENVIRONMENT=qa
           BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          EOF
-          echo ".env file created successfully."
 
-          # Deploy with docker-compose v2
-          echo "Deploying with docker compose..."
-          docker compose down || echo "No existing containers to stop."
-          docker compose build --no-cache
-          docker compose up -d
-          
-          echo "Deployment completed successfully! Application is now available at http://$PUBLIC_IP"
+    - name: Stop existing Docker Compose services
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}/repo"
+        state: absent
+      ignore_errors: yes
 
-    - name: Run deploy script
-      command: "{{ app_dir }}/deploy.sh"
+    - name: Build Docker Compose services
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}/repo"
+        build: yes
+        nocache: yes
+      register: output
+
+    - name: Start Docker Compose services
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}/repo"
+        state: present
+        detached: yes
+
+    - name: Display deployment completion message
+      debug:
+        msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
+    # REPLACEMENT FOR DEPLOY.SH ENDS HERE
 
     - name: Setup firewall (UFW)
       ufw:
@@ -235,7 +237,12 @@
       cron:
         name: "Regular deployment of dotca-nextjs"
         special_time: daily
-        job: "{{ app_dir }}/deploy.sh >> {{ app_dir }}/deployment.log 2>&1"
+        job: >
+          cd {{ app_dir }}/repo && 
+          git pull origin {{ git_branch }} && 
+          docker compose down && 
+          docker compose build --no-cache && 
+          docker compose up -d >> {{ app_dir }}/deployment.log 2>&1
         state: absent  # Change to 'present' if you want to enable this
 
     - name: Create monitoring script (for basic health checks)
@@ -263,7 +270,7 @@
 
 # Create a separate play for Let's Encrypt setup
 - name: Setup Let's Encrypt with Nginx
-  hosts: digitalocean  # Changed from webservers to match the host group in your first play
+  hosts: digitalocean
   become: yes
   vars:
     domain_name: "qa.boximity.ca"
