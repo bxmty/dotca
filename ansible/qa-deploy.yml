@@ -157,7 +157,6 @@
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}/repo"
         build: always
-        nocache: yes
       register: output
 
     - name: Start Docker Compose services
