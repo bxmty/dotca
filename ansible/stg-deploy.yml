@@ -1,8 +1,8 @@
 ---
 # Ansible playbook for setting up the Staging environment for dotca
-# With optimizations for Next.js deployment and Nginx reverse proxy
+# With optimizations for Next.js deployment
 
-# Add a pre-task to fix temporary directory
+# Add a pre-task to fix temporary directory issues
 - name: Fix temporary directory issues
   hosts: digitalocean
   become: true
@@ -27,7 +27,8 @@
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
-    
+    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"  # Added explicit file path
+
   tasks:
     - name: Update apt cache
       apt:
@@ -52,7 +53,6 @@
         state: present
         update_cache: yes
 
-    # Using Ansible Docker module approach for better maintainability
     - name: Add Docker's official GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
@@ -64,7 +64,7 @@
         state: present
         update_cache: yes
 
-    - name: Install Docker packages
+    - name: Install Docker Engine
       apt:
         name:
           - docker-ce
@@ -176,19 +176,8 @@
         msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
       when: not next_config.stat.exists
 
-    - name: Create .env file for docker-compose
-      copy:
-        dest: "{{ app_dir }}/repo/.env"
-        content: |
-          NODE_ENV=production
-          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-          NEXT_PUBLIC_ENVIRONMENT=staging
-          BREVO_API_KEY={{ brevo_api_key }}
-          STRIPE_SECRET_KEY={{ stripe_secret_key }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
-      
-    - name: Pull latest changes from repository
+    # DEPLOYMENT TASKS START HERE
+    - name: Pull latest changes from git
       git:
         repo: "{{ git_repo_url }}"
         dest: "{{ app_dir }}/repo"
@@ -199,7 +188,20 @@
       retries: 3
       delay: 5
       until: git_pull is success
-      
+
+    - name: Create .env file for docker-compose
+      copy:
+        dest: "{{ app_dir }}/repo/.env"
+        mode: '0644'
+        content: |
+          NODE_ENV=production
+          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+          NEXT_PUBLIC_ENVIRONMENT=staging
+          BREVO_API_KEY={{ brevo_api_key }}
+          STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
+
     - name: Check if docker-compose or docker compose is available
       ansible.builtin.shell: |
         if command -v docker-compose &> /dev/null; then
@@ -216,7 +218,7 @@
       ansible.builtin.set_fact:
         compose_cmd: "{{ docker_compose_cmd.stdout }}"
 
-    - name: Stop any running containers
+    - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
         {% if compose_cmd == "docker-compose" %}
         docker-compose down
@@ -230,17 +232,11 @@
         chdir: "{{ app_dir }}/repo"
       ignore_errors: yes
       register: docker_down_result
-      
-    - name: Log container stop status
-      debug:
-        msg: "Container stop result: {{ docker_down_result.stdout | default('No output') }}"
-      
-    # Clear Docker cache before building to free up space
+
     - name: Prune Docker system
       ansible.builtin.command:
         cmd: docker system prune -af
-      
-    # Build without resource limits since we're increasing VM memory
+
     - name: Build Docker images
       ansible.builtin.shell: |
         {% if compose_cmd == "docker-compose" %}
@@ -260,13 +256,8 @@
       retries: 2
       delay: 30
       until: docker_build is success
-      
-    - name: Log Docker build output on failure
-      debug:
-        msg: "Docker build failed with output: {{ docker_build.stdout | default('No output') }}"
-      when: docker_build is failed
-      
-    - name: Start Docker containers
+
+    - name: Start Docker Compose services
       ansible.builtin.shell: |
         {% if compose_cmd == "docker-compose" %}
         docker-compose up -d
@@ -282,12 +273,11 @@
       retries: 2
       delay: 10
       until: docker_up is success
-      
-    - name: Display completion message
-      debug:
-        msg: "Deployment completed successfully! Application is now behind nginx at http://{{ public_ip }}"
 
-    # Consolidated Nginx configuration for both HTTP and preparation for HTTPS
+    - name: Display deployment completion message
+      debug:
+        msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
+
     - name: Configure Nginx worker processes
       copy:
         dest: /etc/nginx/nginx.conf
@@ -342,7 +332,7 @@
             include /etc/nginx/sites-enabled/*;
           }
 
-    - name: Configure Nginx app site
+    - name: Configure Nginx as reverse proxy
       copy:
         dest: /etc/nginx/sites-available/nextjs-app
         content: |
@@ -374,7 +364,7 @@
               }
           }
 
-    - name: Enable the Nginx site
+    - name: Enable Nginx site configuration
       file:
         src: /etc/nginx/sites-available/nextjs-app
         dest: /etc/nginx/sites-enabled/nextjs-app
@@ -418,13 +408,13 @@
         - '80'
         - '443'
         - '6080'
+        - '8080'
 
     - name: Enable UFW
       ufw:
         state: enabled
         policy: deny
 
-    # Enhanced health checks with better retry logic
     - name: Create enhanced monitoring script
       copy:
         dest: "{{ app_dir }}/monitor.sh"
@@ -506,7 +496,7 @@
   hosts: digitalocean
   become: yes
   vars:
-    domain_name: "staging19.boximity.ca"
+    domain_name: "staging.boximity.ca"
     email_address: "matticem@boximity.ca"
   
   tasks:
