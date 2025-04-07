@@ -270,57 +270,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Testimonials Section */}
-      <section className="py-5 py-md-7">
-        <div className="container">
-          <h2 className="fs-1 fw-light mb-5 text-center border-bottom pb-3">Why Small Businesses Choose Our Cloud Bundle</h2>
-          <div className="row g-4 mb-5">
-            <div className="col-md-6">
-              <div className="card h-100">
-                <div className="card-body">
-                  <p className="fs-5 fst-italic mb-4 text-body">
-                    &quot;Since switching to their cloud bundle, we&apos;ve eliminated at least 5 hours of IT headaches each week. Now we&apos;re focusing that time on serving our customers instead.&quot;
-                  </p>
-                  <div className="d-flex align-items-center">
-                    <div className="bg-secondary rounded-circle me-3" style={{width: "3rem", height: "3rem"}}></div>
-                    <div>
-                      <p className="fw-medium mb-0">Sarah K.</p>
-                      <p className="small mb-0">Accounting Firm Owner</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-6">
-              <div className="card h-100">
-                <div className="card-body">
-                  <p className="fs-5 fst-italic mb-4 text-body">
-                    &quot;Their team made the transition painless. We&apos;re now more secure and productive than ever, all while spending less on technology.&quot;
-                  </p>
-                  <div className="d-flex align-items-center">
-                    <div className="bg-secondary rounded-circle me-3" style={{width: "3rem", height: "3rem"}}></div>
-                    <div>
-                      <p className="fw-medium mb-0">Michael T.</p>
-                      <p className="small mb-0">Legal Practice</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="text-center">
-            <p className="fw-medium mb-4">Trusted by over 200 small businesses in your region</p>
-            <div className="d-flex justify-content-center gap-4">
-              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
-              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
-              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
-              <div className="bg-secondary rounded" style={{width: "6rem", height: "3rem"}}></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      
       {/* Pricing Section */}
       <section className="py-5 py-md-7 bg-secondary">
         <div className="container">
