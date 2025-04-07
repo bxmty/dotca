@@ -124,6 +124,13 @@
             url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
             dest: /usr/local/lib/docker/cli-plugins/docker-compose
             mode: '0755'
+
+        - name: Create symlink for docker-compose command
+          file:
+            src: /usr/local/lib/docker/cli-plugins/docker-compose
+            dest: /usr/local/bin/docker-compose
+            state: link
+            mode: '0755'
       rescue:
         - name: Report Docker Compose installation failure
           debug:
@@ -133,6 +140,13 @@
           get_url:
             url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
             dest: /usr/local/lib/docker/cli-plugins/docker-compose
+            mode: '0755'
+            
+        - name: Create symlink for docker-compose command (second attempt)
+          file:
+            src: /usr/local/lib/docker/cli-plugins/docker-compose
+            dest: /usr/local/bin/docker-compose
+            state: link
             mode: '0755'
 
     - name: Create application directory
