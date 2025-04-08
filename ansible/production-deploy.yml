@@ -279,27 +279,19 @@
           NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id }}
 
     # Create a reusable Docker Compose command helper
-    - name: Set Docker Compose Command (simplified)
+    - name: Set Docker Compose Command
       ansible.builtin.set_fact:
-        docker_compose_cmd: "{{ '/usr/local/bin/docker-compose' }}"
+        docker_compose_cmd: "{{ lookup('pipe', 'if command -v docker-compose &> /dev/null; then echo docker-compose; elif docker compose version &> /dev/null; then echo \"docker compose\"; elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then echo /usr/bin/docker-compose; elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then echo /usr/local/bin/docker-compose; else echo none; fi') }}"
 
     - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
-        cd {{ app_dir }}/repo
-        if command -v docker-compose &> /dev/null; then
-          docker-compose down
-        elif command -v /usr/local/bin/docker-compose &> /dev/null; then
-          /usr/local/bin/docker-compose down
-        elif docker compose version &> /dev/null; then
-          docker compose down
-        else
-          echo "No docker-compose found"
-          exit 1
-        fi
+        set -e
+        {{ docker_compose_cmd }} down
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
       ignore_errors: yes
+      when: docker_compose_cmd != "none"
     
     - name: Install docker-compose if not found
       pip:
