@@ -237,84 +237,34 @@
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
 
-    - name: Check if docker-compose or docker compose is available (fixed)
-      ansible.builtin.shell: |
-        # First try docker compose (v2 plugin format)
-        if docker compose version &> /dev/null; then
-          echo "docker compose"
-          exit 0
-        fi
-        
-        # Then try docker-compose (standalone binary)
-        if command -v docker-compose &> /dev/null; then
-          echo "docker-compose"
-          exit 0
-        fi
-        
-        # Check specific paths
-        if [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-          echo "docker-compose"
-          exit 0
-        fi
-        
-        if [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "docker-compose"
-          exit 0
-        fi
-        
-        # As a last resort, try to install
-        echo "Installing docker-compose..."
-        pip3 install docker-compose
-        if command -v docker-compose &> /dev/null; then
-          echo "docker-compose"
-          exit 0
-        fi
-        
-        echo "none"
-      register: docker_compose_cmd
-      changed_when: false
-
-    - name: Set docker compose command fact
+    # Create a reusable Docker Compose command helper
+    - name: Set Docker Compose Command
       ansible.builtin.set_fact:
-        compose_cmd: "{{ docker_compose_cmd.stdout }}"
+        docker_compose_cmd: "{{ lookup('pipe', 'if command -v docker-compose &> /dev/null; then echo docker-compose; elif docker compose version &> /dev/null; then echo \"docker compose\"; elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then echo /usr/bin/docker-compose; elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then echo /usr/local/bin/docker-compose; else echo none; fi') }}"
 
     - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
         set -e
-        # Try to detect Docker Compose directly in the task for more reliability
-        if command -v docker-compose &> /dev/null; then
-          echo "Using docker-compose command"
-          docker-compose down
-        elif docker compose version &> /dev/null; then
-          echo "Using docker compose plugin"
-          docker compose down
-        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-          echo "Using /usr/bin/docker-compose"
-          /usr/bin/docker-compose down
-        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "Using /usr/local/bin/docker-compose"
-          /usr/local/bin/docker-compose down
-        else
-          # Last try - use the variable from previous check
-          if [ "{{ compose_cmd }}" == "docker-compose" ]; then
-            docker-compose down
-          elif [ "{{ compose_cmd }}" == "docker compose" ]; then
-            docker compose down
-          else
-            echo "No docker compose available"
-            echo "Installing docker-compose with pip3 as emergency fallback..."
-            pip3 install docker-compose
-            if command -v docker-compose &> /dev/null; then
-              docker-compose down
-            else
-              exit 1
-            fi
-          fi
-        fi
+        {{ docker_compose_cmd }} down
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
       ignore_errors: yes
+      when: docker_compose_cmd != "none"
+
+    - name: Install docker-compose if not found
+      pip:
+        name: docker-compose
+        state: present
+        executable: pip3
+      when: docker_compose_cmd == "none"
+      register: pip_install
+      
+    # Re-check docker-compose after pip install if needed
+    - name: Re-check docker-compose after pip install
+      ansible.builtin.set_fact:
+        docker_compose_cmd: "docker-compose"
+      when: docker_compose_cmd == "none" and pip_install is success
 
     - name: Prune Docker system
       ansible.builtin.command:
@@ -325,31 +275,7 @@
         set -e
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        
-        # Try to detect Docker Compose directly in the task for more reliability
-        if command -v docker-compose &> /dev/null; then
-          echo "Using docker-compose command"
-          docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        elif docker compose version &> /dev/null; then
-          echo "Using docker compose plugin"
-          docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-          echo "Using /usr/bin/docker-compose"
-          /usr/bin/docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "Using /usr/local/bin/docker-compose"
-          /usr/local/bin/docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        else
-          # Last try - use the variable from previous check
-          if [ "{{ compose_cmd }}" == "docker-compose" ]; then
-            docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-          elif [ "{{ compose_cmd }}" == "docker compose" ]; then
-            docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-          else
-            echo "No docker compose available"
-            exit 1
-          fi
-        fi
+        {{ docker_compose_cmd }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
@@ -363,30 +289,7 @@
     - name: Start Docker Compose services
       ansible.builtin.shell: |
         set -e
-        # Try to detect Docker Compose directly in the task for more reliability
-        if command -v docker-compose &> /dev/null; then
-          echo "Using docker-compose command"
-          docker-compose up -d
-        elif docker compose version &> /dev/null; then
-          echo "Using docker compose plugin"
-          docker compose up -d
-        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-          echo "Using /usr/bin/docker-compose"
-          /usr/bin/docker-compose up -d
-        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "Using /usr/local/bin/docker-compose"
-          /usr/local/bin/docker-compose up -d
-        else
-          # Last try - use the variable from previous check
-          if [ "{{ compose_cmd }}" == "docker-compose" ]; then
-            docker-compose up -d
-          elif [ "{{ compose_cmd }}" == "docker compose" ]; then
-            docker compose up -d
-          else
-            echo "No docker compose available"
-            exit 1
-          fi
-        fi
+        {{ docker_compose_cmd }} up -d
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
@@ -432,7 +335,6 @@
             # Timeouts
             client_body_timeout 12;
             client_header_timeout 12;
-            keepalive_timeout 15;
             send_timeout 10;
             
             # Enable gzip
@@ -636,11 +538,44 @@
         path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
       register: cert_file
 
+    # Check if domain is properly configured in Nginx before requesting a certificate
+    - name: Verify domain configuration in Nginx
+      ansible.builtin.shell: |
+        if [ -f /etc/nginx/sites-available/nextjs-app ]; then
+          grep -q "server_name {{ domain_name }}" /etc/nginx/sites-available/nextjs-app || echo "Domain not configured"
+        else
+          echo "Nginx config not found"
+        fi
+      register: domain_check
+      changed_when: false
+
+    - name: Configure domain in Nginx if needed
+      ansible.builtin.replace:
+        path: /etc/nginx/sites-available/nextjs-app
+        regexp: 'server_name _;'
+        replace: 'server_name {{ domain_name }};'
+      when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
+      register: nginx_domain_update
+
     - name: Restart Nginx before certificate request
       systemd:
         name: nginx
         state: restarted
         enabled: yes
+      when: nginx_domain_update is changed
+
+    # Verify Nginx is responding with the correct domain before obtaining certificate
+    - name: Verify Nginx is serving the domain correctly
+      ansible.builtin.uri:
+        url: http://localhost
+        method: GET
+        return_content: yes
+      register: nginx_check
+      ignore_errors: yes
+
+    - name: Debug Nginx response
+      debug:
+        msg: "Nginx Health Check: {{ nginx_check.status | default('Failed') }}"
 
     - name: Obtain SSL certificate
       command: >
@@ -648,7 +583,7 @@
         --non-interactive --agree-tos 
         --email {{ email_address }}
         --redirect
-      when: not cert_file.stat.exists
+      when: not cert_file.stat.exists and (nginx_check.status | default(0)) == 200
       register: certbot_result
       retries: 2
       delay: 30
