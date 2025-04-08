@@ -188,34 +188,55 @@
           until: pip_install_result is success
           when: compose_version is failed
 
-        # Verify Docker Compose installation (more comprehensive)
-        - name: Verify Docker Compose installation (comprehensive)
+        - name: Check for existing docker-compose
           ansible.builtin.shell: |
-            set -e
-            # Try different commands until one works
+            if command -v docker-compose &> /dev/null; then
+              echo "found_binary"
+            elif docker compose version &> /dev/null; then
+              echo "found_plugin"
+            elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+              echo "found_usr_local"
+            else
+              echo "not_found"
+            fi
+          register: docker_compose_check
+          changed_when: false
+
+        - name: Install docker-compose via pip if not found
+          pip:
+            name: docker-compose
+            state: present
+            executable: pip3
+          when: docker_compose_check.stdout == "not_found"
+          register: pip_install_result
+          retries: 3
+          delay: 5
+          until: pip_install_result is success
+
+        - name: Wait for docker-compose to be available after installation
+          ansible.builtin.pause:
+            seconds: 5
+          when: pip_install_result is changed
+
+        - name: Verify docker-compose is now available
+          ansible.builtin.shell: |
             if command -v docker-compose &> /dev/null; then
               docker-compose --version
-              echo "Using docker-compose binary"
               exit 0
-            fi
-            
-            if docker compose version &> /dev/null; then
+            elif docker compose version &> /dev/null; then
               docker compose version
-              echo "Using docker compose plugin"
               exit 0
-            fi
-            
-            if [ -f /usr/local/bin/docker-compose ]; then
+            elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
               /usr/local/bin/docker-compose --version
-              echo "Using /usr/local/bin/docker-compose"
               exit 0
+            else
+              echo "Docker Compose still not found after installation attempts"
+              exit 1
             fi
-            
-            echo "No working docker-compose found. Trying one last installation..."
-            pip3 install docker-compose
-            /usr/local/bin/docker-compose --version
           register: compose_verification
-          changed_when: "'No working docker-compose found' in compose_verification.stdout"
+          changed_when: false
+          failed_when: compose_verification.rc != 0
+          when: pip_install_result is changed
 
     # Install via pip as last resort
     - name: Install docker-compose via pip as fallback
