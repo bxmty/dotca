@@ -27,7 +27,7 @@
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
-    ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
+    ga_production_id: "{{ lookup('env', 'NEXT_PUBLIC_PROD_GA_ID') }}"
     otel_exporter_otlp_endpoint: "{{ lookup('env', 'OTEL_EXPORTER_OTLP_ENDPOINT') | default('http://localhost:4318', true) }}"
     docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
     backup_dir: "{{ app_dir }}/backups"
