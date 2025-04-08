@@ -111,7 +111,7 @@
       delay: 5
       until: docker_service_result is success
 
-    - name: Install Docker Compose V2
+    - name: Install Docker Compose V2 (improved)
       block:
       # First make sure Docker is running
       - name: Ensure Docker service is running
@@ -132,9 +132,18 @@
           mode: '0755'
         with_items:
           - /usr/local/lib/docker/cli-plugins
-          - /root/.docker/cli-plugins  # Add this additional directory for more compatibility
-      
-      # Download Docker Compose V2 with a specific version
+          - /root/.docker/cli-plugins
+          - /root/.docker
+
+      # Try the docker compose plugin installation first
+      - name: Try to install docker-compose-plugin with apt
+        apt:
+          name: docker-compose-plugin
+          state: present
+        register: plugin_install
+        ignore_errors: yes
+
+      # Download Docker Compose V2 with a specific version if plugin install fails
       - name: Download Docker Compose V2
         get_url:
           url: https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64
@@ -145,41 +154,35 @@
         retries: 3
         delay: 5
         until: compose_download is success
+        when: plugin_install is failed
 
-      # Check if files exist before creating symlinks
-      - name: Check if existing docker-compose files exist
-        stat:
-          path: "{{ item }}"
-        register: compose_paths
-        with_items:
-          - /usr/local/bin/docker-compose
-          - /root/.docker/cli-plugins/docker-compose
-        
-      # Remove existing files if they're not symlinks
-      - name: Remove existing docker-compose files if they're not symlinks
-        file:
-          path: "{{ item.item }}"
-          state: absent
-        when: item.stat.exists and not item.stat.islnk
-        with_items: "{{ compose_paths.results }}"
-          
-      # Create symlinks to both locations
+      # Create symlinks for docker-compose command
       - name: Create symlinks for docker-compose command
         file:
           src: /usr/local/lib/docker/cli-plugins/docker-compose
           dest: "{{ item }}"
           state: link
           mode: '0755'
+          force: yes
         with_items:
           - /usr/local/bin/docker-compose
           - /root/.docker/cli-plugins/docker-compose
+        when: compose_download is success and compose_download is not skipped
 
-    # Install via pip as fallback if the download method fails
+      # Verify Docker Compose installation
+      - name: Verify Docker Compose installation
+        shell: docker compose version || docker-compose --version
+        register: compose_version
+        ignore_errors: yes
+        changed_when: false
+
+    # Install via pip as last resort
     - name: Install docker-compose via pip as fallback
       pip:
         name: docker-compose
         state: present
-      when: compose_download is failed
+        executable: pip3
+      when: (compose_version is failed) or (compose_version.rc != 0)
 
     - name: Create application directory
       file:
@@ -234,24 +237,40 @@
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
 
-    - name: Check if docker-compose or docker compose is available (more robust)
+    - name: Check if docker-compose or docker compose is available (fixed)
       ansible.builtin.shell: |
-        # Try both versions with multiple paths
+        # First try docker compose (v2 plugin format)
         if docker compose version &> /dev/null; then
           echo "docker compose"
-        elif docker-compose --version &> /dev/null; then
-          echo "docker-compose"
-        elif /usr/local/bin/docker-compose --version &> /dev/null; then
-          echo "docker-compose"
-        else
-          # Try one more installation method as last resort
-          pip install docker-compose
-          if docker-compose --version &> /dev/null; then
-            echo "docker-compose"
-          else
-            echo "none"
-          fi
+          exit 0
         fi
+        
+        # Then try docker-compose (standalone binary)
+        if command -v docker-compose &> /dev/null; then
+          echo "docker-compose"
+          exit 0
+        fi
+        
+        # Check specific paths
+        if [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+          echo "docker-compose"
+          exit 0
+        fi
+        
+        if [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "docker-compose"
+          exit 0
+        fi
+        
+        # As a last resort, try to install
+        echo "Installing docker-compose..."
+        pip3 install docker-compose
+        if command -v docker-compose &> /dev/null; then
+          echo "docker-compose"
+          exit 0
+        fi
+        
+        echo "none"
       register: docker_compose_cmd
       changed_when: false
 
@@ -261,18 +280,41 @@
 
     - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
-        {% if compose_cmd == "docker-compose" %}
-        docker-compose down
-        {% elif compose_cmd == "docker compose" %}
-        docker compose down
-        {% else %}
-        echo "No docker compose available"
-        exit 1
-        {% endif %}
+        set -e
+        # Try to detect Docker Compose directly in the task for more reliability
+        if command -v docker-compose &> /dev/null; then
+          echo "Using docker-compose command"
+          docker-compose down
+        elif docker compose version &> /dev/null; then
+          echo "Using docker compose plugin"
+          docker compose down
+        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+          echo "Using /usr/bin/docker-compose"
+          /usr/bin/docker-compose down
+        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "Using /usr/local/bin/docker-compose"
+          /usr/local/bin/docker-compose down
+        else
+          # Last try - use the variable from previous check
+          if [ "{{ compose_cmd }}" == "docker-compose" ]; then
+            docker-compose down
+          elif [ "{{ compose_cmd }}" == "docker compose" ]; then
+            docker compose down
+          else
+            echo "No docker compose available"
+            echo "Installing docker-compose with pip3 as emergency fallback..."
+            pip3 install docker-compose
+            if command -v docker-compose &> /dev/null; then
+              docker-compose down
+            else
+              exit 1
+            fi
+          fi
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
-      ignore_errors: yes
       register: docker_down_result
+      ignore_errors: yes
 
     - name: Prune Docker system
       ansible.builtin.command:
@@ -280,14 +322,34 @@
 
     - name: Build Docker images
       ansible.builtin.shell: |
-        {% if compose_cmd == "docker-compose" %}
-        DOCKER_BUILDKIT=1 docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        {% elif compose_cmd == "docker compose" %}
-        DOCKER_BUILDKIT=1 docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        {% else %}
-        echo "No docker compose available"
-        exit 1
-        {% endif %}
+        set -e
+        export DOCKER_BUILDKIT=1
+        export COMPOSE_DOCKER_CLI_BUILD=1
+        
+        # Try to detect Docker Compose directly in the task for more reliability
+        if command -v docker-compose &> /dev/null; then
+          echo "Using docker-compose command"
+          docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        elif docker compose version &> /dev/null; then
+          echo "Using docker compose plugin"
+          docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+          echo "Using /usr/bin/docker-compose"
+          /usr/bin/docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "Using /usr/local/bin/docker-compose"
+          /usr/local/bin/docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        else
+          # Last try - use the variable from previous check
+          if [ "{{ compose_cmd }}" == "docker-compose" ]; then
+            docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+          elif [ "{{ compose_cmd }}" == "docker compose" ]; then
+            docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+          else
+            echo "No docker compose available"
+            exit 1
+          fi
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
@@ -300,14 +362,31 @@
 
     - name: Start Docker Compose services
       ansible.builtin.shell: |
-        {% if compose_cmd == "docker-compose" %}
-        docker-compose up -d
-        {% elif compose_cmd == "docker compose" %}
-        docker compose up -d
-        {% else %}
-        echo "No docker compose available"
-        exit 1
-        {% endif %}
+        set -e
+        # Try to detect Docker Compose directly in the task for more reliability
+        if command -v docker-compose &> /dev/null; then
+          echo "Using docker-compose command"
+          docker-compose up -d
+        elif docker compose version &> /dev/null; then
+          echo "Using docker compose plugin"
+          docker compose up -d
+        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+          echo "Using /usr/bin/docker-compose"
+          /usr/bin/docker-compose up -d
+        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "Using /usr/local/bin/docker-compose"
+          /usr/local/bin/docker-compose up -d
+        else
+          # Last try - use the variable from previous check
+          if [ "{{ compose_cmd }}" == "docker-compose" ]; then
+            docker-compose up -d
+          elif [ "{{ compose_cmd }}" == "docker compose" ]; then
+            docker compose up -d
+          else
+            echo "No docker compose available"
+            exit 1
+          fi
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
