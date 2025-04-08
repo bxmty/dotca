@@ -20,7 +20,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.0.0
+          terraform_version: 1.5.7
           
       - name: Setup DigitalOcean CLI
         run: |
@@ -33,7 +33,8 @@ jobs:
         run: |
           terraform init \
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
-            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -backend-config="key=dotca/terraform-qa.tfstate"
         
       - name: Terraform Plan Destroy
         working-directory: ./terraform
@@ -43,6 +44,7 @@ jobs:
             -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
             -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
             -var="git_branch=qa" \
+            -var="environment=qa" \
             -out=tfdestroyplan
         
       - name: Terraform Destroy
