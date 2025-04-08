@@ -264,7 +264,6 @@ jobs:
           [[ -z "${{ secrets.EMAIL_ADDRESS }}" ]] && missing_secrets="$missing_secrets EMAIL_ADDRESS"
           [[ -z "${{ secrets.BREVO_API_KEY }}" ]] && missing_secrets="$missing_secrets BREVO_API_KEY"
           [[ -z "${{ secrets.STRIPE_SECRET_KEY }}" ]] && missing_secrets="$missing_secrets STRIPE_SECRET_KEY"
-          [[ -z "${{ secrets.STRIPE_PUBLISHABLE_KEY }}" ]] && missing_secrets="$missing_secrets STRIPE_PUBLISHABLE_KEY"
           [[ -z "${{ secrets.NEXT_PUBLIC_PROD_GA_ID }}" ]] && missing_secrets="$missing_secrets NEXT_PUBLIC_PROD_GA_ID"
           
           # Exit with error if any secrets are missing
