@@ -113,41 +113,56 @@
 
     - name: Install Docker Compose V2
       block:
-        - name: Create Docker CLI plugins directory
-          file:
-            path: /usr/local/lib/docker/cli-plugins
-            state: directory
-            mode: '0755'
-        
-        - name: Download Docker Compose V2
-          get_url:
-            url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
-            dest: /usr/local/lib/docker/cli-plugins/docker-compose
-            mode: '0755'
+      # First make sure Docker is running
+      - name: Ensure Docker service is running
+        systemd:
+          name: docker
+          state: started
+          enabled: yes
+        register: docker_service_result
+        retries: 3
+        delay: 5
+        until: docker_service_result is success
 
-        - name: Create symlink for docker-compose command
-          file:
-            src: /usr/local/lib/docker/cli-plugins/docker-compose
-            dest: /usr/local/bin/docker-compose
-            state: link
-            mode: '0755'
-      rescue:
-        - name: Report Docker Compose installation failure
-          debug:
-            msg: "Failed to install Docker Compose. Will try one more time."
-        
-        - name: Second attempt to download Docker Compose V2
-          get_url:
-            url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
-            dest: /usr/local/lib/docker/cli-plugins/docker-compose
-            mode: '0755'
-            
-        - name: Create symlink for docker-compose command (second attempt)
-          file:
-            src: /usr/local/lib/docker/cli-plugins/docker-compose
-            dest: /usr/local/bin/docker-compose
-            state: link
-            mode: '0755'
+      # Create Docker CLI plugins directory
+      - name: Create Docker CLI plugins directory
+        file:
+          path: "{{ item }}"
+          state: directory
+          mode: '0755'
+        with_items:
+          - /usr/local/lib/docker/cli-plugins
+          - /root/.docker/cli-plugins  # Add this additional directory for more compatibility
+      
+      # Download Docker Compose V2 with a specific version
+      - name: Download Docker Compose V2
+        get_url:
+          url: https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64
+          dest: /usr/local/lib/docker/cli-plugins/docker-compose
+          mode: '0755'
+          force: yes
+        register: compose_download
+        retries: 3
+        delay: 5
+        until: compose_download is success
+
+      # Create symlinks to both locations
+      - name: Create symlinks for docker-compose command
+        file:
+          src: /usr/local/lib/docker/cli-plugins/docker-compose
+          dest: "{{ item }}"
+          state: link
+          mode: '0755'
+        with_items:
+          - /usr/local/bin/docker-compose
+          - /root/.docker/cli-plugins/docker-compose
+
+    # Install via pip as fallback if the download method fails
+    - name: Install docker-compose via pip as fallback
+      pip:
+        name: docker-compose
+        state: present
+      when: compose_download is failed
 
     - name: Create application directory
       file:
@@ -202,14 +217,23 @@
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
 
-    - name: Check if docker-compose or docker compose is available
+    - name: Check if docker-compose or docker compose is available (more robust)
       ansible.builtin.shell: |
-        if command -v docker-compose &> /dev/null; then
-          echo "docker-compose"
-        elif docker compose version &> /dev/null; then
+        # Try both versions with multiple paths
+        if docker compose version &> /dev/null; then
           echo "docker compose"
+        elif docker-compose --version &> /dev/null; then
+          echo "docker-compose"
+        elif /usr/local/bin/docker-compose --version &> /dev/null; then
+          echo "docker-compose"
         else
-          echo "none"
+          # Try one more installation method as last resort
+          pip install docker-compose
+          if docker-compose --version &> /dev/null; then
+            echo "docker-compose"
+          else
+            echo "none"
+          fi
         fi
       register: docker_compose_cmd
       changed_when: false
@@ -450,30 +474,30 @@
             docker system prune -af --volumes
           fi
           
-          # Check Docker container status using docker-compose format
+          # Check Docker container status (modify this line in your monitor.sh)
           cd {{ app_dir }}/repo
-          if ! docker compose ps | grep -q "Up"; then
+          if ! docker ps | grep -q "{{ project_name }}"; then
             log_message "Containers not running properly! Attempting to restart..."
-            docker compose down
-            docker compose up -d
+            # Try multiple docker compose commands
+            if command -v docker-compose &> /dev/null; then
+              docker-compose down
+              docker-compose up -d
+            else
+              docker compose down
+              docker compose up -d
+            fi
             sleep 15
           fi
-          
-          # Application health check with retries
-          for i in $(seq 1 $MAX_RETRIES); do
-            if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
-              log_message "Application is healthy."
-              exit 0
-            else
-              log_message "Health check failed (attempt $i/$MAX_RETRIES). Waiting before retry..."
-              sleep 10
-            fi
-          done
           
           log_message "Application not responding after $MAX_RETRIES attempts. Restarting services..."
           
           # Restart application services
-          cd {{ app_dir }}/repo && docker compose down && docker compose up -d
+          cd {{ app_dir }}/repo
+          if command -v docker-compose &> /dev/null; then
+            docker-compose down && docker-compose up -d
+          else
+            docker compose down && docker compose up -d
+          fi
           sleep 5
           systemctl restart nginx
           
