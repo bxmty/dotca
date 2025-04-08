@@ -372,7 +372,17 @@
         set -e
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        {{ docker_compose_cmd }} build --pull --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_ENV=production
+        if command -v docker-compose &> /dev/null; then
+          docker-compose build --pull --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_ENV=production
+        elif docker compose version &> /dev/null; then
+          docker compose build --pull --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_ENV=production
+        elif [ -x /usr/local/bin/docker-compose ]; then
+          /usr/local/bin/docker-compose build --pull --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_ENV=production
+        else
+          echo "Docker Compose not found. Installing..."
+          pip3 install docker-compose
+          docker-compose build --pull --no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg NODE_ENV=production
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
@@ -418,7 +428,17 @@
       - name: Start new Docker Compose services
         ansible.builtin.shell: |
           set -e
-          {{ docker_compose_cmd }} up -d
+          if command -v docker-compose &> /dev/null; then
+            docker-compose up -d
+          elif docker compose version &> /dev/null; then
+            docker compose up -d
+          elif [ -x /usr/local/bin/docker-compose ]; then
+            /usr/local/bin/docker-compose up -d
+          else
+            echo "Docker Compose not found. Installing..."
+            pip3 install docker-compose
+            docker-compose up -d
+          fi
         args:
           chdir: "{{ app_dir }}/repo"
         register: docker_up
@@ -562,7 +582,17 @@
     - name: Start OpenTelemetry Collector
       ansible.builtin.shell: |
         set -e
-        {{ docker_compose_cmd }} -f {{ app_dir }}/otel-collector-compose.yml up -d
+        if command -v docker-compose &> /dev/null; then
+          docker-compose -f {{ app_dir }}/otel-collector-compose.yml up -d
+        elif docker compose version &> /dev/null; then
+          docker compose -f {{ app_dir }}/otel-collector-compose.yml up -d
+        elif [ -x /usr/local/bin/docker-compose ]; then
+          /usr/local/bin/docker-compose -f {{ app_dir }}/otel-collector-compose.yml up -d
+        else
+          echo "Docker Compose not found. Installing..."
+          pip3 install docker-compose
+          docker-compose -f {{ app_dir }}/otel-collector-compose.yml up -d
+        fi
       register: otel_up
       retries: 2
       delay: 10
