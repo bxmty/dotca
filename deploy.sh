@@ -7,9 +7,14 @@ if [ -z "$1" ]; then
   exit 1
 fi
 ENV=$1
+# Convert 'main' to 'production' for consistency in environment naming
+if [ "$ENV" == "main" ]; then
+  ENV="production"
+  echo "Using 'main' branch as 'production' environment"
+fi
 ENV_FILE=".env.$ENV"
 
-# Function to handle Ansible-based deployments (for QA and Staging)
+# Function to handle Ansible-based deployments (for QA, Staging, and Production)
 function deploy_with_ansible() {
   local env=$1
   local ansible_playbook="$env-deploy.yml"
@@ -22,15 +27,28 @@ function deploy_with_ansible() {
     
     # Check if running in GitHub Actions context
     if [ -n "$GITHUB_ACTIONS" ]; then
-      # Create environment file from GitHub secrets
-      cat > "$ENV_FILE" << EOF
+      # Create environment file from GitHub secrets with environment-specific variables
+      if [ "$env" == "production" ]; then
+        cat > "$ENV_FILE" << EOF
 # $env Environment Configuration
 NODE_ENV=production
 NEXT_PUBLIC_ENVIRONMENT=$env
 # Git and SSH Configuration
 GIT_REPO_URL=${GIT_REPO_URL}
 SSH_KEY_PATH=${SSH_KEY_PATH}
+GA_ID=${GA_PRODUCTION_ID}
 EOF
+      else
+        cat > "$ENV_FILE" << EOF
+# $env Environment Configuration
+NODE_ENV=production
+NEXT_PUBLIC_ENVIRONMENT=$env
+# Git and SSH Configuration
+GIT_REPO_URL=${GIT_REPO_URL}
+SSH_KEY_PATH=${SSH_KEY_PATH}
+GA_ID=${GA_STAGING_ID}
+EOF
+      fi
       echo "Created $ENV_FILE from GitHub secrets"
     else
       echo "Error: Not running in GitHub Actions and $ENV_FILE not found"
@@ -108,16 +126,44 @@ EOF
   # Test connection first
   ansible -i inventory.yml digitalocean -m ping -v
   
+  # Set environment-specific environment variables for Ansible
+  if [ "$env" == "production" ]; then
+    export BREVO_API_KEY=${BREVO_API_KEY}
+    export STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    export STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+    export GA_PRODUCTION_ID=${GA_PRODUCTION_ID}
+  else
+    export BREVO_API_KEY=${BREVO_API_KEY}
+    export STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    export STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+    export GA_STAGING_ID=${GA_STAGING_ID}
+  fi
+  
   # Run the playbook
+  # Make sure we're using the right filename for the playbook
+  if [ "$env" == "production" ] && [ ! -f "$ansible_playbook" ]; then
+    echo "Production playbook not found at $ansible_playbook, checking for alternative names..."
+    if [ -f "production-deploy.yml" ]; then
+      ansible_playbook="production-deploy.yml"
+      echo "Using production-deploy.yml"
+    fi
+  fi
+  
+  # Verify that the playbook exists
+  if [ ! -f "$ansible_playbook" ]; then
+    echo "Error: Ansible playbook $ansible_playbook not found"
+    exit 1
+  fi
+  
   ansible-playbook -i inventory.yml $ansible_playbook
   cd ..
 }
 
 # Main deployment logic
-if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ]; then
+if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
   deploy_with_ansible $ENV
 else
-  # For other environments (e.g., production)
+  # For other environments
   if [ ! -f "$ENV_FILE" ]; then
     echo "Error: Environment file $ENV_FILE not found"
     exit 1
@@ -131,4 +177,13 @@ else
   docker-compose up -d
 fi
 
-echo "$ENV deployment completed!"
+# Print success message with URL
+if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
+  echo ""
+  echo "=========================================================="
+  echo "🚀 Deployment to $ENV environment completed!"
+  echo "🌐 Application URL: http://$DROPLET_IP"
+  echo "=========================================================="
+else
+  echo "$ENV deployment completed!"
+fi
