@@ -352,7 +352,7 @@ jobs:
           cat inventory.ini
           
           # Copy production ansible playbook
-          cp production-deploy.yml ./deploy-playbook.yml
+          cp ansible/production-deploy.yml ./deploy-playbook.yml
           
           # Test SSH connection
           echo "Testing SSH connection to $DROPLET_IP..."
