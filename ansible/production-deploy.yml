@@ -332,33 +332,57 @@
       ansible.builtin.command:
         cmd: docker system prune -af
 
+    # Add this task before any docker-compose operations
+    - name: Find docker-compose command
+      ansible.builtin.shell: |
+        if command -v docker-compose &> /dev/null; then
+          echo "docker-compose"
+        elif docker compose version &> /dev/null; then
+          echo "docker compose"
+        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "/usr/local/bin/docker-compose"
+        else
+          # Install via pip and check again
+          pip3 install docker-compose
+          sleep 5
+          
+          if command -v docker-compose &> /dev/null; then
+            echo "docker-compose"
+          elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+            echo "/usr/local/bin/docker-compose"
+          elif [ -f ~/.local/bin/docker-compose ] && [ -x ~/.local/bin/docker-compose ]; then
+            echo "~/.local/bin/docker-compose"
+          else
+            echo "NOT_FOUND"
+          fi
+        fi
+      register: dc_command_result
+      changed_when: false
+
+    - name: Set docker-compose command
+      ansible.builtin.set_fact:
+        docker_compose_command: "{{ dc_command_result.stdout }}"
+      failed_when: docker_compose_command == "NOT_FOUND"
+
+    # Then use this standard task for building
     - name: Build Docker images
       ansible.builtin.shell: |
         cd {{ app_dir }}/repo
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        if command -v docker-compose &> /dev/null; then
-          docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        elif command -v /usr/local/bin/docker-compose &> /dev/null; then
-          /usr/local/bin/docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        elif docker compose version &> /dev/null; then
-          docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        else
-          echo "No docker-compose found"
-          pip3 install docker-compose
-          /usr/local/bin/docker-compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        fi
+        {{ docker_compose_command }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
         DOCKER_BUILDKIT: 1
         COMPOSE_DOCKER_CLI_BUILD: 1
       vars:
-        ansible_ssh_timeout: 300  # Increase timeout to 5 minutes
+        ansible_ssh_timeout: 300
       register: docker_build
-      retries: 3  # Increase retries
-      delay: 60   # Increase delay between retries
+      retries: 3
+      delay: 60
       until: docker_build is success
+      when: docker_compose_command != "NOT_FOUND"
 
     - name: Start Docker Compose services
       ansible.builtin.shell: |
