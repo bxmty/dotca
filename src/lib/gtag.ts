@@ -28,7 +28,7 @@ export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ENVIRONMENT === 'produc
     : process.env.NEXT_PUBLIC_DEV_GA_ID || '';     // Development GA4 property (optional)
 
 // Determine environment
-const isProduction = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ENVIRONMENT !== 'staging';
+const isProduction = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ENVIRONMENT !== 'production';
 const isStaging = process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging';
 const isDevelopment = !isProduction && !isStaging;
 
