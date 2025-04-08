@@ -177,6 +177,13 @@
       register: docker_down_result
       ignore_errors: yes
 
+    - name: Stop any other containers using port 8080
+      shell: |
+        if docker ps -q --filter publish=8080 | grep -q .; then
+          docker stop $(docker ps -q --filter publish=8080)
+        fi
+      ignore_errors: yes
+
     - name: Prune Docker system
       command: docker system prune -af
 
@@ -206,9 +213,20 @@
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
-      retries: 2
-      delay: 10
+      retries: 3
+      delay: 15
       until: docker_up is success
+      
+    - name: Check if Docker Compose services started successfully
+      command: docker-compose ps
+      args:
+        chdir: "{{ app_dir }}/repo"
+      register: docker_ps
+      changed_when: false
+      
+    - name: Display Docker Compose status
+      debug:
+        var: docker_ps.stdout_lines
       
     - name: Display deployment completion message
       debug:
