@@ -429,7 +429,7 @@
       # Verify deployment succeeded
       - name: Verify new deployment
         uri:
-          url: http://localhost:8080/health
+          url: http://localhost:8080/api/health
           follow_redirects: none
           validate_certs: no
         register: health_check
@@ -702,10 +702,12 @@
               add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com; font-src 'self'; object-src 'none'; media-src 'self'; form-action 'self'; base-uri 'self';" always;
               
               # Health check endpoint
-              location /health {
+              location /api/health {
+                  proxy_pass http://localhost:8080/api/health;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
                   access_log off;
-                  add_header Content-Type text/plain;
-                  return 200 'OK';
               }
               
               # Static asset caching
@@ -915,7 +917,7 @@
           fi
           
           # Application health check
-          HEALTH_CHECK_URL="https://{{ domain_name }}/health"
+          HEALTH_CHECK_URL="https://{{ domain_name }}/api/health"
           RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL || echo "failed")
           RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" $HEALTH_CHECK_URL || echo "failed")
           
@@ -923,7 +925,7 @@
             send_alert "Health check failed with code: $RESPONSE_CODE"
             
             # Check local endpoint directly
-            LOCAL_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health || echo "failed")
+            LOCAL_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "failed")
             log_message "Local health check response: $LOCAL_RESPONSE"
             
             # Check if Nginx is working
