@@ -80,8 +80,8 @@ export default function OnboardingPage() {
   const prevStep = () => setStep(step - 1);
 
   return (
-    <div className="min-vh-100 d-flex flex-column bg-light">
-      {/* Header */}
+    <div className="bg-light">
+      {/* Custom Header for Onboarding */}
       <header className="bg-white shadow-sm py-3">
         <div className="container d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center">
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow-1 container py-5">
+      <div className="container py-5">
         <div className="card mx-auto shadow rounded" style={{maxWidth: "800px"}}>
           <div className="card-body p-4 p-md-5">
             <h1 className="fs-3 fw-bold mb-4">
@@ -364,14 +364,7 @@ export default function OnboardingPage() {
             </form>
           </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-3 bg-white border-top">
-        <div className="container text-center small text-secondary">
-          &copy; {new Date().getFullYear()} Boximity MSP. All rights reserved.
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

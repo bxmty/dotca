@@ -33,14 +33,19 @@ jobs:
         
       - name: Test Docker Build
         run: docker build -t dotca-test .
+
+      - name: Run unit tests
+        run: npm test
+        continue-on-error: true
+        
   
   setup-infra:
     name: Setup Infrastructure
     runs-on: ubuntu-latest
-    needs: test
     outputs:
       droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
       resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
+      terraform_changes: ${{ steps.check_terraform_changes.outputs.has_changes }}
     
     steps:
       - name: Checkout code
@@ -68,7 +73,9 @@ jobs:
         run: |
           terraform init \
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
-            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -backend-config="key=dotca/terraform-qa.tfstate"
+        
         
       - name: Check if project exists
         id: check_project
@@ -95,7 +102,8 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
-          
+          export TF_VAR_environment="qa"  # Add this line
+
           # Try to get current state - handle failure gracefully
           terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
           
@@ -114,6 +122,70 @@ jobs:
             echo "Resources need to be created or updated"
           fi
         continue-on-error: true
+      
+      # New step to check for Terraform changes in existing resources
+      - name: Check for Terraform changes
+        id: check_terraform_changes
+        working-directory: ./terraform
+        if: env.RESOURCES_EXIST == 'true'
+        run: |
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
+          
+          # Create a plan and check if there are any changes
+          terraform plan -detailed-exitcode -out=tfplan > plan_output.txt 2>&1
+          PLAN_EXIT_CODE=$?
+          
+          # Terraform plan exit codes:
+          # 0 = No changes
+          # 1 = Error
+          # 2 = Changes present
+          
+          if [ $PLAN_EXIT_CODE -eq 2 ]; then
+            echo "HAS_CHANGES=true" >> $GITHUB_ENV
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in Terraform plan"
+          elif [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "HAS_CHANGES=false" >> $GITHUB_ENV
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in Terraform plan"
+          else
+            echo "::error::Terraform plan failed with exit code $PLAN_EXIT_CODE"
+            cat plan_output.txt
+            exit 1
+          fi
+        continue-on-error: true
+      
+      # New step to apply Terraform changes if they exist
+      - name: Apply Terraform changes
+        if: env.RESOURCES_EXIST == 'true' && env.HAS_CHANGES == 'true'
+        working-directory: ./terraform
+        run: |
+          # Set terraform variables as environment variables
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="qa"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
+          
+          # Apply the changes
+          echo "Applying changes to existing infrastructure..."
+          terraform apply -auto-approve tfplan
+          
+          # Update the droplet IP in case it changed
+          UPDATED_IP=$(terraform output droplet_ip | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+          if [ -n "$UPDATED_IP" ]; then
+            echo "DROPLET_IP=$UPDATED_IP" >> $GITHUB_ENV
+            echo "Updated droplet IP: $UPDATED_IP"
+          fi
         
       - name: Terraform Plan
         if: env.RESOURCES_EXIST != 'true'
@@ -126,6 +198,7 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
           
           # Create plan
           terraform plan -out=tfplan
@@ -141,6 +214,7 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
           
           # Apply the plan
           terraform apply -auto-approve tfplan
@@ -161,6 +235,7 @@ jobs:
           export TF_VAR_git_branch="qa"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="qa"
           terraform refresh
           
           # Try multiple methods to get the IP address
@@ -194,7 +269,7 @@ jobs:
   deploy-app:
     name: Deploy Application
     runs-on: ubuntu-latest
-    needs: setup-infra
+    needs: [test, setup-infra]
     
     steps:
       - name: Checkout code
@@ -215,6 +290,7 @@ jobs:
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
+          TERRAFORM_CHANGES: ${{ needs.setup-infra.outputs.terraform_changes }}
         run: |
           # Fail if we don't have an IP address
           if [ -z "$DROPLET_IP" ]; then
@@ -224,9 +300,9 @@ jobs:
           
           echo "Connecting to IP: $DROPLET_IP"
           
-          # Wait longer for new resources to be fully ready
-          if [ "$RESOURCES_EXIST" != "true" ]; then
-            echo "Waiting for new droplet to be fully ready..."
+          # Wait longer for new or updated resources to be fully ready
+          if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
+            echo "Waiting for droplet to be fully ready..."
             # Try to ping the droplet until it's accessible
             TIMEOUT=300
             INTERVAL=10
@@ -273,6 +349,11 @@ jobs:
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          ANSIBLE_FAILED: "false"  # Add tracking variable
+        id: deploy_ansible
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
@@ -296,21 +377,24 @@ jobs:
           
           # Run the deployment with retry logic
           echo "Starting deployment..."
+          DEPLOY_SUCCESS=false
           for i in {1..3}; do
             echo "Deployment attempt $i..."
-            if ./deploy.sh qa; then
+            if ANSIBLE_HOST_KEY_CHECKING=False ./deploy.sh qa; then
               echo "Deployment successful on attempt $i"
+              DEPLOY_SUCCESS=true
               break
             else
               echo "Deployment attempt $i failed. Waiting before retry..."
               sleep 30
-              
-              if [ $i -eq 3 ]; then
-                echo "::error::All deployment attempts failed"
-                exit 1
-              fi
             fi
           done
+          
+          if [ "$DEPLOY_SUCCESS" != "true" ]; then
+            echo "::error::All deployment attempts failed"
+            echo "ansible_failed=true" >> $GITHUB_OUTPUT
+            exit 1  # This ensures the job fails if all deployment attempts fail
+          fi
   
   deployment-verification:
     name: Verify Deployment
@@ -332,3 +416,34 @@ jobs:
           else
             echo "⚠️ Application might not be fully available yet"
           fi
+
+  selenium-tests:
+    name: Run Selenium Tests
+    runs-on: ubuntu-latest
+    needs: [deployment-verification]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+      
+      - name: Run Selenium tests
+        env:
+          APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
+        run: npm run test:e2e
+        continue-on-error: true
