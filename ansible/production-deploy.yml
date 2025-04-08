@@ -281,9 +281,11 @@
       environment:
         DOCKER_BUILDKIT: 1
         COMPOSE_DOCKER_CLI_BUILD: 1
+      vars:
+        ansible_ssh_timeout: 300  # Increase timeout to 5 minutes
       register: docker_build
-      retries: 2
-      delay: 30
+      retries: 3  # Increase retries
+      delay: 60   # Increase delay between retries
       until: docker_build is success
 
     - name: Start Docker Compose services
