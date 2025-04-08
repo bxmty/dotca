@@ -171,7 +171,7 @@
           NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id }}
 
     - name: Stop existing Docker Compose services
-      command: docker-compose down
+      command: docker-compose down web
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
@@ -209,7 +209,7 @@
       poll: 30
 
     - name: Start Docker Compose services
-      command: docker-compose up -d
+      command: docker-compose up -d web
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
@@ -404,10 +404,10 @@
           
           # Check Docker container status
           cd {{ app_dir }}/repo
-          if ! docker ps | grep -q "{{ project_name }}"; then
-            log_message "Containers not running properly! Attempting to restart..."
-            docker-compose down
-            docker-compose up -d
+          if ! docker ps | grep -q "{{ project_name }}.*web"; then
+            log_message "Web container not running properly! Attempting to restart..."
+            docker-compose down web
+            docker-compose up -d web
             sleep 15
           fi
           
@@ -415,7 +415,7 @@
           if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
             log_message "Application not responding. Restarting services..."
             cd {{ app_dir }}/repo
-            docker-compose down && docker-compose up -d
+            docker-compose down web && docker-compose up -d web
             sleep 5
             systemctl restart nginx
           fi
