@@ -22,7 +22,7 @@ declare global {
 
 // Environment-specific GA4 Measurement IDs
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production' 
-  ? process.env.NEXT_PUBLIC_PROD_GA_ID  // Production GA4 property
+  ? process.env.NEXT_PUBLIC_PRODUCTION_GA_ID  // Production GA4 property
   : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
     ? process.env.NEXT_PUBLIC_STAGING_GA_ID  // Staging GA4 property
     : process.env.NEXT_PUBLIC_DEV_GA_ID || '';     // Development GA4 property (optional)
