@@ -146,6 +146,23 @@
         delay: 5
         until: compose_download is success
 
+      # Check if files exist before creating symlinks
+      - name: Check if existing docker-compose files exist
+        stat:
+          path: "{{ item }}"
+        register: compose_paths
+        with_items:
+          - /usr/local/bin/docker-compose
+          - /root/.docker/cli-plugins/docker-compose
+        
+      # Remove existing files if they're not symlinks
+      - name: Remove existing docker-compose files if they're not symlinks
+        file:
+          path: "{{ item.item }}"
+          state: absent
+        when: item.stat.exists and not item.stat.islnk
+        with_items: "{{ compose_paths.results }}"
+          
       # Create symlinks to both locations
       - name: Create symlinks for docker-compose command
         file:
