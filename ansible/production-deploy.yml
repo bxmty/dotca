@@ -27,7 +27,7 @@
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
     ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
-    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"  # Added explicit file path
+    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
 
   tasks:
     - name: Update apt cache
@@ -50,6 +50,7 @@
           - python3-pip
           - jq
           - nginx
+          - docker-compose
         state: present
         update_cache: yes
 
@@ -111,140 +112,10 @@
       delay: 5
       until: docker_service_result is success
 
-    - name: Install Docker Compose V2 (improved)
-      block:
-        # First make sure Docker is running
-        - name: Ensure Docker service is running
-          systemd:
-            name: docker
-            state: started
-            enabled: yes
-          register: docker_service_result
-          retries: 3
-          delay: 5
-          until: docker_service_result is success
-
-        # Create Docker CLI plugins directory
-        - name: Create Docker CLI plugins directory
-          file:
-            path: "{{ item }}"
-            state: directory
-            mode: '0755'
-          with_items:
-            - /usr/local/lib/docker/cli-plugins
-            - /root/.docker/cli-plugins
-            - /root/.docker
-
-        # Try the docker compose plugin installation first
-        - name: Try to install docker-compose-plugin with apt
-          apt:
-            name: docker-compose-plugin
-            state: present
-          register: plugin_install
-          ignore_errors: yes
-
-        # Download Docker Compose V2 with a specific version if plugin install fails
-        - name: Download Docker Compose V2
-          get_url:
-            url: https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64
-            dest: /usr/local/lib/docker/cli-plugins/docker-compose
-            mode: '0755'
-            force: yes
-          register: compose_download
-          retries: 3
-          delay: 5
-          until: compose_download is success
-          when: plugin_install is failed
-
-        # Create symlinks for docker-compose command
-        - name: Create symlinks for docker-compose command
-          file:
-            src: /usr/local/lib/docker/cli-plugins/docker-compose
-            dest: "{{ item }}"
-            state: link
-            mode: '0755'
-            force: yes
-          with_items:
-            - /usr/local/bin/docker-compose
-            - /root/.docker/cli-plugins/docker-compose
-          when: compose_download is success and compose_download is not skipped
-
-        # Verify Docker Compose installation
-        - name: Verify Docker Compose installation
-          shell: docker compose version || docker-compose --version
-          register: compose_version
-          ignore_errors: yes
-          changed_when: false
-
-        # Install via pip as more reliable method
-        - name: Install docker-compose via pip (reliable fallback)
-          pip:
-            name: docker-compose
-            state: present
-            executable: pip3
-          register: pip_install_result
-          retries: 3
-          delay: 5
-          until: pip_install_result is success
-          when: compose_version is failed
-
-        - name: Check for existing docker-compose
-          ansible.builtin.shell: |
-            if command -v docker-compose &> /dev/null; then
-              echo "found_binary"
-            elif docker compose version &> /dev/null; then
-              echo "found_plugin"
-            elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-              echo "found_usr_local"
-            else
-              echo "not_found"
-            fi
-          register: docker_compose_check
-          changed_when: false
-
-        - name: Install docker-compose via pip if not found
-          pip:
-            name: docker-compose
-            state: present
-            executable: pip3
-          when: docker_compose_check.stdout == "not_found"
-          register: pip_install_result
-          retries: 3
-          delay: 5
-          until: pip_install_result is success
-
-        - name: Wait for docker-compose to be available after installation
-          ansible.builtin.pause:
-            seconds: 5
-          when: pip_install_result is changed
-
-        - name: Verify docker-compose is now available
-          ansible.builtin.shell: |
-            if command -v docker-compose &> /dev/null; then
-              docker-compose --version
-              exit 0
-            elif docker compose version &> /dev/null; then
-              docker compose version
-              exit 0
-            elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-              /usr/local/bin/docker-compose --version
-              exit 0
-            else
-              echo "Docker Compose still not found after installation attempts"
-              exit 1
-            fi
-          register: compose_verification
-          changed_when: false
-          failed_when: compose_verification.rc != 0
-          when: pip_install_result is changed
-
-    # Install via pip as last resort
-    - name: Install docker-compose via pip as fallback
-      pip:
-        name: docker-compose
-        state: present
-        executable: pip3
-      when: (compose_version is failed) or (compose_version.rc != 0)
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: compose_version
+      changed_when: false
 
     - name: Create application directory
       file:
@@ -299,105 +170,39 @@
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id }}
 
-    # Create a reusable Docker Compose command helper
-    - name: Set Docker Compose Command
-      ansible.builtin.set_fact:
-        docker_compose_cmd: "{{ lookup('pipe', 'if command -v docker-compose &> /dev/null; then echo docker-compose; elif docker compose version &> /dev/null; then echo \"docker compose\"; elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then echo /usr/bin/docker-compose; elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then echo /usr/local/bin/docker-compose; else echo none; fi') }}"
-
     - name: Stop existing Docker Compose services
-      ansible.builtin.shell: |
-        set -e
-        {{ docker_compose_cmd }} down
+      command: docker-compose down
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
       ignore_errors: yes
-      when: docker_compose_cmd != "none"
-    
-    - name: Install docker-compose if not found
-      pip:
-        name: docker-compose
-        state: present
-        executable: pip3
-      when: docker_compose_cmd == "none"
-      register: pip_install
-      
-    # Re-check docker-compose after pip install if needed
-    - name: Re-check docker-compose after pip install
-      ansible.builtin.set_fact:
-        docker_compose_cmd: "docker-compose"
-      when: docker_compose_cmd == "none" and pip_install is success
 
     - name: Prune Docker system
-      ansible.builtin.command:
-        cmd: docker system prune -af
+      command: docker system prune -af
 
-    # Add this task before any docker-compose operations
-    - name: Find docker-compose command
-      ansible.builtin.shell: |
-        if command -v docker-compose &> /dev/null; then
-          echo "docker-compose"
-        elif docker compose version &> /dev/null; then
-          echo "docker compose"
-        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "/usr/local/bin/docker-compose"
-        else
-          # Install via pip and check again
-          pip3 install docker-compose
-          sleep 5
-          
-          if command -v docker-compose &> /dev/null; then
-            echo "docker-compose"
-          elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-            echo "/usr/local/bin/docker-compose"
-          elif [ -f ~/.local/bin/docker-compose ] && [ -x ~/.local/bin/docker-compose ]; then
-            echo "~/.local/bin/docker-compose"
-          else
-            echo "NOT_FOUND"
-          fi
-        fi
-      register: dc_command_result
-      changed_when: false
-
-    - name: Set docker-compose command
-      ansible.builtin.set_fact:
-        docker_compose_command: "{{ dc_command_result.stdout }}"
-      failed_when: docker_compose_command == "NOT_FOUND"
-
-    # Then use this standard task for building
     - name: Build Docker images
-      ansible.builtin.shell: |
+      shell: |
         cd {{ app_dir }}/repo
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        {{ docker_compose_command }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        docker-compose build --build-arg BUILDKIT_INLINE_CACHE=1
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
         DOCKER_BUILDKIT: 1
         COMPOSE_DOCKER_CLI_BUILD: 1
       vars:
-        ansible_ssh_timeout: 300
+        ansible_ssh_pipelining: true
+        ansible_ssh_timeout: 600
       register: docker_build
-      retries: 3
+      retries: 5
       delay: 60
       until: docker_build is success
-      when: docker_compose_command != "NOT_FOUND"
+      async: 1800
+      poll: 30
 
     - name: Start Docker Compose services
-      ansible.builtin.shell: |
-        cd {{ app_dir }}/repo
-        if command -v docker-compose &> /dev/null; then
-          docker-compose up -d
-        elif command -v /usr/local/bin/docker-compose &> /dev/null; then
-          /usr/local/bin/docker-compose up -d
-        elif docker compose version &> /dev/null; then
-          docker compose up -d
-        else
-          echo "No docker-compose found"
-          pip3 install docker-compose
-          /usr/local/bin/docker-compose up -d
-        fi
+      command: docker-compose up -d
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
@@ -552,7 +357,7 @@
         content: |
           #!/bin/bash
           
-          # Enhanced monitoring script with better retry logic
+          # Enhanced monitoring script with reliable docker-compose usage
           LOG_FILE="{{ app_dir }}/monitoring.log"
           
           # Function to log messages
@@ -562,7 +367,6 @@
           
           # Application health check
           HEALTH_CHECK_URL="http://localhost/health"
-          MAX_RETRIES=3
           
           log_message "Starting health check..."
           
@@ -584,48 +388,26 @@
           cd {{ app_dir }}/repo
           if ! docker ps | grep -q "{{ project_name }}"; then
             log_message "Containers not running properly! Attempting to restart..."
-            # Try multiple docker compose commands in order of likelihood
-            if command -v docker-compose &> /dev/null; then
-              docker-compose down
-              docker-compose up -d
-            elif command -v /usr/local/bin/docker-compose &> /dev/null; then
-              /usr/local/bin/docker-compose down
-              /usr/local/bin/docker-compose up -d
-            elif docker compose version &> /dev/null; then
-              docker compose down
-              docker compose up -d
-            else
-              # Final fallback - install and use
-              log_message "docker-compose not found, attempting to install via pip..."
-              pip3 install docker-compose
-              /usr/local/bin/docker-compose down
-              /usr/local/bin/docker-compose up -d
-            fi
+            docker-compose down
+            docker-compose up -d
             sleep 15
           fi
           
-          # Update the restart application services section too
-          cd {{ app_dir }}/repo
-          if command -v docker-compose &> /dev/null; then
+          # Restart application services if needed
+          if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+            log_message "Application not responding. Restarting services..."
+            cd {{ app_dir }}/repo
             docker-compose down && docker-compose up -d
-          elif command -v /usr/local/bin/docker-compose &> /dev/null; then
-            /usr/local/bin/docker-compose down && /usr/local/bin/docker-compose up -d
-          elif docker compose version &> /dev/null; then
-            docker compose down && docker compose up -d
-          else
-            log_message "docker-compose not found, attempting to install via pip..."
-            pip3 install docker-compose
-            /usr/local/bin/docker-compose down && /usr/local/bin/docker-compose up -d
+            sleep 5
+            systemctl restart nginx
           fi
-          sleep 5
-          systemctl restart nginx
           
           # Final check
           if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
-            log_message "Application is now healthy after restart."
+            log_message "Application is healthy."
           else
             log_message "WARNING: Application still unhealthy after restart. Manual intervention required!"
-          fi      
+          fi
           
     - name: Set up monitoring cron job
       cron:
