@@ -1,6 +1,7 @@
 version: '3'
 
 services:
+  # Define web service (for staging) and alias it as app (for production)
   web:
     build:
       context: .
@@ -10,7 +11,8 @@ services:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_PUBLIC_ENVIRONMENT=${NEXT_PUBLIC_ENVIRONMENT:-production}
         - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-        - NEXT_PUBLIC_STAGING_GA_ID=${NEXT_PUBLIC_STAGING_GA_ID}
+        - NEXT_PUBLIC_STAGING_GA_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}
+        - NEXT_PUBLIC_PRODUCTION_GA_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
     restart: always
     ports:
       - "8080:3000"
@@ -21,14 +23,14 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       - BREVO_API_KEY=${BREVO_API_KEY}
-      - NEXT_PUBLIC_STAGING_GA_ID=${NEXT_PUBLIC_STAGING_GA_ID}
+      - NEXT_PUBLIC_STAGING_GA_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}
+      - NEXT_PUBLIC_PRODUCTION_GA_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
-    # Add volume for persistent storage of Next.js cache
     volumes:
       - next_cache:/app/.next/cache
     logging:
@@ -36,6 +38,10 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  
+  # Create an alias for the web service to handle "app" references in production
+  app:
+    extends: web
 
 # Define volumes for persistent data
 volumes:
