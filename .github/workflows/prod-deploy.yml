@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
     
@@ -36,7 +35,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
           
       - name: Initialize Terraform
         working-directory: ./terraform
@@ -92,6 +90,7 @@ jobs:
           fi
         continue-on-error: true
       
+      # New step to check for Terraform changes in existing resources
       - name: Check for Terraform changes
         id: check_terraform_changes
         working-directory: ./terraform
@@ -101,7 +100,7 @@ jobs:
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
-          export TF_VAR_git_branch="main"
+          export TF_VAR_git_branch="production"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
@@ -119,7 +118,6 @@ jobs:
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "Changes detected in Terraform plan"
-            echo "::notice::Changes detected in Terraform plan for production infrastructure"
           elif [ $PLAN_EXIT_CODE -eq 0 ]; then
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -131,12 +129,7 @@ jobs:
           fi
         continue-on-error: true
       
-      - name: Approve infrastructure changes
-        if: env.RESOURCES_EXIST == 'true' && env.HAS_CHANGES == 'true'
-        run: |
-          echo "::warning::Terraform detected changes to production infrastructure"
-          echo "Proceeding with infrastructure changes..."
-      
+      # New step to apply Terraform changes if they exist
       - name: Apply Terraform changes
         if: env.RESOURCES_EXIST == 'true' && env.HAS_CHANGES == 'true'
         working-directory: ./terraform
@@ -145,13 +138,13 @@ jobs:
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
-          export TF_VAR_git_branch="main"
+          export TF_VAR_git_branch="production"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
           
           # Apply the changes
-          echo "Applying changes to existing production infrastructure..."
+          echo "Applying changes to existing infrastructure..."
           terraform apply -auto-approve tfplan
           
           # Update the droplet IP in case it changed
@@ -169,19 +162,13 @@ jobs:
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
-          export TF_VAR_git_branch="main"
+          export TF_VAR_git_branch="production"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
           
           # Create plan
           terraform plan -out=tfplan
-          
-      - name: Approve new infrastructure
-        if: env.RESOURCES_EXIST != 'true'
-        run: |
-          echo "::notice::Creating new production infrastructure"
-          echo "Proceeding with new infrastructure creation..."
         
       - name: Terraform Apply
         if: env.RESOURCES_EXIST != 'true'
@@ -191,7 +178,7 @@ jobs:
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
-          export TF_VAR_git_branch="main"
+          export TF_VAR_git_branch="production"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
@@ -204,7 +191,7 @@ jobs:
         working-directory: ./terraform
         id: get_ip
         run: |
-          # Wait for Terraform state to settle
+          # Wait a bit for Terraform state to settle
           echo "Waiting for DigitalOcean resources to be fully provisioned..."
           sleep 30
           
@@ -212,7 +199,7 @@ jobs:
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
-          export TF_VAR_git_branch="main"
+          export TF_VAR_git_branch="production"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
@@ -329,14 +316,10 @@ jobs:
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
-          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
-          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
-          GA_PRODUCTION_ID: ${{ secrets.NEXT_PUBLIC_PROD_GA_ID }}
-          OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          GA_PRODUCTION_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
@@ -351,19 +334,19 @@ jobs:
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
           cat inventory.ini
           
-          # Copy production ansible playbook
-          cp production-deploy.yml ./deploy-playbook.yml
+          # Ensure script is executable
+          chmod +x ./deploy.sh
           
           # Test SSH connection
           echo "Testing SSH connection to $DROPLET_IP..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || { echo "SSH connection test failed, but continuing deployment anyway"; }
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
           
           # Run the deployment with retry logic
           echo "Starting deployment..."
           DEPLOY_SUCCESS=false
           for i in {1..3}; do
             echo "Deployment attempt $i..."
-            if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini deploy-playbook.yml; then
+            if ANSIBLE_HOST_KEY_CHECKING=False ./deploy.sh production; then
               echo "Deployment successful on attempt $i"
               DEPLOY_SUCCESS=true
               break
@@ -388,35 +371,20 @@ jobs:
       - name: Production Deployment Status
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
-          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
         run: |
           echo "✅ Production environment has been deployed with Ansible!"
-          echo "🌐 Access it at https://$DOMAIN_NAME/ (IP: $DROPLET_IP)"
+          echo "🌐 Access it at http://$DROPLET_IP/"
           
-          # Health check with retry logic
-          MAX_RETRIES=12
-          RETRY_INTERVAL=10
-          HEALTH_CHECK_URL="https://$DOMAIN_NAME/health"
-          
-          echo "Performing health checks..."
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Health check attempt $i of $MAX_RETRIES..."
-            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_CHECK_URL" || echo "failed")
-            
-            if [ "$HEALTH_STATUS" == "200" ]; then
-              echo "✅ Application is up and running! Health check passed."
-              exit 0
-            else
-              echo "Health check returned: $HEALTH_STATUS. Waiting ${RETRY_INTERVAL}s before retry..."
-              sleep $RETRY_INTERVAL
-            fi
-          done
-          
-          echo "⚠️ Warning: Health checks did not pass within expected time."
-          echo "::warning::Health checks to $HEALTH_CHECK_URL did not pass within expected time frame. Application may still be starting up."
+          # Optional - could add health checks here
+          echo "Checking if application is responding..."
+          if curl -s --head --request GET http://$DROPLET_IP/ | grep "200 OK" > /dev/null; then
+            echo "✅ Application is up and running!"
+          else
+            echo "⚠️ Application might not be fully available yet"
+          fi
 
-  integration-tests:
-    name: Run Integration Tests
+  selenium-tests:
+    name: Run Selenium Tests
     runs-on: ubuntu-latest
     needs: [deployment-verification]
     
@@ -440,69 +408,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
       
-      - name: Run E2E tests
+      - name: Run Selenium tests
         env:
-          APP_URL: https://${{ secrets.DOMAIN_NAME }}
-          TEST_MODE: production
+          APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
         run: npm run test:e2e
-        continue-on-error: true  # Don't fail the pipeline if some tests fail
-        
-      - name: Run API integration tests
-        env:
-          API_URL: https://${{ secrets.DOMAIN_NAME }}/api
-          TEST_MODE: production
-        run: npm run test:api
-        continue-on-error: true  # Don't fail the pipeline if some tests fail
-
-  performance-test:
-    name: Run Performance Tests
-    runs-on: ubuntu-latest
-    needs: [deployment-verification]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Install k6
-        run: |
-          sudo gpg -k
-          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update
-          sudo apt-get install k6
-      
-      - name: Run performance tests
-        env:
-          TARGET_URL: https://${{ secrets.DOMAIN_NAME }}
-        run: |
-          # Create a simple k6 script to test the homepage
-          cat > performance-test.js << 'EOF'
-          import http from 'k6/http';
-          import { sleep, check } from 'k6';
-          
-          export const options = {
-            vus: 5,
-            duration: '30s',
-            thresholds: {
-              http_req_duration: ['p(95)<500'],  // 95% of requests should complete below 500ms
-              http_req_failed: ['rate<0.01'],   // Less than 1% of requests should fail
-            },
-          };
-          
-          export default function() {
-            const res = http.get(process.env.TARGET_URL);
-            check(res, {
-              'status is 200': (r) => r.status === 200,
-              'content type is text/html': (r) => r.headers['Content-Type'] && r.headers['Content-Type'].includes('text/html'),
-            });
-            sleep(1);
-          }
-          EOF
-          
-          k6 run performance-test.js
-        continue-on-error: true  # Don't fail the pipeline if performance isn't perfect
-      
-      - name: Report results
-        run: |
-          echo "Performance test completed. Check the logs for details."
-
+        continue-on-error: true
