@@ -1,17 +1,22 @@
-name: QA Destroy
+name: Environment Destroy
 
 on:
   workflow_dispatch:
     inputs:
-      confirmation:
-        description: 'Type "destroy" to confirm destruction of QA environment'
+      environment:
+        description: 'Environment to destroy (e.g., qa, staging, dev)'
         required: true
+        type: string
+      confirmation:
+        description: 'Type "destroy-{environment}" to confirm destruction (e.g., destroy-qa)'
+        required: true
+        type: string
 
 jobs:
-  destroy-qa:
-    name: Destroy QA Environment
+  destroy-environment:
+    name: Destroy ${{ github.event.inputs.environment }} Environment
     runs-on: ubuntu-latest
-    if: github.event.inputs.confirmation == 'destroy'
+    if: github.event.inputs.confirmation == format('destroy-{0}', github.event.inputs.environment)
     
     steps:
       - name: Checkout code
@@ -34,7 +39,7 @@ jobs:
           terraform init \
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
             -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
-            -backend-config="key=dotca/terraform-qa.tfstate"
+            -backend-config="key=dotca/terraform-${{ github.event.inputs.environment }}.tfstate"
         
       - name: Terraform Plan Destroy
         working-directory: ./terraform
@@ -43,8 +48,8 @@ jobs:
             -var="do_token=${{ secrets.DO_TOKEN }}" \
             -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
             -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
-            -var="git_branch=qa" \
-            -var="environment=qa" \
+            -var="git_branch=${{ github.event.inputs.environment }}" \
+            -var="environment=${{ github.event.inputs.environment }}" \
             -out=tfdestroyplan
         
       - name: Terraform Destroy
@@ -53,4 +58,4 @@ jobs:
         
       - name: Destruction Notification
         run: |
-          echo "🗑️ QA environment has been destroyed successfully!"
+          echo "🗑️ ${{ github.event.inputs.environment }} environment has been destroyed successfully!"
