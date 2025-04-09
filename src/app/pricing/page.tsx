@@ -6,10 +6,22 @@ import { Suspense } from "react";
 // Shared pricing plans data
 const pricingPlans = [
   {
+    name: "Free",
+    price: "$0.00",
+    description: "Ideal for startups and freelancers looking to secure their digital assets",
+    features: [
+      "Automatic Windows Updates",
+      "Basic Antivirus Protection",
+      "24/7 Device Monitoring"
+    ],
+    cta: "Choose Free"
+  },
+  {
     name: "Basic",
     price: "$99.00",
     description: "Perfect for small teams needing essential IT security and communication tools",
     features: [
+      "Everything in Free",
       "Password Manager",
       "Business Email Solution",
       "Email Support (Business Hours)",
@@ -21,7 +33,7 @@ const pricingPlans = [
   {
     name: "Standard",
     price: "$249.00",
-    description: "Our most popular option for growing businesses needing comprehensive IT support",
+    description: "Our recommended option for growing businesses needing comprehensive IT support",
     features: [
       "Everything in Basic",
       "Professional Web Hosting",
@@ -59,12 +71,12 @@ function PricingCards() {
       {pricingPlans.map((plan) => (
         <div 
           key={plan.name} 
-          className="col-md-4"
+          className="col-md-3"
         >
           <div className={`card h-100 ${plan.highlighted ? 'border-primary shadow position-relative' : 'border'}`}>
             {plan.highlighted && (
               <div className="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill">
-                Most Popular
+                Recommended
               </div>
             )}
             <div className="card-body p-4">
