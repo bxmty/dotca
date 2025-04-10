@@ -43,6 +43,17 @@ export default function Checkout() {
   // Pricing plans data
   const pricingPlans = useMemo(() => [
     {
+      name: "Free",
+      unit_price: "$0.00", // Changed from price to unit_price
+      description: "Ideal for startups and small teams looking to explore our services",
+      features: [
+        "Limited Password Manager",
+        "Basic Email Solution",
+        "Community Support",
+        "Basic Security Monitoring"
+      ]
+    },
+    {
       name: "Basic",
       unit_price: "$99.00", // Changed from price to unit_price
       description: "Perfect for small teams needing essential IT security and communication tools",

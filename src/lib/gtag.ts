@@ -51,7 +51,7 @@ export const initGA = () => {
   
   // Define gtag function using the standard implementation
   window.gtag = function(command, target, ...rest) {
-    dataLayer.push(arguments);
+    window.dataLayer.push([command, target, ...rest]);
   };
   
   window.gtag('js', new Date());
