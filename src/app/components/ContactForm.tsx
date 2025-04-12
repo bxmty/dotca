@@ -128,7 +128,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         <div className="mb-3">
           <label htmlFor="phone" className="form-label text-light">Phone*</label>
           <PhoneInput
-            country={'us'} // Default country
+            country={'ca'} // Default country
             value={phone}
             onChange={(phone) => setPhone(`+${phone}`)} // Add + prefix for E.164 format
             inputClass="form-control bg-secondary bg-opacity-25 text-white border-secondary"

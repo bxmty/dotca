@@ -429,7 +429,7 @@ export default function Checkout() {
                     <div className="col-12">
                       <label htmlFor="phone" className="form-label">Phone Number*</label>
                       <PhoneInput
-                        country={'us'} // Default country
+                        country={'ca'} // Default country
                         value={formData.phone.replace(/^\+/, '')} // Remove + prefix for the component
                         onChange={handlePhoneChange}
                         inputClass="form-control bg-secondary bg-opacity-25 text-white border-secondary"
