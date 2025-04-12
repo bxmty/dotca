@@ -47,10 +47,9 @@ export default function Checkout() {
       unit_price: "$0.00", // Changed from price to unit_price
       description: "Ideal for startups and small teams looking to explore our services",
       features: [
-        "Limited Password Manager",
-        "Basic Email Solution",
-        "Community Support",
-        "Basic Security Monitoring"
+        "Automatic Windows Updates",
+        "Basic Antivirus Protection",
+        "24/7 Device Monitoring"
       ]
     },
     {
