@@ -3,7 +3,7 @@
 # Check if environment argument is provided
 if [ -z "$1" ]; then
   echo "Usage: ./deploy.sh <environment>"
-  echo "Available environments: qa, staging, production"
+  echo "Available environments: staging, production"
   exit 1
 fi
 ENV=$1
@@ -14,7 +14,7 @@ if [ "$ENV" == "main" ]; then
 fi
 ENV_FILE=".env.$ENV"
 
-# Function to handle Ansible-based deployments (for QA, Staging, and Production)
+# Function to handle Ansible-based deployments (for Staging and Production)
 function deploy_with_ansible() {
   local env=$1
   local ansible_playbook="$env-deploy.yml"
@@ -160,7 +160,7 @@ EOF
 }
 
 # Main deployment logic
-if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
+if [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
   deploy_with_ansible $ENV
 else
   # For other environments
@@ -178,7 +178,7 @@ else
 fi
 
 # Print success message with URL
-if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
+if [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
   echo ""
   echo "=========================================================="
   echo "🚀 Deployment to $ENV environment completed!"

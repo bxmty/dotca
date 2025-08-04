@@ -1,4 +1,4 @@
-[![QA Pipeline](https://github.com/bxmty/dotca/actions/workflows/qa-deploy.yml/badge.svg?branch=qa)](https://github.com/bxmty/dotca/actions/workflows/qa-deploy.yml)
+
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
@@ -53,21 +53,17 @@ For local development, use the development Docker setup:
 docker-compose -f docker-compose.dev.yml up
 ```
 
-### Remote Deployment (QA, Staging, Production)
+### Remote Deployment (Staging, Production)
 
 This project includes a multi-environment deployment setup for Digital Ocean:
 
 1. Environment configuration files:
-   - `.env.qa` - QA environment variables
    - `.env.staging` - Staging environment variables
    - `.env.production` - Production environment variables
 
 2. Deploy to a specific environment:
 
 ```bash
-# Deploy to QA
-./deploy.sh qa
-
 # Deploy to Staging
 ./deploy.sh staging
 

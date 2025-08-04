@@ -74,7 +74,7 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
       <div className="alert alert-danger">
         <p className="mb-2 fw-bold">Something went wrong!</p>
         <p className="mb-0">{error}</p>
-        {process.env.NEXT_PUBLIC_ENVIRONMENT === 'qa' && (
+        {process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging' && (
           <p className="mt-2 small text-muted">
             Environment: {process.env.NEXT_PUBLIC_ENVIRONMENT}, 
             API URL: {process.env.NEXT_PUBLIC_API_URL}, 

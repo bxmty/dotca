@@ -16,9 +16,9 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Deployment environment (qa, staging, production)"
+  description = "Deployment environment (staging, production)"
   type        = string
-  default     = "qa"
+  default     = "staging"
 }
 
 variable "region" {
