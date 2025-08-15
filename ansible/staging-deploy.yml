@@ -1,18 +1,62 @@
 ---
 # Ansible playbook for setting up the Staging environment for dotca
-# With optimizations for Next.js deployment
+# With optimizations for Next.js deployment and best practices
 
-# Add a pre-task to fix temporary directory issues
-- name: Fix temporary directory issues
+# Pre-deployment validation and temporary directory setup
+- name: Pre-deployment validation and setup
   hosts: digitalocean
   become: true
-  gather_facts: false
+  gather_facts: true
+  vars:
+    project_name: dotca-nextjs
+    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
+    git_branch: staging
+    app_dir: /app
+    public_ip: "{{ ansible_host }}"
+    brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
+    stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
+    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
+    ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
+    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
+
   tasks:
+    - name: Validate required environment variables
+      assert:
+        that:
+          - git_repo_url is defined and git_repo_url != ""
+          - brevo_api_key is defined and brevo_api_key != ""
+          - stripe_secret_key is defined and stripe_secret_key != ""
+          - stripe_publishable_key is defined and stripe_publishable_key != ""
+        fail_msg: "Required environment variables are missing. Please check GIT_REPO_URL, BREVO_API_KEY, STRIPE_SECRET_KEY, and STRIPE_PUBLISHABLE_KEY."
+      tags: [validation]
+
+    - name: Check available disk space
+      shell: df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
+      register: disk_usage
+      changed_when: false
+      tags: [validation]
+
+    - name: Fail if disk space is too low
+      fail:
+        msg: "Insufficient disk space: {{ disk_usage.stdout }}% used. Need at least 15% free space."
+      when: disk_usage.stdout | int > 85
+      tags: [validation]
+
     - name: Ensure /tmp directory exists with proper permissions
-      ansible.builtin.raw: |
-        mkdir -p /tmp
-        chmod 1777 /tmp
-        df -h /tmp
+      file:
+        path: /tmp
+        state: directory
+        mode: '1777'
+      tags: [setup]
+
+    - name: Display deployment info
+      debug:
+        msg:
+          - "Deploying {{ project_name }} to {{ ansible_host }}"
+          - "Git repository: {{ git_repo_url }}"
+          - "Branch: {{ git_branch }}"
+          - "Disk usage: {{ disk_usage.stdout }}%"
+      tags: [info]
 
 - name: Setup Staging environment for dotca
   hosts: digitalocean
@@ -27,18 +71,38 @@
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
-    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"  # Added explicit file path
+    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      tags: [nginx]
+
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+        enabled: yes
+      tags: [docker]
 
   tasks:
     - name: Update apt cache
       apt:
         update_cache: yes
+        cache_valid_time: 3600
+      tags: [packages]
 
-    - name: Upgrade all packages
+    - name: Upgrade packages safely
       apt:
-        upgrade: yes
+        upgrade: safe
+        autoremove: yes
+        autoclean: yes
+      tags: [packages]
 
-    - name: Install required packages
+    - name: Install required system packages
       apt:
         name:
           - apt-transport-https
@@ -50,19 +114,24 @@
           - python3-pip
           - jq
           - nginx
+          - htop
+          - unzip
         state: present
         update_cache: yes
+      tags: [packages]
 
     - name: Add Docker's official GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
+      tags: [docker, packages]
 
     - name: Add Docker repository
       apt_repository:
         repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         update_cache: yes
+      tags: [docker, packages]
 
     - name: Install Docker Engine
       apt:
@@ -70,36 +139,67 @@
           - docker-ce
           - docker-ce-cli
           - containerd.io
+          - docker-compose-plugin
         state: present
         update_cache: yes
       register: docker_install_result
       retries: 3
       delay: 5
       until: docker_install_result is success
+      tags: [docker, packages]
 
-    - name: Install NTP for time synchronization
-      apt:
-        name: ntp
-        state: present
-        update_cache: yes
+    - name: Configure Docker daemon for better resource management
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            },
+            "storage-driver": "overlay2",
+            "default-ulimits": {
+              "nofile": {
+                "name": "nofile",
+                "hard": 65536,
+                "soft": 65536
+              }
+            }
+          }
+        mode: '0644'
+      notify: restart docker
+      tags: [docker, config]
 
-    - name: Configure NTP to use time.nist.gov
-      lineinfile:
-        path: /etc/ntp.conf
-        regexp: '^server'
-        line: 'server time.nist.gov iburst'
-        state: present
-        backup: yes
+    - name: Install and configure NTP for time synchronization
+      block:
+        - name: Install NTP
+          apt:
+            name: ntp
+            state: present
+          tags: [time]
 
-    - name: Restart NTP service
-      systemd:
-        name: ntp
-        state: restarted
-        enabled: yes
+        - name: Configure NTP to use reliable time servers
+          lineinfile:
+            path: /etc/ntp.conf
+            regexp: '^server'
+            line: 'server time.nist.gov iburst'
+            state: present
+            backup: yes
+          notify: restart ntp
+          tags: [time, config]
+
+        - name: Start and enable NTP service
+          systemd:
+            name: ntp
+            state: started
+            enabled: yes
+          tags: [time]
 
     - name: Set timezone to Eastern Time
       timezone:
         name: America/New_York
+      tags: [time]
 
     - name: Start and enable Docker service
       systemd:
@@ -110,124 +210,97 @@
       retries: 3
       delay: 5
       until: docker_service_result is success
+      tags: [docker]
 
-    - name: Install Docker Compose V2 (improved)
-      block:
-      # First make sure Docker is running
-      - name: Ensure Docker service is running
-        systemd:
-          name: docker
-          state: started
-          enabled: yes
-        register: docker_service_result
-        retries: 3
-        delay: 5
-        until: docker_service_result is success
+    - name: Detect Docker Compose command
+      shell: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker compose"
+        elif command -v docker-compose >/dev/null 2>&1; then
+          echo "docker-compose"
+        else
+          echo "none"
+        fi
+      register: compose_detection
+      changed_when: false
+      tags: [docker]
 
-      # Create Docker CLI plugins directory
-      - name: Create Docker CLI plugins directory
-        file:
-          path: "{{ item }}"
-          state: directory
-          mode: '0755'
-        with_items:
-          - /usr/local/lib/docker/cli-plugins
-          - /root/.docker/cli-plugins
-          - /root/.docker
-
-      # Try the docker compose plugin installation first
-      - name: Try to install docker-compose-plugin with apt
-        apt:
-          name: docker-compose-plugin
-          state: present
-        register: plugin_install
-        ignore_errors: yes
-
-      # Download Docker Compose V2 with a specific version if plugin install fails
-      - name: Download Docker Compose V2
-        get_url:
-          url: https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64
-          dest: /usr/local/lib/docker/cli-plugins/docker-compose
-          mode: '0755'
-          force: yes
-        register: compose_download
-        retries: 3
-        delay: 5
-        until: compose_download is success
-        when: plugin_install is failed
-
-      # Create symlinks for docker-compose command
-      - name: Create symlinks for docker-compose command
-        file:
-          src: /usr/local/lib/docker/cli-plugins/docker-compose
-          dest: "{{ item }}"
-          state: link
-          mode: '0755'
-          force: yes
-        with_items:
-          - /usr/local/bin/docker-compose
-          - /root/.docker/cli-plugins/docker-compose
-        when: compose_download is success and compose_download is not skipped
-
-      # Verify Docker Compose installation
-      - name: Verify Docker Compose installation
-        shell: docker compose version || docker-compose --version
-        register: compose_version
-        ignore_errors: yes
-        changed_when: false
-
-    # Install via pip as last resort
-    - name: Install docker-compose via pip as fallback
+    - name: Install docker-compose via pip if not available
       pip:
         name: docker-compose
         state: present
         executable: pip3
-      when: (compose_version is failed) or (compose_version.rc != 0)
+      when: compose_detection.stdout == "none"
+      tags: [docker, packages]
 
-    - name: Create application directory
+    - name: Set Docker Compose command variable
+      set_fact:
+        docker_compose_cmd: "{{ compose_detection.stdout if compose_detection.stdout != 'none' else 'docker-compose' }}"
+        is_compose_v2: "{{ compose_detection.stdout == 'docker compose' }}"
+      tags: [docker]
+
+    - name: Verify Docker Compose is working
+      shell: "{{ docker_compose_cmd }} version"
+      register: compose_version_check
+      changed_when: false
+      tags: [docker, validation]
+
+    - name: Display Docker Compose version
+      debug:
+        msg: "Using {{ docker_compose_cmd }}: {{ compose_version_check.stdout_lines[0] if compose_version_check.stdout_lines else 'Version check failed' }}"
+      tags: [docker, info]
+
+    - name: Create application directory with proper permissions
       file:
         path: "{{ app_dir }}"
         state: directory
         mode: '0755'
+        owner: root
+        group: root
+      tags: [setup]
 
-    - name: Clone the repository
-      git:
-        repo: "{{ git_repo_url }}"
-        dest: "{{ app_dir }}/repo"
-        version: "{{ git_branch }}"
-        force: yes
-      register: git_clone
-      retries: 3
-      delay: 10
-      until: git_clone is success
-
-    - name: Verify Next.js configuration file
-      stat:
-        path: "{{ app_dir }}/repo/next.config.js"
-      register: next_config
-
-    - name: Fail if Next.js configuration is missing
-      fail:
-        msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
-      when: not next_config.stat.exists
-
-    # DEPLOYMENT TASKS START HERE
-    - name: Pull latest changes from git
+    - name: Clone or update the repository
       git:
         repo: "{{ git_repo_url }}"
         dest: "{{ app_dir }}/repo"
         version: "{{ git_branch }}"
         force: yes
         update: yes
-      register: git_pull
+      register: git_operation
       retries: 3
-      delay: 5
-      until: git_pull is success
+      delay: 10
+      until: git_operation is success
+      tags: [git]
 
+    - name: Verify Next.js configuration file exists
+      stat:
+        path: "{{ app_dir }}/repo/next.config.js"
+      register: next_config
+      tags: [validation]
+
+    - name: Fail if Next.js configuration is missing
+      fail:
+        msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
+      when: not next_config.stat.exists
+      tags: [validation]
+
+    - name: Verify Docker Compose file exists
+      stat:
+        path: "{{ docker_compose_file }}"
+      register: compose_file_check
+      tags: [validation]
+
+    - name: Fail if Docker Compose file is missing
+      fail:
+        msg: "Docker Compose file not found at {{ docker_compose_file }}"
+      when: not compose_file_check.stat.exists
+      tags: [validation]
+
+    # DEPLOYMENT TASKS START HERE
     - name: Create .env file for docker-compose
       copy:
         dest: "{{ app_dir }}/repo/.env"
-        mode: '0644'
+        mode: '0600'  # Restrict permissions for security
         content: |
           NODE_ENV=production
           NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
@@ -236,119 +309,29 @@
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
+      tags: [config, deployment]
 
-    # Create a reusable Docker Compose command helper
-    - name: Check for Docker Compose command on target server
-      ansible.builtin.shell: |
-        if docker compose version &> /dev/null; then
-          echo "v2"
-        elif command -v docker-compose &> /dev/null; then
-          echo "docker-compose"
-        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "/usr/local/bin/docker-compose"
-        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-          echo "/usr/bin/docker-compose"
-        else
-          echo "none"
-        fi
-      register: docker_compose_check
-      changed_when: false
-
-    - name: Set Docker Compose Command Variables
-      ansible.builtin.set_fact:
-        docker_compose_cmd: "{{ docker_compose_check.stdout }}"
-        is_compose_v2: "{{ docker_compose_check.stdout == 'v2' }}"
-
-    - name: Stop existing Docker Compose services
-      ansible.builtin.shell: |
-        set -e
-        {% if is_compose_v2 %}
-        docker compose down
-        {% else %}
-        {{ docker_compose_cmd }} down
-        {% endif %}
+    - name: Stop existing Docker Compose services gracefully
+      shell: |
+        cd {{ app_dir }}/repo
+        {{ docker_compose_cmd }} down --remove-orphans || true
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
-      ignore_errors: yes
-      when: docker_compose_cmd != "none"
+      tags: [docker, deployment]
 
-    - name: Debug docker-compose detection result
-      debug:
-        msg: "Docker Compose command detected: {{ docker_compose_cmd }}"
+    - name: Clean up Docker resources
+      shell: |
+        docker system prune -f
+        docker volume prune -f
+      tags: [docker, cleanup]
 
-    - name: Install docker-compose if not found
-      pip:
-        name: docker-compose
-        state: present
-        executable: pip3
-      when: docker_compose_cmd == "none"
-      register: pip_install
-
-    - name: Debug pip install result
-      debug:
-        msg: "Pip install result: {{ pip_install }}"
-      when: docker_compose_cmd == "none"
-      
-    # Re-check docker-compose after pip install if needed
-    - name: Re-check docker-compose after pip install
-      ansible.builtin.shell: |
-        if docker compose version &> /dev/null; then
-          echo "v2"
-        elif command -v docker-compose &> /dev/null; then
-          echo "docker-compose"
-        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-          echo "/usr/local/bin/docker-compose"
-        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-          echo "/usr/bin/docker-compose"
-        else
-          echo "none"
-        fi
-      register: docker_compose_recheck
-      changed_when: false
-      when: docker_compose_cmd == "none" and pip_install is success
-
-    - name: Update Docker Compose Command after pip install
-      ansible.builtin.set_fact:
-        docker_compose_cmd: "{{ docker_compose_recheck.stdout }}"
-        is_compose_v2: "{{ docker_compose_recheck.stdout == 'v2' }}"
-      when: docker_compose_cmd == "none" and pip_install is success and docker_compose_recheck is defined
-
-    - name: Fallback to docker-compose if still none after pip install
-      ansible.builtin.set_fact:
-        docker_compose_cmd: "docker-compose"
-        is_compose_v2: false
-      when: docker_compose_cmd == "none" and pip_install is success
-
-    - name: Final debug of docker-compose command
-      debug:
-        msg: 
-          - "Final Docker Compose command: {{ docker_compose_cmd }}"
-          - "Is Compose V2: {{ is_compose_v2 }}"
-
-    - name: Prune Docker system
-      ansible.builtin.command:
-        cmd: docker system prune -af
-
-    - name: Fail if docker-compose still not available
-      fail:
-        msg: "Docker Compose is not available after installation attempts. Please check the server manually."
-      when: docker_compose_cmd == "none"
-
-    - name: Build Docker images
-      ansible.builtin.shell: |
-        set -e
+    - name: Build Docker images with improved caching
+      shell: |
+        cd {{ app_dir }}/repo
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        echo "DEBUG: docker_compose_cmd is: '{{ docker_compose_cmd }}'"
-        echo "DEBUG: is_compose_v2: {{ is_compose_v2 }}"
-        {% if is_compose_v2 %}
-        echo "DEBUG: Using docker compose v2 command"
-        docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        {% else %}
-        echo "DEBUG: Using v1 command: {{ docker_compose_cmd }}"
-        {{ docker_compose_cmd }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        {% endif %}
+        {{ docker_compose_cmd }} build --no-cache --parallel
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
@@ -358,98 +341,186 @@
       retries: 2
       delay: 30
       until: docker_build is success
-      when: docker_compose_cmd != "none"
+      tags: [docker, build]
 
     - name: Start Docker Compose services
-      ansible.builtin.shell: |
-        set -e
-        {% if is_compose_v2 %}
-        docker compose up -d
-        {% else %}
-        {{ docker_compose_cmd }} up -d
-        {% endif %}
+      shell: |
+        cd {{ app_dir }}/repo
+        {{ docker_compose_cmd }} up -d --remove-orphans
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
       retries: 2
       delay: 10
       until: docker_up is success
-      when: docker_compose_cmd != "none"
+      tags: [docker, deployment]
 
-    - name: Display deployment completion message
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:8080/health"
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: health_check
+      until: health_check.status == 200
+      retries: 15
+      delay: 10
+      ignore_errors: yes
+      tags: [health-check, deployment]
+
+    - name: Display container status
+      shell: "{{ docker_compose_cmd }} ps"
+      args:
+        chdir: "{{ app_dir }}/repo"
+      register: container_status
+      tags: [info, deployment]
+
+    - name: Show container logs if health check failed
+      shell: "{{ docker_compose_cmd }} logs --tail=50"
+      args:
+        chdir: "{{ app_dir }}/repo"
+      when: health_check is failed
+      register: container_logs
+      tags: [debug, deployment]
+
+    - name: Display logs if health check failed
       debug:
-        msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
+        msg: "{{ container_logs.stdout_lines }}"
+      when: health_check is failed and container_logs is defined
+      tags: [debug, deployment]
 
-    - name: Configure Nginx worker processes
+    - name: Configure optimized Nginx
       copy:
         dest: /etc/nginx/nginx.conf
         content: |
           user www-data;
           worker_processes auto;
+          worker_rlimit_nofile 65535;
           pid /run/nginx.pid;
           include /etc/nginx/modules-enabled/*.conf;
 
           events {
             worker_connections 1024;
             multi_accept on;
+            use epoll;
           }
 
           http {
+            charset utf-8;
             sendfile on;
             tcp_nopush on;
             tcp_nodelay on;
-            keepalive_timeout 65;
-            types_hash_max_size 2048;
             server_tokens off;
+            log_not_found off;
+            types_hash_max_size 2048;
+            client_max_body_size 16M;
             
+            # MIME
             include /etc/nginx/mime.types;
             default_type application/octet-stream;
 
+            # Security headers
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "no-referrer-when-downgrade" always;
+            add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+            
             # Optimize buffers
             client_body_buffer_size 10K;
             client_header_buffer_size 1k;
-            client_max_body_size 8m;
             large_client_header_buffers 2 1k;
             
             # Timeouts
             client_body_timeout 12;
             client_header_timeout 12;
+            keepalive_timeout 15;
             send_timeout 10;
+            
+            # Rate limiting
+            limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
             
             # Enable gzip
             gzip on;
-            gzip_comp_level 2;
+            gzip_vary on;
+            gzip_proxied any;
+            gzip_comp_level 6;
             gzip_min_length 1000;
-            gzip_proxied expired no-cache no-store private auth;
-            gzip_types text/plain application/x-javascript text/xml text/css application/xml application/json;
+            gzip_types
+              application/atom+xml
+              application/javascript
+              application/json
+              application/ld+json
+              application/manifest+json
+              application/rss+xml
+              application/vnd.geo+json
+              application/vnd.ms-fontobject
+              application/x-font-ttf
+              application/x-web-app-manifest+json
+              application/xhtml+xml
+              application/xml
+              font/opentype
+              image/bmp
+              image/svg+xml
+              image/x-icon
+              text/cache-manifest
+              text/css
+              text/plain
+              text/vcard
+              text/vnd.rim.location.xloc
+              text/vtt
+              text/x-component
+              text/x-cross-domain-policy;
             
+            # SSL Configuration (for when SSL is enabled)
+            ssl_session_timeout 1d;
+            ssl_session_cache shared:SSL:10m;
+            ssl_session_tickets off;
             ssl_protocols TLSv1.2 TLSv1.3;
-            ssl_prefer_server_ciphers on;
+            ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+            ssl_prefer_server_ciphers off;
             
+            # Logging
             access_log /var/log/nginx/access.log;
-            error_log /var/log/nginx/error.log;
+            error_log /var/log/nginx/error.log warn;
 
             include /etc/nginx/conf.d/*.conf;
             include /etc/nginx/sites-enabled/*;
           }
+        backup: yes
+      notify: restart nginx
+      tags: [nginx, config]
 
-    - name: Configure Nginx as reverse proxy
+    - name: Configure Nginx site for Next.js application
       copy:
         dest: /etc/nginx/sites-available/nextjs-app
         content: |
+          # Upstream for load balancing (future expansion)
+          upstream nextjs_backend {
+              server localhost:8080 max_fails=3 fail_timeout=30s;
+          }
+
           server {
               listen 80;
               server_name _;
               
-              # Add basic health check endpoint
+              # Security headers
+              add_header X-Frame-Options "SAMEORIGIN" always;
+              add_header X-XSS-Protection "1; mode=block" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              
+              # Health check endpoint (no rate limiting)
               location /health {
                   access_log off;
                   add_header Content-Type text/plain;
                   return 200 'OK';
               }
               
+              # Rate limiting for general requests
               location / {
-                  proxy_pass http://localhost:8080;
+                  limit_req zone=general burst=20 nodelay;
+                  
+                  proxy_pass http://nextjs_backend;
                   proxy_http_version 1.1;
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection 'upgrade';
@@ -459,96 +530,139 @@
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto $scheme;
                   
-                  # Caching
-                  proxy_cache_valid 200 302 10m;
-                  proxy_cache_valid 404 1m;
+                  # Proxy timeouts
+                  proxy_connect_timeout 60s;
+                  proxy_send_timeout 60s;
+                  proxy_read_timeout 60s;
+                  
+                  # Caching for static assets
+                  location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+                      expires 1y;
+                      add_header Cache-Control "public, immutable";
+                      proxy_pass http://nextjs_backend;
+                  }
+              }
+              
+              # Block common attack patterns
+              location ~ /\. {
+                  deny all;
+                  access_log off;
+                  log_not_found off;
               }
           }
+        backup: yes
+      notify: restart nginx
+      tags: [nginx, config]
 
     - name: Enable Nginx site configuration
       file:
         src: /etc/nginx/sites-available/nextjs-app
         dest: /etc/nginx/sites-enabled/nextjs-app
         state: link
+      notify: restart nginx
+      tags: [nginx, config]
 
     - name: Remove default Nginx site
       file:
         path: /etc/nginx/sites-enabled/default
         state: absent
-      ignore_errors: yes
+      notify: restart nginx
+      tags: [nginx, config]
 
     - name: Test Nginx configuration
       command: nginx -t
       register: nginx_test
       changed_when: false
-      ignore_errors: true
+      tags: [nginx, validation]
 
-    - name: Display Nginx test results
+    - name: Display Nginx test results if failed
       debug:
-        msg: "{{ nginx_test.stderr_lines }}"
+        msg: "Nginx configuration test failed: {{ nginx_test.stderr_lines }}"
       when: nginx_test.rc != 0
+      tags: [nginx, debug]
 
-    - name: Restart Nginx
-      systemd:
-        name: nginx
-        state: restarted
-        enabled: yes
-      when: nginx_test.rc == 0
-      register: nginx_restart
-      retries: 2
-      delay: 5
-      until: nginx_restart is success
+    - name: Fail if Nginx configuration is invalid
+      fail:
+        msg: "Nginx configuration is invalid. Please check the configuration."
+      when: nginx_test.rc != 0
+      tags: [nginx, validation]
 
-    - name: Setup firewall (UFW)
+    - name: Configure UFW firewall rules
       ufw:
         rule: allow
         port: "{{ item }}"
         proto: tcp
+        comment: "{{ item }} - Required for {{ project_name }}"
       loop:
-        - '22'
-        - '80'
-        - '443'
-        - '6080'
-        - '8080'
+        - '22'    # SSH
+        - '80'    # HTTP
+        - '443'   # HTTPS
+        - '8080'  # Application port
+      tags: [firewall, security]
 
-    - name: Enable UFW
+    - name: Enable UFW firewall
       ufw:
         state: enabled
         policy: deny
+        direction: incoming
+      tags: [firewall, security]
 
-    - name: Create enhanced monitoring script
+    - name: Create enhanced monitoring and recovery script
       copy:
         dest: "{{ app_dir }}/monitor.sh"
         mode: '0755'
         content: |
           #!/bin/bash
           
-          # Enhanced monitoring script with better retry logic
+          # Enhanced monitoring script with better error handling and recovery
           LOG_FILE="{{ app_dir }}/monitoring.log"
+          MAX_LOG_SIZE=10485760  # 10MB
           
-          # Function to log messages
+          # Rotate log if it gets too large
+          if [ -f "$LOG_FILE" ] && [ $(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0) -gt $MAX_LOG_SIZE ]; then
+            mv "$LOG_FILE" "${LOG_FILE}.old"
+          fi
+          
+          # Function to log messages with timestamps
           log_message() {
-            echo "[$(date)] $1" | tee -a $LOG_FILE
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
           }
           
-          # Application health check
-          HEALTH_CHECK_URL="http://localhost/health"
-          MAX_RETRIES=3
+          # Function to send alert (placeholder for future notification integration)
+          send_alert() {
+            log_message "ALERT: $1"
+            # Future: integrate with monitoring service or send email
+          }
           
-          log_message "Starting health check..."
+          log_message "=== Starting health check ==="
           
-          # Check if Docker is running
+          # Check system resources
+          MEMORY_USAGE=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100.0}')
+          DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+          LOAD_AVG=$(uptime | awk -F'load average:' '{ print $2 }' | cut -d, -f1 | xargs)
+          
+          log_message "System status - Memory: ${MEMORY_USAGE}%, Disk: ${DISK_USAGE}%, Load: ${LOAD_AVG}"
+          
+          # Alert on high resource usage
+          if [ "$MEMORY_USAGE" -gt 90 ]; then
+            send_alert "High memory usage: ${MEMORY_USAGE}%"
+          fi
+          
+          if [ "$DISK_USAGE" -gt 90 ]; then
+            send_alert "High disk usage: ${DISK_USAGE}%"
+            log_message "Attempting to clean up Docker resources..."
+            docker system prune -af --volumes 2>&1 | tee -a "$LOG_FILE"
+          fi
+          
+          # Check if Docker service is running
           if ! systemctl is-active --quiet docker; then
             log_message "Docker service is not running! Attempting to restart..."
             systemctl restart docker
-            sleep 10
-          fi
-          
-          # Check available disk space
-          DISK_SPACE=$(df -h /tmp | awk 'NR==2 {print $5}' | sed 's/%//')
-          if [ "$DISK_SPACE" -gt 90 ]; then
-            log_message "Disk space low ($DISK_SPACE%). Cleaning up Docker..."
-            docker system prune -af --volumes
+            sleep 15
+            if ! systemctl is-active --quiet docker; then
+              send_alert "Failed to restart Docker service!"
+              exit 1
+            fi
           fi
           
           # Function to get docker-compose command
@@ -557,70 +671,110 @@
               echo "docker compose"
             elif command -v docker-compose &> /dev/null; then
               echo "docker-compose"
-            elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
-              echo "/usr/local/bin/docker-compose"
-            elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
-              echo "/usr/bin/docker-compose"
             else
               echo "none"
             fi
           }
           
           DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
-          log_message "Using Docker Compose command: $DOCKER_COMPOSE_CMD"
           
-          # Check Docker container status
-          cd {{ app_dir }}/repo
-          if ! docker ps | grep -q "{{ project_name }}"; then
-            log_message "Containers not running properly! Attempting to restart..."
-            if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
-              if [ "$DOCKER_COMPOSE_CMD" = "docker compose" ]; then
-                docker compose down
-                docker compose up -d
-              else
-                $DOCKER_COMPOSE_CMD down
-                $DOCKER_COMPOSE_CMD up -d
-              fi
-            else
-              log_message "ERROR: No Docker Compose command available!"
-              exit 1
-            fi
-            sleep 15
-          fi
-          
-          log_message "Application not responding after $MAX_RETRIES attempts. Restarting services..."
-          
-          # Restart application services
-          cd {{ app_dir }}/repo
-          if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
-            if [ "$DOCKER_COMPOSE_CMD" = "docker compose" ]; then
-              docker compose down && docker compose up -d
-            else
-              $DOCKER_COMPOSE_CMD down && $DOCKER_COMPOSE_CMD up -d
-            fi
-          else
-            log_message "ERROR: No Docker Compose command available for restart!"
+          if [ "$DOCKER_COMPOSE_CMD" = "none" ]; then
+            send_alert "No Docker Compose command available!"
             exit 1
           fi
-          sleep 5
-          systemctl restart nginx
           
-          # Final check
-          if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
-            log_message "Application is now healthy after restart."
-          else
-            log_message "WARNING: Application still unhealthy after restart. Manual intervention required!"
+          # Check if containers are running
+          cd {{ app_dir }}/repo || exit 1
+          
+          if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
+            log_message "No containers running! Attempting to start services..."
+            $DOCKER_COMPOSE_CMD up -d 2>&1 | tee -a "$LOG_FILE"
+            sleep 20
           fi
-      
+          
+          # Health check with retries
+          HEALTH_URL="http://localhost:8080/health"
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+              log_message "Application health check passed"
+              
+              # Check Nginx status
+              if systemctl is-active --quiet nginx; then
+                log_message "All services healthy"
+                exit 0
+              else
+                log_message "Nginx not running, restarting..."
+                systemctl restart nginx
+                exit 0
+              fi
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            log_message "Health check failed (attempt $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 10
+          done
+          
+          # If we get here, health checks failed
+          send_alert "Application health check failed after $MAX_RETRIES attempts"
+          
+          # Attempt recovery
+          log_message "Attempting service recovery..."
+          $DOCKER_COMPOSE_CMD restart 2>&1 | tee -a "$LOG_FILE"
+          sleep 30
+          
+          # Final health check
+          if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+            log_message "Recovery successful"
+          else
+            send_alert "Recovery failed - manual intervention required!"
+            exit 1
+          fi
+      tags: [monitoring, scripts]
+
     - name: Set up monitoring cron job
       cron:
-        name: "Monitor dotca-nextjs"
-        minute: "*/15"
-        job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
+        name: "Monitor {{ project_name }}"
+        minute: "*/10"  # Check every 10 minutes instead of 15
+        job: "{{ app_dir }}/monitor.sh"
+        user: root
         state: present
+      tags: [monitoring, cron]
 
-# Create a separate play for Let's Encrypt setup
-- name: Setup Let's Encrypt with Nginx
+    - name: Create log rotation for monitoring
+      copy:
+        dest: /etc/logrotate.d/{{ project_name }}
+        content: |
+          {{ app_dir }}/monitoring.log {
+            weekly
+            rotate 4
+            compress
+            delaycompress
+            missingok
+            notifempty
+            create 0644 root root
+          }
+      tags: [monitoring, logs]
+
+    - name: Display deployment completion message
+      debug:
+        msg:
+          - "==============================================="
+          - "🎉 Deployment completed successfully!"
+          - "==============================================="
+          - "Application URL: http://{{ public_ip }}"
+          - "Health check: http://{{ public_ip }}/health" 
+          - "Container status: {{ container_status.stdout_lines if container_status.stdout_lines else 'Check manually' }}"
+          - "Docker Compose command: {{ docker_compose_cmd }}"
+          - "Monitoring: {{ app_dir }}/monitor.sh (runs every 10 minutes)"
+          - "Logs: {{ app_dir }}/monitoring.log"
+          - "==============================================="
+      tags: [info, deployment]
+
+# Separate play for Let's Encrypt SSL setup
+- name: Setup Let's Encrypt SSL with Nginx
   hosts: digitalocean
   become: yes
   vars:
@@ -638,70 +792,100 @@
       retries: 3
       delay: 5
       until: certbot_install is success
+      tags: [ssl, info], packages]
 
     - name: Check if certificate already exists
       stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
       register: cert_file
+      tags: [ssl, validation]
 
-    # Check if domain is properly configured in Nginx before requesting a certificate
-    - name: Verify domain configuration in Nginx
-      ansible.builtin.shell: |
-        if [ -f /etc/nginx/sites-available/nextjs-app ]; then
-          grep -q "server_name {{ domain_name }}" /etc/nginx/sites-available/nextjs-app || echo "Domain not configured"
-        else
-          echo "Nginx config not found"
-        fi
-      register: domain_check
-      changed_when: false
-
-    - name: Configure domain in Nginx if needed
-      ansible.builtin.replace:
+    - name: Update Nginx configuration with domain name
+      replace:
         path: /etc/nginx/sites-available/nextjs-app
         regexp: 'server_name _;'
         replace: 'server_name {{ domain_name }};'
-      when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
-      register: nginx_domain_update
+      when: not cert_file.stat.exists
+      notify: restart nginx
+      tags: [ssl, nginx]
+
+    - name: Test Nginx configuration before SSL
+      command: nginx -t
+      register: nginx_ssl_test
+      changed_when: false
+      when: not cert_file.stat.exists
+      tags: [ssl, validation]
 
     - name: Restart Nginx before certificate request
       systemd:
         name: nginx
         state: restarted
-        enabled: yes
-      when: nginx_domain_update is changed
+      when: not cert_file.stat.exists and nginx_ssl_test.rc == 0
+      tags: [ssl, nginx]
 
-    # Verify Nginx is responding with the correct domain before obtaining certificate
-    - name: Verify Nginx is serving the domain correctly
-      ansible.builtin.uri:
-        url: http://localhost
+    - name: Wait for Nginx to be ready
+      uri:
+        url: "http://{{ domain_name }}/health"
         method: GET
-        return_content: yes
-      register: nginx_check
+        status_code: 200
+        timeout: 10
+      register: domain_check
+      retries: 5
+      delay: 5
       ignore_errors: yes
+      when: not cert_file.stat.exists
+      tags: [ssl, validation]
 
-    - name: Debug Nginx response
-      debug:
-        msg: "Nginx Health Check: {{ nginx_check.status | default('Failed') }}"
-
-    - name: Obtain SSL certificate
+    - name: Obtain SSL certificate from Let's Encrypt
       command: >
         certbot --nginx -d {{ domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
-        --redirect
-      when: not cert_file.stat.exists and (nginx_check.status | default(0)) == 200
+        --redirect --no-eff-email
+      when: not cert_file.stat.exists and domain_check is success
       register: certbot_result
       retries: 2
       delay: 30
       until: certbot_result is success
+      tags: [ssl, certificate]
       
-    - name: Log certificate generation results
+    - name: Display certificate generation results
       debug:
-        msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
-      when: not cert_file.stat.exists and certbot_result is defined
+        msg: 
+          - "SSL Certificate Status: {{ 'Already exists' if cert_file.stat.exists else 'Newly generated' }}"
+          - "Domain: {{ domain_name }}"
+          - "Certificate path: /etc/letsencrypt/live/{{ domain_name }}/"
+      tags: [ssl, info]
 
-    - name: Add cron job for auto-renewal
+    - name: Set up automatic certificate renewal
       cron:
-        name: "Let's Encrypt renewal"
+        name: "Let's Encrypt renewal for {{ domain_name }}"
         special_time: daily
-        job: "certbot renew --quiet --nginx"
+        job: "certbot renew --quiet --nginx --no-random-sleep-on-renew"
+        user: root
+        state: present
+      tags: [ssl, cron]
+
+    - name: Verify SSL configuration
+      uri:
+        url: "https://{{ domain_name }}/health"
+        method: GET
+        status_code: 200
+        timeout: 10
+        validate_certs: yes
+      register: ssl_check
+      retries: 3
+      delay: 5
+      ignore_errors: yes
+      when: not cert_file.stat.exists and certbot_result is success
+      tags: [ssl, validation]
+
+    - name: Display final SSL status
+      debug:
+        msg:
+          - "🔒 SSL Setup Complete!"
+          - "HTTPS URL: https://{{ domain_name }}"
+          - "SSL Check: {{ 'Passed' if ssl_check is success else 'Failed - check manually' }}"
+          - "Auto-renewal: Configured (daily check)"
+      tags: [ssl]
+      
