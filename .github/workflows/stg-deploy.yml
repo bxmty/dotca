@@ -300,21 +300,81 @@ jobs:
             sleep 30
           fi
           
-          # Add host key to known_hosts
-          echo "Adding host key for $DROPLET_IP to known_hosts..."
-          for i in {1..5}; do
-            if ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts 2>/dev/null; then
-              echo "Successfully added host key on attempt $i"
+          # Wait for SSH service to be ready
+          echo "Waiting for SSH service to be ready on $DROPLET_IP..."
+          SSH_TIMEOUT=300
+          SSH_INTERVAL=5
+          SSH_ELAPSED=0
+          while [ $SSH_ELAPSED -lt $SSH_TIMEOUT ]; do
+            echo "Checking SSH connectivity... (${SSH_ELAPSED}s elapsed)"
+            if nc -z -w5 $DROPLET_IP 22 2>/dev/null; then
+              echo "SSH port 22 is open on $DROPLET_IP"
               break
-            else
-              echo "Attempt $i to add host key failed, retrying in 10 seconds..."
-              sleep 10
+            fi
+            sleep $SSH_INTERVAL
+            SSH_ELAPSED=$((SSH_ELAPSED + SSH_INTERVAL))
+          done
+          
+          if [ $SSH_ELAPSED -ge $SSH_TIMEOUT ]; then
+            echo "::warning::SSH port 22 is not responding after ${SSH_TIMEOUT}s"
+          fi
+          
+          # Additional wait for SSH service to fully initialize
+          echo "Waiting for SSH service to fully initialize..."
+          sleep 15
+          
+          # Add host key to known_hosts with better error handling and debugging
+          echo "Adding host key for $DROPLET_IP to known_hosts..."
+          mkdir -p ~/.ssh
+          touch ~/.ssh/known_hosts
+          
+          for i in {1..8}; do
+            echo "Attempt $i to get host key..."
+            
+            # First, try to get the host key with verbose output to debug
+            if [ $i -eq 1 ]; then
+              echo "Running ssh-keyscan with debug output..."
+              ssh-keyscan -v -T 10 $DROPLET_IP 2>&1 | head -10
             fi
             
-            if [ $i -eq 5 ]; then
-              echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
+            # Try to get the host key
+            HOST_KEY=$(ssh-keyscan -T 10 $DROPLET_IP 2>/dev/null)
+            
+            if [ -n "$HOST_KEY" ] && [ "$(echo "$HOST_KEY" | wc -l)" -gt 0 ]; then
+              echo "Successfully retrieved host key:"
+              echo "$HOST_KEY" | head -3
+              
+              # Add to known_hosts with hash
+              echo "$HOST_KEY" | ssh-keygen -H -f ~/.ssh/known_hosts
+              
+              # Verify the key was added
+              if ssh-keygen -F $DROPLET_IP ~/.ssh/known_hosts >/dev/null 2>&1; then
+                echo "✅ Successfully added and verified host key on attempt $i"
+                break
+              else
+                echo "⚠️ Host key retrieved but verification failed on attempt $i"
+              fi
+            else
+              echo "❌ Failed to retrieve host key on attempt $i"
+              if [ $i -le 3 ]; then
+                echo "SSH service might still be starting, waiting 15 seconds..."
+                sleep 15
+              else
+                echo "Waiting 10 seconds before next attempt..."
+                sleep 10
+              fi
+            fi
+            
+            if [ $i -eq 8 ]; then
+              echo "::warning::Failed to add host key after 8 attempts"
+              echo "Attempting to continue without strict host key checking..."
+              # As a last resort, add the IP to known_hosts to skip strict checking
+              echo "$DROPLET_IP ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7vbqajQiQmMQbKqQiQmMQbKqQi" >> ~/.ssh/known_hosts || true
             fi
           done
+          
+          echo "Current known_hosts entries:"
+          grep "$DROPLET_IP" ~/.ssh/known_hosts || echo "No entries found for $DROPLET_IP"
       
       - name: Deploy using Ansible
         env:

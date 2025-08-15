@@ -238,9 +238,25 @@
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
 
     # Create a reusable Docker Compose command helper
+    - name: Check for Docker Compose command on target server
+      ansible.builtin.shell: |
+        if docker compose version &> /dev/null; then
+          echo "docker compose"
+        elif command -v docker-compose &> /dev/null; then
+          echo "docker-compose"
+        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "/usr/local/bin/docker-compose"
+        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+          echo "/usr/bin/docker-compose"
+        else
+          echo "none"
+        fi
+      register: docker_compose_check
+      changed_when: false
+
     - name: Set Docker Compose Command
       ansible.builtin.set_fact:
-        docker_compose_cmd: "{{ lookup('pipe', 'if command -v docker-compose &> /dev/null; then echo docker-compose; elif docker compose version &> /dev/null; then echo \"docker compose\"; elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then echo /usr/bin/docker-compose; elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then echo /usr/local/bin/docker-compose; else echo none; fi') }}"
+        docker_compose_cmd: "{{ docker_compose_check.stdout }}"
 
     - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
@@ -252,6 +268,10 @@
       ignore_errors: yes
       when: docker_compose_cmd != "none"
 
+    - name: Debug docker-compose detection result
+      debug:
+        msg: "Docker Compose command detected: {{ docker_compose_cmd }}"
+
     - name: Install docker-compose if not found
       pip:
         name: docker-compose
@@ -259,16 +279,52 @@
         executable: pip3
       when: docker_compose_cmd == "none"
       register: pip_install
+
+    - name: Debug pip install result
+      debug:
+        msg: "Pip install result: {{ pip_install }}"
+      when: docker_compose_cmd == "none"
       
     # Re-check docker-compose after pip install if needed
     - name: Re-check docker-compose after pip install
+      ansible.builtin.shell: |
+        if docker compose version &> /dev/null; then
+          echo "docker compose"
+        elif command -v docker-compose &> /dev/null; then
+          echo "docker-compose"
+        elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+          echo "/usr/local/bin/docker-compose"
+        elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+          echo "/usr/bin/docker-compose"
+        else
+          echo "none"
+        fi
+      register: docker_compose_recheck
+      changed_when: false
+      when: docker_compose_cmd == "none" and pip_install is success
+
+    - name: Update Docker Compose Command after pip install
+      ansible.builtin.set_fact:
+        docker_compose_cmd: "{{ docker_compose_recheck.stdout }}"
+      when: docker_compose_cmd == "none" and pip_install is success and docker_compose_recheck is defined
+
+    - name: Fallback to docker-compose if still none after pip install
       ansible.builtin.set_fact:
         docker_compose_cmd: "docker-compose"
       when: docker_compose_cmd == "none" and pip_install is success
 
+    - name: Final debug of docker-compose command
+      debug:
+        msg: "Final Docker Compose command: {{ docker_compose_cmd }}"
+
     - name: Prune Docker system
       ansible.builtin.command:
         cmd: docker system prune -af
+
+    - name: Fail if docker-compose still not available
+      fail:
+        msg: "Docker Compose is not available after installation attempts. Please check the server manually."
+      when: docker_compose_cmd == "none"
 
     - name: Build Docker images
       ansible.builtin.shell: |
@@ -285,6 +341,7 @@
       retries: 2
       delay: 30
       until: docker_build is success
+      when: docker_compose_cmd != "none"
 
     - name: Start Docker Compose services
       ansible.builtin.shell: |
@@ -296,6 +353,7 @@
       retries: 2
       delay: 10
       until: docker_up is success
+      when: docker_compose_cmd != "none"
 
     - name: Display deployment completion message
       debug:
@@ -472,17 +530,34 @@
             docker system prune -af --volumes
           fi
           
-          # Check Docker container status (modify this line in your monitor.sh)
+          # Function to get docker-compose command
+          get_docker_compose_cmd() {
+            if docker compose version &> /dev/null; then
+              echo "docker compose"
+            elif command -v docker-compose &> /dev/null; then
+              echo "docker-compose"
+            elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
+              echo "/usr/local/bin/docker-compose"
+            elif [ -f /usr/bin/docker-compose ] && [ -x /usr/bin/docker-compose ]; then
+              echo "/usr/bin/docker-compose"
+            else
+              echo "none"
+            fi
+          }
+          
+          DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
+          log_message "Using Docker Compose command: $DOCKER_COMPOSE_CMD"
+          
+          # Check Docker container status
           cd {{ app_dir }}/repo
           if ! docker ps | grep -q "{{ project_name }}"; then
             log_message "Containers not running properly! Attempting to restart..."
-            # Try multiple docker compose commands
-            if command -v docker-compose &> /dev/null; then
-              docker-compose down
-              docker-compose up -d
+            if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
+              $DOCKER_COMPOSE_CMD down
+              $DOCKER_COMPOSE_CMD up -d
             else
-              docker compose down
-              docker compose up -d
+              log_message "ERROR: No Docker Compose command available!"
+              exit 1
             fi
             sleep 15
           fi
@@ -491,10 +566,11 @@
           
           # Restart application services
           cd {{ app_dir }}/repo
-          if command -v docker-compose &> /dev/null; then
-            docker-compose down && docker-compose up -d
+          if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
+            $DOCKER_COMPOSE_CMD down && $DOCKER_COMPOSE_CMD up -d
           else
-            docker compose down && docker compose up -d
+            log_message "ERROR: No Docker Compose command available for restart!"
+            exit 1
           fi
           sleep 5
           systemctl restart nginx
