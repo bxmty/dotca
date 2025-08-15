@@ -54,13 +54,18 @@ resource "digitalocean_project_resources" "project_resources" {
   depends_on = [digitalocean_droplet.app_droplet]
 }
 
+# Get SSH key data
+data "digitalocean_ssh_key" "ssh_key" {
+  name = var.ssh_key_name
+}
+
 # Create a new Droplet for the environment
 resource "digitalocean_droplet" "app_droplet" {
   image    = "docker-20-04"  # Docker-ready Ubuntu image
   name     = "${var.project_name}-${var.environment}"
   region   = var.region
   size     = "s-1vcpu-2gb"   # Small droplet with 1 CPU, 2GB RAM
-  ssh_keys = [var.ssh_key_fingerprint]
+  ssh_keys = [data.digitalocean_ssh_key.ssh_key.id]
   tags     = [var.environment, "nextjs", var.project_name]
 
   # Minimal setup script for Ansible compatibility
