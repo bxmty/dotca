@@ -792,7 +792,7 @@
       retries: 3
       delay: 5
       until: certbot_install is success
-      tags: [ssl, info], packages]
+      tags: [ssl, packages]
 
     - name: Check if certificate already exists
       stat:
@@ -888,4 +888,3 @@
           - "SSL Check: {{ 'Passed' if ssl_check is success else 'Failed - check manually' }}"
           - "Auto-renewal: Configured (daily check)"
       tags: [ssl]
-      
