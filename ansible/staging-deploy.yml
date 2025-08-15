@@ -241,7 +241,7 @@
     - name: Check for Docker Compose command on target server
       ansible.builtin.shell: |
         if docker compose version &> /dev/null; then
-          echo "docker compose"
+          echo "v2"
         elif command -v docker-compose &> /dev/null; then
           echo "docker-compose"
         elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
@@ -254,18 +254,19 @@
       register: docker_compose_check
       changed_when: false
 
-    - name: Set Docker Compose Command
+    - name: Set Docker Compose Command Variables
       ansible.builtin.set_fact:
         docker_compose_cmd: "{{ docker_compose_check.stdout }}"
+        is_compose_v2: "{{ docker_compose_check.stdout == 'v2' }}"
 
     - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
         set -e
-        if [ "{{ docker_compose_cmd }}" = "docker compose" ]; then
-          docker compose down
-        else
-          {{ docker_compose_cmd }} down
-        fi
+        {% if is_compose_v2 %}
+        docker compose down
+        {% else %}
+        {{ docker_compose_cmd }} down
+        {% endif %}
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
@@ -293,7 +294,7 @@
     - name: Re-check docker-compose after pip install
       ansible.builtin.shell: |
         if docker compose version &> /dev/null; then
-          echo "docker compose"
+          echo "v2"
         elif command -v docker-compose &> /dev/null; then
           echo "docker-compose"
         elif [ -f /usr/local/bin/docker-compose ] && [ -x /usr/local/bin/docker-compose ]; then
@@ -310,16 +311,20 @@
     - name: Update Docker Compose Command after pip install
       ansible.builtin.set_fact:
         docker_compose_cmd: "{{ docker_compose_recheck.stdout }}"
+        is_compose_v2: "{{ docker_compose_recheck.stdout == 'v2' }}"
       when: docker_compose_cmd == "none" and pip_install is success and docker_compose_recheck is defined
 
     - name: Fallback to docker-compose if still none after pip install
       ansible.builtin.set_fact:
         docker_compose_cmd: "docker-compose"
+        is_compose_v2: false
       when: docker_compose_cmd == "none" and pip_install is success
 
     - name: Final debug of docker-compose command
       debug:
-        msg: "Final Docker Compose command: {{ docker_compose_cmd }}"
+        msg: 
+          - "Final Docker Compose command: {{ docker_compose_cmd }}"
+          - "Is Compose V2: {{ is_compose_v2 }}"
 
     - name: Prune Docker system
       ansible.builtin.command:
@@ -335,11 +340,15 @@
         set -e
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        if [ "{{ docker_compose_cmd }}" = "docker compose" ]; then
-          docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        else
-          {{ docker_compose_cmd }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
-        fi
+        echo "DEBUG: docker_compose_cmd is: '{{ docker_compose_cmd }}'"
+        echo "DEBUG: is_compose_v2: {{ is_compose_v2 }}"
+        {% if is_compose_v2 %}
+        echo "DEBUG: Using docker compose v2 command"
+        docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        {% else %}
+        echo "DEBUG: Using v1 command: {{ docker_compose_cmd }}"
+        {{ docker_compose_cmd }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        {% endif %}
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
@@ -354,11 +363,11 @@
     - name: Start Docker Compose services
       ansible.builtin.shell: |
         set -e
-        if [ "{{ docker_compose_cmd }}" = "docker compose" ]; then
-          docker compose up -d
-        else
-          {{ docker_compose_cmd }} up -d
-        fi
+        {% if is_compose_v2 %}
+        docker compose up -d
+        {% else %}
+        {{ docker_compose_cmd }} up -d
+        {% endif %}
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
