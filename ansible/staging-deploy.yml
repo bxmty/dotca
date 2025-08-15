@@ -261,7 +261,11 @@
     - name: Stop existing Docker Compose services
       ansible.builtin.shell: |
         set -e
-        {{ docker_compose_cmd }} down
+        if [ "{{ docker_compose_cmd }}" = "docker compose" ]; then
+          docker compose down
+        else
+          {{ docker_compose_cmd }} down
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
@@ -331,7 +335,11 @@
         set -e
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        {{ docker_compose_cmd }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        if [ "{{ docker_compose_cmd }}" = "docker compose" ]; then
+          docker compose build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        else
+          {{ docker_compose_cmd }} build --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       environment:
@@ -346,7 +354,11 @@
     - name: Start Docker Compose services
       ansible.builtin.shell: |
         set -e
-        {{ docker_compose_cmd }} up -d
+        if [ "{{ docker_compose_cmd }}" = "docker compose" ]; then
+          docker compose up -d
+        else
+          {{ docker_compose_cmd }} up -d
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
@@ -553,8 +565,13 @@
           if ! docker ps | grep -q "{{ project_name }}"; then
             log_message "Containers not running properly! Attempting to restart..."
             if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
-              $DOCKER_COMPOSE_CMD down
-              $DOCKER_COMPOSE_CMD up -d
+              if [ "$DOCKER_COMPOSE_CMD" = "docker compose" ]; then
+                docker compose down
+                docker compose up -d
+              else
+                $DOCKER_COMPOSE_CMD down
+                $DOCKER_COMPOSE_CMD up -d
+              fi
             else
               log_message "ERROR: No Docker Compose command available!"
               exit 1
@@ -567,7 +584,11 @@
           # Restart application services
           cd {{ app_dir }}/repo
           if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
-            $DOCKER_COMPOSE_CMD down && $DOCKER_COMPOSE_CMD up -d
+            if [ "$DOCKER_COMPOSE_CMD" = "docker compose" ]; then
+              docker compose down && docker compose up -d
+            else
+              $DOCKER_COMPOSE_CMD down && $DOCKER_COMPOSE_CMD up -d
+            fi
           else
             log_message "ERROR: No Docker Compose command available for restart!"
             exit 1
