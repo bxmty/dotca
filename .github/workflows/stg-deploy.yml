@@ -334,11 +334,11 @@ jobs:
             # First, try to get the host key with verbose output to debug
             if [ $i -eq 1 ]; then
               echo "Running ssh-keyscan with debug output..."
-              ssh-keyscan -v -T 10 $DROPLET_IP 2>&1 | head -10
+              ssh-keyscan -v -T 10 -t rsa,ecdsa,ed25519 $DROPLET_IP 2>&1 | head -15
             fi
             
-            # Try to get the host key
-            HOST_KEY=$(ssh-keyscan -T 10 $DROPLET_IP 2>/dev/null)
+            # Try to get the host key with multiple key types
+            HOST_KEY=$(ssh-keyscan -T 10 -t rsa,ecdsa,ed25519 $DROPLET_IP 2>/dev/null)
             
             if [ -n "$HOST_KEY" ] && [ "$(echo "$HOST_KEY" | wc -l)" -gt 0 ]; then
               echo "Successfully retrieved host key:"
