@@ -65,7 +65,7 @@ EOF
   
   # Set required environment variables for Ansible
   export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotca.git"}
-  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/do_key"}
+  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
   
   # Use the DROPLET_IP from environment variable
   if [ -z "$DROPLET_IP" ]; then
@@ -74,6 +74,9 @@ EOF
   fi
   
   echo "Using Droplet IP: $DROPLET_IP"
+  
+  # Expand tilde in SSH_KEY_PATH
+  SSH_KEY_PATH="${SSH_KEY_PATH/#\~/$HOME}"
   
   # Check if SSH key exists and has correct permissions
   if [ ! -f "$SSH_KEY_PATH" ]; then

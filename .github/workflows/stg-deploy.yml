@@ -64,7 +64,7 @@ jobs:
         run: |
           # Set terraform variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -98,7 +98,7 @@ jobs:
         run: |
           # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -136,7 +136,7 @@ jobs:
         run: |
           # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -160,7 +160,7 @@ jobs:
         run: |
           # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -176,7 +176,7 @@ jobs:
         run: |
           # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -197,7 +197,7 @@ jobs:
           
           # Force a refresh to ensure state is current
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -252,6 +252,12 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          
+          # Display SSH key information for debugging
+          echo "SSH key fingerprint for debugging:"
+          ssh-keygen -lf ~/.ssh/id_rsa | awk '{print $2}'
+          echo "SSH public key:"
+          ssh-keygen -y -f ~/.ssh/id_rsa
       
       - name: Add host key to known hosts
         env:
@@ -314,6 +320,7 @@ jobs:
         env:
           GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
           SSH_KEY_PATH: "~/.ssh/id_rsa"
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
@@ -334,9 +341,15 @@ jobs:
           # Ensure script is executable
           chmod +x ./deploy.sh
           
-          # Test SSH connection
+          # Test SSH connection with debugging
           echo "Testing SSH connection to $DROPLET_IP..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
+          echo "SSH key fingerprint:"
+          ssh-keygen -lf ~/.ssh/id_rsa
+          echo "SSH public key:"
+          ssh-keygen -y -f ~/.ssh/id_rsa
+          
+          # Test SSH connection with verbose output
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o UserKnownHostsFile=/dev/null -v -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
           
           # Run the deployment with retry logic
           echo "Starting deployment..."
