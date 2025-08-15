@@ -314,17 +314,93 @@
     - name: Stop existing Docker Compose services gracefully
       shell: |
         cd {{ app_dir }}/repo
-        {{ docker_compose_cmd }} down --remove-orphans || true
+        if [ -f docker-compose.yml ]; then
+          {{ docker_compose_cmd }} down --remove-orphans --volumes || true
+          sleep 5
+        fi
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
       tags: [docker, deployment]
 
+    - name: Force stop any containers using port 8080
+      shell: |
+        echo "Checking for containers using port 8080..."
+        # Find containers using port 8080
+        CONTAINERS=$(docker ps --format "{{.ID}}" --filter "publish=8080" 2>/dev/null || true)
+        if [ ! -z "$CONTAINERS" ]; then
+          echo "Stopping containers using port 8080: $CONTAINERS"
+          echo "$CONTAINERS" | xargs -r docker stop || true
+          echo "$CONTAINERS" | xargs -r docker rm -f || true
+        else
+          echo "No containers found using port 8080"
+        fi
+        
+        # Also check by port binding in a different way
+        PORT_CONTAINERS=$(docker ps --format "{{.ID}}\t{{.Ports}}" | grep ":8080" | cut -f1 || true)
+        if [ ! -z "$PORT_CONTAINERS" ]; then
+          echo "Found additional containers with port 8080: $PORT_CONTAINERS"
+          echo "$PORT_CONTAINERS" | xargs -r docker stop || true
+          echo "$PORT_CONTAINERS" | xargs -r docker rm -f || true
+        fi
+      register: port_cleanup
+      tags: [docker, cleanup]
+
+    - name: Remove all stopped containers
+      shell: |
+        echo "Removing all stopped containers..."
+        docker container prune -f || true
+      tags: [docker, cleanup]
+
     - name: Clean up Docker resources
       shell: |
-        docker system prune -f
-        docker volume prune -f
+        echo "Cleaning up Docker system..."
+        docker system prune -f || true
+        docker volume prune -f || true
+        docker network prune -f || true
       tags: [docker, cleanup]
+
+    - name: Wait for port to be released
+      wait_for:
+        port: 8080
+        host: localhost
+        state: stopped
+        timeout: 30
+      ignore_errors: yes
+      tags: [docker, validation]
+
+    - name: Verify port 8080 is free
+      shell: |
+        echo "Checking if port 8080 is free..."
+        if command -v netstat >/dev/null; then
+          if netstat -tlnp 2>/dev/null | grep ":8080 "; then
+            echo "ERROR: Port 8080 is still in use:"
+            netstat -tlnp | grep ":8080" || true
+            echo "Attempting to kill processes using port 8080..."
+            lsof -ti:8080 | xargs -r kill -9 || true
+            sleep 2
+            exit 1
+          else
+            echo "SUCCESS: Port 8080 is free"
+          fi
+        elif command -v ss >/dev/null; then
+          if ss -tlnp | grep ":8080 "; then
+            echo "ERROR: Port 8080 is still in use:"
+            ss -tlnp | grep ":8080" || true
+            exit 1
+          else
+            echo "SUCCESS: Port 8080 is free"
+          fi
+        else
+          echo "WARNING: Cannot verify port status (netstat/ss not available)"
+        fi
+      register: port_check
+      tags: [docker, validation]
+
+    - name: Display port cleanup results
+      debug:
+        msg: "{{ port_check.stdout_lines }}"
+      tags: [docker, debug]
 
     - name: Build Docker images with improved caching
       shell: |
@@ -888,3 +964,4 @@
           - "SSL Check: {{ 'Passed' if ssl_check is success else 'Failed - check manually' }}"
           - "Auto-renewal: Configured (daily check)"
       tags: [ssl]
+
