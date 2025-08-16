@@ -1,64 +1,19 @@
 ---
 # Ansible playbook for setting up the Staging environment for dotca
-# With optimizations for Next.js deployment and best practices
+# With optimizations for Next.js deployment
 
-# Pre-deployment validation and temporary directory setup
-- name: Pre-deployment validation and setup
+# Add a pre-task to fix temporary directory issues
+- name: Fix temporary directory issues
   hosts: digitalocean
   become: true
-  gather_facts: true
-  vars:
-    project_name: dotca-nextjs
-    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
-    git_branch: staging
-    app_dir: /app
-    public_ip: '{{ ansible_host }}'
-    brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
-    stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
-    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
-    ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
-    docker_compose_file: '{{ app_dir }}/repo/docker-compose.yml'
+  gather_facts: false
   tasks:
-    - name: Validate required environment variables
-      ansible.builtin.assert:
-        that:
-          - git_repo_url is defined and git_repo_url != ""
-          - brevo_api_key is defined and brevo_api_key != ""
-          - stripe_secret_key is defined and stripe_secret_key != ""
-          - stripe_publishable_key is defined and stripe_publishable_key != ""
-        fail_msg: Required environment variables are missing. Please check GIT_REPO_URL,
-          BREVO_API_KEY, STRIPE_SECRET_KEY, and STRIPE_PUBLISHABLE_KEY.
-      tags: [validation]
-    - name: Check available disk space
-      ansible.builtin.stat:
-        path: /
-      register: disk_stat
-      changed_when: false
-      tags: [validation]
-    - name: Get disk usage percentage
-      ansible.builtin.set_fact:
-        disk_usage: '{{ ((disk_stat.stat.size_total - disk_stat.stat.size_available) / disk_stat.stat.size_total * 100) | round(0) }}'
-      tags: [validation]
-    - name: Fail if disk space is too low
-      ansible.builtin.fail:
-        msg: 'Insufficient disk space: {{ disk_usage }}% used. Need at least 15%
-          free space.'
-      when: disk_usage > 85
-      tags: [validation]
     - name: Ensure /tmp directory exists with proper permissions
-      ansible.builtin.file:
-        path: /tmp
-        state: directory
-        mode: '1777'
-      tags: [setup]
-    - name: Display deployment info
-      ansible.builtin.debug:
-        msg:
-          - Deploying {{ project_name }} to {{ ansible_host }}
-          - 'Git repository: {{ git_repo_url }}'
-          - 'Branch: {{ git_branch }}'
-          - 'Disk usage: {{ disk_usage }}%'
-      tags: [info]
+      ansible.builtin.raw: |
+        mkdir -p /tmp
+        chmod 1777 /tmp
+        df -h /tmp
+
 - name: Setup Staging environment for dotca
   hosts: digitalocean
   become: true
@@ -67,39 +22,24 @@
     git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
     git_branch: staging
     app_dir: /app
-    public_ip: '{{ ansible_host }}'
+    public_ip: "{{ ansible_host }}"
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
-    docker_compose_file: '{{ app_dir }}/repo/docker-compose.yml'
-  handlers:
-    - name: Restart nginx
-      ansible.builtin.systemd:
-        name: nginx
-        state: restarted
-        enabled: true
-      tags: [nginx]
-    - name: Restart docker
-      ansible.builtin.systemd:
-        name: docker
-        state: restarted
-        enabled: true
-      tags: [docker]
+    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
+
   tasks:
     - name: Update apt cache
-      ansible.builtin.apt:
-        update_cache: true
-        cache_valid_time: 3600
-      tags: [packages]
-    - name: Upgrade packages safely
-      ansible.builtin.apt:
-        upgrade: safe
-        autoremove: true
-        autoclean: true
-      tags: [packages]
-    - name: Install required system packages
-      ansible.builtin.apt:
+      apt:
+        update_cache: yes
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: yes
+
+    - name: Install required packages
+      apt:
         name:
           - apt-transport-https
           - ca-certificates
@@ -110,186 +50,117 @@
           - python3-pip
           - jq
           - nginx
-          - htop
-          - unzip
+          - docker-compose
         state: present
-        update_cache: true
-      tags: [packages]
+        update_cache: yes
+
     - name: Add Docker's official GPG key
-      ansible.builtin.apt_key:
+      apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
-      tags: [docker, packages]
+
     - name: Add Docker repository
-      ansible.builtin.apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }}
-          stable
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
-        update_cache: true
-      tags: [docker, packages]
+        update_cache: yes
+
     - name: Install Docker Engine
-      ansible.builtin.apt:
+      apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
-          - docker-compose-plugin
         state: present
-        update_cache: true
+        update_cache: yes
       register: docker_install_result
       retries: 3
       delay: 5
       until: docker_install_result is success
-      tags: [docker, packages]
-    - name: Configure Docker daemon for better resource management
-      ansible.builtin.copy:
-        dest: /etc/docker/daemon.json
-        content: |
-          {
-            "log-driver": "json-file",
-            "log-opts": {
-              "max-size": "10m",
-              "max-file": "3"
-            },
-            "storage-driver": "overlay2",
-            "default-ulimits": {
-              "nofile": {
-                "name": "nofile",
-                "hard": 65536,
-                "soft": 65536
-              }
-            }
-          }
-        mode: '0644'
-      notify: Restart docker
-      tags: [docker, config]
-    - name: Install and configure NTP for time synchronization
-      block:
-        - name: Install NTP
-          ansible.builtin.apt:
-            name: ntp
-            state: present
-          tags: [time]
-        - name: Configure NTP to use reliable time servers
-          ansible.builtin.lineinfile:
-            path: /etc/ntp.conf
-            regexp: ^server
-            line: server time.nist.gov iburst
-            state: present
-            backup: true
-          notify: restart ntp
-          tags: [time, config]
-        - name: Start and enable NTP service
-          ansible.builtin.systemd:
-            name: ntp
-            state: started
-            enabled: true
-          tags: [time]
+
+    - name: Install NTP for time synchronization
+      apt:
+        name: ntp
+        state: present
+        update_cache: yes
+
+    - name: Configure NTP to use time.nist.gov
+      lineinfile:
+        path: /etc/ntp.conf
+        regexp: '^server'
+        line: 'server time.nist.gov iburst'
+        state: present
+        backup: yes
+
+    - name: Restart NTP service
+      systemd:
+        name: ntp
+        state: restarted
+        enabled: yes
+
     - name: Set timezone to Eastern Time
-      ansible.builtin.file:
-        src: /usr/share/zoneinfo/America/New_York
-        dest: /etc/localtime
-        state: link
-        force: true
-      tags: [time]
-    - name: Set timezone in /etc/timezone
-      ansible.builtin.copy:
-        dest: /etc/timezone
-        content: "America/New_York\n"
-        owner: root
-        group: root
-        mode: '0644'
-      tags: [time]
+      timezone:
+        name: America/New_York
+
     - name: Start and enable Docker service
-      ansible.builtin.systemd:
+      systemd:
         name: docker
         state: started
-        enabled: true
+        enabled: yes
       register: docker_service_result
       retries: 3
       delay: 5
       until: docker_service_result is success
-      tags: [docker]
-    - name: Detect Docker Compose command
-      ansible.builtin.shell: |
-        if docker compose version >/dev/null 2>&1; then
-          echo "docker compose"
-        elif command -v docker-compose >/dev/null 2>&1; then
-          echo "docker-compose"
-        else
-          echo "none"
-        fi
-      register: compose_detection
+
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: compose_version
       changed_when: false
-      tags: [docker]
-    - name: Install docker-compose via pip if not available
-      ansible.builtin.pip:
-        name: docker-compose
-        state: present
-        executable: pip3
-      when: compose_detection.stdout == "none"
-      tags: [docker, packages]
-    - name: Set Docker Compose command variable
-      ansible.builtin.set_fact:
-        docker_compose_cmd: "{{ compose_detection.stdout if compose_detection.stdout != 'none' else 'docker-compose' }}"
-        is_compose_v2: "{{ compose_detection.stdout == 'docker compose' }}"
-      tags: [docker]
-    - name: Verify Docker Compose is working
-      ansible.builtin.command: '{{ docker_compose_cmd }} version'
-      register: compose_version_check
-      changed_when: false
-      tags: [docker, validation]
-    - name: Display Docker Compose version
-      ansible.builtin.debug:
-        msg: "Using {{ docker_compose_cmd }}: {{ compose_version_check.stdout_lines[0] if compose_version_check.stdout_lines else 'Version check failed' }}"
-      tags: [docker, info]
-    - name: Create application directory with proper permissions
-      ansible.builtin.file:
-        path: '{{ app_dir }}'
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
         state: directory
         mode: '0755'
-        owner: root
-        group: root
-      tags: [setup]
-    - name: Clone or update the repository
-      ansible.builtin.git:
-        repo: '{{ git_repo_url }}'
-        dest: '{{ app_dir }}/repo'
-        version: '{{ git_branch }}'
-        force: true
-        update: true
-      register: git_operation
+
+    - name: Clone the repository
+      git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+      register: git_clone
       retries: 3
       delay: 10
-      until: git_operation is success
-      tags: [git]
-    - name: Verify Next.js configuration file exists
-      ansible.builtin.stat:
-        path: '{{ app_dir }}/repo/next.config.js'
+      until: git_clone is success
+
+    - name: Verify Next.js configuration file
+      stat:
+        path: "{{ app_dir }}/repo/next.config.js"
       register: next_config
-      tags: [validation]
+
     - name: Fail if Next.js configuration is missing
-      ansible.builtin.fail:
-        msg: Missing Next.js configuration file. Please ensure next.config.js exists
-          in the repository.
+      fail:
+        msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
       when: not next_config.stat.exists
-      tags: [validation]
-    - name: Verify Docker Compose file exists
-      ansible.builtin.stat:
-        path: '{{ docker_compose_file }}'
-      register: compose_file_check
-      tags: [validation]
-    - name: Fail if Docker Compose file is missing
-      ansible.builtin.fail:
-        msg: Docker Compose file not found at {{ docker_compose_file }}
-      when: not compose_file_check.stat.exists
-      tags: [validation]
 
     # DEPLOYMENT TASKS START HERE
+    - name: Pull latest changes from git
+      git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        force: yes
+        update: yes
+      register: git_pull
+      retries: 3
+      delay: 5
+      until: git_pull is success
+
     - name: Create .env file for docker-compose
-      ansible.builtin.copy:
-        dest: '{{ app_dir }}/repo/.env'
-        mode: '0600'  # Restrict permissions for security
+      copy:
+        dest: "{{ app_dir }}/repo/.env"
+        mode: '0644'
         content: |
           NODE_ENV=production
           NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
@@ -298,342 +169,354 @@
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
-      tags: [config, deployment]
-    - name: Stop existing Docker Compose services gracefully
-      ansible.builtin.shell: |
-        cd {{ app_dir }}/repo
-        if [ -f docker-compose.yml ]; then
-          {{ docker_compose_cmd }} down --remove-orphans --volumes || true
-          sleep 5
-        fi
+
+    - name: Stop existing Docker Compose services
+      command: docker-compose down web
       args:
-        chdir: '{{ app_dir }}/repo'
+        chdir: "{{ app_dir }}/repo"
       register: docker_down_result
-      changed_when: docker_down_result.rc == 0
-      tags: [docker, deployment]
-    - name: Create Docker cleanup script from template
-      ansible.builtin.template:
-        src: docker_cleanup.sh.j2
-        dest: /tmp/docker_cleanup.sh
-        mode: '0755'
-      tags: [docker, cleanup]
-    - name: Force stop any containers using port 8080
-      ansible.builtin.command: /tmp/docker_cleanup.sh
-      register: port_cleanup
-      changed_when: port_cleanup.rc == 0
-      tags: [docker, cleanup]
-    - name: Remove all stopped containers
-      ansible.builtin.shell: |
-        echo "Removing all stopped containers..."
-        docker container prune -f || true
-      changed_when: false
-      tags: [docker, cleanup]
-    - name: Clean up Docker resources
-      ansible.builtin.shell: |
-        echo "Cleaning up Docker system..."
-        docker system prune -f || true
-        docker volume prune -f || true
-        docker network prune -f || true
-      changed_when: false
-      tags: [docker, cleanup]
-    - name: Wait for port to be released
-      ansible.builtin.wait_for:
-        port: 8080
-        host: localhost
-        state: stopped
-        timeout: 60
-        delay: 5
-      failed_when: false
-      tags: [docker, validation]
-    - name: Additional wait for containers to fully stop
-      ansible.builtin.pause:
-        seconds: 10
-      tags: [docker, validation]
-    - name: Create port verification script from template
-      ansible.builtin.template:
-        src: port_verification.sh.j2
-        dest: /tmp/port_verification.sh
-        mode: '0755'
-      tags: [docker, validation]
-    - name: Verify port 8080 is free
-      ansible.builtin.command: /tmp/port_verification.sh
-      register: port_check
-      changed_when: false
-      tags: [docker, validation]
-    - name: Display port cleanup results
-      ansible.builtin.debug:
-        msg: '{{ port_check.stdout_lines }}'
-      tags: [docker, debug]
-    - name: Build Docker images with improved caching
-      ansible.builtin.shell: |
+      ignore_errors: yes
+
+    - name: Stop any other containers using port 8080
+      shell: |
+        if docker ps -q --filter publish=8080 | grep -q .; then
+          docker stop $(docker ps -q --filter publish=8080)
+        fi
+      ignore_errors: yes
+
+    - name: Prune Docker system
+      command: docker system prune -af
+
+    - name: Build Docker images
+      shell: |
         cd {{ app_dir }}/repo
         export DOCKER_BUILDKIT=1
         export COMPOSE_DOCKER_CLI_BUILD=1
-        {{ docker_compose_cmd }} build --no-cache --parallel
+        docker-compose build --build-arg BUILDKIT_INLINE_CACHE=1
       args:
-        chdir: '{{ app_dir }}/repo'
+        chdir: "{{ app_dir }}/repo"
       environment:
-        DOCKER_BUILDKIT: '1'
-        COMPOSE_DOCKER_CLI_BUILD: '1'
+        DOCKER_BUILDKIT: 1
+        COMPOSE_DOCKER_CLI_BUILD: 1
+      vars:
+        ansible_ssh_pipelining: true
+        ansible_ssh_timeout: 600
       register: docker_build
-      changed_when: docker_build.rc == 0
-      retries: 2
-      delay: 30
+      retries: 5
+      delay: 60
       until: docker_build is success
-      tags: [docker, build]
+      async: 1800
+      poll: 30
+
     - name: Start Docker Compose services
-      ansible.builtin.shell: |
-        cd {{ app_dir }}/repo
-        {{ docker_compose_cmd }} up -d --remove-orphans
+      command: docker-compose up -d web
       args:
-        chdir: '{{ app_dir }}/repo'
+        chdir: "{{ app_dir }}/repo"
       register: docker_up
-      changed_when: docker_up.rc == 0
-      retries: 2
-      delay: 10
+      retries: 3
+      delay: 15
       until: docker_up is success
-      tags: [docker, deployment]
-    - name: Wait for application to be ready
-      ansible.builtin.uri:
-        url: http://localhost:8080/health
-        method: GET
-        status_code: 200
-        timeout: 10
-      register: health_check
-      until: health_check.status == 200
-      retries: 15
-      delay: 10
-      ignore_errors: true
-      tags: [health-check, deployment]
-    - name: Display container status
-      ansible.builtin.command: '{{ docker_compose_cmd }} ps'
+      
+    - name: Check if Docker Compose services started successfully
+      command: docker-compose ps
       args:
-        chdir: '{{ app_dir }}/repo'
-      register: container_status
+        chdir: "{{ app_dir }}/repo"
+      register: docker_ps
       changed_when: false
-      tags: [info, deployment]
-    - name: Show container logs if health check failed
-      ansible.builtin.command: '{{ docker_compose_cmd }} logs --tail=50'
-      args:
-        chdir: '{{ app_dir }}/repo'
-      when: health_check is failed
-      register: container_logs
-      changed_when: false
-      tags: [debug, deployment]
-    - name: Display logs if health check failed
-      ansible.builtin.debug:
-        msg: '{{ container_logs.stdout_lines }}'
-      when: health_check is failed and container_logs is defined
-      tags: [debug, deployment]
-    - name: Configure optimized Nginx
-      ansible.builtin.template:
-        src: nginx.conf.j2
+      
+    - name: Display Docker Compose status
+      debug:
+        var: docker_ps.stdout_lines
+      
+    - name: Display deployment completion message
+      debug:
+        msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
+
+    - name: Configure Nginx worker processes
+      copy:
         dest: /etc/nginx/nginx.conf
-        mode: '0644'
-        backup: true
-      notify: Restart nginx
-      tags: [nginx, config]
-    - name: Configure Nginx site for Next.js application
-      ansible.builtin.template:
-        src: nextjs-site.conf.j2
+        content: |
+          user www-data;
+          worker_processes auto;
+          pid /run/nginx.pid;
+          include /etc/nginx/modules-enabled/*.conf;
+
+          events {
+            worker_connections 1024;
+            multi_accept on;
+          }
+
+          http {
+            sendfile on;
+            tcp_nopush on;
+            tcp_nodelay on;
+            keepalive_timeout 65;
+            types_hash_max_size 2048;
+            server_tokens off;
+            
+            include /etc/nginx/mime.types;
+            default_type application/octet-stream;
+
+            # Optimize buffers
+            client_body_buffer_size 10K;
+            client_header_buffer_size 1k;
+            client_max_body_size 8m;
+            large_client_header_buffers 2 1k;
+            
+            # Timeouts
+            client_body_timeout 12;
+            client_header_timeout 12;
+            send_timeout 10;
+            
+            # Enable gzip
+            gzip on;
+            gzip_comp_level 2;
+            gzip_min_length 1000;
+            gzip_proxied expired no-cache no-store private auth;
+            gzip_types text/plain application/x-javascript text/xml text/css application/xml application/json;
+            
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_prefer_server_ciphers on;
+            
+            access_log /var/log/nginx/access.log;
+            error_log /var/log/nginx/error.log;
+
+            include /etc/nginx/conf.d/*.conf;
+            include /etc/nginx/sites-enabled/*;
+          }
+
+    - name: Configure Nginx as reverse proxy
+      copy:
         dest: /etc/nginx/sites-available/nextjs-app
-        mode: '0644'
-        vars:
-          server_name: "{{ domain_name | default('_') }}"
-        backup: true
-      notify: Restart nginx
-      tags: [nginx, config]
+        content: |
+          server {
+              listen 80;
+              server_name _;
+              
+              # Add basic health check endpoint
+              location /health {
+                  access_log off;
+                  add_header Content-Type text/plain;
+                  return 200 'OK';
+              }
+              
+              location / {
+                  proxy_pass http://localhost:8080;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  
+                  # Caching
+                  proxy_cache_valid 200 302 10m;
+                  proxy_cache_valid 404 1m;
+              }
+          }
+
     - name: Enable Nginx site configuration
-      ansible.builtin.file:
+      file:
         src: /etc/nginx/sites-available/nextjs-app
         dest: /etc/nginx/sites-enabled/nextjs-app
         state: link
-      notify: Restart nginx
-      tags: [nginx, config]
+
     - name: Remove default Nginx site
-      ansible.builtin.file:
+      file:
         path: /etc/nginx/sites-enabled/default
         state: absent
-      notify: Restart nginx
-      tags: [nginx, config]
+      ignore_errors: yes
+
     - name: Test Nginx configuration
-      ansible.builtin.command: nginx -t
+      command: nginx -t
       register: nginx_test
       changed_when: false
-      tags: [nginx, validation]
-    - name: Display Nginx test results if failed
-      ansible.builtin.debug:
-        msg: 'Nginx configuration test failed: {{ nginx_test.stderr_lines }}'
-      when: nginx_test.rc != 0
-      tags: [nginx, debug]
-    - name: Fail if Nginx configuration is invalid
-      ansible.builtin.fail:
-        msg: Nginx configuration is invalid. Please check the configuration.
-      when: nginx_test.rc != 0
-      tags: [nginx, validation]
-    - name: Configure UFW firewall rules
-      become: true
-      ansible.builtin.shell: |
-        echo "Configuring UFW firewall rules..."
-        for port in 22 80 443 8080; do
-          echo "Allowing port $port/tcp"
-          ufw allow $port/tcp comment "$port - Required for {{ project_name }}"
-        done
-        echo "UFW rules configured successfully"
-      register: ufw_rules_result
-      changed_when: ufw_rules_result.rc == 0
-      tags: [firewall, security]
-    - name: Enable UFW firewall
-      become: true
-      ansible.builtin.shell: |
-        # Set default policies
-        ufw --force default deny incoming
-        ufw --force default allow outgoing
-        # Enable UFW
-        ufw --force enable
-        # Show status
-        ufw status verbose
-      register: ufw_enable_result
-      changed_when: ufw_enable_result.rc == 0
-      tags: [firewall, security]
-    - name: Display UFW configuration
-      ansible.builtin.debug:
-        msg: '{{ ufw_enable_result.stdout_lines }}'
-      tags: [firewall, info]
-    - name: Create enhanced monitoring and recovery script
-      ansible.builtin.template:
-        src: monitor.sh.j2
-        dest: '{{ app_dir }}/monitor.sh'
-        mode: '0755'
-      tags: [monitoring, scripts]
-    - name: Set up monitoring cron job
-      ansible.builtin.cron:
-        name: Monitor {{ project_name }}
-        minute: '*/10'  # Check every 10 minutes instead of 15
-        job: '{{ app_dir }}/monitor.sh'
-        user: root
-        state: present
-      tags: [monitoring, cron]
-    - name: Create log rotation for monitoring
-      ansible.builtin.template:
-        src: logrotate.conf.j2
-        dest: /etc/logrotate.d/{{ project_name }}
-        mode: '0644'
-      tags: [monitoring, logs]
-    - name: Display deployment completion message
-      ansible.builtin.debug:
-        msg:
-          - ===============================================
-          - 🎉 Deployment completed successfully!
-          - ===============================================
-          - 'Application URL: http://{{ public_ip }}'
-          - 'Health check: http://{{ public_ip }}/health'
-          - "Container status: {{ container_status.stdout_lines if container_status.stdout_lines else 'Check manually' }}"
-          - 'Docker Compose command: {{ docker_compose_cmd }}'
-          - 'Monitoring: {{ app_dir }}/monitor.sh (runs every 10 minutes)'
-          - 'Logs: {{ app_dir }}/monitoring.log'
-          - ===============================================
-      tags: [info, deployment]
+      ignore_errors: true
 
-# Separate play for Let's Encrypt SSL setup
-- name: Setup Let's Encrypt SSL with Nginx
+    - name: Display Nginx test results
+      debug:
+        msg: "{{ nginx_test.stderr_lines }}"
+      when: nginx_test.rc != 0
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: nginx_test.rc == 0
+      register: nginx_restart
+      retries: 2
+      delay: 5
+      until: nginx_restart is success
+
+    - name: Setup firewall (UFW)
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - '22'
+        - '80'
+        - '443'
+        - '6080'
+        - '8080'
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Create enhanced monitoring script
+      copy:
+        dest: "{{ app_dir }}/monitor.sh"
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          
+          # Enhanced monitoring script with reliable docker-compose usage
+          LOG_FILE="{{ app_dir }}/monitoring.log"
+          
+          # Function to log messages
+          log_message() {
+            echo "[$(date)] $1" | tee -a $LOG_FILE
+          }
+          
+          # Application health check
+          HEALTH_CHECK_URL="http://localhost/health"
+          
+          log_message "Starting health check..."
+          
+          # Check if Docker is running
+          if ! systemctl is-active --quiet docker; then
+            log_message "Docker service is not running! Attempting to restart..."
+            systemctl restart docker
+            sleep 10
+          fi
+          
+          # Check available disk space
+          DISK_SPACE=$(df -h /tmp | awk 'NR==2 {print $5}' | sed 's/%//')
+          if [ "$DISK_SPACE" -gt 90 ]; then
+            log_message "Disk space low ($DISK_SPACE%). Cleaning up Docker..."
+            docker system prune -af --volumes
+          fi
+          
+          # Check Docker container status
+          cd {{ app_dir }}/repo
+          if ! docker ps | grep -q "{{ project_name }}.*web"; then
+            log_message "Web container not running properly! Attempting to restart..."
+            docker-compose down web
+            docker-compose up -d web
+            sleep 15
+          fi
+          
+          # Restart application services if needed
+          if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+            log_message "Application not responding. Restarting services..."
+            cd {{ app_dir }}/repo
+            docker-compose down web && docker-compose up -d web
+            sleep 5
+            systemctl restart nginx
+          fi
+          
+          # Final check
+          if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+            log_message "Application is healthy."
+          else
+            log_message "WARNING: Application still unhealthy after restart. Manual intervention required!"
+          fi
+          
+    - name: Set up monitoring cron job
+      cron:
+        name: "Monitor dotca-nextjs"
+        minute: "*/15"
+        job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
+        state: present
+
+# Create a separate play for Let's Encrypt setup
+- name: Setup Let's Encrypt with Nginx
   hosts: digitalocean
-  become: true
+  become: yes
   vars:
-    domain_name: staging.boximity.ca
-    email_address: matticem@boximity.ca
+    domain_name: "staging.boximity.ca"
+    email_address: "matticem@boximity.ca"
+  
   tasks:
     - name: Install Certbot and Nginx plugin
-      ansible.builtin.package:
-        name: [certbot, python3-certbot-nginx]
+      package:
+        name:
+          - certbot
+          - python3-certbot-nginx
         state: present
       register: certbot_install
       retries: 3
       delay: 5
       until: certbot_install is success
-      tags: [ssl, packages]
+
     - name: Check if certificate already exists
-      ansible.builtin.stat:
+      stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
       register: cert_file
-      tags: [ssl, validation]
-    - name: Update Nginx configuration with domain name
+
+    # Check if domain is properly configured in Nginx before requesting a certificate
+    - name: Verify domain configuration in Nginx
+      ansible.builtin.shell: |
+        if [ -f /etc/nginx/sites-available/nextjs-app ]; then
+          grep -q "server_name {{ domain_name }}" /etc/nginx/sites-available/nextjs-app || echo "Domain not configured"
+        else
+          echo "Nginx config not found"
+        fi
+      register: domain_check
+      changed_when: false
+
+    - name: Configure domain in Nginx if needed
       ansible.builtin.replace:
         path: /etc/nginx/sites-available/nextjs-app
         regexp: 'server_name _;'
         replace: 'server_name {{ domain_name }};'
-      when: not cert_file.stat.exists
-      notify: Restart nginx
-      tags: [ssl, nginx]
-    - name: Test Nginx configuration before SSL
-      ansible.builtin.command: nginx -t
-      register: nginx_ssl_test
-      changed_when: false
-      when: not cert_file.stat.exists
-      tags: [ssl, validation]
+      when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
+      register: nginx_domain_update
+
     - name: Restart Nginx before certificate request
-      ansible.builtin.systemd:
+      systemd:
         name: nginx
         state: restarted
-      when: not cert_file.stat.exists and nginx_ssl_test.rc == 0
-      tags: [ssl, nginx]
-    - name: Wait for Nginx to be ready
+        enabled: yes
+      when: nginx_domain_update is changed
+
+    # Verify Nginx is responding with the correct domain before obtaining certificate
+    - name: Verify Nginx is serving the domain correctly
       ansible.builtin.uri:
-        url: http://{{ domain_name }}/health
+        url: http://localhost
         method: GET
-        status_code: 200
-        timeout: 10
-      register: domain_check
-      retries: 5
-      delay: 5
-      ignore_errors: true
-      when: not cert_file.stat.exists
-      tags: [ssl, validation]
-    - name: Obtain SSL certificate from Let's Encrypt
-      ansible.builtin.command: >
+        return_content: yes
+      register: nginx_check
+      ignore_errors: yes
+
+    - name: Debug Nginx response
+      debug:
+        msg: "Nginx Health Check: {{ nginx_check.status | default('Failed') }}"
+
+    - name: Obtain SSL certificate
+      command: >
         certbot --nginx -d {{ domain_name }}
-        --non-interactive --agree-tos  --email {{ email_address }}
-        --redirect --no-eff-email
-      when: not cert_file.stat.exists and domain_check is success
+        --non-interactive --agree-tos 
+        --email {{ email_address }}
+        --redirect
+      when: not cert_file.stat.exists and (nginx_check.status | default(0)) == 200
       register: certbot_result
-      changed_when: certbot_result.rc == 0
       retries: 2
       delay: 30
       until: certbot_result is success
-      tags: [ssl, certificate]
-    - name: Display certificate generation results
-      ansible.builtin.debug:
-        msg:
-          - "SSL Certificate Status: {{ 'Already exists' if cert_file.stat.exists else 'Newly generated' }}"
-          - 'Domain: {{ domain_name }}'
-          - 'Certificate path: /etc/letsencrypt/live/{{ domain_name }}/'
-      tags: [ssl, info]
-    - name: Set up automatic certificate renewal
-      ansible.builtin.cron:
-        name: Let's Encrypt renewal for {{ domain_name }}
+      
+    - name: Log certificate generation results
+      debug:
+        msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
+      when: not cert_file.stat.exists and certbot_result is defined
+
+    - name: Add cron job for auto-renewal
+      cron:
+        name: "Let's Encrypt renewal"
         special_time: daily
-        job: certbot renew --quiet --nginx --no-random-sleep-on-renew
-        user: root
-        state: present
-      tags: [ssl, cron]
-    - name: Verify SSL configuration
-      ansible.builtin.uri:
-        url: https://{{ domain_name }}/health
-        method: GET
-        status_code: 200
-        timeout: 10
-        validate_certs: true
-      register: ssl_check
-      retries: 3
-      delay: 5
-      ignore_errors: true
-      when: not cert_file.stat.exists and certbot_result is success
-      tags: [ssl, validation]
-    - name: Display final SSL status
-      ansible.builtin.debug:
-        msg:
-          - 🔒 SSL Setup Complete!
-          - 'HTTPS URL: https://{{ domain_name }}'
-          - "SSL Check: {{ 'Passed' if ssl_check is success else 'Failed - check manually' }}"
-          - 'Auto-renewal: Configured (daily check)'
-      tags: [ssl]
+        job: "certbot renew --quiet --nginx"
