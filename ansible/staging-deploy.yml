@@ -443,11 +443,12 @@
     email_address: "matticem@boximity.ca"
   
   tasks:
-    - name: Install Certbot and Nginx plugin
+    - name: Install DNS utilities and Certbot
       package:
         name:
           - certbot
           - python3-certbot-nginx
+          - dnsutils
         state: present
       register: certbot_install
       retries: 3
@@ -459,7 +460,22 @@
         path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
       register: cert_file
 
-    # Check if domain is properly configured in Nginx before requesting a certificate
+    # Enhanced domain validation before requesting certificate
+    - name: Check DNS resolution for domain
+      ansible.builtin.shell: |
+        echo "Checking DNS resolution for {{ domain_name }}..."
+        nslookup {{ domain_name }} || echo "DNS resolution failed"
+        echo "Expected IP: {{ ansible_host }}"
+        echo "Resolved IP:"
+        dig +short {{ domain_name }} || echo "dig failed"
+      register: dns_check
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display DNS check results
+      debug:
+        msg: "{{ dns_check.stdout_lines }}"
+
     - name: Verify domain configuration in Nginx
       ansible.builtin.shell: |
         if [ -f /etc/nginx/sites-available/nextjs-app ]; then
@@ -478,42 +494,112 @@
       when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
       register: nginx_domain_update
 
+    - name: Test Nginx configuration after domain update
+      ansible.builtin.command: nginx -t
+      register: nginx_test_ssl
+      changed_when: false
+      when: nginx_domain_update is changed
+
     - name: Restart Nginx before certificate request
       systemd:
         name: nginx
         state: restarted
         enabled: yes
+      when: nginx_domain_update is changed and nginx_test_ssl.rc == 0
+
+    # Wait for Nginx to fully restart
+    - name: Wait for Nginx to be ready
+      ansible.builtin.pause:
+        seconds: 5
       when: nginx_domain_update is changed
 
-    # Verify Nginx is responding with the correct domain before obtaining certificate
-    - name: Verify Nginx is serving the domain correctly
+    # Test domain accessibility from the server itself
+    - name: Test domain accessibility locally
       ansible.builtin.uri:
-        url: http://localhost
+        url: "http://{{ domain_name }}/health"
         method: GET
-        return_content: yes
-      register: nginx_check
+        status_code: 200
+        timeout: 10
+        follow_redirects: yes
+      register: local_domain_check
+      ignore_errors: yes
+      retries: 3
+      delay: 5
+
+    - name: Test localhost accessibility
+      ansible.builtin.uri:
+        url: http://localhost/health
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: localhost_check
       ignore_errors: yes
 
-    - name: Debug Nginx response
+    - name: Display connectivity test results
       debug:
-        msg: "Nginx Health Check: {{ nginx_check.status | default('Failed') }}"
+        msg:
+          - "Domain {{ domain_name }} accessibility: {{ 'SUCCESS' if local_domain_check.status|default(0) == 200 else 'FAILED' }}"
+          - "Localhost accessibility: {{ 'SUCCESS' if localhost_check.status|default(0) == 200 else 'FAILED' }}"
+          - "Domain status code: {{ local_domain_check.status|default('N/A') }}"
+          - "Localhost status code: {{ localhost_check.status|default('N/A') }}"
 
-    - name: Obtain SSL certificate
+    # Check if Let's Encrypt can reach the domain
+    - name: Perform Let's Encrypt dry run to test domain validation
+      command: >
+        certbot --nginx -d {{ domain_name }}
+        --non-interactive --agree-tos 
+        --email {{ email_address }}
+        --dry-run
+      register: certbot_dryrun
+      ignore_errors: yes
+      when: not cert_file.stat.exists and (local_domain_check.status|default(0) == 200 or localhost_check.status|default(0) == 200)
+
+    - name: Display dry run results
+      debug:
+        msg:
+          - "Dry run result: {{ 'SUCCESS' if certbot_dryrun.rc|default(1) == 0 else 'FAILED' }}"
+          - "Dry run output: {{ certbot_dryrun.stdout_lines|default(['No output']) }}"
+          - "Dry run errors: {{ certbot_dryrun.stderr_lines|default(['No errors']) }}"
+      when: certbot_dryrun is defined
+
+    - name: Obtain SSL certificate (only if dry run succeeded)
       command: >
         certbot --nginx -d {{ domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
         --redirect
-      when: not cert_file.stat.exists and (nginx_check.status | default(0)) == 200
+      when: |
+        not cert_file.stat.exists and 
+        (certbot_dryrun is defined and certbot_dryrun.rc|default(1) == 0) and
+        (local_domain_check.status|default(0) == 200 or localhost_check.status|default(0) == 200)
       register: certbot_result
-      retries: 2
-      delay: 30
+      retries: 1
+      delay: 60
       until: certbot_result is success
       
     - name: Log certificate generation results
       debug:
         msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
       when: not cert_file.stat.exists and certbot_result is defined
+
+    - name: Display SSL setup status and troubleshooting info
+      debug:
+        msg:
+          - "============================================"
+          - "SSL Certificate Setup Status"
+          - "============================================"
+          - "Certificate exists: {{ cert_file.stat.exists | default(false) }}"
+          - "Domain: {{ domain_name }}"
+          - "DNS resolution: {{ 'Check DNS output above' }}"
+          - "Domain accessibility: {{ 'SUCCESS' if local_domain_check.status|default(0) == 200 else 'FAILED' }}"
+          - "Dry run status: {{ 'SUCCESS' if certbot_dryrun.rc|default(1) == 0 else 'FAILED' }}"
+          - "============================================"
+          - "If SSL failed, ensure:"
+          - "1. DNS for {{ domain_name }} points to {{ ansible_host }}"
+          - "2. Port 80 is open and accessible from internet"
+          - "3. Nginx is serving the domain correctly"
+          - "4. Wait for rate limit to reset (check error message above)"
+          - "============================================"
 
     - name: Add cron job for auto-renewal
       cron:
