@@ -325,24 +325,55 @@
 
     - name: Force stop any containers using port 8080
       shell: |
-        echo "Checking for containers using port 8080..."
-        # Find containers using port 8080 (escape Jinja2 templating)
+        echo "=== Checking for containers using port 8080 ==="
+        
+        # Method 1: Find containers by publish filter
+        echo "Method 1: Checking with publish filter..."
         CONTAINERS=$(docker ps --format '{{ "{{" }}.ID{{ "}}" }}' --filter 'publish=8080' 2>/dev/null || true)
         if [ ! -z "$CONTAINERS" ]; then
-          echo "Stopping containers using port 8080: $CONTAINERS"
-          echo "$CONTAINERS" | xargs -r docker stop || true
-          echo "$CONTAINERS" | xargs -r docker rm -f || true
+          echo "Found containers with publish=8080: $CONTAINERS"
+          for container in $CONTAINERS; do
+            echo "Stopping container: $container"
+            docker stop "$container" || true
+            docker rm -f "$container" || true
+          done
         else
-          echo "No containers found using port 8080"
+          echo "No containers found with publish=8080"
         fi
 
-        # Also check by port binding in a different way
+        # Method 2: Find containers by port binding in output
+        echo "Method 2: Checking port bindings in container list..."
         PORT_CONTAINERS=$(docker ps --format '{{ "{{" }}.ID{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}' | grep ':8080' | cut -f1 || true)
         if [ ! -z "$PORT_CONTAINERS" ]; then
-          echo "Found additional containers with port 8080: $PORT_CONTAINERS"
-          echo "$PORT_CONTAINERS" | xargs -r docker stop || true
-          echo "$PORT_CONTAINERS" | xargs -r docker rm -f || true
+          echo "Found containers with :8080 in ports: $PORT_CONTAINERS"
+          for container in $PORT_CONTAINERS; do
+            echo "Stopping container: $container"
+            docker stop "$container" || true
+            docker rm -f "$container" || true
+          done
+        else
+          echo "No containers found with :8080 in ports"
         fi
+
+        # Method 3: Stop all containers from this project specifically
+        echo "Method 3: Stopping all project containers..."
+        PROJECT_CONTAINERS=$(docker ps --format '{{ "{{" }}.ID{{ "}}" }}' --filter 'name=repo-' 2>/dev/null || true)
+        if [ ! -z "$PROJECT_CONTAINERS" ]; then
+          echo "Found project containers (repo-*): $PROJECT_CONTAINERS"
+          for container in $PROJECT_CONTAINERS; do
+            echo "Stopping project container: $container"
+            docker stop "$container" || true
+            docker rm -f "$container" || true
+          done
+        else
+          echo "No project containers found"
+        fi
+
+        # Method 4: List what's actually running before we continue
+        echo "=== Current running containers after cleanup ==="
+        docker ps --format 'table {{ "{{" }}.Names{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}\t{{ "{{" }}.Status{{ "}}" }}' || true
+        
+        echo "=== Cleanup completed ==="
       register: port_cleanup
       tags: [docker, cleanup]
 
@@ -365,23 +396,48 @@
         port: 8080
         host: localhost
         state: stopped
-        timeout: 30
+        timeout: 60
+        delay: 5
       ignore_errors: yes
+      tags: [docker, validation]
+
+    - name: Additional wait for containers to fully stop
+      pause:
+        seconds: 10
       tags: [docker, validation]
 
     - name: Verify port 8080 is free
       shell: |
-        echo "Checking if port 8080 is free..."
+        echo "=== Final port 8080 verification ==="
+        
+        # Check for any remaining Docker containers
+        echo "Checking for any remaining Docker containers..."
+        REMAINING=$(docker ps --format '{{ "{{" }}.Names{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}' | grep ':8080' || true)
+        if [ ! -z "$REMAINING" ]; then
+          echo "ERROR: Found Docker containers still using port 8080:"
+          echo "$REMAINING"
+          echo "Force stopping them..."
+          docker ps --format '{{ "{{" }}.ID{{ "}}" }}' | xargs -r docker inspect --format='{{ "{{" }}.Id{{ "}}" }} {{ "{{" }}.NetworkSettings.Ports{{ "}}" }}' | grep '8080' | cut -d' ' -f1 | xargs -r docker stop || true
+        fi
+        
+        # Check system level port usage
         if command -v netstat >/dev/null; then
           if netstat -tlnp 2>/dev/null | grep ":8080 "; then
-            echo "ERROR: Port 8080 is still in use:"
+            echo "ERROR: Port 8080 is still in use by system process:"
             netstat -tlnp | grep ":8080" || true
             echo "Attempting to kill processes using port 8080..."
             lsof -ti:8080 | xargs -r kill -9 || true
-            sleep 2
-            exit 1
+            sleep 5
+            # Re-check after killing
+            if netstat -tlnp 2>/dev/null | grep ":8080 "; then
+              echo "CRITICAL: Port 8080 still in use after cleanup attempts"
+              netstat -tlnp | grep ":8080" || true
+              exit 1
+            else
+              echo "SUCCESS: Port 8080 freed after process cleanup"
+            fi
           else
-            echo "SUCCESS: Port 8080 is free"
+            echo "SUCCESS: Port 8080 is free (netstat)"
           fi
         elif command -v ss >/dev/null; then
           if ss -tlnp | grep ":8080 "; then
@@ -389,11 +445,13 @@
             ss -tlnp | grep ":8080" || true
             exit 1
           else
-            echo "SUCCESS: Port 8080 is free"
+            echo "SUCCESS: Port 8080 is free (ss)"
           fi
         else
           echo "WARNING: Cannot verify port status (netstat/ss not available)"
         fi
+        
+        echo "=== Port verification completed ==="
       register: port_check
       tags: [docker, validation]
 
