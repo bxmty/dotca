@@ -30,14 +30,15 @@
           BREVO_API_KEY, STRIPE_SECRET_KEY, and STRIPE_PUBLISHABLE_KEY.
       tags: [validation]
     - name: Check available disk space
-      ansible.builtin.mount:
-      register: mount_info
+      ansible.builtin.stat:
+        path: /
+      register: disk_stat
       changed_when: false
       tags: [validation]
 
     - name: Get disk usage percentage
       ansible.builtin.set_fact:
-        disk_usage: "{{ (100 - (mount_info.mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int / (mount_info.mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | int) * 100) | round(0) }}"
+        disk_usage: "{{ ((disk_stat.stat.size_total - disk_stat.stat.size_available) / disk_stat.stat.size_total * 100) | round(0) }}"
       tags: [validation]
     - name: Fail if disk space is too low
       ansible.builtin.fail:
