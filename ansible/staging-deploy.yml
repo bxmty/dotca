@@ -326,8 +326,8 @@
     - name: Force stop any containers using port 8080
       shell: |
         echo "Checking for containers using port 8080..."
-        # Find containers using port 8080 (avoid Jinja2 parsing by using single braces)
-        CONTAINERS=$(docker ps --format '{{.ID}}' --filter 'publish=8080' 2>/dev/null || true)
+        # Find containers using port 8080 (escape Jinja2 templating)
+        CONTAINERS=$(docker ps --format '{{ "{{" }}.ID{{ "}}" }}' --filter 'publish=8080' 2>/dev/null || true)
         if [ ! -z "$CONTAINERS" ]; then
           echo "Stopping containers using port 8080: $CONTAINERS"
           echo "$CONTAINERS" | xargs -r docker stop || true
@@ -337,7 +337,7 @@
         fi
 
         # Also check by port binding in a different way
-        PORT_CONTAINERS=$(docker ps --format '{{.ID}}\t{{.Ports}}' | grep ':8080' | cut -f1 || true)
+        PORT_CONTAINERS=$(docker ps --format '{{ "{{" }}.ID{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}' | grep ':8080' | cut -f1 || true)
         if [ ! -z "$PORT_CONTAINERS" ]; then
           echo "Found additional containers with port 8080: $PORT_CONTAINERS"
           echo "$PORT_CONTAINERS" | xargs -r docker stop || true
