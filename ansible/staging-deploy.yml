@@ -30,17 +30,19 @@
           BREVO_API_KEY, STRIPE_SECRET_KEY, and STRIPE_PUBLISHABLE_KEY.
       tags: [validation]
     - name: Check available disk space
-      ansible.builtin.shell: |
-        set -o pipefail
-        df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
-      register: disk_usage
+      ansible.builtin.mount:
+      register: mount_info
       changed_when: false
+      tags: [validation]
+
+    - name: Get disk usage percentage
+      ansible.builtin.set_fact:
+        disk_usage: "{{ (100 - (mount_info.mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int / (mount_info.mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | int) * 100) | round(0) }}"
       tags: [validation]
     - name: Fail if disk space is too low
       ansible.builtin.fail:
-        msg: 'Insufficient disk space: {{ disk_usage.stdout }}% used. Need at least
-          15% free space.'
-      when: disk_usage.stdout | int > 85
+        msg: 'Insufficient disk space: {{ disk_usage }}% used. Need at least 15% free space.'
+      when: disk_usage > 85
       tags: [validation]
     - name: Ensure /tmp directory exists with proper permissions
       ansible.builtin.file:
@@ -54,7 +56,7 @@
           - Deploying {{ project_name }} to {{ ansible_host }}
           - 'Git repository: {{ git_repo_url }}'
           - 'Branch: {{ git_branch }}'
-          - 'Disk usage: {{ disk_usage.stdout }}%'
+          - 'Disk usage: {{ disk_usage }}%'
       tags: [info]
 - name: Setup Staging environment for dotca
   hosts: digitalocean
