@@ -35,14 +35,14 @@
       register: disk_stat
       changed_when: false
       tags: [validation]
-
     - name: Get disk usage percentage
       ansible.builtin.set_fact:
-        disk_usage: "{{ ((disk_stat.stat.size_total - disk_stat.stat.size_available) / disk_stat.stat.size_total * 100) | round(0) }}"
+        disk_usage: '{{ ((disk_stat.stat.size_total - disk_stat.stat.size_available) / disk_stat.stat.size_total * 100) | round(0) }}'
       tags: [validation]
     - name: Fail if disk space is too low
       ansible.builtin.fail:
-        msg: 'Insufficient disk space: {{ disk_usage }}% used. Need at least 15% free space.'
+        msg: 'Insufficient disk space: {{ disk_usage }}% used. Need at least 15%
+          free space.'
       when: disk_usage > 85
       tags: [validation]
     - name: Ensure /tmp directory exists with proper permissions
