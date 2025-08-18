@@ -543,10 +543,41 @@
           - "Domain status code: {{ local_domain_check.status|default('N/A') }}"
           - "Localhost status code: {{ localhost_check.status|default('N/A') }}"
 
+    # Create temporary webroot directory for Let's Encrypt validation
+    - name: Create webroot directory for Let's Encrypt
+      file:
+        path: /var/www/html
+        state: directory
+        mode: '0755'
+        owner: www-data
+        group: www-data
+      when: not cert_file.stat.exists
+
+    # Add Let's Encrypt challenge location to Nginx config temporarily
+    - name: Add Let's Encrypt challenge location to Nginx
+      blockinfile:
+        path: /etc/nginx/sites-available/nextjs-app
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Let's Encrypt"
+        insertbefore: "location / {"
+        block: |
+          # Let's Encrypt challenge location
+          location ^~ /.well-known/acme-challenge/ {
+              root /var/www/html;
+              try_files $uri =404;
+          }
+      register: nginx_le_config
+      when: not cert_file.stat.exists
+
+    - name: Reload Nginx for Let's Encrypt configuration
+      systemd:
+        name: nginx
+        state: reloaded
+      when: nginx_le_config is changed
+
     # Check if Let's Encrypt can reach the domain
     - name: Perform Let's Encrypt dry run to test domain validation
       command: >
-        certbot --nginx -d {{ domain_name }}
+        certbot certonly --webroot -w /var/www/html -d {{ domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
         --dry-run
@@ -564,10 +595,9 @@
 
     - name: Obtain SSL certificate (only if dry run succeeded)
       command: >
-        certbot --nginx -d {{ domain_name }}
+        certbot certonly --webroot -w /var/www/html -d {{ domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
-        --redirect
       when: |
         not cert_file.stat.exists and 
         (certbot_dryrun is defined and certbot_dryrun.rc|default(1) == 0) and
@@ -576,6 +606,29 @@
       retries: 1
       delay: 60
       until: certbot_result is success
+
+    - name: Configure Nginx with SSL certificate
+      replace:
+        path: /etc/nginx/sites-available/nextjs-app
+        regexp: 'listen 80;'
+        replace: |
+          listen 80;
+          listen 443 ssl http2;
+          ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
+          
+          # Redirect HTTP to HTTPS
+          if ($scheme != "https") {
+              return 301 https://$host$request_uri;
+          }
+      when: certbot_result is success and certbot_result is defined
+      register: nginx_ssl_config
+
+    - name: Reload Nginx with SSL configuration
+      systemd:
+        name: nginx
+        state: reloaded
+      when: nginx_ssl_config is changed
       
     - name: Log certificate generation results
       debug:
