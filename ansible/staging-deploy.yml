@@ -607,28 +607,26 @@
       delay: 60
       until: certbot_result is success
 
-    - name: Configure Nginx with SSL certificate
-      replace:
-        path: /etc/nginx/sites-available/nextjs-app
-        regexp: 'listen 80;'
-        replace: |
-          listen 80;
-          listen 443 ssl http2;
-          ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
-          ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
-          
-          # Redirect HTTP to HTTPS
-          if ($scheme != "https") {
-              return 301 https://$host$request_uri;
-          }
+    - name: Deploy SSL-enabled Nginx configuration from template
+      template:
+        src: nextjs-site-ssl.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
+        backup: yes
       when: certbot_result is success and certbot_result is defined
       register: nginx_ssl_config
+
+    - name: Test Nginx configuration after SSL setup
+      command: nginx -t
+      register: nginx_ssl_test
+      changed_when: false
+      when: nginx_ssl_config is changed
 
     - name: Reload Nginx with SSL configuration
       systemd:
         name: nginx
         state: reloaded
-      when: nginx_ssl_config is changed
+      when: nginx_ssl_config is changed and nginx_ssl_test.rc == 0
       
     - name: Log certificate generation results
       debug:
