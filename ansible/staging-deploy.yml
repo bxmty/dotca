@@ -212,6 +212,7 @@
 
     - name: Stop any other containers using port 8080
       ansible.builtin.shell: |
+        #!/bin/bash
         if docker ps -q --filter publish=8080 | grep -q .; then
           docker stop $(docker ps -q --filter publish=8080)
         fi
@@ -224,6 +225,7 @@
 
     - name: Login to GitHub Container Registry
       ansible.builtin.shell: |
+        #!/bin/bash
         set -o pipefail
         echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin
       when: github_token is defined and github_username is defined
@@ -244,6 +246,7 @@
 
     - name: Check if Docker image exists in GHCR
       ansible.builtin.shell: |
+        #!/bin/bash
         if [ -z "{{ docker_image }}" ]; then
           echo "ERROR: docker_image variable is empty"
           exit 1
@@ -256,6 +259,7 @@
 
     - name: Try alternative image names if primary fails
       ansible.builtin.shell: |
+        #!/bin/bash
         echo "Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging"
         docker manifest inspect "ghcr.io/{{ github_username }}/dotca:staging"
       register: alt_image_exists
@@ -314,6 +318,7 @@
 
     - name: Pull latest Docker image from GHCR
       ansible.builtin.shell: |
+        #!/bin/bash
         cd {{ app_dir }}/repo
         docker-compose pull web
       args:
@@ -472,6 +477,7 @@
 
     - name: Setup firewall (UFW)
       ansible.builtin.shell: |
+        #!/bin/bash
         ufw allow {{ item }}/tcp
       loop:
         - '22'
@@ -483,6 +489,7 @@
 
     - name: Enable UFW
       ansible.builtin.shell: |
+        #!/bin/bash
         ufw --force enable
         ufw default deny incoming
       changed_when: false
@@ -582,6 +589,7 @@
     # Enhanced domain validation before requesting certificate
     - name: Check DNS resolution for domain
       ansible.builtin.shell: |
+        #!/bin/bash
         echo "Checking DNS resolution for {{ domain_name }}..."
         nslookup {{ domain_name }} || echo "DNS resolution failed"
         echo "Expected IP: {{ ansible_host }}"
@@ -597,6 +605,7 @@
 
     - name: Verify domain configuration in Nginx
       ansible.builtin.shell: |
+        #!/bin/bash
         if [ -f /etc/nginx/sites-available/nextjs-app ]; then
           grep -q "server_name {{ domain_name }}" /etc/nginx/sites-available/nextjs-app || echo "Domain not configured"
         else
