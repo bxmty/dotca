@@ -396,6 +396,9 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           GA_STAGING_ID: ${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
+          # GitHub Container Registry authentication
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
           echo "🚀 Starting Ansible deployment..."
 
@@ -404,10 +407,16 @@ jobs:
           [ -z "$BREVO_API_KEY" ] && MISSING_VARS="$MISSING_VARS BREVO_API_KEY"
           [ -z "$STRIPE_SECRET_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_SECRET_KEY"
           [ -z "$STRIPE_PUBLISHABLE_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_PUBLISHABLE_KEY"
+          [ -z "$GITHUB_TOKEN" ] && MISSING_VARS="$MISSING_VARS GITHUB_TOKEN"
+          [ -z "$GITHUB_USERNAME" ] && MISSING_VARS="$MISSING_VARS GITHUB_USERNAME"
           if [ -n "$MISSING_VARS" ]; then
             echo "::error::Missing required environment variables:$MISSING_VARS"
             exit 1
           fi
+          
+          echo "✅ GitHub Container Registry authentication configured:"
+          echo "   - Username: $GITHUB_USERNAME"
+          echo "   - Token: ${GITHUB_TOKEN:0:10}... (truncated)"
 
           # Run Ansible playbook with retry logic
           DEPLOY_SUCCESS=false
