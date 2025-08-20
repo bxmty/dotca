@@ -234,15 +234,13 @@
       changed_when: false
 
     - name: Check if Docker image exists in GHCR
-      ansible.builtin.command: |
-        bash -c "if [ -z '{{ docker_image }}' ]; then echo 'ERROR: docker_image variable is empty'; exit 1; fi; echo 'Checking if image exists: {{ docker_image }}'; docker manifest inspect '{{ docker_image }}'"
+      ansible.builtin.command: bash -c "if [ -z '{{ docker_image }}' ]; then echo 'ERROR: docker_image variable is empty'; exit 1; fi; echo 'Checking if image exists: {{ docker_image }}'; docker manifest inspect '{{ docker_image }}'"
       register: image_exists
       ignore_errors: true
       changed_when: false
 
     - name: Try alternative image names if primary fails
-      ansible.builtin.command: |
-        bash -c "echo \"Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging\"; docker manifest inspect \"ghcr.io/{{ github_username }}/dotca:staging\""
+      ansible.builtin.command: bash -c "echo 'Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging'; docker manifest inspect 'ghcr.io/{{ github_username }}/dotca:staging'"
       register: alt_image_exists
       ignore_errors: true
       changed_when: false
@@ -561,8 +559,7 @@
 
     # Enhanced domain validation before requesting certificate
     - name: Check DNS resolution for domain
-      ansible.builtin.command: |
-        bash -c "echo 'Checking DNS resolution for {{ domain_name }}...'; nslookup {{ domain_name }} || echo 'DNS resolution failed'; echo 'Expected IP: {{ ansible_host }}'; echo 'Resolved IP:'; dig +short {{ domain_name }} || echo 'dig failed'"
+      ansible.builtin.command: bash -c "echo 'Checking DNS resolution for {{ domain_name }}...'; nslookup {{ domain_name }} || echo 'DNS resolution failed'; echo 'Expected IP: {{ ansible_host }}'; echo 'Resolved IP:'; dig +short {{ domain_name }} || echo 'dig failed'"
       register: dns_check
       changed_when: false
       ignore_errors: true
