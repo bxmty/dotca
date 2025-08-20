@@ -31,7 +31,15 @@
     # GitHub Container Registry settings
     github_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
     github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
-    docker_image: "{{ lookup('env', 'DOCKER_IMAGE') | default('ghcr.io/bxtech/dotca:staging') }}"
+    # Try multiple possible image names based on repository
+    docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
+    github_repo_from_url: "{{ git_repo_url | regex_replace('.*github\\.com[/:]([^/]+/[^/.]+).*', '\\1') if git_repo_url else '' }}"
+    docker_image: >-
+      {{
+        docker_image_override if docker_image_override else 
+        ('ghcr.io/' + github_repo_from_url + ':staging') if github_repo_from_url else
+        'ghcr.io/bxtech/dotca:staging'
+      }}
     # Additional production GA ID for future use
     ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
 
@@ -163,9 +171,15 @@
       delay: 5
       until: git_pull is success
 
-    - name: Debug docker image variable
+    - name: Debug GHCR variables
       debug:
-        msg: "Docker image will be: {{ docker_image }}"
+        msg: 
+          - "GITHUB_TOKEN (first 10 chars): {{ github_token[:10] if github_token else 'NOT SET' }}..."
+          - "GITHUB_USERNAME: {{ github_username if github_username else 'NOT SET' }}"
+          - "GIT_REPO_URL: {{ git_repo_url if git_repo_url else 'NOT SET' }}"
+          - "Extracted repo from URL: {{ github_repo_from_url if github_repo_from_url else 'NOT SET' }}"
+          - "DOCKER_IMAGE env var override: {{ docker_image_override if docker_image_override else 'NOT SET' }}"
+          - "Final docker_image: {{ docker_image if docker_image else 'NOT SET' }}"
 
     - name: Generate docker-compose.yml from template
       template:
@@ -223,16 +237,59 @@
 
     - name: Check if Docker image exists in GHCR
       shell: |
-        docker manifest inspect {{ docker_image }}
+        if [ -z "{{ docker_image }}" ]; then
+          echo "ERROR: docker_image variable is empty"
+          exit 1
+        fi
+        echo "Checking if image exists: {{ docker_image }}"
+        docker manifest inspect "{{ docker_image }}"
       register: image_exists
       ignore_errors: yes
       changed_when: false
 
+    - name: Try alternative image names if primary fails
+      shell: |
+        echo "Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging"
+        docker manifest inspect "ghcr.io/{{ github_username }}/dotca:staging"
+      register: alt_image_exists
+      ignore_errors: yes
+      changed_when: false
+      when: image_exists.rc != 0 and github_username
+
     - name: Display image availability
       debug:
         msg: 
-          - "Image {{ docker_image }} exists: {{ 'YES' if image_exists.rc == 0 else 'NO' }}"
-          - "If image doesn't exist, make sure GitHub Actions build completed successfully"
+          - "Primary image {{ docker_image }} exists: {{ 'YES' if image_exists.rc == 0 else 'NO' }}"
+          - "Alternative image exists: {{ 'YES' if alt_image_exists.rc == 0 else 'NO' if alt_image_exists is defined else 'NOT CHECKED' }}"
+          - ""
+          - "{{ 'SUCCESS: Found working image!' if (image_exists.rc == 0 or (alt_image_exists is defined and alt_image_exists.rc == 0)) else 'ERROR: No images found!' }}"
+          - ""
+          - "If no images found, check:"
+          - "1. Has GitHub Actions docker-build workflow completed? Check: https://github.com/{{ github_repo_from_url }}/actions"
+          - "2. Does the image name match what GitHub Actions created?"
+          - "3. Are you authenticated to GHCR properly?"
+
+    - name: Use alternative image if primary failed
+      set_fact:
+        docker_image: "ghcr.io/{{ github_username }}/dotca:staging"
+      when: image_exists.rc != 0 and alt_image_exists is defined and alt_image_exists.rc == 0
+
+    - name: Fail if no images found
+      fail:
+        msg: |
+          No Docker images found in GHCR! 
+          
+          This means the GitHub Actions docker-build workflow hasn't run yet or failed.
+          
+          Steps to fix:
+          1. Check GitHub Actions: https://github.com/{{ github_repo_from_url }}/actions
+          2. Make sure docker-build.yml workflow completed successfully
+          3. Verify the image was pushed to GHCR
+          
+          Expected image locations:
+          - {{ docker_image }}
+          - ghcr.io/{{ github_username }}/dotca:staging (if username available)
+      when: image_exists.rc != 0 and (alt_image_exists is not defined or alt_image_exists.rc != 0)
 
     - name: Pull latest Docker image from GHCR
       shell: |
