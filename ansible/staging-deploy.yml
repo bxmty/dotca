@@ -45,15 +45,15 @@
 
   tasks:
     - name: Update apt cache
-      apt:
-        update_cache: yes
+      ansible.builtin.apt:
+        update_cache: true
 
     - name: Upgrade all packages
-      apt:
-        upgrade: yes
+      ansible.builtin.apt:
+        upgrade: true
 
     - name: Install required packages
-      apt:
+      ansible.builtin.apt:
         name:
           - apt-transport-https
           - ca-certificates
@@ -66,113 +66,114 @@
           - nginx
           - docker-compose
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Add Docker's official GPG key
-      apt_key:
+      ansible.builtin.apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
     - name: Add Docker repository
-      apt_repository:
+      ansible.builtin.apt_repository:
         repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Install Docker Engine
-      apt:
+      ansible.builtin.apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
         state: present
-        update_cache: yes
+        update_cache: true
       register: docker_install_result
       retries: 3
       delay: 5
       until: docker_install_result is success
 
     - name: Install NTP for time synchronization
-      apt:
+      ansible.builtin.apt:
         name: ntp
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Configure NTP to use time.nist.gov
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ntp.conf
         regexp: '^server'
         line: 'server time.nist.gov iburst'
         state: present
-        backup: yes
+        backup: true
 
     - name: Restart NTP service
-      systemd:
+      ansible.builtin.systemd:
         name: ntp
         state: restarted
-        enabled: yes
+        enabled: true
 
     - name: Set timezone to Eastern Time
-      timezone:
-        name: America/New_York
+      ansible.builtin.shell: |
+        timedatectl set-timezone America/New_York
+      changed_when: false
 
     - name: Start and enable Docker service
-      systemd:
+      ansible.builtin.systemd:
         name: docker
         state: started
-        enabled: yes
+        enabled: true
       register: docker_service_result
       retries: 3
       delay: 5
       until: docker_service_result is success
 
     - name: Verify Docker Compose installation
-      command: docker-compose --version
+      ansible.builtin.command: docker-compose --version
       register: compose_version
       changed_when: false
 
     - name: Create application directory
-      file:
+      ansible.builtin.file:
         path: "{{ app_dir }}"
         state: directory
         mode: '0755'
 
     - name: Clone the repository
-      git:
+      ansible.builtin.git:
         repo: "{{ git_repo_url }}"
         dest: "{{ app_dir }}/repo"
         version: "{{ git_branch }}"
-        force: yes
+        force: true
       register: git_clone
       retries: 3
       delay: 10
       until: git_clone is success
 
     - name: Verify Next.js configuration file
-      stat:
+      ansible.builtin.stat:
         path: "{{ app_dir }}/repo/next.config.js"
       register: next_config
 
     - name: Fail if Next.js configuration is missing
-      fail:
+      ansible.builtin.fail:
         msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
       when: not next_config.stat.exists
 
     # DEPLOYMENT TASKS START HERE
     - name: Pull latest changes from git
-      git:
+      ansible.builtin.git:
         repo: "{{ git_repo_url }}"
         dest: "{{ app_dir }}/repo"
         version: "{{ git_branch }}"
-        force: yes
-        update: yes
+        force: true
+        update: true
       register: git_pull
       retries: 3
       delay: 5
       until: git_pull is success
 
     - name: Debug GHCR variables
-      debug:
+      ansible.builtin.debug:
         msg: 
           - "GITHUB_TOKEN (first 10 chars): {{ github_token[:10] if github_token else 'NOT SET' }}..."
           - "GITHUB_USERNAME: {{ github_username if github_username else 'NOT SET' }}"
@@ -182,61 +183,67 @@
           - "Final docker_image: {{ docker_image if docker_image else 'NOT SET' }}"
 
     - name: Generate docker-compose.yml from template
-      template:
+      ansible.builtin.template:
         src: docker-compose.yml.j2
         dest: "{{ app_dir }}/repo/docker-compose.yml"
         mode: '0644'
-        backup: yes
+        backup: true
       vars:
         node_env: production
         next_public_api_url: "http://{{ public_ip }}/api"
         next_public_environment: staging
 
     - name: Display generated docker-compose.yml for debugging
-      command: cat "{{ app_dir }}/repo/docker-compose.yml"
+      ansible.builtin.command: cat "{{ app_dir }}/repo/docker-compose.yml"
       register: docker_compose_content
       changed_when: false
 
     - name: Show docker-compose.yml content
-      debug:
+      ansible.builtin.debug:
         msg: "{{ docker_compose_content.stdout_lines }}"
 
     - name: Stop existing Docker Compose services
-      command: docker-compose down web
+      ansible.builtin.command: docker-compose down web
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
-      ignore_errors: yes
+      ignore_errors: true
+      changed_when: docker_down_result.rc == 0
 
     - name: Stop any other containers using port 8080
-      shell: |
+      ansible.builtin.shell: |
         if docker ps -q --filter publish=8080 | grep -q .; then
           docker stop $(docker ps -q --filter publish=8080)
         fi
-      ignore_errors: yes
+      ignore_errors: true
+      changed_when: false
 
     - name: Prune Docker system
-      command: docker system prune -af
+      ansible.builtin.command: docker system prune -af
+      changed_when: false
 
     - name: Login to GitHub Container Registry
-      shell: |
+      ansible.builtin.shell: |
+        set -o pipefail
         echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin
       when: github_token is defined and github_username is defined
       register: docker_login
       retries: 3
       delay: 5
       until: docker_login is success
+      changed_when: false
 
     - name: Alternative - Login using deploy key (if no personal token)
-      shell: |
+      ansible.builtin.shell: |
         # This would use SSH key authentication instead
         # Requires additional setup - see documentation
         echo "Using deploy key authentication"
       when: github_token is not defined and deploy_key_path is defined
       register: deploy_key_login
+      changed_when: false
 
     - name: Check if Docker image exists in GHCR
-      shell: |
+      ansible.builtin.shell: |
         if [ -z "{{ docker_image }}" ]; then
           echo "ERROR: docker_image variable is empty"
           exit 1
@@ -244,26 +251,34 @@
         echo "Checking if image exists: {{ docker_image }}"
         docker manifest inspect "{{ docker_image }}"
       register: image_exists
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
 
     - name: Try alternative image names if primary fails
-      shell: |
+      ansible.builtin.shell: |
         echo "Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging"
         docker manifest inspect "ghcr.io/{{ github_username }}/dotca:staging"
       register: alt_image_exists
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
-      when: image_exists.rc != 0 and github_username
+      when: (image_exists is defined and image_exists.rc != 0) and github_username
+
+    - name: Set default image_exists if not defined (authentication failed)
+      ansible.builtin.set_fact:
+        image_exists:
+          rc: 1
+          stdout: ""
+          stderr: "Image check skipped due to authentication failure"
+      when: image_exists is not defined
 
     - name: Set image availability status variables
-      set_fact:
-        primary_image_status: "{{ 'YES' if image_exists.rc == 0 else 'NO' }}"
+      ansible.builtin.set_fact:
+        primary_image_status: "{{ 'YES' if (image_exists is defined and image_exists.rc == 0) else 'NO' }}"
         alt_image_status: "{{ 'YES' if (alt_image_exists is defined and alt_image_exists.rc == 0) else ('NO' if alt_image_exists is defined else 'NOT CHECKED') }}"
-        any_image_found: "{{ image_exists.rc == 0 or (alt_image_exists is defined and alt_image_exists.rc == 0) }}"
+        any_image_found: "{{ (image_exists is defined and image_exists.rc == 0) or (alt_image_exists is defined and alt_image_exists.rc == 0) }}"
 
     - name: Display image availability
-      debug:
+      ansible.builtin.debug:
         msg: 
           - "Primary image {{ docker_image }} exists: {{ primary_image_status }}"
           - "Alternative image exists: {{ alt_image_status }}"
@@ -276,12 +291,12 @@
           - "3. Are you authenticated to GHCR properly?"
 
     - name: Use alternative image if primary failed
-      set_fact:
+      ansible.builtin.set_fact:
         docker_image: "ghcr.io/{{ github_username }}/dotca:staging"
-      when: image_exists.rc != 0 and alt_image_exists is defined and alt_image_exists.rc == 0
+      when: (image_exists is defined and image_exists.rc != 0) and alt_image_exists is defined and alt_image_exists.rc == 0
 
     - name: Fail if no images found
-      fail:
+      ansible.builtin.fail:
         msg: |
           No Docker images found in GHCR! 
           
@@ -298,7 +313,7 @@
       when: not any_image_found
 
     - name: Pull latest Docker image from GHCR
-      shell: |
+      ansible.builtin.shell: |
         cd {{ app_dir }}/repo
         docker-compose pull web
       args:
@@ -307,34 +322,37 @@
       retries: 3
       delay: 10
       until: docker_pull is success
+      changed_when: false
 
     - name: Start Docker Compose services
-      command: docker-compose up -d web
+      ansible.builtin.command: docker-compose up -d web
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
       retries: 3
       delay: 15
       until: docker_up is success
+      changed_when: false
       
     - name: Check if Docker Compose services started successfully
-      command: docker-compose ps
+      ansible.builtin.command: docker-compose ps
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_ps
       changed_when: false
       
     - name: Display Docker Compose status
-      debug:
+      ansible.builtin.debug:
         var: docker_ps.stdout_lines
       
     - name: Display deployment completion message
-      debug:
+      ansible.builtin.debug:
         msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
 
     - name: Configure Nginx worker processes
-      copy:
+      ansible.builtin.copy:
         dest: /etc/nginx/nginx.conf
+        mode: '0644'
         content: |
           user www-data;
           worker_processes auto;
@@ -386,8 +404,9 @@
           }
 
     - name: Configure Nginx as reverse proxy
-      copy:
+      ansible.builtin.copy:
         dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
         content: |
           server {
               listen 80;
@@ -418,33 +437,33 @@
           }
 
     - name: Enable Nginx site configuration
-      file:
+      ansible.builtin.file:
         src: /etc/nginx/sites-available/nextjs-app
         dest: /etc/nginx/sites-enabled/nextjs-app
         state: link
 
     - name: Remove default Nginx site
-      file:
+      ansible.builtin.file:
         path: /etc/nginx/sites-enabled/default
         state: absent
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Test Nginx configuration
-      command: nginx -t
+      ansible.builtin.command: nginx -t
       register: nginx_test
       changed_when: false
       ignore_errors: true
 
     - name: Display Nginx test results
-      debug:
+      ansible.builtin.debug:
         msg: "{{ nginx_test.stderr_lines }}"
       when: nginx_test.rc != 0
 
     - name: Restart Nginx
-      systemd:
+      ansible.builtin.systemd:
         name: nginx
         state: restarted
-        enabled: yes
+        enabled: true
       when: nginx_test.rc == 0
       register: nginx_restart
       retries: 2
@@ -452,24 +471,24 @@
       until: nginx_restart is success
 
     - name: Setup firewall (UFW)
-      ufw:
-        rule: allow
-        port: "{{ item }}"
-        proto: tcp
+      ansible.builtin.shell: |
+        ufw allow {{ item }}/tcp
       loop:
         - '22'
         - '80'
         - '443'
         - '6080'
         - '8080'
+      changed_when: false
 
     - name: Enable UFW
-      ufw:
-        state: enabled
-        policy: deny
+      ansible.builtin.shell: |
+        ufw --force enable
+        ufw default deny incoming
+      changed_when: false
 
     - name: Create enhanced monitoring script
-      copy:
+      ansible.builtin.copy:
         dest: "{{ app_dir }}/monitor.sh"
         mode: '0755'
         content: |
@@ -528,7 +547,7 @@
           fi
           
     - name: Set up monitoring cron job
-      cron:
+      ansible.builtin.cron:
         name: "Monitor dotca-nextjs"
         minute: "*/15"
         job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
@@ -544,7 +563,7 @@
   
   tasks:
     - name: Install DNS utilities and Certbot
-      package:
+      ansible.builtin.package:
         name:
           - certbot
           - python3-certbot-nginx
@@ -556,7 +575,7 @@
       until: certbot_install is success
 
     - name: Check if certificate already exists
-      stat:
+      ansible.builtin.stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
       register: cert_file
 
@@ -570,10 +589,10 @@
         dig +short {{ domain_name }} || echo "dig failed"
       register: dns_check
       changed_when: false
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Display DNS check results
-      debug:
+      ansible.builtin.debug:
         msg: "{{ dns_check.stdout_lines }}"
 
     - name: Verify domain configuration in Nginx
@@ -601,10 +620,10 @@
       when: nginx_domain_update is changed
 
     - name: Restart Nginx before certificate request
-      systemd:
+      ansible.builtin.systemd:
         name: nginx
         state: restarted
-        enabled: yes
+        enabled: true
       when: nginx_domain_update is changed and nginx_test_ssl.rc == 0
 
     # Wait for Nginx to fully restart
@@ -636,16 +655,16 @@
       ignore_errors: yes
 
     - name: Display connectivity test results
-      debug:
+      ansible.builtin.debug:
         msg:
-          - "Domain {{ domain_name }} accessibility: {{ 'SUCCESS' if local_domain_check.status|default(0) == 200 else 'FAILED' }}"
-          - "Localhost accessibility: {{ 'SUCCESS' if localhost_check.status|default(0) == 200 else 'FAILED' }}"
-          - "Domain status code: {{ local_domain_check.status|default('N/A') }}"
-          - "Localhost status code: {{ localhost_check.status|default('N/A') }}"
+          - "Domain {{ domain_name }} accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Localhost accessibility: {{ 'SUCCESS' if localhost_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Domain status code: {{ local_domain_check.status | default('N/A') }}"
+          - "Localhost status code: {{ localhost_check.status | default('N/A') }}"
 
     # Create temporary webroot directory for Let's Encrypt validation
     - name: Create webroot directory for Let's Encrypt
-      file:
+      ansible.builtin.file:
         path: /var/www/html
         state: directory
         mode: '0755'
@@ -655,7 +674,7 @@
 
     # Add Let's Encrypt challenge location to Nginx config temporarily
     - name: Add Let's Encrypt challenge location to Nginx
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /etc/nginx/sites-available/nextjs-app
         marker: "# {mark} ANSIBLE MANAGED BLOCK - Let's Encrypt"
         insertbefore: "location / {"
@@ -669,72 +688,74 @@
       when: not cert_file.stat.exists
 
     - name: Reload Nginx for Let's Encrypt configuration
-      systemd:
+      ansible.builtin.systemd:
         name: nginx
         state: reloaded
       when: nginx_le_config is changed
 
     # Check if Let's Encrypt can reach the domain
     - name: Perform Let's Encrypt dry run to test domain validation
-      command: >
+      ansible.builtin.command: >
         certbot certonly --webroot -w /var/www/html -d {{ domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
         --dry-run
       register: certbot_dryrun
-      ignore_errors: yes
-      when: not cert_file.stat.exists and (local_domain_check.status|default(0) == 200 or localhost_check.status|default(0) == 200)
+      ignore_errors: true
+      when: not cert_file.stat.exists and (local_domain_check.status | default(0) == 200 or localhost_check.status | default(0) == 200)
+      changed_when: false
 
     - name: Display dry run results
-      debug:
+      ansible.builtin.debug:
         msg:
-          - "Dry run result: {{ 'SUCCESS' if certbot_dryrun.rc|default(1) == 0 else 'FAILED' }}"
-          - "Dry run output: {{ certbot_dryrun.stdout_lines|default(['No output']) }}"
-          - "Dry run errors: {{ certbot_dryrun.stderr_lines|default(['No errors']) }}"
+          - "Dry run result: {{ 'SUCCESS' if certbot_dryrun.rc | default(1) == 0 else 'FAILED' }}"
+          - "Dry run output: {{ certbot_dryrun.stdout_lines | default(['No output']) }}"
+          - "Dry run errors: {{ certbot_dryrun.stderr_lines | default(['No errors']) }}"
       when: certbot_dryrun is defined
 
     - name: Obtain SSL certificate (only if dry run succeeded)
-      command: >
+      ansible.builtin.command: >
         certbot certonly --webroot -w /var/www/html -d {{ domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
       when: |
         not cert_file.stat.exists and 
-        (certbot_dryrun is defined and certbot_dryrun.rc|default(1) == 0) and
-        (local_domain_check.status|default(0) == 200 or localhost_check.status|default(0) == 200)
+        (certbot_dryrun is defined and certbot_dryrun.rc | default(1) == 0) and
+        (local_domain_check.status | default(0) == 200 or localhost_check.status | default(0) == 200)
       register: certbot_result
       retries: 1
       delay: 60
       until: certbot_result is success
+      changed_when: false
 
     - name: Deploy SSL-enabled Nginx configuration from template
-      template:
+      ansible.builtin.template:
         src: nextjs-site-ssl.conf.j2
         dest: /etc/nginx/sites-available/nextjs-app
         mode: '0644'
-        backup: yes
+        backup: true
       when: certbot_result is success and certbot_result is defined
       register: nginx_ssl_config
 
     - name: Test Nginx configuration after SSL setup
-      command: nginx -t
+      ansible.builtin.command: nginx -t
       register: nginx_ssl_test
       changed_when: false
       when: nginx_ssl_config is changed
 
     - name: Reload Nginx with SSL configuration
-      systemd:
+      ansible.builtin.systemd:
         name: nginx
         state: reloaded
       when: nginx_ssl_config is changed and nginx_ssl_test.rc == 0
       
     - name: Log certificate generation results
-      debug:
+      ansible.builtin.debug:
         msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
       when: not cert_file.stat.exists and certbot_result is defined
 
     - name: Display SSL setup status and troubleshooting info
-      debug:
+      ansible.builtin.debug:
         msg:
           - "============================================"
           - "SSL Certificate Setup Status"
@@ -742,8 +763,8 @@
           - "Certificate exists: {{ cert_file.stat.exists | default(false) }}"
           - "Domain: {{ domain_name }}"
           - "DNS resolution: {{ 'Check DNS output above' }}"
-          - "Domain accessibility: {{ 'SUCCESS' if local_domain_check.status|default(0) == 200 else 'FAILED' }}"
-          - "Dry run status: {{ 'SUCCESS' if certbot_dryrun.rc|default(1) == 0 else 'FAILED' }}"
+          - "Domain accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Dry run status: {{ 'SUCCESS' if certbot_dryrun.rc | default(1) == 0 else 'FAILED' }}"
           - "============================================"
           - "If SSL failed, ensure:"
           - "1. DNS for {{ domain_name }} points to {{ ansible_host }}"
@@ -753,7 +774,7 @@
           - "============================================"
 
     - name: Add cron job for auto-renewal
-      cron:
+      ansible.builtin.cron:
         name: "Let's Encrypt renewal"
         special_time: daily
         job: "certbot renew --quiet --nginx"

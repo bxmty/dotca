@@ -3,15 +3,67 @@ name: Build and Push to GHCR
 on:
   push:
     branches: [ main, staging ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'Dockerfile.dev'
+      - 'next.config.js'
+      - 'tsconfig.json'
+      - 'jest.config.js'
+      - 'eslint.config.mjs'
+      - '.github/workflows/docker-build.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'Dockerfile.dev'
+      - 'next.config.js'
+      - 'tsconfig.json'
+      - 'jest.config.js'
+      - 'eslint.config.mjs'
+      - '.github/workflows/docker-build.yml'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.changes.outputs.docker }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Check for changes
+      uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          docker:
+            - 'src/**'
+            - 'public/**'
+            - 'package.json'
+            - 'package-lock.json'
+            - 'Dockerfile'
+            - 'Dockerfile.dev'
+            - 'next.config.js'
+            - 'tsconfig.json'
+            - 'jest.config.js'
+            - 'eslint.config.mjs'
+            - '.github/workflows/docker-build.yml'
+
   build-and-push:
+    needs: changes
+    if: ${{ needs.changes.outputs.docker == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -50,8 +102,13 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: |
+          type=gha
+          type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+        cache-to: |
+          type=gha,mode=max
+          type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
         build-args: |
           NODE_ENV=production
           NEXT_PUBLIC_ENVIRONMENT=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+        platforms: linux/amd64
