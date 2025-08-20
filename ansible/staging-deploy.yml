@@ -240,6 +240,14 @@
       ignore_errors: true
       changed_when: false
 
+    - name: Ensure image_exists is defined with default value
+      ansible.builtin.set_fact:
+        image_exists:
+          rc: 1
+          stdout: ""
+          stderr: "Image check failed or was skipped"
+      when: image_exists is not defined
+
     - name: Try alternative image names if primary fails
       ansible.builtin.command: |
         bash -c "echo \"Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging\"; docker manifest inspect \"ghcr.io/{{ github_username }}/dotca:staging\""
@@ -247,6 +255,19 @@
       ignore_errors: true
       changed_when: false
       when: (image_exists is defined and image_exists.rc != 0) and github_username
+
+    - name: Ensure alt_image_exists is defined with default value
+      ansible.builtin.set_fact:
+        alt_image_exists:
+          rc: 1
+          stdout: ""
+          stderr: "Alternative image check was not performed"
+      when: alt_image_exists is not defined
+
+    - name: Initialize image variables with safe defaults
+      ansible.builtin.set_fact:
+        image_exists: "{{ image_exists | default({'rc': 1, 'stdout': '', 'stderr': 'Image check failed'}) }}"
+        alt_image_exists: "{{ alt_image_exists | default({'rc': 1, 'stdout': '', 'stderr': 'Alternative image check not performed'}) }}"
 
     - name: Set default image_exists if not defined (authentication failed)
       ansible.builtin.set_fact:
@@ -261,6 +282,7 @@
         primary_image_status: "{{ 'YES' if (image_exists is defined and image_exists.rc == 0) else 'NO' }}"
         alt_image_status: "{{ 'YES' if (alt_image_exists is defined and alt_image_exists.rc == 0) else ('NO' if alt_image_exists is defined else 'NOT CHECKED') }}"
         any_image_found: "{{ (image_exists is defined and image_exists.rc == 0) or (alt_image_exists is defined and alt_image_exists.rc == 0) }}"
+      when: image_exists is defined
 
     - name: Display image availability
       ansible.builtin.debug:
