@@ -28,6 +28,12 @@
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
     ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
     docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
+    # GitHub Container Registry settings
+    github_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
+    github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
+    docker_image: "{{ lookup('env', 'DOCKER_IMAGE') | default('ghcr.io/' + github_username + '/dotca:staging') }}"
+    # Additional production GA ID for future use
+    ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
 
   tasks:
     - name: Update apt cache
@@ -157,18 +163,16 @@
       delay: 5
       until: git_pull is success
 
-    - name: Create .env file for docker-compose
-      copy:
-        dest: "{{ app_dir }}/repo/.env"
+    - name: Generate docker-compose.yml from template
+      template:
+        src: docker-compose.yml.j2
+        dest: "{{ app_dir }}/repo/docker-compose.yml"
         mode: '0644'
-        content: |
-          NODE_ENV=production
-          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-          NEXT_PUBLIC_ENVIRONMENT=staging
-          BREVO_API_KEY={{ brevo_api_key }}
-          STRIPE_SECRET_KEY={{ stripe_secret_key }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id }}
+        backup: yes
+      vars:
+        node_env: production
+        next_public_api_url: "http://{{ public_ip }}/api"
+        next_public_environment: staging
 
     - name: Stop existing Docker Compose services
       command: docker-compose down web
@@ -187,26 +191,33 @@
     - name: Prune Docker system
       command: docker system prune -af
 
-    - name: Build Docker images
+    - name: Login to GitHub Container Registry
+      shell: |
+        echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin
+      when: github_token is defined and github_username is defined
+      register: docker_login
+      retries: 3
+      delay: 5
+      until: docker_login is success
+
+    - name: Alternative - Login using deploy key (if no personal token)
+      shell: |
+        # This would use SSH key authentication instead
+        # Requires additional setup - see documentation
+        echo "Using deploy key authentication"
+      when: github_token is not defined and deploy_key_path is defined
+      register: deploy_key_login
+
+    - name: Pull latest Docker image from GHCR
       shell: |
         cd {{ app_dir }}/repo
-        export DOCKER_BUILDKIT=1
-        export COMPOSE_DOCKER_CLI_BUILD=1
-        docker-compose build --build-arg BUILDKIT_INLINE_CACHE=1
+        docker-compose pull web
       args:
         chdir: "{{ app_dir }}/repo"
-      environment:
-        DOCKER_BUILDKIT: 1
-        COMPOSE_DOCKER_CLI_BUILD: 1
-      vars:
-        ansible_ssh_pipelining: true
-        ansible_ssh_timeout: 600
-      register: docker_build
-      retries: 5
-      delay: 60
-      until: docker_build is success
-      async: 1800
-      poll: 30
+      register: docker_pull
+      retries: 3
+      delay: 10
+      until: docker_pull is success
 
     - name: Start Docker Compose services
       command: docker-compose up -d web
