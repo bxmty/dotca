@@ -31,7 +31,7 @@
     # GitHub Container Registry settings
     github_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
     github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
-    docker_image: "{{ lookup('env', 'DOCKER_IMAGE') | default('ghcr.io/' + github_username + '/dotca:staging') }}"
+    docker_image: "{{ lookup('env', 'DOCKER_IMAGE') | default('ghcr.io/bxtech/dotca:staging') }}"
     # Additional production GA ID for future use
     ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
 
@@ -163,6 +163,10 @@
       delay: 5
       until: git_pull is success
 
+    - name: Debug docker image variable
+      debug:
+        msg: "Docker image will be: {{ docker_image }}"
+
     - name: Generate docker-compose.yml from template
       template:
         src: docker-compose.yml.j2
@@ -173,6 +177,15 @@
         node_env: production
         next_public_api_url: "http://{{ public_ip }}/api"
         next_public_environment: staging
+
+    - name: Display generated docker-compose.yml for debugging
+      command: cat "{{ app_dir }}/repo/docker-compose.yml"
+      register: docker_compose_content
+      changed_when: false
+
+    - name: Show docker-compose.yml content
+      debug:
+        msg: "{{ docker_compose_content.stdout_lines }}"
 
     - name: Stop existing Docker Compose services
       command: docker-compose down web
@@ -207,6 +220,19 @@
         echo "Using deploy key authentication"
       when: github_token is not defined and deploy_key_path is defined
       register: deploy_key_login
+
+    - name: Check if Docker image exists in GHCR
+      shell: |
+        docker manifest inspect {{ docker_image }}
+      register: image_exists
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Display image availability
+      debug:
+        msg: 
+          - "Image {{ docker_image }} exists: {{ 'YES' if image_exists.rc == 0 else 'NO' }}"
+          - "If image doesn't exist, make sure GitHub Actions build completed successfully"
 
     - name: Pull latest Docker image from GHCR
       shell: |
