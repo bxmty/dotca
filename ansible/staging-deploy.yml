@@ -229,10 +229,26 @@
 
     - name: Check if Docker image exists in GHCR
       ansible.builtin.command: |
-        bash -c "if [ -z '{{ docker_image }}' ]; then echo 'ERROR: docker_image variable is empty'; exit 1; fi; echo 'Checking if image exists: {{ docker_image }}'; docker manifest inspect '{{ docker_image }}'"
+        bash -c "
+        if [ -z '{{ docker_image | default('') }}' ]; then 
+          echo 'ERROR: docker_image variable is empty or undefined'
+          exit 1
+        fi
+        echo 'Checking if image exists: {{ docker_image }}'
+        docker manifest inspect '{{ docker_image }}'
+        "
       register: image_exists
       ignore_errors: true
       changed_when: false
+      when: docker_image is defined and docker_image != ""
+
+    - name: Set image_exists to failed state if docker_image is empty
+      ansible.builtin.set_fact:
+        image_exists:
+          rc: 1
+          stdout: ""
+          stderr: "docker_image variable is empty or undefined"
+      when: docker_image is not defined or docker_image == ""
 
     - name: Try alternative image names if primary fails
       ansible.builtin.command: |
@@ -247,13 +263,6 @@
         primary_image_status: "{{ 'YES' if (image_exists.rc | default(1) == 0) else 'NO' }}"
         alt_image_status: "{{ 'YES' if (alt_image_exists.rc | default(1) == 0) else 'NO' }}"
         any_image_found: "{{ (image_exists.rc | default(1) == 0) or (alt_image_exists.rc | default(1) == 0) }}"
-
-    - name: Set image availability status variables
-      ansible.builtin.set_fact:
-        primary_image_status: "{{ 'YES' if (image_exists is defined and image_exists.rc == 0) else 'NO' }}"
-        alt_image_status: "{{ 'YES' if (alt_image_exists is defined and alt_image_exists.rc == 0) else ('NO' if alt_image_exists is defined else 'NOT CHECKED') }}"
-        any_image_found: "{{ (image_exists is defined and image_exists.rc == 0) or (alt_image_exists is defined and alt_image_exists.rc == 0) }}"
-      when: image_exists is defined
 
     - name: Display image availability
       ansible.builtin.debug:
