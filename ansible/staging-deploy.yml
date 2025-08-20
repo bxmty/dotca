@@ -357,6 +357,13 @@
             types_hash_max_size 2048;
             server_tokens off;
             
+            # Shared memory zones
+            limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+            limit_conn_zone $binary_remote_addr zone=addr:10m;
+            
+            # SSL session cache zone
+            ssl_session_cache shared:SSL:50m;
+            
             include /etc/nginx/mime.types;
             default_type application/octet-stream;
 
@@ -660,11 +667,21 @@
       register: nginx_le_config
       when: not cert_file.stat.exists
 
+    - name: Test Nginx configuration before SSL setup
+      ansible.builtin.command: nginx -t
+      register: nginx_pre_ssl_test
+      changed_when: false
+
+    - name: Display Nginx pre-SSL test results
+      ansible.builtin.debug:
+        msg: "{{ nginx_pre_ssl_test.stderr_lines }}"
+      when: nginx_pre_ssl_test.rc != 0
+
     - name: Reload Nginx for Let's Encrypt configuration
       ansible.builtin.systemd:
         name: nginx
         state: reloaded
-      when: nginx_le_config is changed
+      when: nginx_le_config is changed and nginx_pre_ssl_test.rc == 0
 
     # Check if Let's Encrypt can reach the domain
     - name: Perform Let's Encrypt dry run to test domain validation
@@ -715,6 +732,11 @@
       register: nginx_ssl_test
       changed_when: false
       when: nginx_ssl_config is changed
+
+    - name: Display Nginx SSL test results
+      ansible.builtin.debug:
+        msg: "{{ nginx_ssl_test.stderr_lines }}"
+      when: nginx_ssl_test.rc != 0
 
     - name: Reload Nginx with SSL configuration
       ansible.builtin.systemd:
