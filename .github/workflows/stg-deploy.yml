@@ -8,12 +8,12 @@ on:
       force_rebuild:
         description: Force rebuild infrastructure
         required: false
-        default: 'false'
+        default: false
         type: boolean
       skip_tests:
         description: Skip selenium tests
         required: false
-        default: 'false'
+        default: false
         type: boolean
 env:
   ANSIBLE_HOST_KEY_CHECKING: 'False'
