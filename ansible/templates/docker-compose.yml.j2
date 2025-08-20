@@ -3,7 +3,7 @@ version: '3'
 services:
   # Define web service (for staging) and alias it as app (for production)
   web:
-    image: {{ docker_image }}
+    image: "{{ docker_image }}"
     pull_policy: always
     restart: always
     ports:
