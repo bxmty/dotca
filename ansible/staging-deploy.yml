@@ -227,12 +227,6 @@
       until: docker_login is success
       changed_when: false
 
-    - name: Alternative - Login using deploy key (if no personal token)
-      ansible.builtin.command: echo "Using deploy key authentication"
-      when: github_token is not defined and deploy_key_path is defined
-      register: deploy_key_login
-      changed_when: false
-
     - name: Check if Docker image exists in GHCR
       ansible.builtin.command: |
         bash -c "if [ -z '{{ docker_image }}' ]; then echo 'ERROR: docker_image variable is empty'; exit 1; fi; echo 'Checking if image exists: {{ docker_image }}'; docker manifest inspect '{{ docker_image }}'"
@@ -240,42 +234,19 @@
       ignore_errors: true
       changed_when: false
 
-    - name: Ensure image_exists is defined with default value
-      ansible.builtin.set_fact:
-        image_exists:
-          rc: 1
-          stdout: ""
-          stderr: "Image check failed or was skipped"
-      when: image_exists is not defined
-
     - name: Try alternative image names if primary fails
       ansible.builtin.command: |
         bash -c "echo \"Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging\"; docker manifest inspect \"ghcr.io/{{ github_username }}/dotca:staging\""
       register: alt_image_exists
       ignore_errors: true
       changed_when: false
-      when: (image_exists is defined and image_exists.rc != 0) and github_username
+      when: (image_exists.rc | default(1) != 0) and github_username
 
-    - name: Ensure alt_image_exists is defined with default value
+    - name: Set image availability status variables
       ansible.builtin.set_fact:
-        alt_image_exists:
-          rc: 1
-          stdout: ""
-          stderr: "Alternative image check was not performed"
-      when: alt_image_exists is not defined
-
-    - name: Initialize image variables with safe defaults
-      ansible.builtin.set_fact:
-        image_exists: "{{ image_exists | default({'rc': 1, 'stdout': '', 'stderr': 'Image check failed'}) }}"
-        alt_image_exists: "{{ alt_image_exists | default({'rc': 1, 'stdout': '', 'stderr': 'Alternative image check not performed'}) }}"
-
-    - name: Set default image_exists if not defined (authentication failed)
-      ansible.builtin.set_fact:
-        image_exists:
-          rc: 1
-          stdout: ""
-          stderr: "Image check skipped due to authentication failure"
-      when: image_exists is not defined
+        primary_image_status: "{{ 'YES' if (image_exists.rc | default(1) == 0) else 'NO' }}"
+        alt_image_status: "{{ 'YES' if (alt_image_exists.rc | default(1) == 0) else 'NO' }}"
+        any_image_found: "{{ (image_exists.rc | default(1) == 0) or (alt_image_exists.rc | default(1) == 0) }}"
 
     - name: Set image availability status variables
       ansible.builtin.set_fact:
