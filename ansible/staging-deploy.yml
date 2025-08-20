@@ -256,13 +256,19 @@
       changed_when: false
       when: image_exists.rc != 0 and github_username
 
+    - name: Set image availability status variables
+      set_fact:
+        primary_image_status: "{{ 'YES' if image_exists.rc == 0 else 'NO' }}"
+        alt_image_status: "{{ 'YES' if (alt_image_exists is defined and alt_image_exists.rc == 0) else ('NO' if alt_image_exists is defined else 'NOT CHECKED') }}"
+        any_image_found: "{{ image_exists.rc == 0 or (alt_image_exists is defined and alt_image_exists.rc == 0) }}"
+
     - name: Display image availability
       debug:
         msg: 
-          - "Primary image {{ docker_image }} exists: {{ 'YES' if image_exists.rc == 0 else 'NO' }}"
-          - "Alternative image exists: {{ 'YES' if alt_image_exists.rc == 0 else 'NO' if alt_image_exists is defined else 'NOT CHECKED' }}"
+          - "Primary image {{ docker_image }} exists: {{ primary_image_status }}"
+          - "Alternative image exists: {{ alt_image_status }}"
           - ""
-          - "{{ 'SUCCESS: Found working image!' if (image_exists.rc == 0 or (alt_image_exists is defined and alt_image_exists.rc == 0)) else 'ERROR: No images found!' }}"
+          - "{{ 'SUCCESS: Found working image!' if any_image_found else 'ERROR: No images found!' }}"
           - ""
           - "If no images found, check:"
           - "1. Has GitHub Actions docker-build workflow completed? Check: https://github.com/{{ github_repo_from_url }}/actions"
@@ -289,7 +295,7 @@
           Expected image locations:
           - {{ docker_image }}
           - ghcr.io/{{ github_username }}/dotca:staging (if username available)
-      when: image_exists.rc != 0 and (alt_image_exists is not defined or alt_image_exists.rc != 0)
+      when: not any_image_found
 
     - name: Pull latest Docker image from GHCR
       shell: |
