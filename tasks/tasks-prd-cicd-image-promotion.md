@@ -16,6 +16,11 @@
 - `ansible/templates/port_verification.sh.j2` - Port verification script template
 - `ansible/templates/logrotate.conf.j2` - Log rotation configuration template
 - `docs/DEPLOYMENT_GHCR.md` - Documentation that needs updating to reflect the new promotion workflow
+- `docs/cicd-architecture-comparison.md` - System architecture comparison document showing current vs. new pipeline flow
+- `docs/image-promotion-workflow.md` - Detailed image promotion workflow diagrams and process flows
+- `docs/image-tagging-strategy.md` - Image tagging strategy and registry organization documentation
+- `docs/rollback-strategy-retention-policy.md` - Rollback strategy and image retention policy documentation
+- `docs/component-interaction-diagram.md` - Component interaction diagram for the new image promotion system
 
 ### Notes
 
