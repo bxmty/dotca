@@ -25,7 +25,7 @@
 ## Tasks
 
 - [ ] 1.0 Design System Architecture and Diagrams
-  - [ ] 1.1 Create system architecture diagram showing current vs. new pipeline flow
+  - [x] 1.1 Create system architecture diagram showing current vs. new pipeline flow
   - [ ] 1.2 Design image promotion workflow diagram using mermaid.js
   - [ ] 1.3 Document image tagging strategy for staging and production
   - [ ] 1.4 Design rollback strategy and image retention policy
