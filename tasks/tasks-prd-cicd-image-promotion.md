@@ -29,7 +29,7 @@
   - [x] 1.2 Design image promotion workflow diagram using mermaid.js
   - [x] 1.3 Document image tagging strategy for staging and production
   - [x] 1.4 Design rollback strategy and image retention policy
-  - [ ] 1.5 Create component interaction diagram for the new system
+  - [x] 1.5 Create component interaction diagram for the new system
 
 - [ ] 2.0 Implement Image Promotion Mechanism
   - [ ] 2.1 Create new GitHub Actions workflow for image promotion
