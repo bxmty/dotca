@@ -15,7 +15,7 @@
 - `ansible/templates/docker_cleanup.sh.j2` - Docker cleanup script template for maintenance
 - `ansible/templates/port_verification.sh.j2` - Port verification script template
 - `ansible/templates/logrotate.conf.j2` - Log rotation configuration template
-- `DEPLOYMENT_GHCR.md` - Documentation that needs updating to reflect the new promotion workflow
+- `docs/DEPLOYMENT_GHCR.md` - Documentation that needs updating to reflect the new promotion workflow
 
 ### Notes
 
@@ -28,7 +28,7 @@
   - [x] 1.1 Create system architecture diagram showing current vs. new pipeline flow
   - [x] 1.2 Design image promotion workflow diagram using mermaid.js
   - [x] 1.3 Document image tagging strategy for staging and production
-  - [ ] 1.4 Design rollback strategy and image retention policy
+  - [x] 1.4 Design rollback strategy and image retention policy
   - [ ] 1.5 Create component interaction diagram for the new system
 
 - [ ] 2.0 Implement Image Promotion Mechanism
