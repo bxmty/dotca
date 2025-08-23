@@ -59,12 +59,10 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   # Use promoted image tag from input, fallback to 'main'
   PROMOTED_IMAGE_TAG: ${{ inputs.promoted_image_tag || github.event.inputs.promoted_image_tag || 'main' }}
-  DEPLOYMENT_REASON: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}
 
 jobs:
   notify-deployment-start:
     name: Notify Deployment Start
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: 'deployment-started'
@@ -72,7 +70,7 @@ jobs:
       deployment_details: |
         {
           "promoted_image_tag": "${{ env.PROMOTED_IMAGE_TAG }}",
-          "deployment_reason": "${{ env.DEPLOYMENT_REASON }}",
+          "deployment_reason": "${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}",
           "workflow_run_id": "${{ github.run_id }}",
           "triggered_by": "${{ github.actor }}",
           "commit": "${{ github.sha }}",
@@ -104,7 +102,7 @@ jobs:
           FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PROMOTED_IMAGE_TAG }}"
           
           echo "🔍 Verifying promoted image: $FULL_IMAGE_NAME"
-          echo "📋 Deployment reason: ${{ env.DEPLOYMENT_REASON }}"
+          echo "📋 Deployment reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}"
           
           # Pull and verify the promoted image
           if docker pull "$FULL_IMAGE_NAME"; then
@@ -469,7 +467,7 @@ jobs:
           echo "Droplet IP: $DROPLET_IP"
           echo "Promoted Image: $DOCKER_IMAGE"
           echo "Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}"
-          echo "Deployment Reason: ${{ env.DEPLOYMENT_REASON }}"
+          echo "Deployment Reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}"
           echo "=============================================="
           
           # Set up ansible inventory dynamically
@@ -528,7 +526,7 @@ jobs:
           echo "📊 Deployment Details:"
           echo "- Promoted Image: ${{ needs.verify-promoted-image.outputs.full_image_name }}"
           echo "- Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}"
-          echo "- Deployment Reason: ${{ env.DEPLOYMENT_REASON }}"
+          echo "- Deployment Reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}"
           echo "- Production URL: http://$DROPLET_IP/"
           echo "- Verification Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
           echo ""
@@ -827,7 +825,7 @@ jobs:
         {
           "image": "${{ needs.verify-promoted-image.outputs.full_image_name }}",
           "image_digest": "${{ needs.verify-promoted-image.outputs.image_digest }}",
-          "deployment_reason": "${{ env.DEPLOYMENT_REASON }}",
+          "deployment_reason": "${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}",
           "workflow_run_id": "${{ github.run_id }}",
           "triggered_by": "${{ github.actor }}",
           "commit": "${{ github.sha }}",
@@ -868,7 +866,7 @@ jobs:
           echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Promoted Image: ${{ needs.verify-promoted-image.outputs.full_image_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Deployment Reason: ${{ env.DEPLOYMENT_REASON }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment Reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Production URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
