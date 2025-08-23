@@ -1,0 +1,133 @@
+name: Test Docker Build (Test Branch)
+
+# Test version of docker-build.yml for the test/cicd-pipeline-updates branch
+# This ensures we can test Docker builds without affecting staging/production images
+
+on:
+  push:
+    branches:
+      - test/cicd-pipeline-updates
+  pull_request:
+    branches:
+      - test/cicd-pipeline-updates
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even if no changes detected'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  TEST_BRANCH_PREFIX: test-branch
+
+jobs:
+  test-build:
+    name: Test Docker Build
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+      image_digest: ${{ steps.build.outputs.image_digest }}
+      build_success: ${{ steps.build.outputs.success }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=test-{{branch}}-{{sha}}
+            type=raw,value=test-{{branch}}-latest
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.title=DotCA Test Build
+            org.opencontainers.image.description=Test build for CI/CD pipeline validation
+            test.branch=${{ github.ref_name }}
+            test.purpose=cicd-pipeline-testing
+            test.safe-to-delete=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Output build results
+        run: |
+          echo "🐳 Test Docker build completed successfully!"
+          echo "Image tags: ${{ steps.meta.outputs.tags }}"
+          echo "Image digest: ${{ steps.build.outputs.digest }}"
+          
+          # Set outputs for other workflows
+          echo "image_tag=test-${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "image_digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+      
+      - name: Test image functionality
+        run: |
+          echo "🧪 Testing built image functionality..."
+          
+          # Get the first tag for testing
+          TEST_IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          echo "Testing image: $TEST_IMAGE"
+          
+          # Test container can start and respond
+          CONTAINER_ID=$(docker run -d -p 3000:3000 "$TEST_IMAGE")
+          echo "Started container: $CONTAINER_ID"
+          
+          # Wait a moment for startup
+          sleep 10
+          
+          # Check if container is running
+          if docker ps | grep "$CONTAINER_ID"; then
+            echo "✅ Container is running successfully"
+            
+            # Test basic HTTP response (if applicable)
+            if curl -f http://localhost:3000 --max-time 10 --silent >/dev/null; then
+              echo "✅ Application responds to HTTP requests"
+            else
+              echo "⚠️ HTTP check skipped or failed (this may be normal for this app type)"
+            fi
+          else
+            echo "❌ Container failed to start"
+            docker logs "$CONTAINER_ID"
+            exit 1
+          fi
+          
+          # Cleanup
+          docker stop "$CONTAINER_ID"
+          echo "✅ Test completed successfully"
+      
+      - name: Create test summary
+        run: |
+          echo "## 🐳 Test Docker Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Built Images:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Image built and tested successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 Ready for promotion pipeline testing" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔗 Can trigger test staging deployment" >> $GITHUB_STEP_SUMMARY

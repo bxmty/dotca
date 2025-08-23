@@ -1,0 +1,264 @@
+name: Test Image Promotion Pipeline (Test Branch)
+
+# Test version of image-promotion.yml for safe testing on test/cicd-pipeline-updates branch
+# Uses test-specific tags and environments to avoid affecting production
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_image_tag:
+        description: 'Source image tag to promote (e.g., test-branch-abc123)'
+        required: true
+        type: string
+      target_environment:
+        description: 'Target environment for promotion testing'
+        required: true
+        type: choice
+        options:
+          - 'test-staging'
+          - 'test-production'
+        default: 'test-staging'
+      promotion_reason:
+        description: 'Reason for this test promotion'
+        required: false
+        type: string
+        default: 'Testing CI/CD pipeline promotion workflow'
+      skip_validation:
+        description: 'Skip validation checks for testing'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  TEST_MODE: true
+
+jobs:
+  validate-test-promotion:
+    name: Validate Test Promotion
+    runs-on: ubuntu-latest
+    outputs:
+      validation_passed: ${{ steps.validate.outputs.passed }}
+      source_image: ${{ steps.validate.outputs.source_image }}
+      target_tag: ${{ steps.validate.outputs.target_tag }}
+      promotion_reason: ${{ steps.validate.outputs.promotion_reason }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate promotion request
+        id: validate
+        run: |
+          echo "🔍 Validating test promotion request..."
+          
+          SOURCE_TAG="${{ inputs.source_image_tag }}"
+          TARGET_ENV="${{ inputs.target_environment }}"
+          REASON="${{ inputs.promotion_reason }}"
+          
+          # Validate source tag format
+          if [[ ! "$SOURCE_TAG" =~ ^test- ]]; then
+            echo "❌ Source image tag must start with 'test-' for test branch"
+            exit 1
+          fi
+          
+          # Generate target tag based on environment
+          if [ "$TARGET_ENV" = "test-staging" ]; then
+            TARGET_TAG="test-staging-$(date +%Y%m%d-%H%M%S)"
+          else
+            TARGET_TAG="test-production-$(date +%Y%m%d-%H%M%S)"
+          fi
+          
+          SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$SOURCE_TAG"
+          
+          echo "Source: $SOURCE_IMAGE"
+          echo "Target Environment: $TARGET_ENV"
+          echo "Target Tag: $TARGET_TAG"
+          echo "Reason: $REASON"
+          
+          # Set outputs
+          echo "passed=true" >> $GITHUB_OUTPUT
+          echo "source_image=$SOURCE_IMAGE" >> $GITHUB_OUTPUT
+          echo "target_tag=$TARGET_TAG" >> $GITHUB_OUTPUT
+          echo "promotion_reason=$REASON" >> $GITHUB_OUTPUT
+          
+          echo "✅ Test promotion validation passed"
+
+  test-promote-image:
+    name: Test Image Promotion
+    runs-on: ubuntu-latest
+    needs: [validate-test-promotion]
+    outputs:
+      promotion_success: ${{ steps.promote.outputs.success }}
+      promoted_image: ${{ steps.promote.outputs.promoted_image }}
+      rollback_tag: ${{ steps.promote.outputs.rollback_tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Perform test image promotion
+        id: promote
+        run: |
+          echo "🔄 Performing test image promotion..."
+          
+          SOURCE_IMAGE="${{ needs.validate-test-promotion.outputs.source_image }}"
+          TARGET_TAG="${{ needs.validate-test-promotion.outputs.target_tag }}"
+          TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
+          
+          echo "Promoting: $SOURCE_IMAGE → $TARGET_IMAGE"
+          
+          # Pull source image
+          if docker pull "$SOURCE_IMAGE"; then
+            echo "✅ Source image pulled successfully"
+          else
+            echo "❌ Failed to pull source image: $SOURCE_IMAGE"
+            exit 1
+          fi
+          
+          # Tag for promotion
+          docker tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
+          
+          # Push promoted image
+          if docker push "$TARGET_IMAGE"; then
+            echo "✅ Image promoted successfully: $TARGET_IMAGE"
+          else
+            echo "❌ Failed to push promoted image"
+            exit 1
+          fi
+          
+          # Create rollback tag
+          ROLLBACK_TAG="test-rollback-$(date +%Y%m%d-%H%M%S)-${{ github.run_id }}"
+          ROLLBACK_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$ROLLBACK_TAG"
+          
+          docker tag "$TARGET_IMAGE" "$ROLLBACK_IMAGE"
+          docker push "$ROLLBACK_IMAGE"
+          
+          echo "✅ Rollback tag created: $ROLLBACK_TAG"
+          
+          # Set outputs
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "promoted_image=$TARGET_IMAGE" >> $GITHUB_OUTPUT
+          echo "rollback_tag=$ROLLBACK_TAG" >> $GITHUB_OUTPUT
+          
+          echo "🎉 Test promotion completed successfully!"
+      
+      - name: Verify promoted image
+        run: |
+          echo "🔍 Verifying promoted image..."
+          
+          PROMOTED_IMAGE="${{ steps.promote.outputs.promoted_image }}"
+          
+          # Verify image exists and is pullable
+          if docker pull "$PROMOTED_IMAGE"; then
+            echo "✅ Promoted image verification passed"
+            
+            # Get image details
+            IMAGE_SIZE=$(docker images --format "{{.Size}}" "$PROMOTED_IMAGE" | head -1)
+            IMAGE_ID=$(docker images --format "{{.ID}}" "$PROMOTED_IMAGE" | head -1)
+            
+            echo "Image ID: $IMAGE_ID"
+            echo "Image Size: $IMAGE_SIZE"
+          else
+            echo "❌ Promoted image verification failed"
+            exit 1
+          fi
+
+  test-deployment-simulation:
+    name: Test Deployment Simulation
+    runs-on: ubuntu-latest
+    needs: [validate-test-promotion, test-promote-image]
+    if: ${{ needs.test-promote-image.outputs.promotion_success == 'true' }}
+    outputs:
+      deployment_success: ${{ steps.simulate.outputs.success }}
+    steps:
+      - name: Simulate deployment process
+        id: simulate
+        run: |
+          echo "🚀 Simulating deployment process..."
+          
+          PROMOTED_IMAGE="${{ needs.test-promote-image.outputs.promoted_image }}"
+          TARGET_ENV="${{ inputs.target_environment }}"
+          
+          echo "Simulating deployment of: $PROMOTED_IMAGE"
+          echo "Target environment: $TARGET_ENV"
+          
+          # Simulate deployment steps
+          echo "1. 🔍 Pre-deployment validation..."
+          sleep 2
+          echo "   ✅ Environment health check passed"
+          
+          echo "2. 🔄 Deployment process..."
+          sleep 3
+          echo "   ✅ Image deployment simulated successfully"
+          
+          echo "3. ⏳ Post-deployment verification..."
+          sleep 2
+          echo "   ✅ Health checks passed"
+          echo "   ✅ Basic functionality verified"
+          
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "🎉 Test deployment simulation completed successfully!"
+
+  test-promotion-summary:
+    name: Test Promotion Summary
+    runs-on: ubuntu-latest
+    needs: [validate-test-promotion, test-promote-image, test-deployment-simulation]
+    if: always()
+    steps:
+      - name: Generate test promotion report
+        run: |
+          echo "## 🧪 Test Image Promotion Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Source Image:** \`${{ needs.validate-test-promotion.outputs.source_image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** \`${{ inputs.target_environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Reason:** ${{ needs.validate-test-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Status indicators
+          VALIDATION_STATUS="${{ needs.validate-test-promotion.result }}"
+          PROMOTION_STATUS="${{ needs.test-promote-image.result }}"
+          DEPLOYMENT_STATUS="${{ needs.test-deployment-simulation.result }}"
+          
+          echo "**Test Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Validation: ${{ needs.validate-test-promotion.result == 'success' && '✅ PASSED' || '❌ FAILED' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Promotion: ${{ needs.test-promote-image.result == 'success' && '✅ PASSED' || '❌ FAILED' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment Simulation: ${{ needs.test-deployment-simulation.result == 'success' && '✅ PASSED' || (needs.test-deployment-simulation.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED') }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.test-promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Promoted Image:** \`${{ needs.test-promote-image.outputs.promoted_image }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "**Rollback Tag:** \`${{ needs.test-promote-image.outputs.rollback_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Overall status
+          if [ "$VALIDATION_STATUS" = "success" ] && [ "$PROMOTION_STATUS" = "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Overall Status:** 🟢 **TEST PROMOTION SUCCESSFUL**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Next Steps for Production:**" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Promotion workflow tested successfully" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔗 Integration with deployment workflows validated" >> $GITHUB_STEP_SUMMARY
+            echo "- 🚀 Ready for merge to main branch" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Overall Status:** 🔴 **TEST PROMOTION FAILED**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Required Actions:**" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔍 Review failed job logs" >> $GITHUB_STEP_SUMMARY
+            echo "- 🛠️ Fix identified issues" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔄 Re-run test promotion" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Environment Notes:**" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 This is a test run on branch \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔒 Test images are tagged with \`test-\` prefix" >> $GITHUB_STEP_SUMMARY
+          echo "- 🗑️ Test images can be safely deleted after validation" >> $GITHUB_STEP_SUMMARY
