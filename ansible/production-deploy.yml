@@ -180,10 +180,6 @@
         node_env: production
         next_public_api_url: "http://{{ public_ip }}/api"
         next_public_environment: production
-        brevo_api_key: "{{ brevo_api_key }}"
-        stripe_secret_key: "{{ stripe_secret_key }}"
-        stripe_publishable_key: "{{ stripe_publishable_key }}"
-        ga_production_id: "{{ ga_production_id }}"
 
     - name: Display generated docker-compose.yml for debugging
       ansible.builtin.command: cat "{{ app_dir }}/repo/docker-compose.yml"
