@@ -660,6 +660,337 @@
           
           ============================================
 
+    # ENVIRONMENT VARIABLE HANDLING FOR PROMOTED IMAGES
+    - name: Validate required environment variables for production
+      ansible.builtin.debug:
+        msg: |
+          🔍 Validating Production Environment Variables
+          ============================================
+          
+          Required Variables:
+          - BREVO_API_KEY: {{ '✅ SET' if brevo_api_key else '❌ MISSING' }}
+          - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
+          - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_key else '❌ MISSING' }}
+          - GA_PRODUCTION_ID: {{ '✅ SET' if ga_production_id else '❌ MISSING' }}
+          - GITHUB_TOKEN: {{ '✅ SET' if github_token else '❌ MISSING' }}
+          - GITHUB_USERNAME: {{ '✅ SET' if github_username else '❌ MISSING' }}
+          
+          Optional Variables:
+          - DOCKER_IMAGE: {{ '✅ SET' if docker_image_override else '⚠️  Using default' }}
+          - GIT_REPO_URL: {{ '✅ SET' if git_repo_url else '❌ MISSING' }}
+          
+          ============================================
+
+    - name: Fail if critical environment variables are missing
+      ansible.builtin.fail:
+        msg: |
+          Critical environment variables are missing!
+          
+          Missing variables:
+          {% if not brevo_api_key %}- BREVO_API_KEY{% endif %}
+          {% if not stripe_secret_key %}- STRIPE_SECRET_KEY{% endif %}
+          {% if not stripe_publishable_key %}- STRIPE_PUBLISHABLE_KEY{% endif %}
+          {% if not ga_production_id %}- GA_PRODUCTION_ID{% endif %}
+          {% if not github_token %}- GITHUB_TOKEN{% endif %}
+          {% if not github_username %}- GITHUB_USERNAME{% endif %}
+          {% if not git_repo_url %}- GIT_REPO_URL{% endif %}
+          
+          These variables are required for production deployment.
+          Please set them in your environment or GitHub Secrets.
+      when: >
+        not brevo_api_key or 
+        not stripe_secret_key or 
+        not stripe_publishable_key or 
+        not ga_production_id or 
+        not github_token or 
+        not github_username or 
+        not git_repo_url
+
+    - name: Create environment variable validation report
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/env-validation-report.txt"
+        mode: '0644'
+        content: |
+          PRODUCTION ENVIRONMENT VARIABLE VALIDATION REPORT
+          ================================================
+          Generated: {{ ansible_date_time.iso8601 }}
+          Environment: Production
+          
+          CRITICAL VARIABLES:
+          - BREVO_API_KEY: {{ 'SET' if brevo_api_key else 'MISSING' }}
+          - STRIPE_SECRET_KEY: {{ 'SET' if stripe_secret_key else 'MISSING' }}
+          - STRIPE_PUBLISHABLE_KEY: {{ 'SET' if stripe_publishable_key else 'MISSING' }}
+          - GA_PRODUCTION_ID: {{ 'SET' if ga_production_id else 'MISSING' }}
+          - GITHUB_TOKEN: {{ 'SET' if github_token else 'MISSING' }}
+          - GITHUB_USERNAME: {{ 'SET' if github_username else 'MISSING' }}
+          - GIT_REPO_URL: {{ 'SET' if git_repo_url else 'MISSING' }}
+          
+          OPTIONAL VARIABLES:
+          - DOCKER_IMAGE: {{ 'SET' if docker_image_override else 'Using default' }}
+          
+          VALIDATION STATUS: {{ 'PASSED' if (brevo_api_key and stripe_secret_key and stripe_publishable_key and ga_production_id and github_token and github_username and git_repo_url) else 'FAILED' }}
+          
+          ================================================
+
+    - name: Create secure environment configuration file
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/.env.production"
+        mode: '0600'
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_gid }}"
+        content: |
+          # Production Environment Configuration
+          # Generated on: {{ ansible_date_time.iso8601 }}
+          # WARNING: This file contains sensitive information
+          
+          # Application Configuration
+          NODE_ENV=production
+          NEXT_PUBLIC_ENVIRONMENT=production
+          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
+          
+          # API Keys (from environment variables)
+          BREVO_API_KEY={{ brevo_api_key }}
+          STRIPE_SECRET_KEY={{ stripe_secret_key }}
+          STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+          
+          # Analytics
+          GA_PRODUCTION_ID={{ ga_production_id }}
+          
+          # GitHub Container Registry
+          GITHUB_TOKEN={{ github_token }}
+          GITHUB_USERNAME={{ github_username }}
+          
+          # Image Configuration
+          DOCKER_IMAGE={{ docker_image }}
+          
+          # Security Settings
+          NODE_TLS_REJECT_UNAUTHORIZED=1
+          NPM_CONFIG_STRICT_SSL=true
+          
+          # Performance Settings
+          NODE_OPTIONS=--max-old-space-size=2048
+          NEXT_TELEMETRY_DISABLED=1
+
+    - name: Create environment variable documentation
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/env-documentation.md"
+        mode: '0644'
+        content: |
+          # Production Environment Variables Documentation
+          
+          ## Overview
+          This document describes the environment variables used in the production environment.
+          
+          ## Critical Variables
+          
+          ### BREVO_API_KEY
+          - **Purpose**: API key for Brevo email service
+          - **Required**: Yes
+          - **Format**: String
+          - **Security**: High (API key)
+          
+          ### STRIPE_SECRET_KEY
+          - **Purpose**: Secret key for Stripe payment processing
+          - **Required**: Yes
+          - **Format**: String (starts with 'sk_')
+          - **Security**: Critical (payment processing)
+          
+          ### STRIPE_PUBLISHABLE_KEY
+          - **Purpose**: Publishable key for Stripe payment processing
+          - **Required**: Yes
+          - **Format**: String (starts with 'pk_')
+          - **Security**: Medium (public key)
+          
+          ### GA_PRODUCTION_ID
+          - **Purpose**: Google Analytics ID for production
+          - **Required**: Yes
+          - **Format**: String (starts with 'G-')
+          - **Security**: Low (analytics)
+          
+          ### GITHUB_TOKEN
+          - **Purpose**: GitHub token for GHCR access
+          - **Required**: Yes
+          - **Format**: String
+          - **Security**: High (repository access)
+          
+          ### GITHUB_USERNAME
+          - **Purpose**: GitHub username for GHCR access
+          - **Required**: Yes
+          - **Format**: String
+          - **Security**: Low (username)
+          
+          ### GIT_REPO_URL
+          - **Purpose**: Git repository URL
+          - **Required**: Yes
+          - **Format**: URL
+          - **Security**: Low (public repository)
+          
+          ## Optional Variables
+          
+          ### DOCKER_IMAGE
+          - **Purpose**: Override default Docker image
+          - **Required**: No
+          - **Format**: String (image:tag)
+          - **Default**: ghcr.io/bxtech/dotca:main
+          
+          ## Security Notes
+          
+          1. **Never commit sensitive variables** to version control
+          2. **Use GitHub Secrets** for sensitive values
+          3. **Rotate API keys** regularly
+          4. **Monitor access logs** for unauthorized usage
+          5. **Use least privilege** for API keys
+          
+          ## Environment Setup
+          
+          ### Local Development
+          ```bash
+          cp .env.production .env.local
+          # Edit .env.local with your values
+          ```
+          
+          ### Production Deployment
+          ```bash
+          # Variables are automatically set from GitHub Secrets
+          # No manual configuration required
+          ```
+          
+          ## Troubleshooting
+          
+          ### Missing Variables
+          If deployment fails due to missing variables:
+          1. Check GitHub Secrets in repository settings
+          2. Verify variable names match exactly
+          3. Ensure secrets are accessible to GitHub Actions
+          
+          ### Invalid Values
+          If variables have invalid values:
+          1. Check API key formats
+          2. Verify repository URLs
+          3. Test API key validity
+          
+          ## Last Updated
+          {{ ansible_date_time.iso8601 }}
+
+    - name: Validate environment variable formats
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔍 Validating environment variable formats...'
+        
+        # Validate Stripe keys
+        if [[ '{{ stripe_secret_key }}' =~ ^sk_[a-zA-Z0-9]+$ ]]; then
+          echo '✅ STRIPE_SECRET_KEY format is valid'
+        else
+          echo '❌ STRIPE_SECRET_KEY format is invalid (should start with sk_)'
+          exit 1
+        fi
+        
+        if [[ '{{ stripe_publishable_key }}' =~ ^pk_[a-zA-Z0-9]+$ ]]; then
+          echo '✅ STRIPE_PUBLISHABLE_KEY format is valid'
+        else
+          echo '❌ STRIPE_PUBLISHABLE_KEY format is invalid (should start with pk_)'
+          exit 1
+        fi
+        
+        # Validate Google Analytics ID
+        if [[ '{{ ga_production_id }}' =~ ^G-[A-Z0-9]+$ ]]; then
+          echo '✅ GA_PRODUCTION_ID format is valid'
+        else
+          echo '❌ GA_PRODUCTION_ID format is invalid (should start with G-)'
+          exit 1
+        fi
+        
+        # Validate GitHub token (basic format check)
+        if [[ '{{ github_token }}' =~ ^ghp_[a-zA-Z0-9]+$ ]] || [[ '{{ github_token }}' =~ ^gho_[a-zA-Z0-9]+$ ]]; then
+          echo '✅ GITHUB_TOKEN format is valid'
+        else
+          echo '⚠️  GITHUB_TOKEN format may be invalid (should start with ghp_ or gho_)'
+        fi
+        
+        # Validate repository URL
+        if [[ '{{ git_repo_url }}' =~ ^https://github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+ ]]; then
+          echo '✅ GIT_REPO_URL format is valid'
+        else
+          echo '❌ GIT_REPO_URL format is invalid (should be GitHub HTTPS URL)'
+          exit 1
+        fi
+        
+        echo '✅ All environment variable formats validated successfully'
+        "
+      register: env_format_validation
+      changed_when: false
+      when: >
+        brevo_api_key and 
+        stripe_secret_key and 
+        stripe_publishable_key and 
+        ga_production_id and 
+        github_token and 
+        github_username and 
+        git_repo_url
+
+    - name: Test API key connectivity (if possible)
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔗 Testing API key connectivity...'
+        
+        # Test GitHub token (basic connectivity)
+        echo 'Testing GitHub token...'
+        if curl -H 'Authorization: token {{ github_token }}' -s 'https://api.github.com/user' | grep -q 'login'; then
+          echo '✅ GitHub token is valid and accessible'
+        else
+          echo '❌ GitHub token validation failed'
+          exit 1
+        fi
+        
+        # Test Stripe publishable key (public endpoint)
+        echo 'Testing Stripe publishable key...'
+        if curl -s 'https://api.stripe.com/v1/account' -H 'Authorization: Bearer {{ stripe_publishable_key }}' | grep -q 'id'; then
+          echo '✅ Stripe publishable key is valid'
+        else
+          echo '⚠️  Stripe publishable key validation failed (may be expected for publishable keys)'
+        fi
+        
+        echo '✅ API key connectivity tests completed'
+        "
+      register: api_connectivity_test
+      changed_when: false
+      when: env_format_validation is defined and env_format_validation.rc == 0
+
+    - name: Create environment variable summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          ENVIRONMENT VARIABLE HANDLING COMPLETED
+          ============================================
+          
+          🚀 Production environment variables configured successfully
+          
+          📁 Files Created:
+          - {{ app_dir }}/.env.production (Secure environment file)
+          - {{ app_dir }}/env-validation-report.txt (Validation report)
+          - {{ app_dir }}/env-documentation.md (Documentation)
+          
+          🔍 Validation Results:
+          - Format validation: {{ '✅ PASSED' if env_format_validation.rc == 0 else '❌ FAILED' }}
+          - API connectivity: {{ '✅ PASSED' if api_connectivity_test.rc == 0 else '❌ FAILED' }}
+          
+          🔐 Security Features:
+          - Environment file permissions: 600 (owner only)
+          - Sensitive variables encrypted in GitHub Secrets
+          - No sensitive data in version control
+          
+          📋 Environment Variables Status:
+          - Critical variables: {{ '✅ ALL SET' if (brevo_api_key and stripe_secret_key and stripe_publishable_key and ga_production_id and github_token and github_username and git_repo_url) else '❌ MISSING' }}
+          - Optional variables: {{ '✅ CONFIGURED' if docker_image_override else '⚠️  Using defaults' }}
+          
+          🎯 Next Steps:
+          1. Environment variables are ready for production deployment
+          2. Docker Compose will use .env.production file
+          3. All sensitive data is properly secured
+          4. Documentation available for future reference
+          
+          ============================================
+
       - name: Start Docker Compose services
       command: docker-compose up -d web
       args:
