@@ -1,0 +1,275 @@
+name: Run Integration Tests
+
+# Simple workflow to run various integration tests
+# Provides easy access to test different parts of the promotion pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of integration test to run'
+        required: true
+        type: choice
+        options:
+          - 'unit-tests'
+          - 'promotion-pipeline'
+          - 'production-verification'
+          - 'dependency-check'
+          - 'all'
+        default: 'all'
+      send_notifications:
+        description: 'Send notifications for test results'
+        required: false
+        type: boolean
+        default: false
+
+  schedule:
+    # Run all tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
+env:
+  TEST_TYPE: ${{ inputs.test_type || 'all' }}
+  SEND_NOTIFICATIONS: ${{ inputs.send_notifications || 'false' }}
+
+jobs:
+  run-unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_type == 'unit-tests' || inputs.test_type == 'all' }}
+    outputs:
+      tests_passed: ${{ steps.test.outputs.success }}
+      coverage: ${{ steps.test.outputs.coverage }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run unit tests
+        id: test
+        run: |
+          echo "🧪 Running unit tests..."
+          
+          # Run Jest tests with coverage
+          npm test -- --coverage --passWithNoTests
+          
+          # Check if tests passed
+          if [ $? -eq 0 ]; then
+            echo "✅ Unit tests passed"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Unit tests failed"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Extract coverage information if available
+          if [ -f coverage/coverage-summary.json ]; then
+            COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.statements.pct')
+            echo "coverage=${COVERAGE}%" >> $GITHUB_OUTPUT
+            echo "📊 Test coverage: ${COVERAGE}%"
+          else
+            echo "coverage=N/A" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: |
+            coverage/
+            test-results/
+            jest-report.xml
+          retention-days: 7
+
+  run-promotion-pipeline-tests:
+    name: Promotion Pipeline Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_type == 'promotion-pipeline' || inputs.test_type == 'all' }}
+    outputs:
+      tests_passed: ${{ steps.integration-test.outputs.tests_passed }}
+      failed_tests: ${{ steps.integration-test.outputs.failed_tests }}
+    steps:
+      - name: Run promotion pipeline integration tests
+        id: integration-test
+        uses: ./.github/workflows/promotion-pipeline-integration-tests.yml
+        with:
+          test_scope: 'full-pipeline'
+          use_test_environment: true
+      
+      - name: Process integration test results
+        run: |
+          echo "📊 Promotion pipeline integration test results:"
+          echo "  Tests Passed: ${{ steps.integration-test.outputs.tests_passed }}"
+          echo "  Failed Tests: ${{ steps.integration-test.outputs.failed_tests }}"
+
+  run-production-verification:
+    name: Production Verification
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_type == 'production-verification' || inputs.test_type == 'all' }}
+    outputs:
+      verification_passed: ${{ steps.verification.outputs.verification_passed }}
+      issues_found: ${{ steps.verification.outputs.issues_found }}
+    steps:
+      - name: Run production verification
+        id: verification
+        uses: ./.github/workflows/production-verification.yml
+        with:
+          verification_type: 'comprehensive'
+      
+      - name: Process verification results
+        run: |
+          echo "🔍 Production verification results:"
+          echo "  Verification Passed: ${{ steps.verification.outputs.verification_passed }}"
+          echo "  Issues Found: ${{ steps.verification.outputs.issues_found }}"
+
+  run-dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_type == 'dependency-check' || inputs.test_type == 'all' }}
+    outputs:
+      dependencies_met: ${{ steps.dependency-check.outputs.dependencies_met }}
+    steps:
+      - name: Run dependency check
+        id: dependency-check
+        uses: ./.github/workflows/dependency-check.yml
+        with:
+          check_type: 'production-deploy'
+          target_environment: 'production'
+      
+      - name: Process dependency check results
+        run: |
+          echo "🔗 Dependency check results:"
+          echo "  Dependencies Met: ${{ steps.dependency-check.outputs.dependencies_met }}"
+
+  integration-test-summary:
+    name: Integration Test Summary
+    runs-on: ubuntu-latest
+    needs: [run-unit-tests, run-promotion-pipeline-tests, run-production-verification, run-dependency-check]
+    if: always()
+    outputs:
+      overall_success: ${{ steps.summary.outputs.overall_success }}
+      test_results: ${{ steps.summary.outputs.test_results }}
+    steps:
+      - name: Generate comprehensive test summary
+        id: summary
+        run: |
+          echo "📊 Generating comprehensive integration test summary..."
+          
+          # Collect results from all test jobs
+          UNIT_TESTS="${{ needs.run-unit-tests.result }}"
+          PIPELINE_TESTS="${{ needs.run-promotion-pipeline-tests.result }}"
+          VERIFICATION="${{ needs.run-production-verification.result }}"
+          DEPENDENCY_CHECK="${{ needs.run-dependency-check.result }}"
+          
+          # Count successful tests
+          TOTAL_TESTS=0
+          SUCCESSFUL_TESTS=0
+          
+          if [ "$UNIT_TESTS" != "skipped" ] && [ -n "$UNIT_TESTS" ]; then
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            [ "$UNIT_TESTS" = "success" ] && SUCCESSFUL_TESTS=$((SUCCESSFUL_TESTS + 1))
+          fi
+          
+          if [ "$PIPELINE_TESTS" != "skipped" ] && [ -n "$PIPELINE_TESTS" ]; then
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            [ "$PIPELINE_TESTS" = "success" ] && SUCCESSFUL_TESTS=$((SUCCESSFUL_TESTS + 1))
+          fi
+          
+          if [ "$VERIFICATION" != "skipped" ] && [ -n "$VERIFICATION" ]; then
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            [ "$VERIFICATION" = "success" ] && SUCCESSFUL_TESTS=$((SUCCESSFUL_TESTS + 1))
+          fi
+          
+          if [ "$DEPENDENCY_CHECK" != "skipped" ] && [ -n "$DEPENDENCY_CHECK" ]; then
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            [ "$DEPENDENCY_CHECK" = "success" ] && SUCCESSFUL_TESTS=$((SUCCESSFUL_TESTS + 1))
+          fi
+          
+          # Determine overall success
+          if [ $SUCCESSFUL_TESTS -eq $TOTAL_TESTS ] && [ $TOTAL_TESTS -gt 0 ]; then
+            OVERALL_SUCCESS="true"
+          else
+            OVERALL_SUCCESS="false"
+          fi
+          
+          echo "overall_success=$OVERALL_SUCCESS" >> $GITHUB_OUTPUT
+          echo "test_results=$SUCCESSFUL_TESTS/$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          
+          echo "🎯 Overall success: $OVERALL_SUCCESS"
+          echo "📈 Test results: $SUCCESSFUL_TESTS/$TOTAL_TESTS"
+      
+      - name: Create detailed test report
+        run: |
+          echo "## 🧪 Integration Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Type:** ${{ env.TEST_TYPE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [ "${{ steps.summary.outputs.overall_success }}" = "true" ]; then
+            echo "**Overall Status:** 🟢 ALL TESTS PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Overall Status:** 🔴 SOME TESTS FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "**Results:** ${{ steps.summary.outputs.test_results }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Individual test results
+          echo "**Individual Test Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.run-unit-tests.result == 'success' && '✅ PASSED' || (needs.run-unit-tests.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED') }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.run-unit-tests.result }}" = "success" ]; then
+            echo "  - Coverage: ${{ needs.run-unit-tests.outputs.coverage }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "- Promotion Pipeline Tests: ${{ needs.run-promotion-pipeline-tests.result == 'success' && '✅ PASSED' || (needs.run-promotion-pipeline-tests.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED') }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.run-promotion-pipeline-tests.result }}" = "success" ]; then
+            echo "  - Pipeline Tests Passed: ${{ needs.run-promotion-pipeline-tests.outputs.tests_passed }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "- Production Verification: ${{ needs.run-production-verification.result == 'success' && '✅ PASSED' || (needs.run-production-verification.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED') }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.run-production-verification.result }}" = "success" ]; then
+            echo "  - Verification Passed: ${{ needs.run-production-verification.outputs.verification_passed }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "- Dependency Check: ${{ needs.run-dependency-check.result == 'success' && '✅ PASSED' || (needs.run-dependency-check.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED') }}" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Quick Actions:**" >> $GITHUB_STEP_SUMMARY
+          echo "- [🔄 Re-run Tests](https://github.com/${{ github.repository }}/actions/workflows/run-integration-tests.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- [🧪 Run Promotion Pipeline Tests](https://github.com/${{ github.repository }}/actions/workflows/promotion-pipeline-integration-tests.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- [🔍 Run Production Verification](https://github.com/${{ github.repository }}/actions/workflows/production-verification.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- [📊 View Test History](https://github.com/${{ github.repository }}/actions/workflows/run-integration-tests.yml)" >> $GITHUB_STEP_SUMMARY
+
+  send-test-notifications:
+    name: Send Test Notifications
+    needs: [integration-test-summary]
+    if: ${{ always() && inputs.send_notifications == true }}
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: ${{ needs.integration-test-summary.outputs.overall_success == 'true' && 'deployment-success' || 'deployment-failed' }}
+      environment: 'test'
+      deployment_details: |
+        {
+          "test_type": "${{ env.TEST_TYPE }}",
+          "overall_success": "${{ needs.integration-test-summary.outputs.overall_success }}",
+          "test_results": "${{ needs.integration-test-summary.outputs.test_results }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}"
+        }
+      notification_channels: 'github,slack'
+      severity: ${{ needs.integration-test-summary.outputs.overall_success == 'true' && 'info' || 'error' }}
+      additional_context: 'Comprehensive integration tests for the CI/CD pipeline completed.'
