@@ -69,7 +69,7 @@ jobs:
       environment: 'production'
       deployment_details: |
         {
-          "promoted_image_tag": "${{ env.PROMOTED_IMAGE_TAG }}",
+          "promoted_image_tag": "${{ inputs.promoted_image_tag || github.event.inputs.promoted_image_tag || 'main' }}",
           "deployment_reason": "${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}",
           "workflow_run_id": "${{ github.run_id }}",
           "triggered_by": "${{ github.actor }}",
