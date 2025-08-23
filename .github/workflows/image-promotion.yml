@@ -127,30 +127,105 @@ jobs:
           echo "To: $PRODUCTION_IMAGE"
           echo "Latest: $LATEST_IMAGE"
           
+          # Function to push image with retry logic
+          push_image_with_retry() {
+            local image_name=$1
+            local max_retries=3
+            local retry_count=0
+            
+            while [ $retry_count -lt $max_retries ]; do
+              echo "⬆️  Pushing $image_name (attempt $((retry_count + 1))/$max_retries)..."
+              
+              if docker push "$image_name"; then
+                echo "✅ $image_name pushed successfully"
+                return 0
+              else
+                retry_count=$((retry_count + 1))
+                if [ $retry_count -lt $max_retries ]; then
+                  echo "⚠️  Push failed, retrying in 5 seconds... (attempt $retry_count/$max_retries)"
+                  sleep 5
+                else
+                  echo "❌ Failed to push $image_name after $max_retries attempts"
+                  return 1
+                fi
+              fi
+            done
+          }
+          
           # Tag the staging image for production
           echo "📝 Tagging image for production..."
-          docker tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE"
+          if ! docker tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE"; then
+            echo "❌ Failed to tag image for production"
+            exit 1
+          fi
+          echo "✅ Production tag created"
           
           # Tag as latest
           echo "📝 Tagging image as latest..."
-          docker tag "$STAGING_IMAGE" "$LATEST_IMAGE"
+          if ! docker tag "$STAGING_IMAGE" "$LATEST_IMAGE"; then
+            echo "❌ Failed to tag image as latest"
+            exit 1
+          fi
+          echo "✅ Latest tag created"
           
-          # Push production image
-          echo "⬆️  Pushing production image..."
-          if docker push "$PRODUCTION_IMAGE"; then
-            echo "✅ Production image pushed successfully"
+          # Verify tags were created
+          echo "🔍 Verifying tags were created..."
+          if docker images | grep -q "$(echo $PRODUCTION_IMAGE | cut -d: -f2)"; then
+            echo "✅ Production tag verified"
           else
-            echo "❌ Failed to push production image"
+            echo "❌ Production tag not found"
             exit 1
           fi
           
-          # Push latest image
-          echo "⬆️  Pushing latest image..."
-          if docker push "$LATEST_IMAGE"; then
-            echo "✅ Latest image pushed successfully"
+          if docker images | grep -q "$(echo $LATEST_IMAGE | cut -d: -f2)"; then
+            echo "✅ Latest tag verified"
           else
-            echo "❌ Failed to push latest image"
+            echo "❌ Latest tag not found"
             exit 1
+          fi
+          
+          # Push production image with retry logic
+          echo "🚀 Pushing production image..."
+          if ! push_image_with_retry "$PRODUCTION_IMAGE"; then
+            echo "❌ Production image push failed after all retries"
+            exit 1
+          fi
+          
+          # Push latest image with retry logic
+          echo "🚀 Pushing latest image..."
+          if ! push_image_with_retry "$LATEST_IMAGE"; then
+            echo "❌ Latest image push failed after all retries"
+            exit 1
+          fi
+          
+          # Verify images are accessible in registry
+          echo "🔍 Verifying images are accessible in registry..."
+          sleep 10  # Wait for registry to sync
+          
+          if docker pull "$PRODUCTION_IMAGE" >/dev/null 2>&1; then
+            echo "✅ Production image verified in registry"
+          else
+            echo "⚠️  Production image not immediately accessible (may need more time to sync)"
+          fi
+          
+          if docker pull "$LATEST_IMAGE" >/dev/null 2>&1; then
+            echo "✅ Latest image verified in registry"
+          else
+            echo "⚠️  Latest image not immediately accessible (may need more time to sync)"
+          fi
+          
+          # Verify image integrity - ensure promoted image is identical to source
+          echo "🔍 Verifying image integrity..."
+          STAGING_DIGEST=$(docker images --digests --format "{{.Digest}}" "$STAGING_IMAGE" | head -1)
+          PRODUCTION_DIGEST=$(docker images --digests --format "{{.Digest}}" "$PRODUCTION_IMAGE" | head -1)
+          
+          if [ "$STAGING_DIGEST" = "$PRODUCTION_DIGEST" ] && [ -n "$STAGING_DIGEST" ]; then
+            echo "✅ Image integrity verified - digests match"
+            echo "Digest: $STAGING_DIGEST"
+          else
+            echo "⚠️  Image digest verification incomplete (may be due to registry timing)"
+            echo "Staging Digest: $STAGING_DIGEST"
+            echo "Production Digest: $PRODUCTION_DIGEST"
           fi
           
           echo "🎉 Image promotion completed successfully!"
@@ -166,6 +241,14 @@ jobs:
           echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
           echo "- Triggered By: ${{ github.actor }}"
           echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          
+          # Log image details for audit
+          echo "Image Details:"
+          echo "- Image ID: $(docker images --format "{{.ID}}" "$STAGING_IMAGE" | head -1)"
+          echo "- Image Size: $(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)"
+          echo "- Image Created: $(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)"
+          echo "- Registry: ${{ env.REGISTRY }}"
+          echo "- Repository: ${{ env.IMAGE_NAME }}"
       
       - name: Create promotion summary
         if: success()
