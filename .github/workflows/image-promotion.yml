@@ -75,9 +75,29 @@ jobs:
           echo "staging_image=$STAGING_IMAGE" >> $GITHUB_OUTPUT
           echo "promotion_reason=$PROMOTION_REASON" >> $GITHUB_OUTPUT
 
+  notify-promotion-start:
+    name: Notify Promotion Start
+    needs: validate-promotion
+    if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: 'promotion-started'
+      environment: 'production'
+      deployment_details: |
+        {
+          "staging_image": "${{ needs.validate-promotion.outputs.staging_image }}",
+          "promotion_reason": "${{ needs.validate-promotion.outputs.promotion_reason }}",
+          "target_environment": "${{ github.event.inputs.target_environment }}",
+          "force_promotion": "${{ github.event.inputs.force_promotion }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}"
+        }
+      notification_channels: 'github,slack'
+      severity: 'info'
+
   promote-image:
     name: Promote Staging Image to Production
-    needs: validate-promotion
+    needs: [validate-promotion, notify-promotion-start]
     if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
     runs-on: ubuntu-latest
     permissions:
@@ -698,9 +718,32 @@ jobs:
           echo "- Click 'Run workflow' → 'Run workflow'" >> $GITHUB_STEP_SUMMARY
           echo "- The production workflow will use the newly promoted image" >> $GITHUB_STEP_SUMMARY
 
+  send-promotion-notifications:
+    name: Send Promotion Notifications
+    needs: [validate-promotion, promote-image]
+    if: always()
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: ${{ needs.promote-image.outputs.promotion_success == 'true' && 'promotion-success' || 'promotion-failed' }}
+      environment: 'production'
+      deployment_details: |
+        {
+          "staging_image": "${{ needs.validate-promotion.outputs.staging_image }}",
+          "promoted_image": "${{ needs.promote-image.outputs.promoted_image }}",
+          "commit_tag": "${{ needs.promote-image.outputs.commit_tag }}",
+          "rollback_tag": "${{ needs.promote-image.outputs.rollback_tag }}",
+          "promotion_reason": "${{ needs.validate-promotion.outputs.promotion_reason }}",
+          "promotion_duration": "${{ needs.promote-image.outputs.promotion_duration }}",
+          "target_environment": "${{ github.event.inputs.target_environment }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}"
+        }
+      notification_channels: 'github,slack,teams'
+      severity: ${{ needs.promote-image.outputs.promotion_success == 'true' && 'info' || 'error' }}
+
   promotion-status-report:
     name: Generate Promotion Status Report
-    needs: [validate-promotion, promote-image]
+    needs: [validate-promotion, promote-image, send-promotion-notifications]
     if: always()
     runs-on: ubuntu-latest
     steps:

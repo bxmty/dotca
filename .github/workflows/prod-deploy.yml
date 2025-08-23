@@ -62,9 +62,30 @@ env:
   DEPLOYMENT_REASON: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}
 
 jobs:
+  notify-deployment-start:
+    name: Notify Deployment Start
+    runs-on: ubuntu-latest
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: 'deployment-started'
+      environment: 'production'
+      deployment_details: |
+        {
+          "promoted_image_tag": "${{ env.PROMOTED_IMAGE_TAG }}",
+          "deployment_reason": "${{ env.DEPLOYMENT_REASON }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}",
+          "commit": "${{ github.sha }}",
+          "ref": "${{ github.ref }}",
+          "timestamp": "${{ github.event.head_commit.timestamp }}"
+        }
+      notification_channels: 'github,slack'
+      severity: 'info'
+
   verify-promoted-image:
     name: Verify Promoted Image
     runs-on: ubuntu-latest
+    needs: [notify-deployment-start]
     outputs:
       image_verified: ${{ steps.verification.outputs.verified }}
       full_image_name: ${{ steps.verification.outputs.full_image_name }}
@@ -120,6 +141,7 @@ jobs:
   setup-infra:
     name: Setup Infrastructure
     runs-on: ubuntu-latest
+    needs: [notify-deployment-start]
     outputs:
       droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
       resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
@@ -793,10 +815,39 @@ jobs:
         run: npm run test:e2e
         continue-on-error: true
 
+  send-deployment-notifications:
+    name: Send Deployment Notifications
+    needs: [verify-promoted-image, setup-infra, deploy-app, deployment-verification, selenium-tests]
+    if: always()
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: ${{ (needs.deploy-app.result == 'success' && needs.deployment-verification.result == 'success') && 'deployment-success' || 'deployment-failed' }}
+      environment: 'production'
+      deployment_details: |
+        {
+          "image": "${{ needs.verify-promoted-image.outputs.full_image_name }}",
+          "image_digest": "${{ needs.verify-promoted-image.outputs.image_digest }}",
+          "deployment_reason": "${{ env.DEPLOYMENT_REASON }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}",
+          "commit": "${{ github.sha }}",
+          "ref": "${{ github.ref }}",
+          "timestamp": "${{ github.event.head_commit.timestamp }}",
+          "droplet_ip": "${{ needs.setup-infra.outputs.droplet_ip }}",
+          "verification_status": "${{ needs.deployment-verification.outputs.verification_status }}",
+          "health_check_passed": "${{ needs.deployment-verification.outputs.health_check_passed }}",
+          "performance_check_passed": "${{ needs.deployment-verification.outputs.performance_check_passed }}",
+          "security_check_passed": "${{ needs.deployment-verification.outputs.security_check_passed }}",
+          "selenium_tests_result": "${{ needs.selenium-tests.result }}"
+        }
+      notification_channels: 'github,slack,teams'
+      severity: ${{ (needs.deployment-verification.outputs.verification_status == 'failed') && 'error' || (needs.deployment-verification.outputs.verification_status == 'warning') && 'warning' || 'info' }}
+      additional_context: ${{ (needs.selenium-tests.result == 'skipped') && 'Selenium tests were skipped for this deployment.' || '' }}
+
   deployment-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
-    needs: [verify-promoted-image, setup-infra, deploy-app, deployment-verification, selenium-tests]
+    needs: [verify-promoted-image, setup-infra, deploy-app, deployment-verification, selenium-tests, send-deployment-notifications]
     if: always()
     steps:
       - name: Generate deployment summary

@@ -611,10 +611,32 @@ jobs:
             *.log
           retention-days: 7
 
+  send-staging-notifications:
+    name: Send Staging Notifications
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deploy-app, selenium-tests]
+    if: always()
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: ${{ needs.deploy-app.result == 'success' && 'deployment-success' || 'deployment-failed' }}
+      environment: 'staging'
+      deployment_details: |
+        {
+          "staging_url": "http://${{ needs.setup-infra.outputs.droplet_ip }}",
+          "selenium_tests_result": "${{ needs.selenium-tests.result }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}",
+          "commit": "${{ github.sha }}",
+          "ref": "${{ github.ref }}",
+          "timestamp": "${{ github.event.head_commit.timestamp }}"
+        }
+      notification_channels: 'github,slack'
+      severity: ${{ needs.deploy-app.result == 'success' && 'info' || 'error' }}
+
   staging-summary:
     name: Staging Deployment Summary
     runs-on: ubuntu-latest
-    needs: [setup-infra, deploy-app, selenium-tests]
+    needs: [setup-infra, deploy-app, selenium-tests, send-staging-notifications]
     if: always()
     outputs:
       staging_success: ${{ steps.summary.outputs.staging_success }}
