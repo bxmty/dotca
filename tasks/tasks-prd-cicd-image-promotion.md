@@ -55,7 +55,7 @@
   - [x] 3.8 Ensure production uses SSL-enabled Nginx configuration from templates
 
 - [ ] 4.0 Implement Rollback Capability
-  - [ ] 4.1 Create rollback workflow in GitHub Actions
+  - [x] 4.1 Create rollback workflow in GitHub Actions
   - [ ] 4.2 Implement image history tracking for rollback targets
   - [ ] 4.3 Add rollback approval and notification mechanisms
   - [ ] 4.4 Create rollback verification and health check tasks
