@@ -51,8 +51,6 @@ on:
         required: true
       NEXT_PUBLIC_PRODUCTION_GA_ID:
         required: true
-      GITHUB_TOKEN:
-        required: true
 
 env:
   REGISTRY: ghcr.io
