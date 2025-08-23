@@ -112,8 +112,8 @@
         enabled: yes
 
     - name: Set timezone to Eastern Time
-      timezone:
-        name: America/New_York
+      command: timedatectl set-timezone America/New_York
+      changed_when: false
 
     - name: Start and enable Docker service
       systemd:
@@ -1549,7 +1549,7 @@
           
           ============================================
 
-       - name: Start Docker Compose services
+    - name: Start Docker Compose services
       command: docker-compose up -d web
       args:
         chdir: "{{ app_dir }}/repo"
