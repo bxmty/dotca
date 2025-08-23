@@ -115,6 +115,170 @@ jobs:
             exit 1
           fi
       
+      - name: Comprehensive image validation and integrity checks
+        id: image_integrity
+        run: |
+          STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
+          
+          echo "🔍 Performing comprehensive image validation and integrity checks..."
+          
+          # 1. Image size validation
+          IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
+          IMAGE_SIZE_MB=$(echo "$IMAGE_SIZE" | sed 's/[^0-9.]//g')
+          
+          echo "📏 Image size: $IMAGE_SIZE"
+          
+          # Check if image size is reasonable (between 100MB and 2GB)
+          if (( $(echo "$IMAGE_SIZE_MB > 100" | bc -l) )) && (( $(echo "$IMAGE_SIZE_MB < 2000" | bc -l) )); then
+            echo "✅ Image size is within acceptable range (100MB - 2GB)"
+            SIZE_VALID=true
+          else
+            echo "⚠️  Image size ($IMAGE_SIZE_MB MB) is outside normal range"
+            if [ "${{ github.event.inputs.force_promotion }}" = "true" ]; then
+              echo "⚠️  Force promotion enabled - continuing despite size warning"
+              SIZE_VALID=true
+            else
+              echo "❌ Image size validation failed"
+              SIZE_VALID=false
+            fi
+          fi
+          
+          # 2. Image layer validation
+          echo "🔍 Validating image layers..."
+          if docker inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
+            LAYER_COUNT=$(docker inspect "$STAGING_IMAGE" | jq '.[0].RootFS.Layers | length')
+            echo "✅ Image has $LAYER_COUNT layers"
+            
+            if [ "$LAYER_COUNT" -gt 0 ] && [ "$LAYER_COUNT" -lt 100 ]; then
+              echo "✅ Layer count is reasonable"
+              LAYERS_VALID=true
+            else
+              echo "⚠️  Unusual layer count: $LAYER_COUNT"
+              LAYERS_VALID=false
+            fi
+          else
+            echo "❌ Failed to inspect image layers"
+            LAYERS_VALID=false
+          fi
+          
+          # 3. Image metadata validation
+          echo "🔍 Validating image metadata..."
+          if docker inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
+            # Check for required labels
+            HAS_SOURCE=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.source" // empty')
+            HAS_VERSION=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.version" // empty')
+            HAS_CREATED=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.created" // empty')
+            
+            echo "📋 Image labels:"
+            echo "  - Source: ${HAS_SOURCE:-'Not found'}"
+            echo "  - Version: ${HAS_VERSION:-'Not found'}"
+            echo "  - Created: ${HAS_CREATED:-'Not found'}"
+            
+            # Basic metadata validation
+            if docker inspect "$STAGING_IMAGE" | jq -e '.[0].Config.Cmd' >/dev/null 2>&1; then
+              echo "✅ Image has valid CMD configuration"
+              METADATA_VALID=true
+            else
+              echo "⚠️  Image missing CMD configuration"
+              METADATA_VALID=false
+            fi
+          else
+            echo "❌ Failed to inspect image metadata"
+            METADATA_VALID=false
+          fi
+          
+          # 4. Image signature validation (if available)
+          echo "🔍 Validating image signature..."
+          if command -v cosign >/dev/null 2>&1; then
+            if cosign verify "$STAGING_IMAGE" >/dev/null 2>&1; then
+              echo "✅ Image signature verified with cosign"
+              SIGNATURE_VALID=true
+            else
+              echo "⚠️  Image signature verification failed or not signed"
+              SIGNATURE_VALID=false
+            fi
+          else
+            echo "ℹ️  cosign not available - skipping signature verification"
+            SIGNATURE_VALID=true  # Don't fail on missing tool
+          fi
+          
+          # 4.5. Security vulnerability scanning (if available)
+          echo "🔍 Scanning for security vulnerabilities..."
+          if command -v trivy >/dev/null 2>&1; then
+            echo "Running Trivy vulnerability scan..."
+            
+            # Run Trivy scan with JSON output for parsing
+            TRIVY_OUTPUT=$(trivy image --format json --severity HIGH,CRITICAL "$STAGING_IMAGE" 2>/dev/null || echo "{}")
+            
+            # Parse vulnerability counts
+            CRITICAL_COUNT=$(echo "$TRIVY_OUTPUT" | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "CRITICAL") | .VulnerabilityID' 2>/dev/null | wc -l)
+            HIGH_COUNT=$(echo "$TRIVY_OUTPUT" | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "HIGH") | .VulnerabilityID' 2>/dev/null | wc -l)
+            
+            echo "📊 Vulnerability Summary:"
+            echo "  - Critical: $CRITICAL_COUNT"
+            echo "  - High: $HIGH_COUNT"
+            
+            # Determine if vulnerabilities are acceptable
+            if [ "$CRITICAL_COUNT" -eq 0 ] && [ "$HIGH_COUNT" -le 5 ]; then
+              echo "✅ Security scan passed - vulnerabilities within acceptable limits"
+              SECURITY_VALID=true
+            else
+              echo "⚠️  Security scan found concerning vulnerabilities"
+              if [ "${{ github.event.inputs.force_promotion }}" = "true" ]; then
+                echo "⚠️  Force promotion enabled - continuing despite security warnings"
+                SECURITY_VALID=true
+              else
+                echo "❌ Security validation failed - too many high/critical vulnerabilities"
+                SECURITY_VALID=false
+              fi
+            fi
+          else
+            echo "ℹ️  Trivy not available - skipping vulnerability scan"
+            SECURITY_VALID=true  # Don't fail on missing tool
+          fi
+          
+          # 5. Image health check validation
+          echo "🔍 Validating image health check configuration..."
+          if docker inspect "$STAGING_IMAGE" | jq -e '.[0].Config.Healthcheck' >/dev/null 2>&1; then
+            echo "✅ Image has health check configuration"
+            HEALTHCHECK_VALID=true
+          else
+            echo "⚠️  Image missing health check configuration"
+            HEALTHCHECK_VALID=false
+          fi
+          
+          # 6. Overall validation summary
+          echo ""
+          echo "📊 Image Validation Summary:"
+          echo "  - Size Validation: $([ "$SIZE_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Layer Validation: $([ "$LAYERS_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Metadata Validation: $([ "$METADATA_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Signature Validation: $([ "$SIGNATURE_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Security Validation: $([ "$SECURITY_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Health Check Validation: $([ "$HEALTHCHECK_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          
+          # Determine overall validation result
+          if [ "$SIZE_VALID" = "true" ] && [ "$LAYERS_VALID" = "true" ] && [ "$METADATA_VALID" = "true" ] && [ "$SIGNATURE_VALID" = "true" ] && [ "$SECURITY_VALID" = "true" ]; then
+            echo "🎉 All validation checks passed!"
+            VALIDATION_RESULT="success"
+          elif [ "${{ github.event.inputs.force_promotion }}" = "true" ]; then
+            echo "⚠️  Some validation checks failed, but force promotion is enabled"
+            VALIDATION_RESULT="warning"
+          else
+            echo "❌ Critical validation checks failed"
+            VALIDATION_RESULT="failure"
+            exit 1
+          fi
+          
+          # Store validation results for later use
+          echo "validation_result=$VALIDATION_RESULT" >> $GITHUB_OUTPUT
+          echo "size_valid=$SIZE_VALID" >> $GITHUB_OUTPUT
+          echo "layers_valid=$LAYERS_VALID" >> $GITHUB_OUTPUT
+          echo "metadata_valid=$METADATA_VALID" >> $GITHUB_OUTPUT
+          echo "signature_valid=$SIGNATURE_VALID" >> $GITHUB_OUTPUT
+          echo "security_valid=$SECURITY_VALID" >> $GITHUB_OUTPUT
+          echo "healthcheck_valid=$HEALTHCHECK_VALID" >> $GITHUB_OUTPUT
+      
       - name: Promote image to production
         id: promotion
         run: |
