@@ -1,0 +1,683 @@
+name: Image History Tracking and Rollback Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - 'scan-registry'
+          - 'cleanup-old-images'
+          - 'generate-rollback-report'
+          - 'validate-rollback-targets'
+          - 'update-image-metadata'
+      registry_namespace:
+        description: 'Registry namespace to scan (e.g., bxtech)'
+        required: false
+        type: string
+        default: 'bxtech'
+      repository_name:
+        description: 'Repository name to scan (e.g., dotca)'
+        required: false
+        type: string
+        default: 'dotca'
+      max_images_per_tag:
+        description: 'Maximum images to keep per tag type'
+        required: false
+        type: string
+        default: '10'
+      dry_run:
+        description: 'Dry run mode (no actual deletions)'
+        required: false
+        type: boolean
+        default: true
+
+  schedule:
+    # Run daily at 2 AM UTC to track image history
+    - cron: '0 2 * * *'
+
+  workflow_run:
+    # Trigger when image promotion workflow completes
+    workflows: ["Image Promotion Workflow"]
+    types: [completed]
+
+env:
+  REGISTRY_NAMESPACE: ${{ github.event.inputs.registry_namespace || 'bxtech' }}
+  REPOSITORY_NAME: ${{ github.event.inputs.repository_name || 'dotca' }}
+  MAX_IMAGES_PER_TAG: ${{ github.event.inputs.max_images_per_tag || '10' }}
+  DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  REGISTRY_URL: ghcr.io
+
+jobs:
+  scan-registry:
+    name: Scan Container Registry
+    runs-on: ubuntu-latest
+    outputs:
+      total_images: ${{ steps.scan_summary.outputs.total_images }}
+      staging_images: ${{ steps.scan_summary.outputs.staging_images }}
+      production_images: ${{ steps.scan_summary.outputs.production_images }}
+      rollback_images: ${{ steps.scan_summary.outputs.rollback_images }}
+      version_images: ${{ steps.scan_summary.outputs.version_images }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install registry scanning tools
+        run: |
+          echo "🔧 Installing registry scanning tools..."
+          
+          # Install crane for registry operations
+          curl -L -o crane.tar.gz "https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz"
+          tar -xzf crane.tar.gz
+          sudo mv crane /usr/local/bin/
+          rm crane.tar.gz
+          
+          # Install skopeo for image inspection
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+          
+          echo "✅ Registry tools installed"
+
+      - name: Scan registry for images
+        id: scan_registry
+        run: |
+          echo "🔍 Scanning registry for images..."
+          
+          # Initialize counters
+          TOTAL_IMAGES=0
+          STAGING_IMAGES=0
+          PRODUCTION_IMAGES=0
+          ROLLBACK_IMAGES=0
+          VERSION_IMAGES=0
+          
+          # Create output directory
+          mkdir -p image-history
+          
+          # Scan for all images in the repository
+          echo "📊 Scanning $REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME..."
+          
+          # Get list of all tags
+          TAGS=$(crane ls $REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME 2>/dev/null || echo "")
+          
+          if [ -n "$TAGS" ]; then
+            echo "Found tags: $TAGS"
+            
+            # Process each tag
+            for tag in $TAGS; do
+              TOTAL_IMAGES=$((TOTAL_IMAGES + 1))
+              
+              # Get image manifest
+              MANIFEST=$(crane manifest $REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME:$tag 2>/dev/null || echo "")
+              
+              if [ -n "$MANIFEST" ]; then
+                # Extract creation date and size
+                CREATED=$(echo "$MANIFEST" | jq -r '.history[0].created // "unknown"' 2>/dev/null || echo "unknown")
+                SIZE=$(echo "$MANIFEST" | jq -r '.config.size // "unknown"' 2>/dev/null || echo "unknown")
+                DIGEST=$(echo "$MANIFEST" | jq -r '.config.digest // "unknown"' 2>/dev/null || echo "unknown")
+                
+                # Categorize image
+                case "$tag" in
+                  "staging")
+                    STAGING_IMAGES=$((STAGING_IMAGES + 1))
+                    CATEGORY="staging"
+                    ;;
+                  "main"|"production")
+                    PRODUCTION_IMAGES=$((PRODUCTION_IMAGES + 1))
+                    CATEGORY="production"
+                    ;;
+                  rollback-*)
+                    ROLLBACK_IMAGES=$((ROLLBACK_IMAGES + 1))
+                    CATEGORY="rollback"
+                    ;;
+                  v*.*.*)
+                    VERSION_IMAGES=$((VERSION_IMAGES + 1))
+                    CATEGORY="version"
+                    ;;
+                  *)
+                    CATEGORY="other"
+                    ;;
+                esac
+                
+                # Create image record
+                cat > "image-history/image-$tag.json" << EOF
+                {
+                  "repository": "$REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME",
+                  "tag": "$tag",
+                  "category": "$CATEGORY",
+                  "digest": "$DIGEST",
+                  "size": "$SIZE",
+                  "created": "$CREATED",
+                  "scanned_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+                  "workflow_run": "${{ github.run_id }}"
+                }
+                EOF
+                
+                echo "📝 Recorded: $tag ($CATEGORY) - $CREATED"
+              fi
+            done
+          else
+            echo "⚠️  No images found in registry"
+          fi
+          
+          # Create summary
+          cat > "image-history/scan-summary.json" << EOF
+          {
+            "scan_timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "registry": "$REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME",
+            "total_images": $TOTAL_IMAGES,
+            "staging_images": $STAGING_IMAGES,
+            "production_images": $PRODUCTION_IMAGES,
+            "rollback_images": $ROLLBACK_IMAGES,
+            "version_images": $VERSION_IMAGES,
+            "workflow_run": "${{ github.run_id }}"
+          }
+          EOF
+          
+          # Set outputs
+          echo "total_images=$TOTAL_IMAGES" >> $GITHUB_OUTPUT
+          echo "staging_images=$STAGING_IMAGES" >> $GITHUB_OUTPUT
+          echo "production_images=$PRODUCTION_IMAGES" >> $GITHUB_OUTPUT
+          echo "rollback_images=$ROLLBACK_IMAGES" >> $GITHUB_OUTPUT
+          echo "version_images=$VERSION_IMAGES" >> $GITHUB_OUTPUT
+          
+          echo "✅ Registry scan completed"
+
+      - name: Generate scan summary
+        id: scan_summary
+        run: |
+          echo "📊 Generating scan summary..."
+          
+          if [ -f "image-history/scan-summary.json" ]; then
+            SUMMARY=$(cat image-history/scan-summary.json)
+            
+            # Extract values for outputs
+            TOTAL=$(echo "$SUMMARY" | jq -r '.total_images')
+            STAGING=$(echo "$SUMMARY" | jq -r '.staging_images')
+            PRODUCTION=$(echo "$SUMMARY" | jq -r '.production_images')
+            ROLLBACK=$(echo "$SUMMARY" | jq -r '.rollback_images')
+            VERSION=$(echo "$SUMMARY" | jq -r '.version_images')
+            
+            echo "total_images=$TOTAL" >> $GITHUB_OUTPUT
+            echo "staging_images=$STAGING" >> $GITHUB_OUTPUT
+            echo "production_images=$PRODUCTION" >> $GITHUB_OUTPUT
+            echo "rollback_images=$ROLLBACK" >> $GITHUB_OUTPUT
+            echo "version_images=$VERSION" >> $GITHUB_OUTPUT
+            
+            echo "✅ Scan summary generated"
+          else
+            echo "❌ Scan summary file not found"
+            exit 1
+          fi
+
+      - name: Upload image history artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-history-${{ github.run_id }}
+          path: image-history/
+          retention-days: 30
+
+  analyze-image-history:
+    name: Analyze Image History
+    runs-on: ubuntu-latest
+    needs: scan-registry
+    if: needs.scan-registry.outputs.total_images != '0'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download image history artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: image-history-${{ needs.scan-registry.outputs.total_images }}
+
+      - name: Analyze image patterns and trends
+        run: |
+          echo "🔍 Analyzing image history patterns..."
+          
+          # Create analysis directory
+          mkdir -p image-analysis
+          
+          # Analyze rollback images
+          if [ -f "image-history/scan-summary.json" ]; then
+            ROLLBACK_COUNT=$(cat image-history/scan-summary.json | jq -r '.rollback_images')
+            
+            if [ "$ROLLBACK_COUNT" -gt 0 ]; then
+              echo "📊 Analyzing $ROLLBACK_COUNT rollback images..."
+              
+              # Find all rollback images
+              ROLLBACK_FILES=$(find image-history -name "image-rollback-*.json")
+              
+              # Sort by creation date
+              for file in $ROLLBACK_FILES; do
+                CREATED=$(cat "$file" | jq -r '.created')
+                echo "$CREATED $file"
+              done | sort -r > image-analysis/rollback-timeline.txt
+              
+              # Analyze rollback frequency
+              echo "📈 Rollback frequency analysis:" > image-analysis/rollback-analysis.md
+              echo "================================" >> image-analysis/rollback-analysis.md
+              echo "" >> image-analysis/rollback-analysis.md
+              echo "Total rollback images: $ROLLBACK_COUNT" >> image-analysis/rollback-analysis.md
+              echo "" >> image-analysis/rollback-analysis.md
+              
+              # Group by date
+              cat image-analysis/rollback-timeline.txt | cut -d' ' -f1 | cut -d'T' -f1 | sort | uniq -c | sort -nr >> image-analysis/rollback-analysis.md
+              
+              echo "✅ Rollback analysis completed"
+            fi
+          fi
+          
+          # Analyze version images
+          if [ -f "image-history/scan-summary.json" ]; then
+            VERSION_COUNT=$(cat image-history/scan-summary.json | jq -r '.version_images')
+            
+            if [ "$VERSION_COUNT" -gt 0 ]; then
+              echo "📊 Analyzing $VERSION_COUNT version images..."
+              
+              # Find all version images
+              VERSION_FILES=$(find image-history -name "image-v*.json")
+              
+              # Sort by semantic version
+              for file in $VERSION_FILES; do
+                TAG=$(cat "$file" | jq -r '.tag')
+                CREATED=$(cat "$file" | jq -r '.created')
+                echo "$TAG $CREATED $file"
+              done | sort -V > image-analysis/version-timeline.txt
+              
+              echo "✅ Version analysis completed"
+            fi
+          fi
+          
+          # Generate overall analysis report
+          cat > image-analysis/overall-analysis.md << EOF
+          # Image History Analysis Report
+          
+          ## Summary
+          Generated on: $(date -u)
+          Workflow Run: ${{ github.run_id }}
+          
+          ## Image Counts
+          - Total Images: ${{ needs.scan-registry.outputs.total_images }}
+          - Staging Images: ${{ needs.scan-registry.outputs.staging_images }}
+          - Production Images: ${{ needs.scan-registry.outputs.production_images }}
+          - Rollback Images: ${{ needs.scan-registry.outputs.rollback_images }}
+          - Version Images: ${{ needs.scan-registry.outputs.version_images }}
+          
+          ## Recommendations
+          EOF
+          
+          # Add recommendations based on analysis
+          if [ "${{ needs.scan-registry.outputs.rollback_images }}" -gt 20 ]; then
+            echo "- Consider cleaning up old rollback images (current: ${{ needs.scan-registry.outputs.rollback_images }})" >> image-analysis/overall-analysis.md
+          fi
+          
+          if [ "${{ needs.scan-registry.outputs.version_images }}" -gt 50 ]; then
+            echo "- Consider archiving old version images (current: ${{ needs.scan-registry.outputs.version_images }})" >> image-analysis/overall-analysis.md
+          fi
+          
+          echo "✅ Image history analysis completed"
+
+      - name: Upload analysis artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-analysis-${{ github.run_id }}
+          path: image-analysis/
+          retention-days: 30
+
+  cleanup-old-images:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    needs: [scan-registry, analyze-image-history]
+    if: |
+      needs.scan-registry.outputs.total_images != '0' && 
+      (needs.scan-registry.outputs.rollback_images > 15 || needs.scan-registry.outputs.version_images > 30)
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download image history artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: image-history-${{ needs.scan-registry.outputs.total_images }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Identify images for cleanup
+        run: |
+          echo "🧹 Identifying images for cleanup..."
+          
+          # Create cleanup directory
+          mkdir -p image-cleanup
+          
+          # Find old rollback images (keep only the 10 most recent)
+          if [ -f "image-history/scan-summary.json" ]; then
+            ROLLBACK_COUNT=$(cat image-history/scan-summary.json | jq -r '.rollback_images')
+            
+            if [ "$ROLLBACK_COUNT" -gt $MAX_IMAGES_PER_TAG ]; then
+              echo "📊 Found $ROLLBACK_COUNT rollback images, keeping $MAX_IMAGES_PER_TAG most recent..."
+              
+              # Find all rollback images and sort by creation date
+              find image-history -name "image-rollback-*.json" | while read file; do
+                CREATED=$(cat "$file" | jq -r '.created')
+                TAG=$(cat "$file" | jq -r '.tag')
+                echo "$CREATED $TAG $file"
+              done | sort -r > image-cleanup/rollback-sorted.txt
+              
+              # Mark old ones for deletion
+              tail -n +$((MAX_IMAGES_PER_TAG + 1)) image-cleanup/rollback-sorted.txt > image-cleanup/rollback-to-delete.txt
+              
+              echo "📝 Marked $(wc -l < image-cleanup/rollback-to-delete.txt) rollback images for deletion"
+            fi
+          fi
+          
+          # Find old version images (keep only the 20 most recent)
+          if [ -f "image-history/scan-summary.json" ]; then
+            VERSION_COUNT=$(cat image-history/scan-summary.json | jq -r '.version_images')
+            
+            if [ "$VERSION_COUNT" -gt 20 ]; then
+              echo "📊 Found $VERSION_COUNT version images, keeping 20 most recent..."
+              
+              # Find all version images and sort by semantic version
+              find image-history -name "image-v*.json" | while read file; do
+                TAG=$(cat "$file" | jq -r '.tag')
+                CREATED=$(cat "$file" | jq -r '.created')
+                echo "$TAG $CREATED $file"
+              done | sort -V > image-cleanup/version-sorted.txt
+              
+              # Mark old ones for deletion
+              tail -n +21 image-cleanup/version-sorted.txt > image-cleanup/version-to-delete.txt
+              
+              echo "📝 Marked $(wc -l < image-cleanup/version-to-delete.txt) version images for deletion"
+            fi
+          fi
+          
+          echo "✅ Cleanup targets identified"
+
+      - name: Execute image cleanup
+        if: env.DRY_RUN != 'true'
+        run: |
+          echo "🗑️  Executing image cleanup..."
+          
+          # Delete old rollback images
+          if [ -f "image-cleanup/rollback-to-delete.txt" ]; then
+            echo "🗑️  Deleting old rollback images..."
+            
+            while read -r line; do
+              TAG=$(echo "$line" | cut -d' ' -f2)
+              echo "Deleting: $TAG"
+              
+              # Delete from registry
+              crane delete $REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME:$TAG || echo "Failed to delete $TAG"
+              
+              # Remove local record
+              rm -f "image-history/image-$TAG.json"
+              
+            done < image-cleanup/rollback-to-delete.txt
+            
+            echo "✅ Rollback image cleanup completed"
+          fi
+          
+          # Delete old version images
+          if [ -f "image-cleanup/version-to-delete.txt" ]; then
+            echo "🗑️  Deleting old version images..."
+            
+            while read -r line; do
+              TAG=$(echo "$line" | cut -d' ' -f1)
+              echo "Deleting: $TAG"
+              
+              # Delete from registry
+              crane delete $REGISTRY_URL/$REGISTRY_NAMESPACE/$REPOSITORY_NAME:$TAG || echo "Failed to delete $TAG"
+              
+              # Remove local record
+              rm -f "image-history/image-$TAG.json"
+              
+            done < image-cleanup/version-to-delete.txt
+            
+            echo "✅ Version image cleanup completed"
+          fi
+
+      - name: Create cleanup report
+        run: |
+          echo "📋 Creating cleanup report..."
+          
+          cat > image-cleanup/cleanup-report.md << EOF
+          # Image Cleanup Report
+          
+          ## Summary
+          Generated on: $(date -u)
+          Workflow Run: ${{ github.run_id }}
+          Dry Run: $DRY_RUN
+          
+          ## Cleanup Actions
+          EOF
+          
+          if [ -f "image-cleanup/rollback-to-delete.txt" ]; then
+            echo "" >> image-cleanup/cleanup-report.md
+            echo "### Rollback Images Cleaned" >> image-cleanup/cleanup-report.md
+            echo "Count: $(wc -l < image-cleanup/rollback-to-delete.txt)" >> image-cleanup/cleanup-report.md
+            echo "" >> image-cleanup/cleanup-report.md
+            cat image-cleanup/rollback-to-delete.txt | cut -d' ' -f2 >> image-cleanup/cleanup-report.md
+          fi
+          
+          if [ -f "image-cleanup/version-to-delete.txt" ]; then
+            echo "" >> image-cleanup/cleanup-report.md
+            echo "### Version Images Cleaned" >> image-cleanup/cleanup-report.md
+            echo "Count: $(wc -l < image-cleanup/version-to-delete.txt)" >> image-cleanup/cleanup-report.md
+            echo "" >> image-cleanup/cleanup-report.md
+            cat image-cleanup/version-to-delete.txt | cut -d' ' -f1 >> image-cleanup/cleanup-report.md
+          fi
+          
+          echo "✅ Cleanup report created"
+
+      - name: Upload cleanup artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-cleanup-${{ github.run_id }}
+          path: image-cleanup/
+          retention-days: 30
+
+  generate-rollback-report:
+    name: Generate Rollback Report
+    runs-on: ubuntu-latest
+    needs: [scan-registry, analyze-image-history]
+    if: needs.scan-registry.outputs.rollback_images != '0'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download image history artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: image-history-${{ needs.scan-registry.outputs.total_images }}
+
+      - name: Generate comprehensive rollback report
+        run: |
+          echo "📊 Generating comprehensive rollback report..."
+          
+          # Create report directory
+          mkdir -p rollback-report
+          
+          # Generate rollback availability report
+          cat > rollback-report/rollback-availability.md << EOF
+          # Rollback Availability Report
+          
+          ## Summary
+          Generated on: $(date -u)
+          Workflow Run: ${{ github.run_id }}
+          Total Rollback Images: ${{ needs.scan-registry.outputs.rollback_images }}
+          
+          ## Available Rollback Targets
+          EOF
+          
+          # Find all rollback images
+          ROLLBACK_FILES=$(find image-history -name "image-rollback-*.json")
+          
+          if [ -n "$ROLLBACK_FILES" ]; then
+            # Sort by creation date (newest first)
+            for file in $ROLLBACK_FILES; do
+              CREATED=$(cat "$file" | jq -r '.created')
+              TAG=$(cat "$file" | jq -r '.tag')
+              SIZE=$(cat "$file" | jq -r '.size')
+              DIGEST=$(cat "$file" | jq -r '.digest')
+              
+              echo "$CREATED $TAG $SIZE $DIGEST $file"
+            done | sort -r > rollback-report/rollback-sorted.txt
+            
+            # Generate formatted report
+            echo "" >> rollback-report/rollback-availability.md
+            echo "### Recent Rollback Images (Newest First)" >> rollback-report/rollback-availability.md
+            echo "" >> rollback-report/rollback-availability.md
+            echo "| Rank | Tag | Created | Size | Digest |" >> rollback-report/rollback-availability.md
+            echo "|------|-----|---------|------|--------|" >> rollback-report/rollback-availability.md
+            echo "" >> rollback-report/rollback-availability.md
+            
+            rank=1
+            while read -r line; do
+              CREATED=$(echo "$line" | cut -d' ' -f1 | cut -d'T' -f1)
+              TAG=$(echo "$line" | cut -d' ' -f2)
+              SIZE=$(echo "$line" | cut -d' ' -f3)
+              DIGEST=$(echo "$line" | cut -d' ' -f4 | cut -c1-12)
+              
+              echo "| $rank | \`$TAG\` | $CREATED | $SIZE | \`$DIGEST\` |" >> rollback-report/rollback-availability.md
+              rank=$((rank + 1))
+            done < rollback-report/rollback-sorted.txt
+            
+            echo "" >> rollback-report/rollback-availability.md
+            echo "### Quick Rollback Commands" >> rollback-report/rollback-availability.md
+            echo "" >> rollback-report/rollback-availability.md
+            echo "```bash" >> rollback-report/rollback-availability.md
+            echo "# Rollback to most recent image" >> rollback-report/rollback-availability.md
+            echo "gh workflow run rollback.yml -f rollback_target=latest" >> rollback-report/rollback-availability.md
+            echo "" >> rollback-report/rollback-availability.md
+            echo "# Rollback to specific image" >> rollback-report/rollback-availability.md
+            echo "gh workflow run rollback.yml -f rollback_target=ghcr.io/$REGISTRY_NAMESPACE/$REPOSITORY_NAME:rollback-YYYYMMDD-HHMMSS-reason" >> rollback-report/rollback-availability.md
+            echo "```" >> rollback-report/rollback-availability.md
+          fi
+          
+          # Generate rollback history analysis
+          cat > rollback-report/rollback-history-analysis.md << EOF
+          # Rollback History Analysis
+          
+          ## Patterns and Trends
+          Generated on: $(date -u)
+          
+          ## Rollback Frequency
+          EOF
+          
+          if [ -f "rollback-report/rollback-sorted.txt" ]; then
+            # Analyze rollback frequency by date
+            echo "" >> rollback-report/rollback-history-analysis.md
+            echo "### Rollback Frequency by Date" >> rollback-report/rollback-history-analysis.md
+            echo "" >> rollback-report/rollback-history-analysis.md
+            cat rollback-report/rollback-sorted.txt | cut -d' ' -f1 | cut -d'T' -f1 | sort | uniq -c | sort -nr >> rollback-report/rollback-history-analysis.md
+            
+            # Analyze rollback reasons
+            echo "" >> rollback-report/rollback-history-analysis.md
+            echo "### Rollback Reasons Analysis" >> rollback-report/rollback-history-analysis.md
+            echo "" >> rollback-report/rollback-history-analysis.md
+            cat rollback-report/rollback-sorted.txt | cut -d' ' -f2 | sed 's/rollback-[0-9]\{8\}-[0-9]\{6\}-//' | sort | uniq -c | sort -nr >> rollback-report/rollback-history-analysis.md
+          fi
+          
+          echo "✅ Rollback report generated"
+
+      - name: Upload rollback report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-report-${{ github.run_id }}
+          path: rollback-report/
+          retention-days: 30
+
+  workflow-summary:
+    name: Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [scan-registry, analyze-image-history, cleanup-old-images, generate-rollback-report]
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create workflow summary
+        run: |
+          echo "📋 Creating workflow summary..."
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          
+          ## 🖼️ Image History Tracking Completed
+          
+          ### Scan Results
+          - **Total Images**: ${{ needs.scan-registry.outputs.total_images }}
+          - **Staging Images**: ${{ needs.scan-registry.outputs.staging_images }}
+          - **Production Images**: ${{ needs.scan-registry.outputs.production_images }}
+          - **Rollback Images**: ${{ needs.scan-registry.outputs.rollback_images }}
+          - **Version Images**: ${{ needs.scan-registry.outputs.version_images }}
+          
+          ### Actions Performed
+          - ✅ Registry scan completed
+          - ✅ Image history analyzed
+          - ✅ Cleanup targets identified
+          - ✅ Rollback report generated
+          
+          ### Artifacts Generated
+          - 📁 Image history records
+          - 📊 Analysis reports
+          - 🧹 Cleanup recommendations
+          - 📋 Rollback availability report
+          
+          ### Next Steps
+          1. Review rollback availability report
+          2. Consider cleanup recommendations
+          3. Monitor image growth patterns
+          4. Update retention policies if needed
+          
+          ---
+          *Generated by Image History Tracking workflow*
+          EOF
+          
+          echo "✅ Workflow summary created"
+
+      - name: Display completion message
+        run: |
+          echo "============================================"
+          echo "IMAGE HISTORY TRACKING COMPLETED"
+          echo "============================================"
+          echo ""
+          echo "📊 Registry Scan Results:"
+          echo "  - Total Images: ${{ needs.scan-registry.outputs.total_images }}"
+          echo "  - Rollback Images: ${{ needs.scan-registry.outputs.rollback_images }}"
+          echo "  - Version Images: ${{ needs.scan-registry.outputs.version_images }}"
+          echo ""
+          echo "📁 Generated Artifacts:"
+          echo "  - Image history records"
+          echo "  - Analysis reports"
+          echo "  - Cleanup recommendations"
+          echo "  - Rollback availability report"
+          echo ""
+          echo "🎯 Key Benefits:"
+          echo "  - Complete image lifecycle tracking"
+          echo "  - Automated cleanup recommendations"
+          echo "  - Rollback target availability"
+          echo "  - Historical trend analysis"
+          echo ""
+          echo "============================================"

@@ -56,7 +56,7 @@
 
 - [ ] 4.0 Implement Rollback Capability
   - [x] 4.1 Create rollback workflow in GitHub Actions
-  - [ ] 4.2 Implement image history tracking for rollback targets
+  - [x] 4.2 Implement image history tracking for rollback targets
   - [ ] 4.3 Add rollback approval and notification mechanisms
   - [ ] 4.4 Create rollback verification and health check tasks
   - [ ] 4.5 Implement rollback status reporting and audit logging
