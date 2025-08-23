@@ -52,7 +52,7 @@
   - [x] 3.5 Implement image rollback tasks in production playbook
   - [x] 3.6 Update environment variable handling for promoted images
   - [x] 3.7 Add health checks to verify promoted image deployment
-  - [ ] 3.8 Ensure production uses SSL-enabled Nginx configuration from templates
+  - [x] 3.8 Ensure production uses SSL-enabled Nginx configuration from templates
 
 - [ ] 4.0 Implement Rollback Capability
   - [ ] 4.1 Create rollback workflow in GitHub Actions
