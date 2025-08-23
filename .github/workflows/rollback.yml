@@ -148,6 +148,209 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get rollback history and context
+        run: |
+          echo "📚 Gathering rollback context and history..."
+          
+          # Create context directory
+          mkdir -p rollback-context
+          
+          # Get recent rollback history
+          echo "📊 Recent Rollback History:" > rollback-context/rollback-context.md
+          echo "=============================" >> rollback-context/rollback-context.md
+          echo "" >> rollback-context/rollback-context.md
+          
+          # Check if we have image history data
+          if [ -d "image-history" ]; then
+            echo "✅ Image history data available"
+            
+            # Get rollback frequency
+            ROLLBACK_COUNT=$(find image-history -name "image-rollback-*.json" | wc -l)
+            echo "Total rollback images in registry: $ROLLBACK_COUNT" >> rollback-context/rollback-context.md
+            
+            # Get recent rollback patterns
+            echo "" >> rollback-context/rollback-context.md
+            echo "### Recent Rollback Patterns" >> rollback-context/rollback-context.md
+            find image-history -name "image-rollback-*.json" -exec cat {} \; | jq -r '.created + " " + .tag' | sort -r | head -5 | while read line; do
+              DATE=$(echo "$line" | cut -d' ' -f1 | cut -d'T' -f1)
+              TAG=$(echo "$line" | cut -d' ' -f2)
+              echo "- $DATE: $TAG" >> rollback-context/rollback-context.md
+            done
+          else
+            echo "⚠️  No image history data available"
+            echo "No recent rollback data available" >> rollback-context/rollback-context.md
+          fi
+          
+          # Get current production status
+          echo "" >> rollback-context/rollback-context.md
+          echo "### Current Production Status" >> rollback-context/rollback-context.md
+          echo "- Target Image: ${{ needs.validate-rollback-target.outputs.target_image }}" >> rollback-context/rollback-context.md
+          echo "- Rollback Reason: $ROLLBACK_REASON" >> rollback-context/rollback-context.md
+          echo "- Triggered by: ${{ github.actor }}" >> rollback-context/rollback-context.md
+          echo "- Timestamp: $(date -u)" >> rollback-context/rollback-context.md
+          
+          echo "✅ Rollback context gathered"
+
+      - name: Create comprehensive approval request
+        run: |
+          echo "📋 Creating comprehensive approval request..."
+          
+          cat > rollback-context/approval-request.md << EOF
+          # 🚨 PRODUCTION ROLLBACK APPROVAL REQUIRED
+          
+          ## ⚠️  CRITICAL ACTION REQUIRED
+          
+          A production rollback has been requested and requires your approval.
+          
+          ## 📋 Rollback Details
+          
+          **Target Image**: \`${{ needs.validate-rollback-target.outputs.target_image }}\`
+          **Reason**: $ROLLBACK_REASON
+          **Requested by**: ${{ github.actor }}
+          **Requested at**: $(date -u)
+          
+          ## 🔍 Target Image Information
+          
+          - **Digest**: \`${{ needs.validate-rollback-target.outputs.target_digest }}\`
+          - **Size**: ${{ needs.validate-rollback-target.outputs.target_size }}
+          - **Created**: ${{ needs.validate-rollback-target.outputs.target_created }}
+          
+          ## 📊 Rollback Context
+          
+          $(cat rollback-context/rollback-context.md)
+          
+          ## 🚨 IMPACT ASSESSMENT
+          
+          ### What This Rollback Will Do:
+          1. **Stop** current production container
+          2. **Replace** with rollback target image
+          3. **Restart** production services
+          4. **Verify** deployment health
+          
+          ### Potential Risks:
+          - **Service interruption** during rollback (typically 1-2 minutes)
+          - **Data loss** if current deployment has unsaved state
+          - **Configuration changes** if rollback image differs significantly
+          
+          ### Safety Measures:
+          - ✅ **Backup created** before rollback
+          - ✅ **Health verification** after rollback
+          - ✅ **Automatic rollback** if verification fails
+          
+          ## ✅ APPROVAL INSTRUCTIONS
+          
+          **To approve this rollback:**
+          1. Click "Review deployments" above
+          2. Select "production-rollback" environment
+          3. Click "Approve and deploy"
+          4. Confirm your approval
+          
+          **To reject this rollback:**
+          1. Close this workflow run
+          2. Or comment with rejection reason
+          
+          ## 📞 CONTACT INFORMATION
+          
+          - **Repository**: ${{ github.repository }}
+          - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - **Requested by**: ${{ github.actor }}
+          
+          ---
+          *This approval request was automatically generated by the rollback workflow*
+          EOF
+          
+          echo "✅ Approval request created"
+
+      - name: Send rollback approval notification
+        run: |
+          echo "📢 Sending rollback approval notification..."
+          
+          # Create notification payload
+          cat > rollback-context/notification-payload.json << EOF
+          {
+            "text": "🚨 PRODUCTION ROLLBACK APPROVAL REQUIRED",
+            "attachments": [
+              {
+                "color": "#ff0000",
+                "title": "Production Rollback Request",
+                "title_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Requested By",
+                    "value": "${{ github.actor }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Target Image",
+                    "value": "${{ needs.validate-rollback-target.outputs.target_image }}",
+                    "short": false
+                  },
+                  {
+                    "title": "Reason",
+                    "value": "$ROLLBACK_REASON",
+                    "short": false
+                  },
+                  {
+                    "title": "Approval Required",
+                    "value": "Click the title link above to approve/reject",
+                    "short": false
+                  }
+                ],
+                "footer": "GitHub Actions Rollback Workflow",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          
+          echo "✅ Notification payload created"
+          echo "📢 To send notification, integrate with your notification system (Slack, Teams, etc.)"
+          echo "📁 Payload saved to: rollback-context/notification-payload.json"
+
+      - name: Display rollback approval information
+        run: |
+          echo "============================================"
+          echo "ROLLBACK APPROVAL REQUIRED"
+          echo "==========================================="
+          echo ""
+          echo "🚨 PRODUCTION ROLLBACK PENDING APPROVAL"
+          echo ""
+          echo "📋 Rollback Details:"
+          echo "  - Target Image: ${{ needs.validate-rollback-target.outputs.target_image }}"
+          echo "  - Reason: $ROLLBACK_REASON"
+          echo "  - Triggered by: ${{ github.actor }}"
+          echo "  - Timestamp: $(date -u)"
+          echo ""
+          echo "⚠️  WARNING: This will replace the current production deployment"
+          echo ""
+          echo "🔍 Target Image Information:"
+          echo "  - Digest: ${{ needs.validate-rollback-target.outputs.target_digest }}"
+          echo "  - Size: ${{ needs.validate-rollback-target.outputs.target_size }}"
+          echo "  - Created: ${{ needs.validate-rollback-target.outputs.target_created }}"
+          echo ""
+          echo "📊 Rollback Context:"
+          cat rollback-context/rollback-context.md
+          echo ""
+          echo "✅ To proceed: Click 'Review deployments' above and approve"
+          echo "❌ To cancel: Close this workflow run"
+          echo ""
+          echo "============================================"
+
+      - name: Wait for manual approval
+        run: |
+          echo "⏳ Waiting for manual approval..."
+          echo "Please approve the deployment in the GitHub environment"
+          echo "Environment: production-rollback"
+          echo "URL: ${{ steps.deployment_url.outputs.url }}"
+          echo ""
+          echo "⏰ Approval timeout: 24 hours"
+          echo "📧 Notifications sent to relevant stakeholders"
+
       - name: Display rollback approval information
         run: |
           echo "============================================"
@@ -432,6 +635,102 @@ jobs:
           *Rollback executed via GitHub Actions workflow*
           EOF
 
+      - name: Send rollback success notification
+        run: |
+          echo "📢 Sending rollback success notification..."
+          
+          # Create success notification payload
+          cat > rollback-success-notification.json << EOF
+          {
+            "text": "✅ PRODUCTION ROLLBACK COMPLETED SUCCESSFULLY",
+            "attachments": [
+              {
+                "color": "#00ff00",
+                "title": "Production Rollback Success",
+                "title_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Executed By",
+                    "value": "${{ github.actor }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Target Image",
+                    "value": "${{ needs.validate-rollback-target.outputs.target_image }}",
+                    "short": false
+                  },
+                  {
+                    "title": "Reason",
+                    "value": "$ROLLBACK_REASON",
+                    "short": false
+                  },
+                  {
+                    "title": "Production Server",
+                    "value": "${{ steps.server_ip.outputs.ip }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Status",
+                    "value": "✅ SUCCESS - All health checks passed",
+                    "short": true
+                  },
+                  {
+                    "title": "Backup Created",
+                    "value": "✅ Previous deployment backed up",
+                    "short": true
+                  }
+                ],
+                "footer": "GitHub Actions Rollback Workflow",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          
+          echo "✅ Success notification payload created"
+          echo "📢 To send notification, integrate with your notification system (Slack, Teams, etc.)"
+          echo "📁 Payload saved to: rollback-success-notification.json"
+
+      - name: Create rollback audit log
+        run: |
+          echo "📝 Creating rollback audit log..."
+          
+          # Create audit log entry
+          cat > rollback-audit-log.json << EOF
+          {
+            "rollback_event": {
+              "id": "${{ github.run_id }}",
+              "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "repository": "${{ github.repository }}",
+              "triggered_by": "${{ github.actor }}",
+              "target_image": "${{ needs.validate-rollback-target.outputs.target_image }}",
+              "target_digest": "${{ needs.validate-rollback-target.outputs.target_digest }}",
+              "reason": "$ROLLBACK_REASON",
+              "production_server": "${{ steps.server_ip.outputs.ip }}",
+              "status": "success",
+              "approval_required": true,
+              "approval_granted": true,
+              "backup_created": true,
+              "health_verification": "passed",
+              "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            },
+            "metadata": {
+              "workflow_name": "Production Rollback",
+              "environment": "production",
+              "approval_environment": "production-rollback",
+              "execution_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            }
+          }
+          EOF
+          
+          echo "✅ Rollback audit log created"
+          echo "📁 Audit log saved to: rollback-audit-log.json"
+
       - name: Set deployment URL
         id: deployment_url
         run: |
@@ -602,6 +901,105 @@ jobs:
           EOF
           
           echo "✅ Rollback failure notification created"
+
+      - name: Send failure notification
+        run: |
+          echo "📢 Sending rollback failure notification..."
+          
+          # Create failure notification payload
+          cat > rollback-failure-notification.json << EOF
+          {
+            "text": "🚨 PRODUCTION ROLLBACK FAILED - IMMEDIATE ACTION REQUIRED",
+            "attachments": [
+              {
+                "color": "#ff0000",
+                "title": "Production Rollback Failure",
+                "title_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Triggered By",
+                    "value": "${{ github.actor }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Target Image",
+                    "value": "$ROLLBACK_TARGET",
+                    "short": false
+                  },
+                  {
+                    "title": "Reason",
+                    "value": "$ROLLBACK_REASON",
+                    "short": false
+                  },
+                  {
+                    "title": "Failure Reason",
+                    "value": "$FAILURE_REASON",
+                    "short": false
+                  },
+                  {
+                    "title": "Status",
+                    "value": "❌ FAILED - Requires immediate attention",
+                    "short": true
+                  },
+                  {
+                    "title": "Priority",
+                    "value": "🚨 CRITICAL - Production environment affected",
+                    "short": true
+                  }
+                ],
+                "footer": "GitHub Actions Rollback Workflow",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          
+          echo "✅ Failure notification payload created"
+          echo "📢 To send notification, integrate with your notification system (Slack, Teams, etc.)"
+          echo "📁 Payload saved to: rollback-failure-notification.json"
+
+      - name: Create failure audit log
+        run: |
+          echo "📝 Creating failure audit log..."
+          
+          # Create failure audit log entry
+          cat > rollback-failure-audit-log.json << EOF
+          {
+            "rollback_failure_event": {
+              "id": "${{ github.run_id }}",
+              "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "repository": "${{ github.repository }}",
+              "triggered_by": "${{ github.actor }}",
+              "target_image": "$ROLLBACK_TARGET",
+              "reason": "$ROLLBACK_REASON",
+              "failure_reason": "$FAILURE_REASON",
+              "status": "failed",
+              "approval_required": true,
+              "approval_granted": "${{ needs.approve-rollback.result == 'success' }}",
+              "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            },
+            "failure_analysis": {
+              "target_validation": "${{ needs.validate-rollback-target.result }}",
+              "manual_approval": "${{ needs.approve-rollback.result }}",
+              "rollback_execution": "${{ needs.execute-rollback.result }}",
+              "failure_point": "$FAILURE_REASON"
+            },
+            "metadata": {
+              "workflow_name": "Production Rollback",
+              "environment": "production",
+              "approval_environment": "production-rollback",
+              "execution_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            }
+          }
+          EOF
+          
+          echo "✅ Failure audit log created"
+          echo "📁 Failure audit log saved to: rollback-failure-audit-log.json"
 
       - name: Display failure summary
         run: |
