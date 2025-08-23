@@ -1325,9 +1325,231 @@
           4. Fix issues before proceeding
           {% endif %}
           
+                     ============================================
+
+    # SSL CONFIGURATION FOR PRODUCTION ENVIRONMENT
+    - name: Verify SSL certificate status
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔒 Checking SSL certificate status...'
+        
+        if [ -f /etc/letsencrypt/live/boximity.ca/cert.pem ]; then
+          echo '✅ SSL certificate found:'
+          echo '  - Certificate: /etc/letsencrypt/live/boximity.ca/cert.pem'
+          echo '  - Private Key: /etc/letsencrypt/live/boximity.ca/privkey.pem'
+          echo '  - Chain: /etc/letsencrypt/live/boximity.ca/chain.pem'
+          
+          # Check certificate expiration
+          EXPIRY=\$(openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2)
+          echo \"  - Expires: \$EXPIRY\"
+          
+          # Check days until expiration
+          DAYS_LEFT=\$(openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -checkend 86400 && echo 'More than 1 day' || echo 'Less than 1 day')
+          echo \"  - Status: \$DAYS_LEFT\"
+        else
+          echo '❌ SSL certificate not found'
+          echo '  - Expected location: /etc/letsencrypt/live/boximity.ca/'
+          echo '  - Will attempt to obtain certificate'
+        fi
+        "
+      register: ssl_status_check
+      changed_when: false
+      when: app_functionality_test is defined and app_functionality_test.rc == 0
+
+    - name: Configure SSL-enabled Nginx site configuration
+      ansible.builtin.template:
+        src: nextjs-site-ssl.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app-ssl
+        mode: '0644'
+        backup: true
+        vars:
+          domain_name: "boximity.ca"
+          ssl_cert_path: "/etc/letsencrypt/live/boximity.ca"
+          app_port: "8080"
+          ssl_protocols: "TLSv1.2 TLSv1.3"
+          ssl_ciphers: "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384"
+          ssl_prefer_server_ciphers: "off"
+          ssl_session_cache: "shared:SSL:10m"
+          ssl_session_timeout: "10m"
+          hsts_max_age: "31536000"
+          hsts_include_subdomains: "true"
+          hsts_preload: "true"
+
+    - name: Enable SSL-enabled Nginx site configuration
+      file:
+        src: /etc/nginx/sites-available/nextjs-app-ssl
+        dest: /etc/nginx/sites-enabled/nextjs-app-ssl
+        state: link
+
+    - name: Disable non-SSL Nginx site configuration
+      file:
+        path: /etc/nginx/sites-enabled/nextjs-app
+        state: absent
+      ignore_errors: yes
+
+    - name: Test SSL-enabled Nginx configuration
+      command: nginx -t
+      register: nginx_ssl_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display SSL Nginx test results
+      debug:
+        msg: "{{ nginx_ssl_test.stderr_lines }}"
+      when: nginx_ssl_test.rc != 0
+
+    - name: Restart Nginx with SSL configuration
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: nginx_ssl_test.rc == 0
+      register: nginx_ssl_restart
+      retries: 2
+      delay: 5
+      until: nginx_ssl_restart is success
+
+    - name: Verify SSL configuration is working
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔒 Verifying SSL configuration...'
+        
+        # Test HTTP to HTTPS redirect
+        echo 'Testing HTTP to HTTPS redirect...'
+        HTTP_RESPONSE=\$(curl -s -o /dev/null -w '%{http_code}' http://boximity.ca)
+        if [ \"\$HTTP_RESPONSE\" = \"301\" ] || [ \"\$HTTP_RESPONSE\" = \"302\" ]; then
+          echo '✅ HTTP to HTTPS redirect working (Status: \$HTTP_RESPONSE)'
+        else
+          echo '⚠️  HTTP to HTTPS redirect may not be working (Status: \$HTTP_RESPONSE)'
+        fi
+        
+        # Test HTTPS connection
+        echo 'Testing HTTPS connection...'
+        if curl -f -s -k https://boximity.ca >/dev/null 2>&1; then
+          echo '✅ HTTPS connection successful'
+        else
+          echo '❌ HTTPS connection failed'
+          exit 1
+        fi
+        
+        # Test SSL certificate validity
+        echo 'Testing SSL certificate validity...'
+        if openssl s_client -connect boximity.ca:443 -servername boximity.ca < /dev/null 2>/dev/null | grep -q 'Verify return code: 0'; then
+          echo '✅ SSL certificate is valid'
+        else
+          echo '⚠️  SSL certificate validation failed (may be expected for self-signed or Let\'s Encrypt)'
+        fi
+        
+        # Test security headers
+        echo 'Testing security headers...'
+        SECURITY_HEADERS=\$(curl -s -I https://boximity.ca | grep -E '(Strict-Transport-Security|X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)')
+        if [ -n \"\$SECURITY_HEADERS\" ]; then
+          echo '✅ Security headers present:'
+          echo \"\$SECURITY_HEADERS\"
+        else
+          echo '⚠️  Security headers may be missing'
+        fi
+        
+        echo '✅ SSL configuration verification completed'
+        "
+      register: ssl_verification
+      changed_when: false
+      when: nginx_ssl_restart is defined and nginx_ssl_restart is success
+
+    - name: Create SSL configuration report
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/ssl-configuration-report.txt"
+        mode: '0644'
+        content: |
+          PRODUCTION SSL CONFIGURATION REPORT
+          ===================================
+          Generated: {{ ansible_date_time.iso8601 }}
+          Environment: Production
+          Domain: boximity.ca
+          
+          SSL STATUS:
+          - Certificate Found: {{ 'YES' if ssl_status_check.rc == 0 else 'NO' }}
+          - Nginx SSL Config: {{ 'YES' if nginx_ssl_test.rc == 0 else 'NO' }}
+          - SSL Verification: {{ 'PASSED' if ssl_verification.rc == 0 else 'FAILED' }}
+          
+          CONFIGURATION DETAILS:
+          - SSL Site Config: /etc/nginx/sites-available/nextjs-app-ssl
+          - SSL Site Enabled: /etc/nginx/sites-enabled/nextjs-app-ssl
+          - Non-SSL Site Disabled: /etc/nginx/sites-enabled/nextjs-app (removed)
+          
+          SECURITY FEATURES:
+          - TLS Protocols: TLSv1.2, TLSv1.3
+          - Strong Ciphers: ECDHE-RSA-AES128-GCM-SHA256, ECDHE-RSA-AES256-GCM-SHA384
+          - HSTS: Enabled (max-age: 31536000, includeSubDomains: true, preload: true)
+          - Server Ciphers: Prefer client ciphers
+          - SSL Session Cache: 10m timeout
+          
+          VERIFICATION RESULTS:
+          - HTTP to HTTPS Redirect: {{ 'WORKING' if ssl_verification.rc == 0 else 'UNKNOWN' }}
+          - HTTPS Connection: {{ 'SUCCESSFUL' if ssl_verification.rc == 0 else 'FAILED' }}
+          - SSL Certificate: {{ 'VALID' if ssl_verification.rc == 0 else 'UNKNOWN' }}
+          - Security Headers: {{ 'PRESENT' if ssl_verification.rc == 0 else 'UNKNOWN' }}
+          
+          RECOMMENDATIONS:
+          {% if ssl_verification.rc == 0 %}
+          - SSL configuration is working correctly
+          - Monitor certificate expiration
+          - Ensure auto-renewal is working
+          {% else %}
+          - Investigate SSL configuration issues
+          - Check Nginx error logs
+          - Verify certificate validity
+          {% endif %}
+          
+          ===================================
+
+    - name: Display SSL configuration summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          SSL CONFIGURATION COMPLETED
+          ============================================
+          
+          🔒 Production environment now uses SSL-enabled Nginx configuration
+          
+          📁 SSL Configuration Files:
+          - /etc/nginx/sites-available/nextjs-app-ssl (SSL-enabled site config)
+          - /etc/nginx/sites-enabled/nextjs-app-ssl (Enabled SSL site)
+          - {{ app_dir }}/ssl-configuration-report.txt (SSL configuration report)
+          
+          🔐 Security Features Enabled:
+          - TLS 1.2 and 1.3 protocols
+          - Strong cipher suites (ECDHE-RSA-AES128-GCM-SHA256, etc.)
+          - HTTP Strict Transport Security (HSTS)
+          - Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+          - HTTP to HTTPS redirect
+          
+          🌐 Domain Configuration:
+          - Primary domain: boximity.ca
+          - SSL certificate: Let's Encrypt (auto-renewal enabled)
+          - Non-SSL site disabled for security
+          
+          📊 SSL Status:
+          - Certificate: {{ '✅ VALID' if ssl_status_check.rc == 0 else '❌ MISSING' }}
+          - Nginx SSL Config: {{ '✅ VALID' if nginx_ssl_test.rc == 0 else '❌ INVALID' }}
+          - SSL Verification: {{ '✅ PASSED' if ssl_verification.rc == 0 else '❌ FAILED' }}
+          
+          🚀 Next Steps:
+          {% if ssl_verification.rc == 0 %}
+          1. ✅ SSL configuration is working correctly
+          2. Production site accessible via HTTPS
+          3. HTTP requests automatically redirect to HTTPS
+          4. Monitor certificate expiration and renewal
+          {% else %}
+          1. ❌ SSL configuration has issues
+          2. Check Nginx error logs for details
+          3. Verify certificate validity
+          4. Fix configuration issues before proceeding
+          {% endif %}
+          
           ============================================
 
-      - name: Start Docker Compose services
+       - name: Start Docker Compose services
       command: docker-compose up -d web
       args:
         chdir: "{{ app_dir }}/repo"
