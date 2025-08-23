@@ -91,7 +91,41 @@ jobs:
       promotion_success: ${{ steps.promotion.outputs.success }}
       rollback_tag: ${{ steps.promotion.outputs.rollback_tag }}
       commit_tag: ${{ steps.promotion.outputs.commit_tag }}
+      promotion_status: ${{ steps.status_tracking.outputs.status }}
+      promotion_timestamp: ${{ steps.status_tracking.outputs.timestamp }}
+      promotion_duration: ${{ steps.status_tracking.outputs.duration }}
     steps:
+      - name: Start Promotion Status Tracking
+        id: status_tracking
+        run: |
+          echo "📊 Starting promotion status tracking..."
+          START_TIME=$(date +%s)
+          TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          
+          echo "start_time=$START_TIME" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "status=in_progress" >> $GITHUB_OUTPUT
+          
+          echo "🚀 Promotion started at: $TIMESTAMP"
+          echo "⏱️  Status: IN PROGRESS"
+          
+          # Create status tracking summary
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** ${{ github.event.inputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🔒 Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📋 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          
       - name: Manual Approval Required
         id: approval
         run: |
@@ -163,6 +197,28 @@ jobs:
           echo "- Workflow: ${{ github.workflow }}"
           echo "- Run ID: ${{ github.run_id }}"
           
+      - name: Update Approval Status
+        id: update_approval_status
+        run: |
+          echo "✅ Manual approval completed - updating status..."
+          
+          # Update status tracking summary
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Approved By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Approval Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📋 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          
       - name: Validate staging image exists
         id: image_validation
         run: |
@@ -183,9 +239,25 @@ jobs:
             echo "Image Size: $IMAGE_SIZE"
             echo "Image Created: $IMAGE_CREATED"
             
-            echo "image_id=$IMAGE_ID" >> $GITHUB_OUTPUT
-            echo "image_size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
-            echo "image_created=$IMAGE_CREATED" >> $GITHUB_OUTPUT
+                      echo "image_id=$IMAGE_ID" >> $GITHUB_OUTPUT
+          echo "image_size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
+          echo "image_created=$IMAGE_CREATED" >> $GITHUB_OUTPUT
+          
+          # Update status tracking
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Validation:** 🔍 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Failed to pull staging image"
             exit 1
@@ -354,6 +426,23 @@ jobs:
           echo "signature_valid=$SIGNATURE_VALID" >> $GITHUB_OUTPUT
           echo "security_valid=$SECURITY_VALID" >> $GITHUB_OUTPUT
           echo "healthcheck_valid=$HEALTHCHECK_VALID" >> $GITHUB_OUTPUT
+          
+          # Update status tracking after validation
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Validation:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation Result:** $VALIDATION_RESULT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
       
       - name: Promote image to production
         id: promotion
@@ -525,6 +614,36 @@ jobs:
           echo "- Registry: ${{ env.REGISTRY }}"
           echo "- Repository: ${{ env.IMAGE_NAME }}"
           echo "- Staging Tag: $STAGING_TAG"
+          
+          # Calculate promotion duration and final status
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - ${{ steps.status_tracking.outputs.start_time }}))
+          DURATION_MINUTES=$((DURATION / 60))
+          DURATION_SECONDS=$((DURATION % 60))
+          
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "status=completed" >> $GITHUB_OUTPUT
+          
+          echo "⏱️  Total promotion time: ${DURATION_MINUTES}m ${DURATION_SECONDS}s"
+          echo "🎉 Promotion completed successfully!"
+          
+          # Final status update
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟢 COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Completed:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${DURATION_MINUTES}m ${DURATION_SECONDS}s" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. ✅ Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. ✅ Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**All steps completed successfully!** 🎉" >> $GITHUB_STEP_SUMMARY
       
       - name: Create promotion summary
         if: success()
@@ -541,12 +660,19 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ needs.promote-image.outputs.promotion_timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Completed:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${{ needs.promote-image.outputs.promotion_duration }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Approval Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Environment: production-promotion" >> $GITHUB_STEP_SUMMARY
           echo "- Manual Approval: ✅ Granted" >> $GITHUB_STEP_SUMMARY
           echo "- Approval Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status Tracking:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Overall Status: ${{ needs.promote-image.outputs.promotion_status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow Run: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
 
   promotion-complete:
     name: Promotion Complete
@@ -571,6 +697,80 @@ jobs:
           echo "- Go to Actions → Production Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "- Click 'Run workflow' → 'Run workflow'" >> $GITHUB_STEP_SUMMARY
           echo "- The production workflow will use the newly promoted image" >> $GITHUB_STEP_SUMMARY
+
+  promotion-status-report:
+    name: Generate Promotion Status Report
+    needs: [validate-promotion, promote-image]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate comprehensive status report
+        id: status_report
+        run: |
+          echo "## 📊 Comprehensive Promotion Status Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall status
+          if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
+            STATUS_ICON="🟢"
+            STATUS_TEXT="SUCCESS"
+          else
+            echo "**Overall Status:** 🔴 FAILED" >> $GITHUB_STEP_SUMMARY
+            STATUS_ICON="🔴"
+            STATUS_TEXT="FAILED"
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Target Environment: ${{ github.event.inputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Force Promotion: ${{ github.event.inputs.force_promotion }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "**Created Tags:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Production: ${{ needs.promote-image.outputs.promoted_image }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Latest: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Commit-Specific: ${{ needs.promote-image.outputs.commit_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Rollback: ${{ needs.promote-image.outputs.rollback_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            echo "**Timing Information:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Started: ${{ needs.promote-image.outputs.promotion_timestamp }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Duration: ${{ needs.promote-image.outputs.promotion_duration }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "**Workflow Information:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered By: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Event: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "1. ✅ Image promotion completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
+            echo "3. 📋 Use promoted image tags in production deployment" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔍 Monitor production deployment for any issues" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. ❌ Image promotion failed" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review workflow logs for error details" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🛠️  Fix any identified issues" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔄 Retry promotion when ready" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Store status for potential notifications
+          echo "status=$STATUS_TEXT" >> $GITHUB_OUTPUT
+          echo "status_icon=$STATUS_ICON" >> $GITHUB_OUTPUT
+          
+          echo "📊 Comprehensive status report generated"
+          echo "Status: $STATUS_TEXT"
 
   promotion-failed:
     name: Handle Promotion Failure

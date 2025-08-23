@@ -42,7 +42,7 @@
   - [x] 2.3 Add image validation and integrity checks before promotion
   - [x] 2.4 Implement image tagging strategy (staging → production)
   - [x] 2.5 Add promotion approval mechanism (manual or automated)
-  - [ ] 2.6 Create image promotion status tracking and reporting
+  - [x] 2.6 Create image promotion status tracking and reporting
 
 - [ ] 3.0 Update Ansible Playbooks for Image Promotion
   - [ ] 3.1 Modify staging playbook to trigger image promotion after successful deployment
