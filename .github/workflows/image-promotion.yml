@@ -1,0 +1,232 @@
+name: Image Promotion Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_image_tag:
+        description: 'Staging image tag to promote (e.g., staging, staging-abc123)'
+        required: true
+        default: 'staging'
+        type: string
+      target_environment:
+        description: 'Target environment for promotion'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - canary
+      promotion_reason:
+        description: 'Reason for promotion (e.g., "Manual testing passed")'
+        required: false
+        default: 'Manual promotion after testing'
+        type: string
+      force_promotion:
+        description: 'Force promotion even if image validation fails'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PRODUCTION_TAG: main
+  LATEST_TAG: latest
+
+jobs:
+  validate-promotion:
+    name: Validate Promotion Conditions
+    runs-on: ubuntu-latest
+    outputs:
+      can_promote: ${{ steps.validation.outputs.can_promote }}
+      staging_image: ${{ steps.validation.outputs.staging_image }}
+      promotion_reason: ${{ steps.validation.outputs.promotion_reason }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate promotion conditions
+        id: validation
+        run: |
+          # Get staging image details from manual input
+          STAGING_IMAGE_TAG="${{ github.event.inputs.staging_image_tag }}"
+          STAGING_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$STAGING_IMAGE_TAG"
+          
+          # Get promotion reason from manual input
+          PROMOTION_REASON="${{ github.event.inputs.promotion_reason }}"
+          
+          # Always allow promotion for manual workflow dispatch
+          CAN_PROMOTE=true
+          
+          echo "✅ Manual promotion requested"
+          echo "Staging Image Tag: $STAGING_IMAGE_TAG"
+          echo "Full Staging Image: $STAGING_IMAGE"
+          echo "Promotion Reason: $PROMOTION_REASON"
+          echo "Target Environment: ${{ github.event.inputs.target_environment }}"
+          
+          echo "can_promote=$CAN_PROMOTE" >> $GITHUB_OUTPUT
+          echo "staging_image=$STAGING_IMAGE" >> $GITHUB_OUTPUT
+          echo "promotion_reason=$PROMOTION_REASON" >> $GITHUB_OUTPUT
+
+  promote-image:
+    name: Promote Staging Image to Production
+    needs: validate-promotion
+    if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      promoted_image: ${{ steps.promotion.outputs.production_image }}
+      promotion_success: ${{ steps.promotion.outputs.success }}
+    steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Validate staging image exists
+        id: image_validation
+        run: |
+          STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
+          
+          echo "🔍 Validating staging image: $STAGING_IMAGE"
+          
+          # Check if image exists and can be pulled
+          if docker pull "$STAGING_IMAGE"; then
+            echo "✅ Staging image exists and is accessible"
+            
+            # Get image details
+            IMAGE_ID=$(docker images --format "{{.ID}}" "$STAGING_IMAGE" | head -1)
+            IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
+            IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)
+            
+            echo "Image ID: $IMAGE_ID"
+            echo "Image Size: $IMAGE_SIZE"
+            echo "Image Created: $IMAGE_CREATED"
+            
+            echo "image_id=$IMAGE_ID" >> $GITHUB_OUTPUT
+            echo "image_size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
+            echo "image_created=$IMAGE_CREATED" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to pull staging image"
+            exit 1
+          fi
+      
+      - name: Promote image to production
+        id: promotion
+        run: |
+          STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
+          PRODUCTION_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}"
+          LATEST_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}"
+          
+          echo "🚀 Starting image promotion"
+          echo "From: $STAGING_IMAGE"
+          echo "To: $PRODUCTION_IMAGE"
+          echo "Latest: $LATEST_IMAGE"
+          
+          # Tag the staging image for production
+          echo "📝 Tagging image for production..."
+          docker tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE"
+          
+          # Tag as latest
+          echo "📝 Tagging image as latest..."
+          docker tag "$STAGING_IMAGE" "$LATEST_IMAGE"
+          
+          # Push production image
+          echo "⬆️  Pushing production image..."
+          if docker push "$PRODUCTION_IMAGE"; then
+            echo "✅ Production image pushed successfully"
+          else
+            echo "❌ Failed to push production image"
+            exit 1
+          fi
+          
+          # Push latest image
+          echo "⬆️  Pushing latest image..."
+          if docker push "$LATEST_IMAGE"; then
+            echo "✅ Latest image pushed successfully"
+          else
+            echo "❌ Failed to push latest image"
+            exit 1
+          fi
+          
+          echo "🎉 Image promotion completed successfully!"
+          echo "production_image=$PRODUCTION_IMAGE" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+          
+          # Log promotion details
+          echo "Promotion Details:"
+          echo "- Staging Image: $STAGING_IMAGE"
+          echo "- Production Image: $PRODUCTION_IMAGE"
+          echo "- Latest Image: $LATEST_IMAGE"
+          echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}"
+          echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
+          echo "- Triggered By: ${{ github.actor }}"
+          echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+      
+      - name: Create promotion summary
+        if: success()
+        run: |
+          echo "## 🚀 Image Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Successfully promoted" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**From:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**To:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  promotion-complete:
+    name: Promotion Complete
+    needs: [validate-promotion, promote-image]
+    if: ${{ needs.promote-image.outputs.promotion_success == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create completion summary
+        run: |
+          echo "## 🎉 Image Promotion Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Image successfully promoted to production registry" >> $GITHUB_STEP_SUMMARY
+          echo "**Production Image:** ${{ needs.promote-image.outputs.promoted_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Image is ready in production registry" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
+          echo "3. 📋 Use the production image tag in your deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Production Deployment:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Go to Actions → Production Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- Click 'Run workflow' → 'Run workflow'" >> $GITHUB_STEP_SUMMARY
+          echo "- The production workflow will use the newly promoted image" >> $GITHUB_STEP_SUMMARY
+
+  promotion-failed:
+    name: Handle Promotion Failure
+    needs: [validate-promotion, promote-image]
+    if: ${{ failure() && needs.validate-promotion.outputs.can_promote == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log promotion failure
+        run: |
+          echo "❌ Image promotion failed"
+          echo "Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}"
+          echo "Failure occurred in job: ${{ needs.promote-image.outputs.promotion_success }}"
+          
+          # Log failure details for debugging
+          echo "## 🔍 Promotion Failure Details" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ❌ Promotion failed" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Failure Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check the logs above for error details" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify the staging image exists and is accessible" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check registry permissions and authentication" >> $GITHUB_STEP_SUMMARY
+          echo "4. Retry promotion manually if needed" >> $GITHUB_STEP_SUMMARY
