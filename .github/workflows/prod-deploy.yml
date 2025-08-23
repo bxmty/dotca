@@ -1,11 +1,121 @@
 name: Production Pipeline
 
 on:
-  push:
-    branches:
-      - main
+  # Manual trigger for production deployment using promoted images
+  workflow_dispatch:
+    inputs:
+      promoted_image_tag:
+        description: 'Promoted image tag to deploy (e.g., main, main-abc123)'
+        required: true
+        default: 'main'
+        type: string
+      deployment_reason:
+        description: 'Reason for production deployment'
+        required: false
+        default: 'Manual production deployment'
+        type: string
+      skip_tests:
+        description: 'Skip Selenium tests (use for emergency deployments)'
+        required: false
+        default: false
+        type: boolean
+  
+  # Automatic trigger after successful image promotion
+  workflow_call:
+    inputs:
+      promoted_image_tag:
+        description: 'Promoted image tag to deploy'
+        required: true
+        type: string
+      deployment_reason:
+        description: 'Reason for deployment'
+        required: false
+        type: string
+        default: 'Automatic deployment after image promotion'
+    secrets:
+      DO_TOKEN:
+        required: true
+      SSH_PRIVATE_KEY:
+        required: true
+      SSH_KEY_FINGERPRINT:
+        required: true
+      SPACES_ACCESS_ID:
+        required: true
+      SPACES_SECRET_KEY:
+        required: true
+      BREVO_API_KEY:
+        required: true
+      STRIPE_SECRET_KEY:
+        required: true
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+        required: true
+      NEXT_PUBLIC_PRODUCTION_GA_ID:
+        required: true
+      GITHUB_TOKEN:
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  # Use promoted image tag from input, fallback to 'main'
+  PROMOTED_IMAGE_TAG: ${{ inputs.promoted_image_tag || github.event.inputs.promoted_image_tag || 'main' }}
+  DEPLOYMENT_REASON: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}
 
 jobs:
+  verify-promoted-image:
+    name: Verify Promoted Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_verified: ${{ steps.verification.outputs.verified }}
+      full_image_name: ${{ steps.verification.outputs.full_image_name }}
+      image_digest: ${{ steps.verification.outputs.image_digest }}
+    steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify promoted image exists and is accessible
+        id: verification
+        run: |
+          FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PROMOTED_IMAGE_TAG }}"
+          
+          echo "🔍 Verifying promoted image: $FULL_IMAGE_NAME"
+          echo "📋 Deployment reason: ${{ env.DEPLOYMENT_REASON }}"
+          
+          # Pull and verify the promoted image
+          if docker pull "$FULL_IMAGE_NAME"; then
+            echo "✅ Successfully pulled promoted image"
+            
+            # Get image details
+            IMAGE_DIGEST=$(docker images --digests "$FULL_IMAGE_NAME" --format "{{.Digest}}" | head -1)
+            IMAGE_SIZE=$(docker images --format "{{.Size}}" "$FULL_IMAGE_NAME" | head -1)
+            IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$FULL_IMAGE_NAME" | head -1)
+            
+            echo "📊 Image Details:"
+            echo "- Digest: $IMAGE_DIGEST"
+            echo "- Size: $IMAGE_SIZE"
+            echo "- Created: $IMAGE_CREATED"
+            
+            # Set outputs
+            echo "verified=true" >> $GITHUB_OUTPUT
+            echo "full_image_name=$FULL_IMAGE_NAME" >> $GITHUB_OUTPUT
+            echo "image_digest=$IMAGE_DIGEST" >> $GITHUB_OUTPUT
+            
+            echo "✅ Promoted image verification successful"
+          else
+            echo "❌ Failed to pull promoted image: $FULL_IMAGE_NAME"
+            echo "This usually means:"
+            echo "1. The image tag doesn't exist in the registry"
+            echo "2. The image promotion hasn't completed yet"
+            echo "3. There are authentication issues"
+            echo ""
+            echo "Please verify the image exists by checking:"
+            echo "https://github.com/${{ github.repository }}/pkgs/container/dotca"
+            exit 1
+          fi
     
   setup-infra:
     name: Setup Infrastructure
@@ -236,7 +346,8 @@ jobs:
   deploy-app:
     name: Deploy Application
     runs-on: ubuntu-latest
-    needs: [setup-infra]
+    needs: [verify-promoted-image, setup-infra]
+    if: ${{ needs.verify-promoted-image.outputs.image_verified == 'true' }}
     
     steps:
       - name: Checkout code
@@ -320,6 +431,10 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           GA_PRODUCTION_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+          # Use promoted image instead of building from scratch
+          DOCKER_IMAGE: ${{ needs.verify-promoted-image.outputs.full_image_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
@@ -327,7 +442,13 @@ jobs:
             exit 1
           fi
           
-          echo "Using Droplet IP: $DROPLET_IP for deployment"
+          echo "🚀 Production Deployment using Image Promotion"
+          echo "=============================================="
+          echo "Droplet IP: $DROPLET_IP"
+          echo "Promoted Image: $DOCKER_IMAGE"
+          echo "Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}"
+          echo "Deployment Reason: ${{ env.DEPLOYMENT_REASON }}"
+          echo "=============================================="
           
           # Set up ansible inventory dynamically
           echo "[digitalocean]" > inventory.ini
@@ -365,28 +486,38 @@ jobs:
   deployment-verification:
     name: Verify Deployment
     runs-on: ubuntu-latest
-    needs: [setup-infra, deploy-app]
+    needs: [verify-promoted-image, setup-infra, deploy-app]
     
     steps:
       - name: Production Deployment Status
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
-          echo "✅ Production environment has been deployed with Ansible!"
+          echo "✅ Production deployment completed using promoted image!"
           echo "🌐 Access it at http://$DROPLET_IP/"
+          echo ""
+          echo "📊 Deployment Summary:"
+          echo "- Promoted Image: ${{ needs.verify-promoted-image.outputs.full_image_name }}"
+          echo "- Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}"
+          echo "- Deployment Reason: ${{ env.DEPLOYMENT_REASON }}"
+          echo "- Workflow: Image Promotion → Production Deployment"
+          echo ""
           
-          # Optional - could add health checks here
-          echo "Checking if application is responding..."
+          # Health check
+          echo "🔍 Checking if application is responding..."
           if curl -s --head --request GET http://$DROPLET_IP/ | grep "200 OK" > /dev/null; then
             echo "✅ Application is up and running!"
+            echo "🎉 Production deployment successful!"
           else
             echo "⚠️ Application might not be fully available yet"
+            echo "📝 Please check application logs if issues persist"
           fi
 
   selenium-tests:
     name: Run Selenium Tests
     runs-on: ubuntu-latest
     needs: [deployment-verification]
+    if: ${{ !inputs.skip_tests && !github.event.inputs.skip_tests }}
     
     steps:
       - name: Checkout code
@@ -413,3 +544,58 @@ jobs:
           APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
         run: npm run test:e2e
         continue-on-error: true
+
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [verify-promoted-image, setup-infra, deploy-app, deployment-verification, selenium-tests]
+    if: always()
+    steps:
+      - name: Generate deployment summary
+        run: |
+          echo "## 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall status
+          if [ "${{ needs.deploy-app.result }}" = "success" ] && [ "${{ needs.deployment-verification.result }}" = "success" ]; then
+            echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
+            STATUS="SUCCESS"
+          else
+            echo "**Overall Status:** 🔴 FAILED" >> $GITHUB_STEP_SUMMARY
+            STATUS="FAILED"
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Promoted Image: ${{ needs.verify-promoted-image.outputs.full_image_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment Reason: ${{ env.DEPLOYMENT_REASON }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Production URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Job Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Image Verification: ${{ needs.verify-promoted-image.result == 'success' && '✅' || '❌' }} ${{ needs.verify-promoted-image.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Infrastructure Setup: ${{ needs.setup-infra.result == 'success' && '✅' || '❌' }} ${{ needs.setup-infra.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Application Deployment: ${{ needs.deploy-app.result == 'success' && '✅' || '❌' }} ${{ needs.deploy-app.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment Verification: ${{ needs.deployment-verification.result == 'success' && '✅' || '❌' }} ${{ needs.deployment-verification.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Handle selenium tests (might be skipped)
+          if [ "${{ inputs.skip_tests }}" = "true" ] || [ "${{ github.event.inputs.skip_tests }}" = "true" ]; then
+            echo "- Selenium Tests: ⏭️ SKIPPED (Emergency deployment)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Selenium Tests: ${{ needs.selenium-tests.result == 'success' && '✅' || (needs.selenium-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.selenium-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [ "$STATUS" = "SUCCESS" ]; then
+            echo "1. ✅ Production deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Monitor application performance and logs" >> $GITHUB_STEP_SUMMARY
+            echo "3. 📋 Verify all features are working as expected" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🎉 Deployment process complete!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. ❌ Production deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review workflow logs for error details" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🛠️ Fix any identified issues" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔄 Consider rollback if necessary" >> $GITHUB_STEP_SUMMARY
+          fi
