@@ -720,7 +720,7 @@ jobs:
 
   send-promotion-notifications:
     name: Send Promotion Notifications
-    needs: [validate-promotion, promote-image]
+    needs: [validate-promotion, promote-image, trigger-production-deployment]
     if: always()
     uses: ./.github/workflows/deployment-notifications.yml
     with:
@@ -735,6 +735,7 @@ jobs:
           "promotion_reason": "${{ needs.validate-promotion.outputs.promotion_reason }}",
           "promotion_duration": "${{ needs.promote-image.outputs.promotion_duration }}",
           "target_environment": "${{ github.event.inputs.target_environment }}",
+          "deployment_triggered": "${{ needs.trigger-production-deployment.result == 'success' && 'true' || 'false' }}",
           "workflow_run_id": "${{ github.run_id }}",
           "triggered_by": "${{ github.actor }}"
         }
@@ -743,7 +744,7 @@ jobs:
 
   promotion-status-report:
     name: Generate Promotion Status Report
-    needs: [validate-promotion, promote-image, send-promotion-notifications]
+    needs: [validate-promotion, promote-image, trigger-production-deployment, send-promotion-notifications]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -795,12 +796,34 @@ jobs:
           echo "- Event: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          echo "**Deployment Status:**" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.target_environment }}" = "production" ]; then
+            if [ "${{ needs.trigger-production-deployment.result }}" = "success" ]; then
+              echo "- Production Deployment: ✅ TRIGGERED SUCCESSFULLY" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.trigger-production-deployment.result }}" = "failure" ]; then
+              echo "- Production Deployment: ❌ TRIGGER FAILED" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.trigger-production-deployment.result }}" = "skipped" ]; then
+              echo "- Production Deployment: ⏭️ SKIPPED (conditions not met)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- Production Deployment: ⚠️ UNKNOWN STATUS" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- Production Deployment: ⏭️ SKIPPED (target: ${{ github.event.inputs.target_environment }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
             echo "1. ✅ Image promotion completed successfully" >> $GITHUB_STEP_SUMMARY
-            echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
-            echo "3. 📋 Use promoted image tags in production deployment" >> $GITHUB_STEP_SUMMARY
-            echo "4. 🔍 Monitor production deployment for any issues" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ needs.trigger-production-deployment.result }}" = "success" ]; then
+              echo "2. 🚀 Production deployment workflow has been triggered automatically" >> $GITHUB_STEP_SUMMARY
+              echo "3. 📋 Monitor the production deployment progress" >> $GITHUB_STEP_SUMMARY
+              echo "4. 🔍 Verify production deployment success when complete" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
+              echo "3. 📋 Use promoted image tags in production deployment" >> $GITHUB_STEP_SUMMARY
+              echo "4. 🔍 Monitor production deployment for any issues" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "1. ❌ Image promotion failed" >> $GITHUB_STEP_SUMMARY
             echo "2. 🔍 Review workflow logs for error details" >> $GITHUB_STEP_SUMMARY
@@ -819,44 +842,21 @@ jobs:
     name: Trigger Production Deployment
     needs: [validate-promotion, promote-image]
     if: ${{ needs.promote-image.outputs.promotion_success == 'true' && github.event.inputs.target_environment == 'production' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger production deployment workflow
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { data: workflow } = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'prod-deploy.yml',
-              ref: 'main',
-              inputs: {
-                promoted_image_tag: 'main',
-                deployment_reason: 'Automatic deployment after successful image promotion: ${{ needs.validate-promotion.outputs.promotion_reason }}'
-              }
-            });
-            
-            console.log('🚀 Production deployment workflow triggered successfully');
-            console.log(`Workflow run will be available at: https://github.com/${context.repo.owner}/${context.repo.repo}/actions`);
-            
-            // Add to step summary
-            core.summary
-              .addHeading('🚀 Production Deployment Triggered', 2)
-              .addRaw('')
-              .addRaw('**Deployment Details:**')
-              .addRaw(`- Promoted Image Tag: main`)
-              .addRaw(`- Deployment Reason: Automatic deployment after successful image promotion`)
-              .addRaw(`- Target Environment: production`)
-              .addRaw('')
-              .addRaw('**Next Steps:**')
-              .addRaw('1. ✅ Image promotion completed successfully')
-              .addRaw('2. 🚀 Production deployment workflow has been triggered')
-              .addRaw('3. 📋 Monitor the production deployment progress')
-              .addRaw('4. 🔍 Verify production deployment success')
-              .addRaw('')
-              .addRaw(`[📊 View Production Deployment Progress](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/prod-deploy.yml)`)
-              .write();
+    uses: ./.github/workflows/prod-deploy.yml
+    with:
+      promoted_image_tag: 'main'
+      deployment_reason: 'Automatic deployment after successful image promotion: ${{ needs.validate-promotion.outputs.promotion_reason }}'
+    secrets:
+      DO_TOKEN: ${{ secrets.DO_TOKEN }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_KEY_FINGERPRINT: ${{ secrets.SSH_KEY_FINGERPRINT }}
+      SPACES_ACCESS_ID: ${{ secrets.SPACES_ACCESS_ID }}
+      SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   promotion-failed:
     name: Handle Promotion Failure
