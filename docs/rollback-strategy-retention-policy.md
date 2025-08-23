@@ -376,6 +376,301 @@ alerts:
     - message: "❌ Production rollback failed - manual intervention required"
 ```
 
+## DevOps Engineer Instructions
+
+### Emergency Rollback Procedures
+
+#### 1. Immediate Rollback (Critical Issues)
+
+When facing critical production issues that require immediate rollback:
+
+```bash
+# Step 1: Assess the situation (SSH to production server)
+ssh root@your-production-server
+
+# Check current container status
+docker ps | grep dotca
+docker logs dotca-app-web-1 --tail=50
+
+# Step 2: Identify current production image
+CURRENT_IMAGE=$(docker inspect dotca-app-web-1 --format='{{.Config.Image}}')
+echo "Current image: $CURRENT_IMAGE"
+
+# Step 3: Find the previous stable image
+# Check image history in GitHub Container Registry
+gh api repos/bxtech/dotca/packages/container/dotca/versions | jq -r '.[].metadata.container.tags[]' | head -10
+
+# Step 4: Execute rollback via GitHub Actions
+gh workflow run rollback.yml \
+  --field rollback_target="main-{previous-sha}" \
+  --field rollback_reason="Critical production issue - immediate rollback required"
+```
+
+#### 2. Planned Rollback (Non-Critical Issues)
+
+For planned rollbacks with lower urgency:
+
+```bash
+# Step 1: Analyze the issue (SSH to production server)
+ssh root@your-production-server
+
+# Review logs, metrics, and user reports
+docker logs dotca-app-web-1 --since=1h | grep ERROR
+docker stats dotca-app-web-1 --no-stream
+
+# Step 2: Identify appropriate rollback target
+# Check recent deployments in Docker Compose
+cd /app/repo
+docker images ghcr.io/bxtech/dotca | head -5
+
+# Step 3: Create rollback branch (for tracking)
+git checkout -b rollback/$(date +%Y%m%d-%H%M%S)
+git commit --allow-empty -m "Rollback initiated: [REASON]"
+git push origin rollback/$(date +%Y%m%d-%H%M%S)
+
+# Step 4: Execute controlled rollback
+gh workflow run rollback.yml \
+  --field rollback_target="v1.2.3" \
+  --field rollback_reason="Performance degradation in new feature"
+```
+
+#### 3. Manual Rollback (Workflow Failure)
+
+If GitHub Actions rollback workflow fails:
+
+```bash
+# Step 1: SSH to production server
+ssh root@your-production-server
+cd /app/repo
+
+# Step 2: Update docker-compose.yml with rollback image
+# Edit the environment variable to use rollback image
+export DOCKER_IMAGE=ghcr.io/bxtech/dotca:main-{previous-sha}
+
+# Step 3: Pull the rollback image
+docker pull $DOCKER_IMAGE
+
+# Step 4: Stop current services and deploy rollback
+docker-compose down
+docker-compose up -d
+
+# Step 5: Verify rollback deployment
+docker-compose ps
+docker logs dotca-app-web-1 --tail=20
+```
+
+### Rollback Verification Checklist
+
+After any rollback, verify the following:
+
+```bash
+# ✓ 1. Container Status (SSH to production server)
+ssh root@your-production-server
+docker ps | grep dotca
+
+# ✓ 2. Service Health
+curl -f http://your-production-server/api/health || echo "Health check failed"
+
+# ✓ 3. Application Logs
+docker logs dotca-app-web-1 --tail=20 | grep -E "(ERROR|FATAL|started|ready)"
+
+# ✓ 4. Container Resource Usage
+docker stats dotca-app-web-1 --no-stream
+
+# ✓ 5. External Integrations
+curl -f http://your-production-server/api/status || echo "API status check failed"
+
+# ✓ 6. Nginx Status (if using reverse proxy)
+systemctl status nginx
+nginx -t
+
+# ✓ 7. SSL Certificate Status (if configured)
+curl -I https://your-domain.com | grep -E "(200|301|302)"
+
+# ✓ 8. Docker Compose Services
+cd /app/repo && docker-compose ps
+```
+
+### Troubleshooting Common Rollback Issues
+
+#### Issue 1: Rollback Target Not Found
+
+```bash
+# Problem: Image tag doesn't exist in registry
+# Solution: Find available tags
+gh api repos/bxtech/dotca/packages/container/dotca/versions | \
+  jq -r '.[].metadata.container.tags[]' | \
+  grep -E "(main-|v[0-9])" | \
+  head -20
+
+# Use the most recent available tag
+gh workflow run rollback.yml --field rollback_target="main-{available-sha}"
+```
+
+#### Issue 2: Rollback Deployment Fails
+
+```bash
+# Problem: Docker container fails to start
+# Solution: Check resource constraints and conflicts
+
+# Check system resource usage
+ssh root@your-production-server
+free -h
+df -h
+docker system df
+
+# Check for port conflicts
+netstat -tlnp | grep :8080
+
+# Force cleanup if needed
+docker-compose down --remove-orphans
+docker system prune -f
+docker volume prune -f
+```
+
+#### Issue 3: Database Migration Conflicts
+
+```bash
+# Problem: Database schema incompatibility
+# Solution: Check and potentially rollback migrations
+
+# SSH to production server and check migration status
+ssh root@your-production-server
+cd /app/repo
+
+# Check current migration status (if using a database)
+docker-compose exec web npm run db:migrate:status
+
+# If needed, rollback migrations to previous state
+docker-compose exec web npm run db:migrate:down
+
+# Verify database state
+docker-compose exec web npm run db:check
+
+# Alternative: Access container directly
+docker exec -it dotca-app-web-1 npm run db:migrate:status
+```
+
+### Monitoring and Alerting for DevOps
+
+#### Real-time Monitoring Commands
+
+```bash
+# Monitor rollback progress (SSH to production server)
+ssh root@your-production-server
+watch docker ps
+
+# Monitor application health
+watch curl -s http://your-production-server/api/health | jq '.status'
+
+# Monitor error rates
+docker logs dotca-app-web-1 -f | grep ERROR
+
+# Monitor resource usage during rollback
+watch docker stats dotca-app-web-1
+
+# Monitor Docker Compose services
+cd /app/repo && watch docker-compose ps
+```
+
+#### Alert Configuration
+
+Set up monitoring alerts for:
+
+```yaml
+# Slack/Teams notification commands
+rollback_alerts:
+  start_rollback: |
+    curl -X POST -H 'Content-type: application/json' \
+    --data '{"text":"🚨 ROLLBACK STARTED: Production rollback initiated by $USER"}' \
+    $SLACK_WEBHOOK_URL
+  
+  rollback_success: |
+    curl -X POST -H 'Content-type: application/json' \
+    --data '{"text":"✅ ROLLBACK COMPLETE: Production successfully rolled back"}' \
+    $SLACK_WEBHOOK_URL
+  
+  rollback_failed: |
+    curl -X POST -H 'Content-type: application/json' \
+    --data '{"text":"❌ ROLLBACK FAILED: Manual intervention required in production"}' \
+    $SLACK_WEBHOOK_URL
+```
+
+### Post-Rollback Actions
+
+#### 1. Immediate Actions (Within 10 minutes)
+
+```bash
+# Document the incident
+echo "Rollback completed at $(date)" >> /tmp/rollback-log.txt
+echo "Reason: $ROLLBACK_REASON" >> /tmp/rollback-log.txt
+echo "Target: $ROLLBACK_TARGET" >> /tmp/rollback-log.txt
+
+# Notify stakeholders
+./scripts/notify-rollback-complete.sh
+```
+
+#### 2. Short-term Actions (Within 1 hour)
+
+```bash
+# Create incident report
+gh issue create \
+  --title "Production Rollback: $(date +%Y-%m-%d)" \
+  --body "Rollback completed. Details: [REASON]. Target: [TARGET]. Impact: [DESCRIPTION]"
+
+# Update monitoring dashboards
+# Check Grafana/monitoring tools for impact metrics
+
+# Review logs for root cause
+kubectl logs -n production deployment/dotca-app --since=2h > rollback-analysis.log
+```
+
+#### 3. Long-term Actions (Within 24 hours)
+
+```bash
+# Conduct rollback retrospective
+# Schedule meeting with team to discuss:
+# - What caused the need for rollback
+# - How to prevent similar issues
+# - Improvements to rollback process
+
+# Update documentation if needed
+# Document any new procedures discovered
+# Update runbooks with lessons learned
+```
+
+### DevOps Escalation Procedures
+
+#### Level 1: DevOps Engineer
+- Execute standard rollback procedures
+- Verify application health
+- Monitor for 30 minutes post-rollback
+
+#### Level 2: Senior DevOps/Platform Team
+- Complex rollback scenarios
+- Database migration conflicts
+- Infrastructure-level issues
+
+#### Level 3: Engineering Leadership
+- Business-critical failures
+- Security incidents requiring rollback
+- Multi-service rollback coordination
+
+### Emergency Contacts
+
+```yaml
+emergency_contacts:
+  primary_oncall: "+1-XXX-XXX-XXXX"
+  secondary_oncall: "+1-XXX-XXX-XXXX"
+  platform_team_lead: "+1-XXX-XXX-XXXX"
+  engineering_manager: "+1-XXX-XXX-XXXX"
+
+communication_channels:
+  primary: "#devops-alerts"
+  secondary: "#engineering-incidents"
+  executive: "#exec-incidents"
+```
+
 ## Best Practices
 
 ### Rollback Best Practices
