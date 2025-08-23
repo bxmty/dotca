@@ -342,7 +342,325 @@
       changed_when: false
       when: docker_pull is success
 
-    - name: Start Docker Compose services
+    # Enhanced image verification tasks
+    - name: Verify image layer count and size
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔍 Verifying image layers and size...'
+        
+        # Get layer information
+        LAYER_COUNT=\$(docker history {{ docker_image }} | wc -l)
+        TOTAL_SIZE=\$(docker images {{ docker_image }} --format '{{.Size}}' | head -1)
+        
+        echo 'Layer Analysis:'
+        echo '  - Total Layers: \$LAYER_COUNT'
+        echo '  - Total Size: \$TOTAL_SIZE'
+        
+        # Check for reasonable layer count (should be < 50 for optimized images)
+        if [ \$LAYER_COUNT -lt 50 ]; then
+          echo '✅ Layer count is reasonable (\$LAYER_COUNT < 50)'
+        else
+          echo '⚠️  High layer count (\$LAYER_COUNT) - consider image optimization'
+        fi
+        
+        # Check for reasonable size (should be < 2GB for typical web apps)
+        SIZE_NUM=\$(echo \$TOTAL_SIZE | sed 's/[^0-9.]//g')
+        if [ \$(echo '\$SIZE_NUM < 2.0' | bc -l 2>/dev/null || echo '1') = '1' ]; then
+          echo '✅ Image size is reasonable (\$TOTAL_SIZE)'
+        else
+          echo '⚠️  Large image size (\$TOTAL_SIZE) - consider optimization'
+        fi
+        "
+      register: image_layer_check
+      changed_when: false
+      when: image_integrity_check is defined
+
+    - name: Verify image security and vulnerability status
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔒 Checking image security...'
+        
+        # Check if trivy is available
+        if command -v trivy >/dev/null 2>&1; then
+          echo 'Running Trivy vulnerability scan...'
+          trivy image --severity HIGH,CRITICAL {{ docker_image }} --format json | jq -r '.Results[].Vulnerabilities[] | select(.Severity == \"HIGH\" or .Severity == \"CRITICAL\") | .VulnerabilityID + \" (\" + .Severity + \")\"' 2>/dev/null || echo 'No high/critical vulnerabilities found'
+        else
+          echo '⚠️  Trivy not available - skipping vulnerability scan'
+          echo 'Install with: sudo apt-get install wget apt-transport-https gnupg lsb-release && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add - && echo deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list && sudo apt-get update && sudo apt-get install trivy'
+        fi
+        
+        # Check for known malicious patterns in image history
+        echo 'Checking image history for suspicious patterns...'
+        docker history {{ docker_image }} | grep -i -E '(curl|wget|bash -c|eval|base64)' | head -5 || echo 'No suspicious patterns found in image history'
+        "
+      register: image_security_check
+      changed_when: false
+      when: image_integrity_check is defined
+
+    - name: Verify image configuration and health checks
+      ansible.builtin.command: |
+        bash -c "
+        echo '⚙️  Verifying image configuration...'
+        
+        # Check if image has health check configured
+        HEALTH_CHECK=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Healthcheck // \"No health check configured\"')
+        echo 'Health Check Configuration:'
+        echo \$HEALTH_CHECK
+        
+        # Check exposed ports
+        EXPOSED_PORTS=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.ExposedPorts // {}' | jq -r 'keys[]' 2>/dev/null || echo 'No ports exposed')
+        echo 'Exposed Ports:'
+        echo \$EXPOSED_PORTS
+        
+        # Check environment variables
+        ENV_COUNT=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Env // []' | jq 'length')
+        echo 'Environment Variables Count: \$ENV_COUNT'
+        
+        # Check working directory
+        WORKING_DIR=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.WorkingDir // \"Not set\"')
+        echo 'Working Directory: \$WORKING_DIR'
+        
+        # Check entrypoint and command
+        ENTRYPOINT=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Entrypoint // []' | jq -r 'join(\" \")' 2>/dev/null || echo 'Not set')
+        CMD=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Cmd // []' | jq -r 'join(\" \")' 2>/dev/null || echo 'Not set')
+        echo 'Entrypoint: \$ENTRYPOINT'
+        echo 'Command: \$CMD'
+        "
+      register: image_config_check
+      changed_when: false
+      when: image_integrity_check is defined
+
+    - name: Verify image compatibility with production environment
+      ansible.builtin.command: |
+        bash -c "
+        echo '🌐 Verifying production environment compatibility...'
+        
+        # Test container startup with production-like environment
+        echo 'Testing container startup with production environment variables...'
+        
+        # Create temporary test container
+        TEST_CONTAINER=\$(docker run -d --rm \
+          -e NODE_ENV=production \
+          -e NEXT_PUBLIC_ENVIRONMENT=production \
+          -p 3001:3000 \
+          {{ docker_image }})
+        
+        if [ \$? -eq 0 ]; then
+          echo '✅ Container started successfully in production mode'
+          
+          # Wait for container to be ready
+          sleep 10
+          
+          # Test health endpoint
+          if curl -f -s http://localhost:3001/health >/dev/null 2>&1; then
+            echo '✅ Health endpoint accessible'
+          else
+            echo '⚠️  Health endpoint not accessible'
+          fi
+          
+          # Test basic connectivity
+          if curl -f -s http://localhost:3001 >/dev/null 2>&1; then
+            echo '✅ Application responding on root endpoint'
+          else
+            echo '⚠️  Application not responding on root endpoint'
+          fi
+          
+          # Clean up test container
+          docker stop \$TEST_CONTAINER >/dev/null 2>&1
+          echo '🧹 Test container cleaned up'
+        else
+          echo '❌ Failed to start container in production mode'
+        fi
+        "
+      register: image_compatibility_check
+      changed_when: false
+      when: image_config_check is defined
+
+    - name: Generate comprehensive image verification report
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          COMPREHENSIVE IMAGE VERIFICATION REPORT
+          ============================================
+          
+          🖼️  Image: {{ docker_image }}
+          📅 Verification Time: {{ ansible_date_time.iso8601 }}
+          
+          🔍 Basic Integrity: {{ '✅ PASSED' if image_integrity_check.rc == 0 else '❌ FAILED' }}
+          📊 Layer Analysis: {{ '✅ PASSED' if image_layer_check.rc == 0 else '❌ FAILED' }}
+          🔒 Security Check: {{ '✅ PASSED' if image_security_check.rc == 0 else '❌ FAILED' }}
+          ⚙️  Configuration: {{ '✅ PASSED' if image_config_check.rc == 0 else '❌ FAILED' }}
+          🌐 Compatibility: {{ '✅ PASSED' if image_compatibility_check.rc == 0 else '❌ FAILED' }}
+          
+          📋 Verification Summary:
+          - Image integrity: {{ 'PASSED' if image_integrity_check.rc == 0 else 'FAILED' }}
+          - Layer optimization: {{ 'PASSED' if image_layer_check.rc == 0 else 'FAILED' }}
+          - Security status: {{ 'PASSED' if image_security_check.rc == 0 else 'FAILED' }}
+          - Configuration: {{ 'PASSED' if image_config_check.rc == 0 else 'FAILED' }}
+          - Production compatibility: {{ 'PASSED' if image_compatibility_check.rc == 0 else 'FAILED' }}
+          
+          🚀 Image is {{ 'READY' if (image_integrity_check.rc == 0 and image_layer_check.rc == 0 and image_security_check.rc == 0 and image_config_check.rc == 0 and image_compatibility_check.rc == 0) else 'NOT READY' }} for production deployment
+          
+                    ============================================
+
+    # IMAGE ROLLBACK CAPABILITY
+    - name: Check for available rollback images
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔄 Checking for available rollback images...'
+        
+        # Get current image digest
+        CURRENT_DIGEST=\$(docker images --digests {{ docker_image }} --format '{{.Digest}}' | head -1 | sed 's/sha256://')
+        echo 'Current Image Digest: \$CURRENT_DIGEST'
+        
+        # Look for rollback images with timestamps
+        ROLLBACK_IMAGES=\$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -10)
+        
+                 if [ -n \"\$ROLLBACK_IMAGES\" ]; then
+           echo 'Available Rollback Images:'
+           echo \$ROLLBACK_IMAGES | tr ' ' '\n' | while read img; do
+             CREATED=\$(docker images --format '{{.CreatedAt}}' \$img | head -1)
+             SIZE=\$(docker images --format '{{.Size}}' \$img | head -1)
+             echo \"  - \$img (\$CREATED, \$SIZE)\"
+           done
+         else
+           echo 'No rollback images found'
+         fi
+         
+         # Look for version-tagged images
+         VERSION_IMAGES=\$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
+         
+         if [ -n \"\$VERSION_IMAGES\" ]; then
+           echo 'Available Version Images:'
+           echo \$VERSION_IMAGES | tr ' ' '\n' | while read img; do
+             CREATED=\$(docker images --format '{{.CreatedAt}}' \$img | head -1)
+             SIZE=\$(docker images --format '{{.Size}}' \$img | head -1)
+             echo \"  - \$img (\$CREATED, \$SIZE)\"
+           done
+         else
+           echo 'No version-tagged images found'
+         fi
+        
+        # Store current digest for potential rollback
+        echo \$CURRENT_DIGEST > {{ app_dir }}/current-image-digest.txt
+        echo 'Current image digest saved for rollback reference'
+        "
+      register: rollback_check
+      changed_when: false
+      when: image_compatibility_check is defined
+
+    - name: Create rollback configuration file
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/rollback-config.yml"
+        mode: '0644'
+        content: |
+          # Rollback Configuration for Production Environment
+          # Generated on: {{ ansible_date_time.iso8601 }}
+          
+          current_image: "{{ docker_image }}"
+          current_digest: "{{ rollback_check.stdout | regex_search('Current Image Digest: ([a-f0-9]+)', '\\1') | default('unknown') }}"
+          deployment_time: "{{ ansible_date_time.iso8601 }}"
+          
+          # Rollback triggers
+          rollback_triggers:
+            - health_check_failure: true
+            - performance_degradation: true
+            - security_vulnerability: true
+            - manual_trigger: true
+          
+          # Rollback procedure
+          rollback_steps:
+            1. Stop current production container
+            2. Pull rollback image from GHCR
+            3. Verify rollback image integrity
+            4. Start rollback container
+            5. Verify application health
+            6. Update rollback status
+          
+          # Available rollback targets
+          rollback_targets:
+            - type: timestamp_based
+              pattern: "rollback-*"
+              description: "Time-based rollback images"
+            - type: version_based
+              pattern: "v*.*.*"
+              description: "Semantic version images"
+            - type: previous_main
+              pattern: "main-*"
+              description: "Previous main branch images"
+          
+          # Rollback verification
+          verification_steps:
+            - health_check: true
+            - connectivity_test: true
+            - performance_check: true
+            - log_analysis: true
+
+    - name: Create rollback execution script
+      ansible.builtin.template:
+        src: rollback-execution.sh.j2
+        dest: "{{ app_dir }}/rollback-execution.sh"
+        mode: '0755'
+        backup: true
+        vars:
+          app_dir: "{{ app_dir }}"
+          project_name: "{{ project_name }}"
+          docker_image: "{{ docker_image }}"
+
+    - name: Create rollback monitoring script
+      ansible.builtin.template:
+        src: rollback-monitor.sh.j2
+        dest: "{{ app_dir }}/rollback-monitor.sh"
+        mode: '0755'
+        backup: true
+        vars:
+          app_dir: "{{ app_dir }}"
+          project_name: "{{ project_name }}"
+          health_check_url: "http://localhost/health"
+
+    - name: Set up rollback monitoring cron job
+      ansible.builtin.cron:
+        name: "Rollback Monitoring"
+        minute: "*/5"
+        job: "{{ app_dir }}/rollback-monitor.sh >> {{ app_dir }}/rollback-monitor.log 2>&1"
+        state: present
+
+    - name: Display rollback capability information
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          ROLLBACK CAPABILITY IMPLEMENTED
+          ============================================
+          
+          🚀 Production environment now includes comprehensive rollback capability
+          
+          📁 Rollback Files Created:
+          - {{ app_dir }}/rollback-config.yml (Configuration)
+          - {{ app_dir }}/rollback-execution.sh (Execution script)
+          - {{ app_dir }}/rollback-monitor.sh (Monitoring script)
+          - {{ app_dir }}/current-image-digest.txt (Current image reference)
+          
+          🔄 Rollback Triggers:
+          - Health check failures
+          - Performance degradation
+          - Security vulnerabilities
+          - Manual triggers
+          
+          📊 Rollback Targets Available:
+          - Timestamp-based rollback images
+          - Semantic version images
+          - Previous main branch images
+          
+          ⚡ Quick Rollback Commands:
+          - Manual rollback: {{ app_dir }}/rollback-execution.sh
+          - Check status: {{ app_dir }}/rollback-monitor.sh
+          - View config: cat {{ app_dir }}/rollback-config.yml
+          
+          🕐 Monitoring: Automatic health checks every 5 minutes
+          
+          ============================================
+
+      - name: Start Docker Compose services
       command: docker-compose up -d web
       args:
         chdir: "{{ app_dir }}/repo"

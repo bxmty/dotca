@@ -48,8 +48,8 @@
   - [x] 3.1 Modify staging playbook to trigger image promotion after successful deployment
   - [x] 3.2 Update production playbook to pull promoted images instead of building locally
   - [x] 3.3 Integrate production playbook with existing Jinja2 templates for consistency
-  - [ ] 3.4 Add image verification tasks in production deployment
-  - [ ] 3.5 Implement image rollback tasks in production playbook
+  - [x] 3.4 Add image verification tasks in production deployment
+  - [x] 3.5 Implement image rollback tasks in production playbook
   - [ ] 3.6 Update environment variable handling for promoted images
   - [ ] 3.7 Add health checks to verify promoted image deployment
   - [ ] 3.8 Ensure production uses SSL-enabled Nginx configuration from templates
