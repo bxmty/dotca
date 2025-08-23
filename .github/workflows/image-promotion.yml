@@ -283,13 +283,13 @@ jobs:
         id: promotion
         run: |
           STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
-          PRODUCTION_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}"
-          LATEST_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}"
+          STAGING_TAG=$(echo "$STAGING_IMAGE" | cut -d: -f2)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           
           echo "🚀 Starting image promotion"
           echo "From: $STAGING_IMAGE"
-          echo "To: $PRODUCTION_IMAGE"
-          echo "Latest: $LATEST_IMAGE"
+          echo "Staging Tag: $STAGING_TAG"
+          echo "Timestamp: $TIMESTAMP"
           
           # Function to push image with retry logic
           push_image_with_retry() {
@@ -316,95 +316,130 @@ jobs:
             done
           }
           
-          # Tag the staging image for production
-          echo "📝 Tagging image for production..."
-          if ! docker tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE"; then
-            echo "❌ Failed to tag image for production"
+          # Function to create and push tag
+          create_and_push_tag() {
+            local source_image=$1
+            local target_tag=$2
+            local description=$3
+            
+            echo "📝 Creating $description tag: $target_tag"
+            if ! docker tag "$source_image" "$target_tag"; then
+              echo "❌ Failed to create $description tag"
+              return 1
+            fi
+            echo "✅ $description tag created"
+            
+            echo "🚀 Pushing $description tag..."
+            if ! push_image_with_retry "$target_tag"; then
+              echo "❌ Failed to push $description tag"
+              return 1
+            fi
+            echo "✅ $description tag pushed successfully"
+            
+            return 0
+          }
+          
+          # 1. Create production tag (:main)
+          PRODUCTION_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE" "production"; then
+            echo "❌ Production tag creation/push failed"
             exit 1
           fi
-          echo "✅ Production tag created"
           
-          # Tag as latest
-          echo "📝 Tagging image as latest..."
-          if ! docker tag "$STAGING_IMAGE" "$LATEST_IMAGE"; then
-            echo "❌ Failed to tag image as latest"
+          # 2. Create latest tag (:latest)
+          LATEST_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$LATEST_IMAGE" "latest"; then
+            echo "❌ Latest tag creation/push failed"
             exit 1
           fi
-          echo "✅ Latest tag created"
           
-          # Verify tags were created
-          echo "🔍 Verifying tags were created..."
-          if docker images | grep -q "$(echo $PRODUCTION_IMAGE | cut -d: -f2)"; then
-            echo "✅ Production tag verified"
+          # 3. Create commit-specific production tag (:main-{staging-tag})
+          COMMIT_PRODUCTION_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}-$STAGING_TAG"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$COMMIT_PRODUCTION_TAG" "commit-specific production"; then
+            echo "❌ Commit-specific production tag creation/push failed"
+            exit 1
+          fi
+          
+          # 4. Create timestamp-based rollback tag (:rollback-{timestamp}-{reason})
+          ROLLBACK_REASON=$(echo "${{ needs.validate-promotion.outputs.promotion_reason }}" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
+          ROLLBACK_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:rollback-$TIMESTAMP-$ROLLBACK_REASON"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$ROLLBACK_TAG" "rollback"; then
+            echo "❌ Rollback tag creation/push failed"
+            exit 1
+          fi
+          
+          # 5. Create semantic version tag if this is a release
+          if [[ "$STAGING_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "🎯 Detected semantic version tag: $STAGING_TAG"
+            VERSION_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$STAGING_TAG"
+            if ! create_and_push_tag "$STAGING_IMAGE" "$VERSION_TAG" "semantic version"; then
+              echo "❌ Semantic version tag creation/push failed"
+              exit 1
+            fi
+            echo "✅ Semantic version tag created: $VERSION_TAG"
           else
-            echo "❌ Production tag not found"
-            exit 1
+            echo "ℹ️  No semantic version detected, skipping version tag"
           fi
           
-          if docker images | grep -q "$(echo $LATEST_IMAGE | cut -d: -f2)"; then
-            echo "✅ Latest tag verified"
-          else
-            echo "❌ Latest tag not found"
-            exit 1
-          fi
-          
-          # Push production image with retry logic
-          echo "🚀 Pushing production image..."
-          if ! push_image_with_retry "$PRODUCTION_IMAGE"; then
-            echo "❌ Production image push failed after all retries"
-            exit 1
-          fi
-          
-          # Push latest image with retry logic
-          echo "🚀 Pushing latest image..."
-          if ! push_image_with_retry "$LATEST_IMAGE"; then
-            echo "❌ Latest image push failed after all retries"
-            exit 1
-          fi
+          # Verify all tags were created locally
+          echo "🔍 Verifying all tags were created locally..."
+          REQUIRED_TAGS=("$PRODUCTION_IMAGE" "$LATEST_IMAGE" "$COMMIT_PRODUCTION_TAG" "$ROLLBACK_TAG")
+          for tag in "${REQUIRED_TAGS[@]}"; do
+            if docker images | grep -q "$(echo $tag | cut -d: -f2)"; then
+              echo "✅ Tag verified: $(echo $tag | cut -d: -f2)"
+            else
+              echo "❌ Tag not found: $(echo $tag | cut -d: -f2)"
+              exit 1
+            fi
+          done
           
           # Verify images are accessible in registry
           echo "🔍 Verifying images are accessible in registry..."
           sleep 10  # Wait for registry to sync
           
-          if docker pull "$PRODUCTION_IMAGE" >/dev/null 2>&1; then
-            echo "✅ Production image verified in registry"
-          else
-            echo "⚠️  Production image not immediately accessible (may need more time to sync)"
-          fi
+          for tag in "${REQUIRED_TAGS[@]}"; do
+            if docker pull "$tag" >/dev/null 2>&1; then
+              echo "✅ Image verified in registry: $(echo $tag | cut -d: -f2)"
+            else
+              echo "⚠️  Image not immediately accessible: $(echo $tag | cut -d: -f2) (may need more time to sync)"
+            fi
+          done
           
-          if docker pull "$LATEST_IMAGE" >/dev/null 2>&1; then
-            echo "✅ Latest image verified in registry"
-          else
-            echo "⚠️  Latest image not immediately accessible (may need more time to sync)"
-          fi
-          
-          # Verify image integrity - ensure promoted image is identical to source
+          # Verify image integrity - ensure promoted images are identical to source
           echo "🔍 Verifying image integrity..."
           STAGING_DIGEST=$(docker images --digests --format "{{.Digest}}" "$STAGING_IMAGE" | head -1)
-          PRODUCTION_DIGEST=$(docker images --digests --format "{{.Digest}}" "$PRODUCTION_IMAGE" | head -1)
           
-          if [ "$STAGING_DIGEST" = "$PRODUCTION_DIGEST" ] && [ -n "$STAGING_DIGEST" ]; then
-            echo "✅ Image integrity verified - digests match"
-            echo "Digest: $STAGING_DIGEST"
-          else
-            echo "⚠️  Image digest verification incomplete (may be due to registry timing)"
-            echo "Staging Digest: $STAGING_DIGEST"
-            echo "Production Digest: $PRODUCTION_DIGEST"
-          fi
+          for tag in "${REQUIRED_TAGS[@]}"; do
+            TAG_DIGEST=$(docker images --digests --format "{{.Digest}}" "$tag" | head -1)
+            if [ "$STAGING_DIGEST" = "$TAG_DIGEST" ] && [ -n "$STAGING_DIGEST" ]; then
+              echo "✅ Image integrity verified for $(echo $tag | cut -d: -f2) - digests match"
+            else
+              echo "⚠️  Image digest verification incomplete for $(echo $tag | cut -d: -f2)"
+              echo "  Staging Digest: $STAGING_DIGEST"
+              echo "  Tag Digest: $TAG_DIGEST"
+            fi
+          done
           
           echo "🎉 Image promotion completed successfully!"
           echo "production_image=$PRODUCTION_IMAGE" >> $GITHUB_OUTPUT
+          echo "rollback_tag=$ROLLBACK_TAG" >> $GITHUB_OUTPUT
+          echo "commit_tag=$COMMIT_PRODUCTION_TAG" >> $GITHUB_OUTPUT
           echo "success=true" >> $GITHUB_OUTPUT
           
-          # Log promotion details
+          # Log comprehensive promotion details
           echo "Promotion Details:"
           echo "- Staging Image: $STAGING_IMAGE"
           echo "- Production Image: $PRODUCTION_IMAGE"
           echo "- Latest Image: $LATEST_IMAGE"
+          echo "- Commit-Specific Tag: $COMMIT_PRODUCTION_TAG"
+          echo "- Rollback Tag: $ROLLBACK_TAG"
+          if [[ "$STAGING_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "- Semantic Version Tag: $VERSION_TAG"
+          fi
           echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}"
           echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
           echo "- Triggered By: ${{ github.actor }}"
-          echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "- Timestamp: $TIMESTAMP"
           
           # Log image details for audit
           echo "Image Details:"
@@ -413,6 +448,7 @@ jobs:
           echo "- Image Created: $(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)"
           echo "- Registry: ${{ env.REGISTRY }}"
           echo "- Repository: ${{ env.IMAGE_NAME }}"
+          echo "- Staging Tag: $STAGING_TAG"
       
       - name: Create promotion summary
         if: success()
