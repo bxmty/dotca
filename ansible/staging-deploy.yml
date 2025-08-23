@@ -773,3 +773,68 @@
         name: "Let's Encrypt renewal"
         special_time: daily
         job: "certbot renew --quiet --nginx"
+
+    # IMAGE PROMOTION TRIGGER TASK
+    - name: Trigger Image Promotion Workflow
+      block:
+        - name: Display promotion trigger information
+          ansible.builtin.debug:
+            msg: |
+              ============================================
+              STAGING DEPLOYMENT COMPLETED SUCCESSFULLY
+              ============================================
+              
+              The staging environment is now ready for testing.
+              
+              To promote this image to production:
+              1. Test the staging deployment thoroughly
+              2. Go to GitHub Actions → Image Promotion Workflow
+              3. Click "Run workflow" → "Run workflow"
+              4. Fill in the required inputs:
+                 - staging_image_tag: staging
+                 - promotion_reason: Manual testing passed
+                 - target_environment: production
+                 - force_promotion: false
+              5. Click "Run workflow"
+              
+              The promotion workflow will:
+              - Validate the staging image
+              - Perform integrity checks
+              - Create production tags
+              - Enable manual approval
+              - Promote the image to production registry
+              
+              ============================================
+              
+        - name: Create promotion trigger file
+          ansible.builtin.copy:
+            dest: "{{ app_dir }}/promotion-trigger.txt"
+            mode: '0644'
+            content: |
+              STAGING DEPLOYMENT COMPLETED
+              ===========================
+              
+              Timestamp: {{ ansible_date_time.iso8601 }}
+              Staging Image: {{ docker_image }}
+              Environment: staging
+              Status: READY_FOR_PROMOTION
+              
+              Next Steps:
+              1. Test staging deployment
+              2. Trigger image promotion workflow
+              3. Approve promotion in GitHub
+              4. Deploy to production
+              
+              Promotion Workflow:
+              https://github.com/{{ github_repo_from_url }}/actions/workflows/image-promotion.yml
+              
+        - name: Log promotion readiness
+          ansible.builtin.debug:
+            msg: |
+              🚀 STAGING READY FOR PROMOTION
+              
+              Image: {{ docker_image }}
+              Status: Deployed and ready for testing
+              Next: Manual testing + Image promotion workflow
+              
+              Promotion trigger file created at: {{ app_dir }}/promotion-trigger.txt

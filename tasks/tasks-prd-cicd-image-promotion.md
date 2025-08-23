@@ -45,9 +45,9 @@
   - [x] 2.6 Create image promotion status tracking and reporting
 
 - [ ] 3.0 Update Ansible Playbooks for Image Promotion
-  - [ ] 3.1 Modify staging playbook to trigger image promotion after successful deployment
-  - [ ] 3.2 Update production playbook to pull promoted images instead of building locally
-  - [ ] 3.3 Integrate production playbook with existing Jinja2 templates for consistency
+  - [x] 3.1 Modify staging playbook to trigger image promotion after successful deployment
+  - [x] 3.2 Update production playbook to pull promoted images instead of building locally
+  - [x] 3.3 Integrate production playbook with existing Jinja2 templates for consistency
   - [ ] 3.4 Add image verification tasks in production deployment
   - [ ] 3.5 Implement image rollback tasks in production playbook
   - [ ] 3.6 Update environment variable handling for promoted images
