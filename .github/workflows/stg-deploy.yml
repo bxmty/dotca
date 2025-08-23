@@ -610,3 +610,67 @@ jobs:
             screenshots/
             *.log
           retention-days: 7
+
+  staging-summary:
+    name: Staging Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deploy-app, selenium-tests]
+    if: always()
+    outputs:
+      staging_success: ${{ steps.summary.outputs.staging_success }}
+      staging_image_tag: ${{ steps.summary.outputs.staging_image_tag }}
+      ready_for_promotion: ${{ steps.summary.outputs.ready_for_promotion }}
+    steps:
+      - name: Generate staging deployment summary
+        id: summary
+        run: |
+          echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall success
+          if [ "${{ needs.deploy-app.result }}" = "success" ]; then
+            echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
+            STAGING_SUCCESS="true"
+            READY_FOR_PROMOTION="true"
+            echo "staging_success=true" >> $GITHUB_OUTPUT
+            echo "ready_for_promotion=true" >> $GITHUB_OUTPUT
+          else
+            echo "**Overall Status:** 🔴 FAILED" >> $GITHUB_STEP_SUMMARY
+            STAGING_SUCCESS="false"
+            READY_FOR_PROMOTION="false"
+            echo "staging_success=false" >> $GITHUB_OUTPUT
+            echo "ready_for_promotion=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Determine staging image tag (usually 'staging' or staging-{sha})
+          STAGING_IMAGE_TAG="staging"
+          echo "staging_image_tag=$STAGING_IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging Image: ghcr.io/${{ github.repository }}:$STAGING_IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- Ready for Promotion: $READY_FOR_PROMOTION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Job Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Infrastructure Setup: ${{ needs.setup-infra.result == 'success' && '✅' || '❌' }} ${{ needs.setup-infra.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Application Deployment: ${{ needs.deploy-app.result == 'success' && '✅' || '❌' }} ${{ needs.deploy-app.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Selenium Tests: ${{ needs.selenium-tests.result == 'success' && '✅' || (needs.selenium-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.selenium-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [ "$READY_FOR_PROMOTION" = "true" ]; then
+            echo "1. ✅ Staging deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review staging environment and test results" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🚀 Manually trigger image promotion when ready" >> $GITHUB_STEP_SUMMARY
+            echo "4. 📋 Use promoted images for production deployment" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Manual Actions Available:**" >> $GITHUB_STEP_SUMMARY
+            echo "- [🔄 Trigger Image Promotion](https://github.com/${{ github.repository }}/actions/workflows/image-promotion.yml)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. ❌ Staging deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review workflow logs for error details" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🛠️ Fix any identified issues" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔄 Re-run staging deployment when ready" >> $GITHUB_STEP_SUMMARY
+          fi
