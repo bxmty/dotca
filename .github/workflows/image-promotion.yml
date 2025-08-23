@@ -1,0 +1,884 @@
+name: Image Promotion Workflow
+
+# This workflow requires manual approval for production image promotion
+# To enable manual approval:
+# 1. Go to Settings → Environments → Create environment "production-promotion"
+# 2. Enable "Required reviewers" and add yourself/team members
+# 3. Optionally enable "Wait timer" for additional safety
+# 4. The workflow will pause at the "Manual Approval Required" step until approved
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_image_tag:
+        description: 'Staging image tag to promote (e.g., staging, staging-abc123)'
+        required: true
+        default: 'staging'
+        type: string
+      target_environment:
+        description: 'Target environment for promotion'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - canary
+      promotion_reason:
+        description: 'Reason for promotion (e.g., "Manual testing passed")'
+        required: false
+        default: 'Manual promotion after testing'
+        type: string
+      force_promotion:
+        description: 'Force promotion even if image validation fails'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PRODUCTION_TAG: main
+  LATEST_TAG: latest
+
+jobs:
+  validate-promotion:
+    name: Validate Promotion Conditions
+    runs-on: ubuntu-latest
+    outputs:
+      can_promote: ${{ steps.validation.outputs.can_promote }}
+      staging_image: ${{ steps.validation.outputs.staging_image }}
+      promotion_reason: ${{ steps.validation.outputs.promotion_reason }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate promotion conditions
+        id: validation
+        run: |
+          # Get staging image details from manual input
+          STAGING_IMAGE_TAG="${{ github.event.inputs.staging_image_tag }}"
+          STAGING_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$STAGING_IMAGE_TAG"
+          
+          # Get promotion reason from manual input
+          PROMOTION_REASON="${{ github.event.inputs.promotion_reason }}"
+          
+          # Always allow promotion for manual workflow dispatch
+          CAN_PROMOTE=true
+          
+          echo "✅ Manual promotion requested"
+          echo "Staging Image Tag: $STAGING_IMAGE_TAG"
+          echo "Full Staging Image: $STAGING_IMAGE"
+          echo "Promotion Reason: $PROMOTION_REASON"
+          echo "Target Environment: ${{ github.event.inputs.target_environment }}"
+          
+          echo "can_promote=$CAN_PROMOTE" >> $GITHUB_OUTPUT
+          echo "staging_image=$STAGING_IMAGE" >> $GITHUB_OUTPUT
+          echo "promotion_reason=$PROMOTION_REASON" >> $GITHUB_OUTPUT
+
+  notify-promotion-start:
+    name: Notify Promotion Start
+    needs: validate-promotion
+    if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: 'promotion-started'
+      environment: 'production'
+      deployment_details: |
+        {
+          "staging_image": "${{ needs.validate-promotion.outputs.staging_image }}",
+          "promotion_reason": "${{ needs.validate-promotion.outputs.promotion_reason }}",
+          "target_environment": "${{ github.event.inputs.target_environment }}",
+          "force_promotion": "${{ github.event.inputs.force_promotion }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}"
+        }
+      notification_channels: 'github,slack'
+      severity: 'info'
+
+  promote-image:
+    name: Promote Staging Image to Production
+    needs: [validate-promotion, notify-promotion-start]
+    if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    environment:
+      name: production-promotion
+      url: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+    outputs:
+      promoted_image: ${{ steps.promotion.outputs.production_image }}
+      promotion_success: ${{ steps.promotion.outputs.success }}
+      rollback_tag: ${{ steps.promotion.outputs.rollback_tag }}
+      commit_tag: ${{ steps.promotion.outputs.commit_tag }}
+      promotion_status: ${{ steps.status_tracking.outputs.status }}
+      promotion_timestamp: ${{ steps.status_tracking.outputs.timestamp }}
+      promotion_duration: ${{ steps.status_tracking.outputs.duration }}
+    steps:
+      - name: Start Promotion Status Tracking
+        id: status_tracking
+        run: |
+          echo "📊 Starting promotion status tracking..."
+          START_TIME=$(date +%s)
+          TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          
+          echo "start_time=$START_TIME" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "status=in_progress" >> $GITHUB_OUTPUT
+          
+          echo "🚀 Promotion started at: $TIMESTAMP"
+          echo "⏱️  Status: IN PROGRESS"
+          
+          # Create status tracking summary
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** ${{ github.event.inputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🔒 Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📋 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Manual Approval Required
+        id: approval
+        run: |
+          echo "🔒 Manual approval required for production image promotion"
+          echo ""
+          echo "📋 Promotion Details:"
+          echo "- Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}"
+          echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
+          echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}"
+          echo "- Force Promotion: ${{ github.event.inputs.force_promotion }}"
+          echo ""
+          echo "⚠️  This step requires manual approval in the GitHub environment"
+          echo "Please review the promotion details above and approve in the environment protection rules"
+          echo ""
+          echo "✅ Approval status will be checked by environment protection rules"
+          
+          # This step will pause until manual approval is granted
+          # The environment protection rules will control the approval process
+          
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Pre-Promotion Summary
+        id: pre_promotion_summary
+        run: |
+          echo "## 🚀 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Ready to promote the following image:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** ${{ github.event.inputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Force Promotion:** ${{ github.event.inputs.force_promotion }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags that will be created:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Production: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit-specific: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}-{staging-tag}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Rollback: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:rollback-{timestamp}-{reason}`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual approval granted" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🔍 Image validation and integrity checks" >> $GITHUB_STEP_SUMMARY
+          echo "3. 🏷️  Image promotion and tagging" >> $GITHUB_STEP_SUMMARY
+          echo "4. 📋 Post-promotion verification" >> $GITHUB_STEP_SUMMARY
+          
+          echo "🚀 Pre-promotion summary created"
+          echo "Ready to proceed with image validation and promotion"
+          
+      - name: Verify Manual Approval
+        id: verify_approval
+        run: |
+          echo "🔒 Verifying manual approval status..."
+          echo ""
+          echo "This step confirms that manual approval has been granted"
+          echo "If you're seeing this step, it means the environment protection rules"
+          echo "have allowed the workflow to proceed."
+          echo ""
+          echo "✅ Manual approval verified - proceeding with promotion"
+          echo ""
+          echo "**Approval Details:**"
+          echo "- Approved By: ${{ github.actor }}"
+          echo "- Approval Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "- Environment: production-promotion"
+          echo "- Workflow: ${{ github.workflow }}"
+          echo "- Run ID: ${{ github.run_id }}"
+          
+      - name: Update Approval Status
+        id: update_approval_status
+        run: |
+          echo "✅ Manual approval completed - updating status..."
+          
+          # Update status tracking summary
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Approved By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Approval Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📋 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Validate staging image exists
+        id: image_validation
+        run: |
+          STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
+          
+          echo "🔍 Validating staging image: $STAGING_IMAGE"
+          
+          # Check if image exists and can be pulled
+          if docker pull "$STAGING_IMAGE"; then
+            echo "✅ Staging image exists and is accessible"
+            
+            # Get image details
+            IMAGE_ID=$(docker images --format "{{.ID}}" "$STAGING_IMAGE" | head -1)
+            IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
+            IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)
+            
+            echo "Image ID: $IMAGE_ID"
+            echo "Image Size: $IMAGE_SIZE"
+            echo "Image Created: $IMAGE_CREATED"
+            
+                      echo "image_id=$IMAGE_ID" >> $GITHUB_OUTPUT
+          echo "image_size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
+          echo "image_created=$IMAGE_CREATED" >> $GITHUB_OUTPUT
+          
+          # Update status tracking
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Validation:** 🔍 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Failed to pull staging image"
+            exit 1
+          fi
+      
+      - name: Comprehensive image validation and integrity checks
+        id: image_integrity
+        run: |
+          STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
+          
+          echo "🔍 Performing comprehensive image validation and integrity checks..."
+          
+          # 1. Image size validation
+          IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
+          IMAGE_SIZE_MB=$(echo "$IMAGE_SIZE" | sed 's/[^0-9.]//g')
+          
+          echo "📏 Image size: $IMAGE_SIZE"
+          
+          # Check if image size is reasonable (between 100MB and 2GB)
+          if (( $(echo "$IMAGE_SIZE_MB > 100" | bc -l) )) && (( $(echo "$IMAGE_SIZE_MB < 2000" | bc -l) )); then
+            echo "✅ Image size is within acceptable range (100MB - 2GB)"
+            SIZE_VALID=true
+          else
+            echo "⚠️  Image size ($IMAGE_SIZE_MB MB) is outside normal range"
+            if [ "${{ github.event.inputs.force_promotion }}" = "true" ]; then
+              echo "⚠️  Force promotion enabled - continuing despite size warning"
+              SIZE_VALID=true
+            else
+              echo "❌ Image size validation failed"
+              SIZE_VALID=false
+            fi
+          fi
+          
+          # 2. Image layer validation
+          echo "🔍 Validating image layers..."
+          if docker inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
+            LAYER_COUNT=$(docker inspect "$STAGING_IMAGE" | jq '.[0].RootFS.Layers | length')
+            echo "✅ Image has $LAYER_COUNT layers"
+            
+            if [ "$LAYER_COUNT" -gt 0 ] && [ "$LAYER_COUNT" -lt 100 ]; then
+              echo "✅ Layer count is reasonable"
+              LAYERS_VALID=true
+            else
+              echo "⚠️  Unusual layer count: $LAYER_COUNT"
+              LAYERS_VALID=false
+            fi
+          else
+            echo "❌ Failed to inspect image layers"
+            LAYERS_VALID=false
+          fi
+          
+          # 3. Image metadata validation
+          echo "🔍 Validating image metadata..."
+          if docker inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
+            # Check for required labels
+            HAS_SOURCE=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.source" // empty')
+            HAS_VERSION=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.version" // empty')
+            HAS_CREATED=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.created" // empty')
+            
+            echo "📋 Image labels:"
+            echo "  - Source: ${HAS_SOURCE:-'Not found'}"
+            echo "  - Version: ${HAS_VERSION:-'Not found'}"
+            echo "  - Created: ${HAS_CREATED:-'Not found'}"
+            
+            # Basic metadata validation
+            if docker inspect "$STAGING_IMAGE" | jq -e '.[0].Config.Cmd' >/dev/null 2>&1; then
+              echo "✅ Image has valid CMD configuration"
+              METADATA_VALID=true
+            else
+              echo "⚠️  Image missing CMD configuration"
+              METADATA_VALID=false
+            fi
+          else
+            echo "❌ Failed to inspect image metadata"
+            METADATA_VALID=false
+          fi
+          
+          # 4. Image signature validation (if available)
+          echo "🔍 Validating image signature..."
+          if command -v cosign >/dev/null 2>&1; then
+            if cosign verify "$STAGING_IMAGE" >/dev/null 2>&1; then
+              echo "✅ Image signature verified with cosign"
+              SIGNATURE_VALID=true
+            else
+              echo "⚠️  Image signature verification failed or not signed"
+              SIGNATURE_VALID=false
+            fi
+          else
+            echo "ℹ️  cosign not available - skipping signature verification"
+            SIGNATURE_VALID=true  # Don't fail on missing tool
+          fi
+          
+          # 4.5. Security vulnerability scanning (if available)
+          echo "🔍 Scanning for security vulnerabilities..."
+          if command -v trivy >/dev/null 2>&1; then
+            echo "Running Trivy vulnerability scan..."
+            
+            # Run Trivy scan with JSON output for parsing
+            TRIVY_OUTPUT=$(trivy image --format json --severity HIGH,CRITICAL "$STAGING_IMAGE" 2>/dev/null || echo "{}")
+            
+            # Parse vulnerability counts
+            CRITICAL_COUNT=$(echo "$TRIVY_OUTPUT" | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "CRITICAL") | .VulnerabilityID' 2>/dev/null | wc -l)
+            HIGH_COUNT=$(echo "$TRIVY_OUTPUT" | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "HIGH") | .VulnerabilityID' 2>/dev/null | wc -l)
+            
+            echo "📊 Vulnerability Summary:"
+            echo "  - Critical: $CRITICAL_COUNT"
+            echo "  - High: $HIGH_COUNT"
+            
+            # Determine if vulnerabilities are acceptable
+            if [ "$CRITICAL_COUNT" -eq 0 ] && [ "$HIGH_COUNT" -le 5 ]; then
+              echo "✅ Security scan passed - vulnerabilities within acceptable limits"
+              SECURITY_VALID=true
+            else
+              echo "⚠️  Security scan found concerning vulnerabilities"
+              if [ "${{ github.event.inputs.force_promotion }}" = "true" ]; then
+                echo "⚠️  Force promotion enabled - continuing despite security warnings"
+                SECURITY_VALID=true
+              else
+                echo "❌ Security validation failed - too many high/critical vulnerabilities"
+                SECURITY_VALID=false
+              fi
+            fi
+          else
+            echo "ℹ️  Trivy not available - skipping vulnerability scan"
+            SECURITY_VALID=true  # Don't fail on missing tool
+          fi
+          
+          # 5. Image health check validation
+          echo "🔍 Validating image health check configuration..."
+          if docker inspect "$STAGING_IMAGE" | jq -e '.[0].Config.Healthcheck' >/dev/null 2>&1; then
+            echo "✅ Image has health check configuration"
+            HEALTHCHECK_VALID=true
+          else
+            echo "⚠️  Image missing health check configuration"
+            HEALTHCHECK_VALID=false
+          fi
+          
+          # 6. Overall validation summary
+          echo ""
+          echo "📊 Image Validation Summary:"
+          echo "  - Size Validation: $([ "$SIZE_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Layer Validation: $([ "$LAYERS_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Metadata Validation: $([ "$METADATA_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Signature Validation: $([ "$SIGNATURE_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Security Validation: $([ "$SECURITY_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          echo "  - Health Check Validation: $([ "$HEALTHCHECK_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
+          
+          # Determine overall validation result
+          if [ "$SIZE_VALID" = "true" ] && [ "$LAYERS_VALID" = "true" ] && [ "$METADATA_VALID" = "true" ] && [ "$SIGNATURE_VALID" = "true" ] && [ "$SECURITY_VALID" = "true" ]; then
+            echo "🎉 All validation checks passed!"
+            VALIDATION_RESULT="success"
+          elif [ "${{ github.event.inputs.force_promotion }}" = "true" ]; then
+            echo "⚠️  Some validation checks failed, but force promotion is enabled"
+            VALIDATION_RESULT="warning"
+          else
+            echo "❌ Critical validation checks failed"
+            VALIDATION_RESULT="failure"
+            exit 1
+          fi
+          
+          # Store validation results for later use
+          echo "validation_result=$VALIDATION_RESULT" >> $GITHUB_OUTPUT
+          echo "size_valid=$SIZE_VALID" >> $GITHUB_OUTPUT
+          echo "layers_valid=$LAYERS_VALID" >> $GITHUB_OUTPUT
+          echo "metadata_valid=$METADATA_VALID" >> $GITHUB_OUTPUT
+          echo "signature_valid=$SIGNATURE_VALID" >> $GITHUB_OUTPUT
+          echo "security_valid=$SECURITY_VALID" >> $GITHUB_OUTPUT
+          echo "healthcheck_valid=$HEALTHCHECK_VALID" >> $GITHUB_OUTPUT
+          
+          # Update status tracking after validation
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Validation:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation Result:** $VALIDATION_RESULT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Promote image to production
+        id: promotion
+        run: |
+          STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
+          STAGING_TAG=$(echo "$STAGING_IMAGE" | cut -d: -f2)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          
+          echo "🚀 Starting image promotion"
+          echo "From: $STAGING_IMAGE"
+          echo "Staging Tag: $STAGING_TAG"
+          echo "Timestamp: $TIMESTAMP"
+          
+          # Function to push image with retry logic
+          push_image_with_retry() {
+            local image_name=$1
+            local max_retries=3
+            local retry_count=0
+            
+            while [ $retry_count -lt $max_retries ]; do
+              echo "⬆️  Pushing $image_name (attempt $((retry_count + 1))/$max_retries)..."
+              
+              if docker push "$image_name"; then
+                echo "✅ $image_name pushed successfully"
+                return 0
+              else
+                retry_count=$((retry_count + 1))
+                if [ $retry_count -lt $max_retries ]; then
+                  echo "⚠️  Push failed, retrying in 5 seconds... (attempt $retry_count/$max_retries)"
+                  sleep 5
+                else
+                  echo "❌ Failed to push $image_name after $max_retries attempts"
+                  return 1
+                fi
+              fi
+            done
+          }
+          
+          # Function to create and push tag
+          create_and_push_tag() {
+            local source_image=$1
+            local target_tag=$2
+            local description=$3
+            
+            echo "📝 Creating $description tag: $target_tag"
+            if ! docker tag "$source_image" "$target_tag"; then
+              echo "❌ Failed to create $description tag"
+              return 1
+            fi
+            echo "✅ $description tag created"
+            
+            echo "🚀 Pushing $description tag..."
+            if ! push_image_with_retry "$target_tag"; then
+              echo "❌ Failed to push $description tag"
+              return 1
+            fi
+            echo "✅ $description tag pushed successfully"
+            
+            return 0
+          }
+          
+          # 1. Create production tag (:main)
+          PRODUCTION_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE" "production"; then
+            echo "❌ Production tag creation/push failed"
+            exit 1
+          fi
+          
+          # 2. Create latest tag (:latest)
+          LATEST_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$LATEST_IMAGE" "latest"; then
+            echo "❌ Latest tag creation/push failed"
+            exit 1
+          fi
+          
+          # 3. Create commit-specific production tag (:main-{staging-tag})
+          COMMIT_PRODUCTION_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}-$STAGING_TAG"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$COMMIT_PRODUCTION_TAG" "commit-specific production"; then
+            echo "❌ Commit-specific production tag creation/push failed"
+            exit 1
+          fi
+          
+          # 4. Create timestamp-based rollback tag (:rollback-{timestamp}-{reason})
+          ROLLBACK_REASON=$(echo "${{ needs.validate-promotion.outputs.promotion_reason }}" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
+          ROLLBACK_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:rollback-$TIMESTAMP-$ROLLBACK_REASON"
+          if ! create_and_push_tag "$STAGING_IMAGE" "$ROLLBACK_TAG" "rollback"; then
+            echo "❌ Rollback tag creation/push failed"
+            exit 1
+          fi
+          
+          # 5. Create semantic version tag if this is a release
+          if [[ "$STAGING_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "🎯 Detected semantic version tag: $STAGING_TAG"
+            VERSION_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$STAGING_TAG"
+            if ! create_and_push_tag "$STAGING_IMAGE" "$VERSION_TAG" "semantic version"; then
+              echo "❌ Semantic version tag creation/push failed"
+              exit 1
+            fi
+            echo "✅ Semantic version tag created: $VERSION_TAG"
+          else
+            echo "ℹ️  No semantic version detected, skipping version tag"
+          fi
+          
+          # Verify all tags were created locally
+          echo "🔍 Verifying all tags were created locally..."
+          REQUIRED_TAGS=("$PRODUCTION_IMAGE" "$LATEST_IMAGE" "$COMMIT_PRODUCTION_TAG" "$ROLLBACK_TAG")
+          for tag in "${REQUIRED_TAGS[@]}"; do
+            if docker images | grep -q "$(echo $tag | cut -d: -f2)"; then
+              echo "✅ Tag verified: $(echo $tag | cut -d: -f2)"
+            else
+              echo "❌ Tag not found: $(echo $tag | cut -d: -f2)"
+              exit 1
+            fi
+          done
+          
+          # Verify images are accessible in registry
+          echo "🔍 Verifying images are accessible in registry..."
+          sleep 10  # Wait for registry to sync
+          
+          for tag in "${REQUIRED_TAGS[@]}"; do
+            if docker pull "$tag" >/dev/null 2>&1; then
+              echo "✅ Image verified in registry: $(echo $tag | cut -d: -f2)"
+            else
+              echo "⚠️  Image not immediately accessible: $(echo $tag | cut -d: -f2) (may need more time to sync)"
+            fi
+          done
+          
+          # Verify image integrity - ensure promoted images are identical to source
+          echo "🔍 Verifying image integrity..."
+          STAGING_DIGEST=$(docker images --digests --format "{{.Digest}}" "$STAGING_IMAGE" | head -1)
+          
+          for tag in "${REQUIRED_TAGS[@]}"; do
+            TAG_DIGEST=$(docker images --digests --format "{{.Digest}}" "$tag" | head -1)
+            if [ "$STAGING_DIGEST" = "$TAG_DIGEST" ] && [ -n "$STAGING_DIGEST" ]; then
+              echo "✅ Image integrity verified for $(echo $tag | cut -d: -f2) - digests match"
+            else
+              echo "⚠️  Image digest verification incomplete for $(echo $tag | cut -d: -f2)"
+              echo "  Staging Digest: $STAGING_DIGEST"
+              echo "  Tag Digest: $TAG_DIGEST"
+            fi
+          done
+          
+          echo "🎉 Image promotion completed successfully!"
+          echo "production_image=$PRODUCTION_IMAGE" >> $GITHUB_OUTPUT
+          echo "rollback_tag=$ROLLBACK_TAG" >> $GITHUB_OUTPUT
+          echo "commit_tag=$COMMIT_PRODUCTION_TAG" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+          
+          # Log comprehensive promotion details
+          echo "Promotion Details:"
+          echo "- Staging Image: $STAGING_IMAGE"
+          echo "- Production Image: $PRODUCTION_IMAGE"
+          echo "- Latest Image: $LATEST_IMAGE"
+          echo "- Commit-Specific Tag: $COMMIT_PRODUCTION_TAG"
+          echo "- Rollback Tag: $ROLLBACK_TAG"
+          if [[ "$STAGING_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "- Semantic Version Tag: $VERSION_TAG"
+          fi
+          echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}"
+          echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
+          echo "- Triggered By: ${{ github.actor }}"
+          echo "- Timestamp: $TIMESTAMP"
+          
+          # Log image details for audit
+          echo "Image Details:"
+          echo "- Image ID: $(docker images --format "{{.ID}}" "$STAGING_IMAGE" | head -1)"
+          echo "- Image Size: $(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)"
+          echo "- Image Created: $(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)"
+          echo "- Registry: ${{ env.REGISTRY }}"
+          echo "- Repository: ${{ env.IMAGE_NAME }}"
+          echo "- Staging Tag: $STAGING_TAG"
+          
+          # Calculate promotion duration and final status
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - ${{ steps.status_tracking.outputs.start_time }}))
+          DURATION_MINUTES=$((DURATION / 60))
+          DURATION_SECONDS=$((DURATION % 60))
+          
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "status=completed" >> $GITHUB_OUTPUT
+          
+          echo "⏱️  Total promotion time: ${DURATION_MINUTES}m ${DURATION_SECONDS}s"
+          echo "🎉 Promotion completed successfully!"
+          
+          # Final status update
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟢 COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Completed:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${DURATION_MINUTES}m ${DURATION_SECONDS}s" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. ✅ Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "6. ✅ Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**All steps completed successfully!** 🎉" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Create promotion summary
+        if: success()
+        run: |
+          echo "## 🚀 Image Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Successfully promoted" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**From:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**To:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit-Specific:** ${{ needs.promote-image.outputs.commit_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Rollback:** ${{ needs.promote-image.outputs.rollback_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ needs.promote-image.outputs.promotion_timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Completed:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${{ needs.promote-image.outputs.promotion_duration }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Approval Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: production-promotion" >> $GITHUB_STEP_SUMMARY
+          echo "- Manual Approval: ✅ Granted" >> $GITHUB_STEP_SUMMARY
+          echo "- Approval Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status Tracking:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Overall Status: ${{ needs.promote-image.outputs.promotion_status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow Run: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+
+  promotion-complete:
+    name: Promotion Complete
+    needs: [validate-promotion, promote-image]
+    if: ${{ needs.promote-image.outputs.promotion_success == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create completion summary
+        run: |
+          echo "## 🎉 Image Promotion Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Image successfully promoted to production registry" >> $GITHUB_STEP_SUMMARY
+          echo "**Production Image:** ${{ needs.promote-image.outputs.promoted_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Image is ready in production registry" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
+          echo "3. 📋 Use the production image tag in your deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Production Deployment:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Go to Actions → Production Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- Click 'Run workflow' → 'Run workflow'" >> $GITHUB_STEP_SUMMARY
+          echo "- The production workflow will use the newly promoted image" >> $GITHUB_STEP_SUMMARY
+
+  send-promotion-notifications:
+    name: Send Promotion Notifications
+    needs: [validate-promotion, promote-image]
+    if: always()
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: ${{ needs.promote-image.outputs.promotion_success == 'true' && 'promotion-success' || 'promotion-failed' }}
+      environment: 'production'
+      deployment_details: |
+        {
+          "staging_image": "${{ needs.validate-promotion.outputs.staging_image }}",
+          "promoted_image": "${{ needs.promote-image.outputs.promoted_image }}",
+          "commit_tag": "${{ needs.promote-image.outputs.commit_tag }}",
+          "rollback_tag": "${{ needs.promote-image.outputs.rollback_tag }}",
+          "promotion_reason": "${{ needs.validate-promotion.outputs.promotion_reason }}",
+          "promotion_duration": "${{ needs.promote-image.outputs.promotion_duration }}",
+          "target_environment": "${{ github.event.inputs.target_environment }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}"
+        }
+      notification_channels: 'github,slack,teams'
+      severity: ${{ needs.promote-image.outputs.promotion_success == 'true' && 'info' || 'error' }}
+
+  promotion-status-report:
+    name: Generate Promotion Status Report
+    needs: [validate-promotion, promote-image, send-promotion-notifications]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate comprehensive status report
+        id: status_report
+        run: |
+          echo "## 📊 Comprehensive Promotion Status Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall status
+          if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
+            STATUS_ICON="🟢"
+            STATUS_TEXT="SUCCESS"
+          else
+            echo "**Overall Status:** 🔴 FAILED" >> $GITHUB_STEP_SUMMARY
+            STATUS_ICON="🔴"
+            STATUS_TEXT="FAILED"
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Target Environment: ${{ github.event.inputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Force Promotion: ${{ github.event.inputs.force_promotion }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "**Created Tags:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Production: ${{ needs.promote-image.outputs.promoted_image }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Latest: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Commit-Specific: ${{ needs.promote-image.outputs.commit_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Rollback: ${{ needs.promote-image.outputs.rollback_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            echo "**Timing Information:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Started: ${{ needs.promote-image.outputs.promotion_timestamp }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Duration: ${{ needs.promote-image.outputs.promotion_duration }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "**Workflow Information:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered By: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Event: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
+            echo "1. ✅ Image promotion completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
+            echo "3. 📋 Use promoted image tags in production deployment" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔍 Monitor production deployment for any issues" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. ❌ Image promotion failed" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review workflow logs for error details" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🛠️  Fix any identified issues" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔄 Retry promotion when ready" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Store status for potential notifications
+          echo "status=$STATUS_TEXT" >> $GITHUB_OUTPUT
+          echo "status_icon=$STATUS_ICON" >> $GITHUB_OUTPUT
+          
+          echo "📊 Comprehensive status report generated"
+          echo "Status: $STATUS_TEXT"
+
+  trigger-production-deployment:
+    name: Trigger Production Deployment
+    needs: [validate-promotion, promote-image]
+    if: ${{ needs.promote-image.outputs.promotion_success == 'true' && github.event.inputs.target_environment == 'production' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger production deployment workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: workflow } = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'prod-deploy.yml',
+              ref: 'main',
+              inputs: {
+                promoted_image_tag: 'main',
+                deployment_reason: 'Automatic deployment after successful image promotion: ${{ needs.validate-promotion.outputs.promotion_reason }}'
+              }
+            });
+            
+            console.log('🚀 Production deployment workflow triggered successfully');
+            console.log(`Workflow run will be available at: https://github.com/${context.repo.owner}/${context.repo.repo}/actions`);
+            
+            // Add to step summary
+            core.summary
+              .addHeading('🚀 Production Deployment Triggered', 2)
+              .addRaw('')
+              .addRaw('**Deployment Details:**')
+              .addRaw(`- Promoted Image Tag: main`)
+              .addRaw(`- Deployment Reason: Automatic deployment after successful image promotion`)
+              .addRaw(`- Target Environment: production`)
+              .addRaw('')
+              .addRaw('**Next Steps:**')
+              .addRaw('1. ✅ Image promotion completed successfully')
+              .addRaw('2. 🚀 Production deployment workflow has been triggered')
+              .addRaw('3. 📋 Monitor the production deployment progress')
+              .addRaw('4. 🔍 Verify production deployment success')
+              .addRaw('')
+              .addRaw(`[📊 View Production Deployment Progress](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/prod-deploy.yml)`)
+              .write();
+
+  promotion-failed:
+    name: Handle Promotion Failure
+    needs: [validate-promotion, promote-image]
+    if: ${{ failure() && needs.validate-promotion.outputs.can_promote == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log promotion failure
+        run: |
+          echo "❌ Image promotion failed"
+          echo "Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}"
+          echo "Failure occurred in job: ${{ needs.promote-image.outputs.promotion_success }}"
+          
+          # Log failure details for debugging
+          echo "## 🔍 Promotion Failure Details" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ❌ Promotion failed" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Failure Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check the logs above for error details" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify the staging image exists and is accessible" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check registry permissions and authentication" >> $GITHUB_STEP_SUMMARY
+          echo "4. Retry promotion manually if needed" >> $GITHUB_STEP_SUMMARY

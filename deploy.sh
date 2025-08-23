@@ -3,7 +3,7 @@
 # Check if environment argument is provided
 if [ -z "$1" ]; then
   echo "Usage: ./deploy.sh <environment>"
-  echo "Available environments: qa, staging, production"
+  echo "Available environments: staging, production"
   exit 1
 fi
 ENV=$1
@@ -14,7 +14,7 @@ if [ "$ENV" == "main" ]; then
 fi
 ENV_FILE=".env.$ENV"
 
-# Function to handle Ansible-based deployments (for QA, Staging, and Production)
+# Function to handle Ansible-based deployments (for Staging and Production)
 function deploy_with_ansible() {
   local env=$1
   local ansible_playbook="$env-deploy.yml"
@@ -65,7 +65,7 @@ EOF
   
   # Set required environment variables for Ansible
   export GIT_REPO_URL=${GIT_REPO_URL:-"https://github.com/bxmty/dotca.git"}
-  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/do_key"}
+  export SSH_KEY_PATH=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
   
   # Use the DROPLET_IP from environment variable
   if [ -z "$DROPLET_IP" ]; then
@@ -74,6 +74,9 @@ EOF
   fi
   
   echo "Using Droplet IP: $DROPLET_IP"
+  
+  # Expand tilde in SSH_KEY_PATH
+  SSH_KEY_PATH="${SSH_KEY_PATH/#\~/$HOME}"
   
   # Check if SSH key exists and has correct permissions
   if [ ! -f "$SSH_KEY_PATH" ]; then
@@ -160,7 +163,7 @@ EOF
 }
 
 # Main deployment logic
-if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
+if [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
   deploy_with_ansible $ENV
 else
   # For other environments
@@ -178,7 +181,7 @@ else
 fi
 
 # Print success message with URL
-if [ "$ENV" == "qa" ] || [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
+if [ "$ENV" == "staging" ] || [ "$ENV" == "production" ]; then
   echo ""
   echo "=========================================================="
   echo "🚀 Deployment to $ENV environment completed!"

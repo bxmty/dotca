@@ -67,7 +67,7 @@ const pricingPlans = [
 // Client component to handle the Link with searchParams
 function PricingCards() {
   return (
-    <div className="row g-4">
+    <div className="row g-3">
       {pricingPlans.map((plan) => (
         <div 
           key={plan.name} 

@@ -22,6 +22,14 @@ jobs:
     if: github.event.inputs.confirmation == format('destroy-{0}', github.event.inputs.environment)
     
     steps:
+      - name: Validate Environment
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" != "staging" && "${{ github.event.inputs.environment }}" != "production" ]]; then
+            echo "❌ Invalid environment. Only 'staging' and 'production' are allowed."
+            exit 1
+          fi
+          echo "✅ Environment '${{ github.event.inputs.environment }}' is valid"
+          
       - name: Checkout code
         uses: actions/checkout@v4
         

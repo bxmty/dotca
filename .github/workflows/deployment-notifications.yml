@@ -1,0 +1,555 @@
+name: Deployment Notifications
+
+# Centralized notification system for deployment status reporting
+# Can be called by other workflows to send notifications to various channels
+
+on:
+  workflow_call:
+    inputs:
+      event_type:
+        description: 'Type of deployment event'
+        required: true
+        type: string
+        # Values: deployment-started, deployment-success, deployment-failed, promotion-started, promotion-success, promotion-failed, rollback-started, rollback-success, rollback-failed, verification-warning, verification-failed
+      environment:
+        description: 'Target environment'
+        required: true
+        type: string
+        # Values: staging, production, development
+      deployment_details:
+        description: 'JSON string with deployment details'
+        required: true
+        type: string
+      notification_channels:
+        description: 'Comma-separated list of notification channels'
+        required: false
+        type: string
+        default: 'github,slack'
+        # Values: github, slack, teams, email, webhook
+      severity:
+        description: 'Notification severity level'
+        required: false
+        type: string
+        default: 'info'
+        # Values: info, warning, error, critical
+      additional_context:
+        description: 'Additional context or custom message'
+        required: false
+        type: string
+        default: ''
+
+  workflow_dispatch:
+    inputs:
+      event_type:
+        description: 'Type of deployment event'
+        required: true
+        type: choice
+        options:
+          - 'deployment-started'
+          - 'deployment-success'
+          - 'deployment-failed'
+          - 'promotion-started'
+          - 'promotion-success'
+          - 'promotion-failed'
+          - 'rollback-started'
+          - 'rollback-success'
+          - 'rollback-failed'
+          - 'verification-warning'
+          - 'verification-failed'
+        default: 'deployment-success'
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - 'staging'
+          - 'production'
+          - 'development'
+        default: 'production'
+      notification_channels:
+        description: 'Notification channels'
+        required: false
+        type: string
+        default: 'github,slack'
+      severity:
+        description: 'Notification severity'
+        required: false
+        type: choice
+        options:
+          - 'info'
+          - 'warning'
+          - 'error'
+          - 'critical'
+        default: 'info'
+
+env:
+  EVENT_TYPE: ${{ inputs.event_type }}
+  ENVIRONMENT: ${{ inputs.environment }}
+  DEPLOYMENT_DETAILS: ${{ inputs.deployment_details || '{}' }}
+  NOTIFICATION_CHANNELS: ${{ inputs.notification_channels || 'github,slack' }}
+  SEVERITY: ${{ inputs.severity || 'info' }}
+  ADDITIONAL_CONTEXT: ${{ inputs.additional_context || '' }}
+
+jobs:
+  prepare-notifications:
+    name: Prepare Notification Content
+    runs-on: ubuntu-latest
+    outputs:
+      title: ${{ steps.prepare.outputs.title }}
+      message: ${{ steps.prepare.outputs.message }}
+      color: ${{ steps.prepare.outputs.color }}
+      icon: ${{ steps.prepare.outputs.icon }}
+      urgency: ${{ steps.prepare.outputs.urgency }}
+      channels: ${{ steps.prepare.outputs.channels }}
+    steps:
+      - name: Prepare notification content
+        id: prepare
+        run: |
+          echo "🔔 Preparing notification content for ${{ env.EVENT_TYPE }}..."
+          
+          # Parse deployment details
+          DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
+          if [ "$DETAILS" = "{}" ]; then
+            DETAILS='{"image":"unknown","commit":"unknown","timestamp":"'"$(date -u +'%Y-%m-%d %H:%M:%S UTC')"'"}'
+          fi
+          
+          # Set notification properties based on event type and severity
+          case "${{ env.EVENT_TYPE }}" in
+            "deployment-started")
+              TITLE="🚀 Deployment Started - ${{ env.ENVIRONMENT }}"
+              MESSAGE="Deployment to ${{ env.ENVIRONMENT }} environment has begun"
+              COLOR="#ffa500"
+              ICON="🚀"
+              URGENCY="normal"
+              ;;
+            "deployment-success")
+              TITLE="✅ Deployment Successful - ${{ env.ENVIRONMENT }}"
+              MESSAGE="Deployment to ${{ env.ENVIRONMENT }} environment completed successfully"
+              COLOR="#28a745"
+              ICON="✅"
+              URGENCY="normal"
+              ;;
+            "deployment-failed")
+              TITLE="❌ Deployment Failed - ${{ env.ENVIRONMENT }}"
+              MESSAGE="Deployment to ${{ env.ENVIRONMENT }} environment has failed"
+              COLOR="#dc3545"
+              ICON="❌"
+              URGENCY="high"
+              ;;
+            "promotion-started")
+              TITLE="🔄 Image Promotion Started"
+              MESSAGE="Image promotion from staging to production has begun"
+              COLOR="#17a2b8"
+              ICON="🔄"
+              URGENCY="normal"
+              ;;
+            "promotion-success")
+              TITLE="✅ Image Promotion Successful"
+              MESSAGE="Image promotion from staging to production completed successfully"
+              COLOR="#28a745"
+              ICON="✅"
+              URGENCY="normal"
+              ;;
+            "promotion-failed")
+              TITLE="❌ Image Promotion Failed"
+              MESSAGE="Image promotion from staging to production has failed"
+              COLOR="#dc3545"
+              ICON="❌"
+              URGENCY="high"
+              ;;
+            "rollback-started")
+              TITLE="🔄 Production Rollback Started"
+              MESSAGE="Production rollback has been initiated"
+              COLOR="#ffc107"
+              ICON="🔄"
+              URGENCY="high"
+              ;;
+            "rollback-success")
+              TITLE="✅ Production Rollback Successful"
+              MESSAGE="Production rollback completed successfully"
+              COLOR="#28a745"
+              ICON="✅"
+              URGENCY="high"
+              ;;
+            "rollback-failed")
+              TITLE="❌ Production Rollback Failed"
+              MESSAGE="Production rollback has failed - manual intervention required"
+              COLOR="#dc3545"
+              ICON="❌"
+              URGENCY="critical"
+              ;;
+            "verification-warning")
+              TITLE="⚠️ Deployment Verification Warning - ${{ env.ENVIRONMENT }}"
+              MESSAGE="Deployment verification completed with warnings"
+              COLOR="#ffc107"
+              ICON="⚠️"
+              URGENCY="normal"
+              ;;
+            "verification-failed")
+              TITLE="❌ Deployment Verification Failed - ${{ env.ENVIRONMENT }}"
+              MESSAGE="Deployment verification has failed"
+              COLOR="#dc3545"
+              ICON="❌"
+              URGENCY="high"
+              ;;
+            *)
+              TITLE="📢 Deployment Notification - ${{ env.ENVIRONMENT }}"
+              MESSAGE="Deployment event: ${{ env.EVENT_TYPE }}"
+              COLOR="#6c757d"
+              ICON="📢"
+              URGENCY="normal"
+              ;;
+          esac
+          
+          # Override urgency based on severity
+          case "${{ env.SEVERITY }}" in
+            "critical")
+              URGENCY="critical"
+              COLOR="#dc3545"
+              ;;
+            "error")
+              URGENCY="high"
+              COLOR="#dc3545"
+              ;;
+            "warning")
+              URGENCY="normal"
+              COLOR="#ffc107"
+              ;;
+          esac
+          
+          # Append additional context if provided
+          if [ -n "${{ env.ADDITIONAL_CONTEXT }}" ]; then
+            MESSAGE="$MESSAGE. ${{ env.ADDITIONAL_CONTEXT }}"
+          fi
+          
+          # Set outputs
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+          echo "icon=$ICON" >> $GITHUB_OUTPUT
+          echo "urgency=$URGENCY" >> $GITHUB_OUTPUT
+          echo "channels=${{ env.NOTIFICATION_CHANNELS }}" >> $GITHUB_OUTPUT
+          
+          echo "✅ Notification content prepared:"
+          echo "  Title: $TITLE"
+          echo "  Message: $MESSAGE"
+          echo "  Urgency: $URGENCY"
+
+  github-notification:
+    name: GitHub Notification
+    runs-on: ubuntu-latest
+    needs: [prepare-notifications]
+    if: contains(needs.prepare-notifications.outputs.channels, 'github')
+    steps:
+      - name: Create GitHub issue for critical events
+        if: ${{ needs.prepare-notifications.outputs.urgency == 'critical' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `${{ needs.prepare-notifications.outputs.title }}`;
+            const details = JSON.parse('${{ env.DEPLOYMENT_DETAILS }}');
+            
+            const body = `## ${{ needs.prepare-notifications.outputs.icon }} Deployment Alert
+            
+            **Event Type:** ${{ env.EVENT_TYPE }}
+            **Environment:** ${{ env.ENVIRONMENT }}
+            **Severity:** ${{ env.SEVERITY }}
+            **Timestamp:** ${new Date().toISOString()}
+            
+            ### Details
+            ${{ needs.prepare-notifications.outputs.message }}
+            
+            ### Deployment Information
+            - **Image:** ${details.image || 'unknown'}
+            - **Commit:** ${details.commit || 'unknown'}
+            - **Triggered by:** ${{ github.actor }}
+            - **Workflow:** ${{ github.workflow }}
+            - **Run ID:** ${{ github.run_id }}
+            
+            ### Actions Required
+            ${{ needs.prepare-notifications.outputs.urgency == 'critical' && '🚨 **IMMEDIATE ACTION REQUIRED**' || '📋 Review and take appropriate action' }}
+            
+            ### Links
+            - [Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [Repository](https://github.com/${{ github.repository }})
+            
+            ---
+            *This issue was automatically created by the deployment notification system*
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'automated', '${{ env.SEVERITY }}']
+            });
+            
+            console.log('GitHub issue created for critical deployment event');
+      
+      - name: Add GitHub step summary
+        run: |
+          echo "## ${{ needs.prepare-notifications.outputs.icon }} ${{ needs.prepare-notifications.outputs.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Message:** ${{ needs.prepare-notifications.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Severity:** ${{ env.SEVERITY }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Parse and display deployment details
+          DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
+          if [ "$DETAILS" != "{}" ]; then
+            echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            echo '${{ env.DEPLOYMENT_DETAILS }}' | jq . >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow Information:**" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run ID:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+
+  slack-notification:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [prepare-notifications]
+    if: contains(needs.prepare-notifications.outputs.channels, 'slack')
+    steps:
+      - name: Prepare Slack payload
+        id: slack-payload
+        run: |
+          # Create Slack-compatible payload
+          DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
+          
+          cat > slack-payload.json << EOF
+          {
+            "text": "${{ needs.prepare-notifications.outputs.title }}",
+            "attachments": [
+              {
+                "color": "${{ needs.prepare-notifications.outputs.color }}",
+                "fields": [
+                  {
+                    "title": "Environment",
+                    "value": "${{ env.ENVIRONMENT }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Event Type", 
+                    "value": "${{ env.EVENT_TYPE }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Severity",
+                    "value": "${{ env.SEVERITY }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Triggered by",
+                    "value": "${{ github.actor }}",
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "View Workflow",
+                    "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ],
+                "footer": "GitHub Actions",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+          
+          echo "✅ Slack payload created"
+          cat slack-payload.json
+      
+      - name: Send Slack notification
+        run: |
+          echo "📢 Sending Slack notification..."
+          echo "🔧 To enable Slack notifications, add SLACK_WEBHOOK_URL to repository secrets"
+          echo "📁 Payload saved to: slack-payload.json"
+          echo ""
+          echo "Example integration:"
+          echo "curl -X POST -H 'Content-type: application/json' \\"
+          echo "  --data @slack-payload.json \\"
+          echo "  \$SLACK_WEBHOOK_URL"
+          
+          # Uncomment and configure when Slack webhook is available
+          # if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+          #   curl -X POST -H 'Content-type: application/json' \
+          #     --data @slack-payload.json \
+          #     "${{ secrets.SLACK_WEBHOOK_URL }}"
+          #   echo "✅ Slack notification sent"
+          # else
+          #   echo "⚠️ SLACK_WEBHOOK_URL secret not configured"
+          # fi
+
+  teams-notification:
+    name: Microsoft Teams Notification
+    runs-on: ubuntu-latest
+    needs: [prepare-notifications]
+    if: contains(needs.prepare-notifications.outputs.channels, 'teams')
+    steps:
+      - name: Prepare Teams payload
+        id: teams-payload
+        run: |
+          # Create Teams-compatible payload
+          ACTIVITY_TITLE="${{ needs.prepare-notifications.outputs.title }}"
+          ACTIVITY_SUBTITLE="${{ needs.prepare-notifications.outputs.message }}"
+          
+          cat > teams-payload.json << EOF
+          {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": "${{ needs.prepare-notifications.outputs.color }}",
+            "summary": "$ACTIVITY_TITLE",
+            "sections": [{
+              "activityTitle": "$ACTIVITY_TITLE",
+              "activitySubtitle": "$ACTIVITY_SUBTITLE",
+              "activityImage": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              "facts": [{
+                "name": "Environment",
+                "value": "${{ env.ENVIRONMENT }}"
+              }, {
+                "name": "Event Type",
+                "value": "${{ env.EVENT_TYPE }}"
+              }, {
+                "name": "Severity",
+                "value": "${{ env.SEVERITY }}"
+              }, {
+                "name": "Triggered by",
+                "value": "${{ github.actor }}"
+              }, {
+                "name": "Repository",
+                "value": "${{ github.repository }}"
+              }],
+              "markdown": true
+            }],
+            "potentialAction": [{
+              "@type": "OpenUri",
+              "name": "View Workflow",
+              "targets": [{
+                "os": "default",
+                "uri": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              }]
+            }]
+          }
+          EOF
+          
+          echo "✅ Teams payload created"
+          cat teams-payload.json
+      
+      - name: Send Teams notification
+        run: |
+          echo "📢 Sending Microsoft Teams notification..."
+          echo "🔧 To enable Teams notifications, add TEAMS_WEBHOOK_URL to repository secrets"
+          echo "📁 Payload saved to: teams-payload.json"
+          echo ""
+          echo "Example integration:"
+          echo "curl -H 'Content-Type: application/json' \\"
+          echo "  -d @teams-payload.json \\"
+          echo "  \$TEAMS_WEBHOOK_URL"
+          
+          # Uncomment and configure when Teams webhook is available
+          # if [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ]; then
+          #   curl -H "Content-Type: application/json" \
+          #     -d @teams-payload.json \
+          #     "${{ secrets.TEAMS_WEBHOOK_URL }}"
+          #   echo "✅ Teams notification sent"
+          # else
+          #   echo "⚠️ TEAMS_WEBHOOK_URL secret not configured"
+          # fi
+
+  webhook-notification:
+    name: Custom Webhook Notification
+    runs-on: ubuntu-latest
+    needs: [prepare-notifications]
+    if: contains(needs.prepare-notifications.outputs.channels, 'webhook')
+    steps:
+      - name: Prepare webhook payload
+        id: webhook-payload
+        run: |
+          # Create generic webhook payload
+          DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
+          
+          cat > webhook-payload.json << EOF
+          {
+            "event_type": "${{ env.EVENT_TYPE }}",
+            "environment": "${{ env.ENVIRONMENT }}",
+            "severity": "${{ env.SEVERITY }}",
+            "title": "${{ needs.prepare-notifications.outputs.title }}",
+            "message": "${{ needs.prepare-notifications.outputs.message }}",
+            "icon": "${{ needs.prepare-notifications.outputs.icon }}",
+            "color": "${{ needs.prepare-notifications.outputs.color }}",
+            "urgency": "${{ needs.prepare-notifications.outputs.urgency }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "deployment_details": $DETAILS,
+            "github": {
+              "repository": "${{ github.repository }}",
+              "workflow": "${{ github.workflow }}",
+              "run_id": "${{ github.run_id }}",
+              "actor": "${{ github.actor }}",
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "workflow_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+          }
+          EOF
+          
+          echo "✅ Webhook payload created"
+          cat webhook-payload.json | jq .
+      
+      - name: Send webhook notification
+        run: |
+          echo "📢 Sending custom webhook notification..."
+          echo "🔧 To enable webhook notifications, add WEBHOOK_URL to repository secrets"
+          echo "📁 Payload saved to: webhook-payload.json"
+          echo ""
+          echo "Example integration:"
+          echo "curl -X POST -H 'Content-Type: application/json' \\"
+          echo "  -d @webhook-payload.json \\"
+          echo "  \$WEBHOOK_URL"
+          
+          # Uncomment and configure when webhook URL is available
+          # if [ -n "${{ secrets.WEBHOOK_URL }}" ]; then
+          #   curl -X POST -H "Content-Type: application/json" \
+          #     -d @webhook-payload.json \
+          #     "${{ secrets.WEBHOOK_URL }}"
+          #   echo "✅ Webhook notification sent"
+          # else
+          #   echo "⚠️ WEBHOOK_URL secret not configured"
+          # fi
+
+  notification-summary:
+    name: Notification Summary
+    runs-on: ubuntu-latest
+    needs: [prepare-notifications, github-notification, slack-notification, teams-notification, webhook-notification]
+    if: always()
+    steps:
+      - name: Generate notification summary
+        run: |
+          echo "## 📢 Notification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Event:** ${{ needs.prepare-notifications.outputs.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Channels:** ${{ needs.prepare-notifications.outputs.channels }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Urgency:** ${{ needs.prepare-notifications.outputs.urgency }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Notification Status:**" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub: ${{ contains(needs.prepare-notifications.outputs.channels, 'github') && '✅ Sent' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Slack: ${{ contains(needs.prepare-notifications.outputs.channels, 'slack') && '📋 Prepared' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Teams: ${{ contains(needs.prepare-notifications.outputs.channels, 'teams') && '📋 Prepared' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Webhook: ${{ contains(needs.prepare-notifications.outputs.channels, 'webhook') && '📋 Prepared' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🔧 Configure webhook URLs in repository secrets" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📋 Review notification payloads in job artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Test notification integrations" >> $GITHUB_STEP_SUMMARY
