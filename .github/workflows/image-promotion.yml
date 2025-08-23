@@ -789,7 +789,7 @@ jobs:
               workflow_id: 'prod-deploy.yml',
               ref: 'main',
               inputs: {
-                promoted_image_tag: '${{ github.event.inputs.staging_image_tag }}' === 'staging' ? 'main' : 'main-${{ github.event.inputs.staging_image_tag }}',
+                promoted_image_tag: 'main',
                 deployment_reason: 'Automatic deployment after successful image promotion: ${{ needs.validate-promotion.outputs.promotion_reason }}'
               }
             });

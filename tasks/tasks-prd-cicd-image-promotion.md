@@ -2,9 +2,11 @@
 
 ## Relevant Files
 
-- `.github/workflows/docker-build.yml` - Contains the current Docker image building workflow that needs modification for image promotion
-- `.github/workflows/prod-deploy.yml` - Production deployment workflow that needs updating to use promoted images
-- `.github/workflows/stg-deploy.yml` - Staging deployment workflow that will remain unchanged but needs integration with promotion
+- `.github/workflows/docker-build.yml` - Contains the current Docker image building workflow that builds staging images
+- `.github/workflows/prod-deploy.yml` - Production deployment workflow updated to use promoted images with manual and automatic triggers
+- `.github/workflows/stg-deploy.yml` - Staging deployment workflow enhanced with promotion readiness reporting
+- `.github/workflows/workflow-coordinator.yml` - New workflow for coordinating and validating dependencies between workflows
+- `.github/workflows/dependency-check.yml` - New workflow for checking deployment dependencies and ensuring proper sequencing
 - `ansible/staging-deploy.yml` - Staging Ansible playbook that needs updates for image promotion integration
 - `ansible/production-deploy.yml` - Production Ansible playbook that needs updates to use promoted images and Jinja2 templates
 - `ansible/templates/docker-compose.yml.j2` - Docker Compose template that handles both staging and production environments
@@ -63,7 +65,7 @@
 
 - [ ] 5.0 Update Production Deployment Pipeline
   - [x] 5.1 Modify production GitHub Actions workflow to use image promotion
-  - [ ] 5.2 Update workflow dependencies to ensure proper sequencing
+  - [x] 5.2 Update workflow dependencies to ensure proper sequencing
   - [ ] 5.3 Add production deployment verification steps
   - [ ] 5.4 Implement deployment status reporting and notifications
   - [ ] 5.5 Add integration tests for the complete promotion pipeline
