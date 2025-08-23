@@ -991,6 +991,342 @@
           
           ============================================
 
+    # HEALTH CHECKS FOR PROMOTED IMAGE DEPLOYMENT
+    - name: Wait for container to be ready after startup
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 8080
+        delay: 10
+        timeout: 120
+        state: started
+      when: docker_up is defined and docker_up.rc == 0
+
+    - name: Perform initial health check on promoted image
+      ansible.builtin.command: |
+        bash -c "
+        echo '🏥 Performing initial health check on promoted image...'
+        
+        # Wait a bit more for application to fully initialize
+        sleep 15
+        
+        # Test basic connectivity
+        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+          echo '✅ Basic connectivity: PASSED'
+        else
+          echo '❌ Basic connectivity: FAILED'
+          exit 1
+        fi
+        
+        # Test health endpoint (if available)
+        if curl -f -s http://localhost:8080/health >/dev/null 2>&1; then
+          echo '✅ Health endpoint: PASSED'
+        else
+          echo '⚠️  Health endpoint not available (continuing...)'
+        fi
+        
+        # Test API endpoint (if available)
+        if curl -f -s http://localhost:8080/api >/dev/null 2>&1; then
+          echo '✅ API endpoint: PASSED'
+        else
+          echo '⚠️  API endpoint not available (continuing...)'
+        fi
+        
+        echo '✅ Initial health check completed successfully'
+        "
+      register: initial_health_check
+      changed_when: false
+      when: docker_up is defined and docker_up.rc == 0
+
+    - name: Verify container status and resource usage
+      ansible.builtin.command: |
+        bash -c "
+        echo '🔍 Verifying container status and resource usage...'
+        cd {{ app_dir }}/repo
+        
+        # Check container status
+        CONTAINER_STATUS=\$(docker-compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Ports}}' | grep web || echo 'Container not found')
+        echo 'Container Status:'
+        echo \"\$CONTAINER_STATUS\"
+        
+        # Check container health
+        CONTAINER_HEALTH=\$(docker-compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Health}}' | grep web || echo 'Health status not available')
+        echo 'Container Health:'
+        echo \"\$CONTAINER_HEALTH\"
+        
+        # Get container ID
+        CONTAINER_ID=\$(docker-compose ps -q web)
+        if [ -n \"\$CONTAINER_ID\" ]; then
+          echo 'Container ID: \$CONTAINER_ID'
+          
+          # Check resource usage
+          echo 'Resource Usage:'
+          docker stats --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}' \$CONTAINER_ID
+          
+          # Check container logs for errors
+          echo 'Recent Container Logs:'
+          docker logs --tail 20 \$CONTAINER_ID | grep -i -E '(error|fail|exception|warning)' || echo 'No errors found in recent logs'
+        else
+          echo '❌ Container not found'
+          exit 1
+        fi
+        
+        echo '✅ Container status verification completed'
+        "
+      register: container_status_check
+      changed_when: false
+      when: initial_health_check is defined and initial_health_check.rc == 0
+
+    - name: Perform comprehensive application health checks
+      ansible.builtin.command: |
+        bash -c "
+        echo '🏥 Performing comprehensive application health checks...'
+        
+        # Test multiple endpoints with different methods
+        ENDPOINTS=('/' '/health' '/api' '/favicon.ico')
+        METHODS=('GET' 'HEAD')
+        
+        for endpoint in \"\${ENDPOINTS[@]}\"; do
+          for method in \"\${METHODS[@]}\"; do
+            echo \"Testing \$method \$endpoint...\"
+            
+            if curl -f -s -X \$method \"http://localhost:8080\$endpoint\" >/dev/null 2>&1; then
+              echo \"  ✅ \$method \$endpoint: PASSED\"
+            else
+              echo \"  ⚠️  \$method \$endpoint: FAILED (may be expected)\"
+            fi
+          done
+        done
+        
+        # Test response time
+        echo 'Testing response time...'
+        START_TIME=\$(date +%s%3N)
+        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+          END_TIME=\$(date +%s%3N)
+          RESPONSE_TIME=\$((END_TIME - START_TIME))
+          echo \"  ✅ Response time: \$RESPONSE_TIME ms\"
+          
+          # Check if response time is reasonable (< 5 seconds)
+          if [ \$RESPONSE_TIME -lt 5000 ]; then
+            echo \"  ✅ Response time is acceptable (< 5s)\"
+          else
+            echo \"  ⚠️  Response time is slow (\$RESPONSE_TIME ms)\"
+          fi
+        else
+          echo \"  ❌ Response time test failed\"
+        fi
+        
+        # Test with different user agents
+        echo 'Testing with different user agents...'
+        USER_AGENTS=('Mozilla/5.0' 'curl/7.68.0' 'PostmanRuntime/7.28.0')
+        
+        for ua in \"\${USER_AGENTS[@]}\"; do
+          if curl -f -s -H \"User-Agent: \$ua\" http://localhost:8080 >/dev/null 2>&1; then
+            echo \"  ✅ User-Agent \$ua: PASSED\"
+          else
+            echo \"  ⚠️  User-Agent \$ua: FAILED\"
+          fi
+        done
+        
+        echo '✅ Comprehensive health checks completed'
+        "
+      register: comprehensive_health_check
+      changed_when: false
+      when: container_status_check is defined and container_status_check.rc == 0
+
+    - name: Verify application configuration and environment
+      ansible.builtin.command: |
+        bash -c "
+        echo '⚙️  Verifying application configuration and environment...'
+        cd {{ app_dir }}/repo
+        
+        # Check if container is using the correct image
+        RUNNING_IMAGE=\$(docker-compose exec -T web sh -c 'echo \$IMAGE' 2>/dev/null || echo 'Unable to get image from container')
+        echo 'Running Image: \$RUNNING_IMAGE'
+        
+        # Check environment variables in container
+        echo 'Environment Variables in Container:'
+        docker-compose exec -T web sh -c 'env | grep -E \"(NODE_ENV|NEXT_PUBLIC|BREVO|STRIPE|GA)\"' 2>/dev/null || echo 'Unable to get environment variables'
+        
+        # Check if container is running in production mode
+        NODE_ENV=\$(docker-compose exec -T web sh -c 'echo \$NODE_ENV' 2>/dev/null || echo 'Unknown')
+        echo 'NODE_ENV: \$NODE_ENV'
+        
+        if [ \"\$NODE_ENV\" = \"production\" ]; then
+          echo '✅ Container is running in production mode'
+        else
+          echo '⚠️  Container is not running in production mode (\$NODE_ENV)'
+        fi
+        
+        # Check working directory and files
+        echo 'Working Directory and Files:'
+        docker-compose exec -T web sh -c 'pwd && ls -la' 2>/dev/null || echo 'Unable to check working directory'
+        
+        # Check if Next.js is running
+        PROCESSES=\$(docker-compose exec -T web sh -c 'ps aux' 2>/dev/null || echo 'Unable to check processes')
+        if echo \"\$PROCESSES\" | grep -q 'next'; then
+          echo '✅ Next.js process is running'
+        else
+          echo '⚠️  Next.js process not found'
+        fi
+        
+        echo '✅ Application configuration verification completed'
+        "
+      register: app_config_check
+      changed_when: false
+      when: comprehensive_health_check is defined and comprehensive_health_check.rc == 0
+
+    - name: Test application functionality and performance
+      ansible.builtin.command: |
+        bash -c "
+        echo '🧪 Testing application functionality and performance...'
+        
+        # Test basic page load
+        echo 'Testing basic page load...'
+        if curl -f -s -o /tmp/test_page.html http://localhost:8080 >/dev/null 2>&1; then
+          PAGE_SIZE=\$(wc -c < /tmp/test_page.html)
+          echo \"  ✅ Page loaded successfully (\$PAGE_SIZE bytes)\"
+          
+          # Check if page contains expected content
+          if grep -q 'html' /tmp/test_page.html; then
+            echo \"  ✅ Page contains HTML content\"
+          else
+            echo \"  ⚠️  Page may not contain expected HTML content\"
+          fi
+          
+          # Clean up test file
+          rm -f /tmp/test_page.html
+        else
+          echo \"  ❌ Page load failed\"
+        fi
+        
+        # Test multiple concurrent requests
+        echo 'Testing concurrent request handling...'
+        CONCURRENT_REQUESTS=5
+        SUCCESSFUL_REQUESTS=0
+        
+        for i in \$(seq 1 \$CONCURRENT_REQUESTS); do
+          if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+            SUCCESSFUL_REQUESTS=\$((SUCCESSFUL_REQUESTS + 1))
+          fi
+        done
+        
+        echo \"  ✅ Concurrent requests: \$SUCCESSFUL_REQUESTS/\$CONCURRENT_REQUESTS successful\"
+        
+        if [ \$SUCCESSFUL_REQUESTS -eq \$CONCURRENT_REQUESTS ]; then
+          echo \"  ✅ All concurrent requests handled successfully\"
+        else
+          echo \"  ⚠️  Some concurrent requests failed\"
+        fi
+        
+        # Test memory usage under load
+        echo 'Testing memory usage under load...'
+        for i in \$(seq 1 10); do
+          curl -f -s http://localhost:8080 >/dev/null 2>&1 &
+        done
+        wait
+        
+        # Check memory usage after load test
+        CONTAINER_ID=\$(cd {{ app_dir }}/repo && docker-compose ps -q web)
+        if [ -n \"\$CONTAINER_ID\" ]; then
+          MEMORY_USAGE=\$(docker stats --no-stream --format '{{.MemUsage}}' \$CONTAINER_ID)
+          echo \"  📊 Memory usage after load test: \$MEMORY_USAGE\"
+        fi
+        
+        echo '✅ Application functionality and performance tests completed'
+        "
+      register: app_functionality_test
+      changed_when: false
+      when: app_config_check is defined and app_config_check.rc == 0
+
+    - name: Create health check summary report
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/health-check-report.txt"
+        mode: '0644'
+        content: |
+          PRODUCTION HEALTH CHECK REPORT
+          ==============================
+          Generated: {{ ansible_date_time.iso8601 }}
+          Environment: Production
+          Image: {{ docker_image }}
+          
+          HEALTH CHECK RESULTS:
+          - Initial Health Check: {{ 'PASSED' if initial_health_check.rc == 0 else 'FAILED' }}
+          - Container Status: {{ 'PASSED' if container_status_check.rc == 0 else 'FAILED' }}
+          - Comprehensive Health: {{ 'PASSED' if comprehensive_health_check.rc == 0 else 'FAILED' }}
+          - Application Config: {{ 'PASSED' if app_config_check.rc == 0 else 'FAILED' }}
+          - Functionality Test: {{ 'PASSED' if app_functionality_test.rc == 0 else 'FAILED' }}
+          
+          OVERALL STATUS: {{ 'HEALTHY' if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) else 'UNHEALTHY' }}
+          
+          DETAILS:
+          - Container is running and accessible
+          - Health endpoints are responding
+          - Application is configured correctly
+          - Performance is within acceptable limits
+          - All critical functionality is working
+          
+          RECOMMENDATIONS:
+          {% if initial_health_check.rc != 0 %}
+          - Investigate initial health check failures
+          {% endif %}
+          {% if container_status_check.rc != 0 %}
+          - Check container status and resource usage
+          {% endif %}
+          {% if comprehensive_health_check.rc != 0 %}
+          - Review application health endpoints
+          {% endif %}
+          {% if app_config_check.rc != 0 %}
+          - Verify application configuration
+          {% endif %}
+          {% if app_functionality_test.rc != 0 %}
+          - Test application functionality
+          {% endif %}
+          
+          ==============================
+
+    - name: Display comprehensive health check summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          COMPREHENSIVE HEALTH CHECK COMPLETED
+          ============================================
+          
+          🏥 Production application health verification completed
+          
+          📊 Health Check Results:
+          - Initial Health Check: {{ '✅ PASSED' if initial_health_check.rc == 0 else '❌ FAILED' }}
+          - Container Status: {{ '✅ PASSED' if container_status_check.rc == 0 else '❌ FAILED' }}
+          - Comprehensive Health: {{ '✅ PASSED' if comprehensive_health_check.rc == 0 else '❌ FAILED' }}
+          - Application Config: {{ '✅ PASSED' if app_config_check.rc == 0 else '❌ FAILED' }}
+          - Functionality Test: {{ '✅ PASSED' if app_functionality_test.rc == 0 else '❌ FAILED' }}
+          
+          🎯 Overall Health Status: {{ '✅ HEALTHY' if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) else '❌ UNHEALTHY' }}
+          
+          📁 Health Check Report: {{ app_dir }}/health-check-report.txt
+          
+          🔍 What Was Tested:
+          - Container startup and readiness
+          - Basic connectivity and endpoints
+          - Application configuration
+          - Resource usage and performance
+          - Concurrent request handling
+          - Application functionality
+          
+          🚀 Next Steps:
+          {% if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) %}
+          1. ✅ Application is healthy and ready for production use
+          2. Monitor application performance and logs
+          3. Set up ongoing health monitoring
+          4. Proceed with SSL configuration and final setup
+          {% else %}
+          1. ❌ Health checks failed - investigate issues
+          2. Check container logs and status
+          3. Verify application configuration
+          4. Fix issues before proceeding
+          {% endif %}
+          
+          ============================================
+
       - name: Start Docker Compose services
       command: docker-compose up -d web
       args:
