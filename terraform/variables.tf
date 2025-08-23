@@ -5,8 +5,15 @@ variable "do_token" {
 }
 
 variable "ssh_key_fingerprint" {
-  description = "SSH public key for Droplet access"
+  description = "SSH public key for Droplet access (deprecated - use ssh_key_name instead)"
   type        = string
+  default     = ""
+}
+
+variable "ssh_key_name" {
+  description = "Name of the SSH key in DigitalOcean for Droplet access"
+  type        = string
+  default     = "GitHub Actions Key"
 }
 
 variable "project_name" {
@@ -16,9 +23,9 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Deployment environment (qa, staging, production)"
+  description = "Deployment environment (staging, production)"
   type        = string
-  default     = "qa"
+  default     = "staging"
 }
 
 variable "region" {
