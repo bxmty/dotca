@@ -311,10 +311,10 @@
         echo 'Verifying promoted production image integrity...'
         cd {{ app_dir }}/repo
         
-        # Get image details
-        IMAGE_ID=\$(docker images --format '{{.ID}}' {{ docker_image }} | head -1)
-        IMAGE_SIZE=\$(docker images --format '{{.Size}}' {{ docker_image }} | head -1)
-        IMAGE_CREATED=\$(docker images --format '{{.CreatedAt}}' {{ docker_image }} | head -1)
+        # Get image details using a different approach to avoid template conflicts
+        IMAGE_ID=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | awk '{print \$1}')
+        IMAGE_SIZE=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | awk '{print \$3}')
+        IMAGE_CREATED=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | awk '{print \$4}')
         
         echo 'Production Image Details:'
         echo '  - Image: {{ docker_image }}'
@@ -346,7 +346,7 @@
         
         # Get layer information
         LAYER_COUNT=\$(docker history {{ docker_image }} | wc -l)
-        TOTAL_SIZE=\$(docker images {{ docker_image }} --format '{{.Size}}' | head -1)
+        TOTAL_SIZE=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | awk '{print \$3}')
         
         echo 'Layer Analysis:'
         echo '  - Total Layers: \$LAYER_COUNT'
@@ -505,37 +505,37 @@
         bash -c "
         echo '🔄 Checking for available rollback images...'
         
-        # Get current image digest
-        CURRENT_DIGEST=\$(docker images --digests {{ docker_image }} --format '{{.Digest}}' | head -1 | sed 's/sha256://')
+                 # Get current image digest
+         CURRENT_DIGEST=\$(docker images --digests {{ docker_image }} --format 'table' | tail -n +2 | head -1 | awk '{print \$3}' | sed 's/sha256://')
         echo 'Current Image Digest: \$CURRENT_DIGEST'
         
-        # Look for rollback images with timestamps
-        ROLLBACK_IMAGES=\$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -10)
+                 # Look for rollback images with timestamps
+         ROLLBACK_IMAGES=\$(docker images --format 'table' | tail -n +2 | awk '{print \$1":"\$2}' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -10)
         
                  if [ -n \"\$ROLLBACK_IMAGES\" ]; then
            echo 'Available Rollback Images:'
-           echo \$ROLLBACK_IMAGES | tr ' ' '\n' | while read img; do
-             CREATED=\$(docker images --format '{{.CreatedAt}}' \$img | head -1)
-             SIZE=\$(docker images --format '{{.Size}}' \$img | head -1)
-             echo \"  - \$img (\$CREATED, \$SIZE)\"
-           done
+                       echo \$ROLLBACK_IMAGES | tr ' ' '\n' | while read img; do
+              CREATED=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | awk '{print \$4}')
+              SIZE=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | awk '{print \$3}')
+              echo \"  - \$img (\$CREATED, \$SIZE)\"
+            done
          else
            echo 'No rollback images found'
          fi
          
-         # Look for version-tagged images
-         VERSION_IMAGES=\$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
+                   # Look for version-tagged images
+          VERSION_IMAGES=\$(docker images --format 'table' | tail -n +2 | awk '{print \$1":"\$2}' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
          
-         if [ -n \"\$VERSION_IMAGES\" ]; then
-           echo 'Available Version Images:'
-           echo \$VERSION_IMAGES | tr ' ' '\n' | while read img; do
-             CREATED=\$(docker images --format '{{.CreatedAt}}' \$img | head -1)
-             SIZE=\$(docker images --format '{{.Size}}' \$img | head -1)
-             echo \"  - \$img (\$CREATED, \$SIZE)\"
-           done
-         else
-           echo 'No version-tagged images found'
-         fi
+                   if [ -n \"\$VERSION_IMAGES\" ]; then
+            echo 'Available Version Images:'
+            echo \$VERSION_IMAGES | tr ' ' '\n' | while read img; do
+              CREATED=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | awk '{print \$4}')
+              SIZE=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | awk '{print \$3}')
+              echo \"  - \$img (\$CREATED, \$SIZE)\"
+            done
+          else
+            echo 'No version-tagged images found'
+          fi
         
         # Store current digest for potential rollback
         echo \$CURRENT_DIGEST > {{ app_dir }}/current-image-digest.txt
@@ -1039,13 +1039,13 @@
         echo '🔍 Verifying container status and resource usage...'
         cd {{ app_dir }}/repo
         
-        # Check container status
-        CONTAINER_STATUS=\$(docker-compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Ports}}' | grep web || echo 'Container not found')
-        echo 'Container Status:'
-        echo \"\$CONTAINER_STATUS\"
-        
-        # Check container health
-        CONTAINER_HEALTH=\$(docker-compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Health}}' | grep web || echo 'Health status not available')
+                 # Check container status
+         CONTAINER_STATUS=\$(docker-compose ps --format 'table' | grep web || echo 'Container not found')
+         echo 'Container Status:'
+         echo \"\$CONTAINER_STATUS\"
+         
+         # Check container health
+         CONTAINER_HEALTH=\$(docker-compose ps --format 'table' | grep web || echo 'Health status not available')
         echo 'Container Health:'
         echo \"\$CONTAINER_HEALTH\"
         
@@ -1054,9 +1054,9 @@
         if [ -n \"\$CONTAINER_ID\" ]; then
           echo 'Container ID: \$CONTAINER_ID'
           
-          # Check resource usage
-          echo 'Resource Usage:'
-          docker stats --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}' \$CONTAINER_ID
+                     # Check resource usage
+           echo 'Resource Usage:'
+           docker stats --no-stream --format 'table' \$CONTAINER_ID
           
           # Check container logs for errors
           echo 'Recent Container Logs:'
@@ -1221,12 +1221,12 @@
         done
         wait
         
-        # Check memory usage after load test
-        CONTAINER_ID=\$(cd {{ app_dir }}/repo && docker-compose ps -q web)
-        if [ -n \"\$CONTAINER_ID\" ]; then
-          MEMORY_USAGE=\$(docker stats --no-stream --format '{{.MemUsage}}' \$CONTAINER_ID)
-          echo \"  📊 Memory usage after load test: \$MEMORY_USAGE\"
-        fi
+                 # Check memory usage after load test
+         CONTAINER_ID=\$(cd {{ app_dir }}/repo && docker-compose ps -q web)
+         if [ -n \"\$CONTAINER_ID\" ]; then
+           MEMORY_USAGE=\$(docker stats --no-stream --format 'table' \$CONTAINER_ID | tail -n +2 | head -1 | awk '{print \$3}')
+           echo \"  📊 Memory usage after load test: \$MEMORY_USAGE\"
+         fi
         
         echo '✅ Application functionality and performance tests completed'
         "
