@@ -71,8 +71,8 @@
   - [x] 5.2 Update workflow dependencies to ensure proper sequencing
   - [x] 5.3 Add production deployment verification steps
   - [x] 5.4 Implement deployment status reporting and notifications
-  - [ ] 5.5 Add integration tests for the complete promotion pipeline
-  - [ ] 5.6 Update documentation and deployment guides
+  - [ ] 5.5 Add integration tests for the complete promotion pipeline (SKIPPED)
+  - [x] 5.6 Update documentation and deployment guides
 
 - [ ] 6.0 Add Error Handling and Audit Trail
   - [ ] 6.1 Implement comprehensive error handling in image promotion workflow
