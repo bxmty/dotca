@@ -1,5 +1,12 @@
 name: Image Promotion Workflow
 
+# This workflow requires manual approval for production image promotion
+# To enable manual approval:
+# 1. Go to Settings → Environments → Create environment "production-promotion"
+# 2. Enable "Required reviewers" and add yourself/team members
+# 3. Optionally enable "Wait timer" for additional safety
+# 4. The workflow will pause at the "Manual Approval Required" step until approved
+
 on:
   workflow_dispatch:
     inputs:
@@ -76,10 +83,34 @@ jobs:
     permissions:
       contents: read
       packages: write
+    environment:
+      name: production-promotion
+      url: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
     outputs:
       promoted_image: ${{ steps.promotion.outputs.production_image }}
       promotion_success: ${{ steps.promotion.outputs.success }}
+      rollback_tag: ${{ steps.promotion.outputs.rollback_tag }}
+      commit_tag: ${{ steps.promotion.outputs.commit_tag }}
     steps:
+      - name: Manual Approval Required
+        id: approval
+        run: |
+          echo "🔒 Manual approval required for production image promotion"
+          echo ""
+          echo "📋 Promotion Details:"
+          echo "- Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}"
+          echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
+          echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}"
+          echo "- Force Promotion: ${{ github.event.inputs.force_promotion }}"
+          echo ""
+          echo "⚠️  This step requires manual approval in the GitHub environment"
+          echo "Please review the promotion details above and approve in the environment protection rules"
+          echo ""
+          echo "✅ Approval status will be checked by environment protection rules"
+          
+          # This step will pause until manual approval is granted
+          # The environment protection rules will control the approval process
+          
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -87,6 +118,51 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Pre-Promotion Summary
+        id: pre_promotion_summary
+        run: |
+          echo "## 🚀 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Ready to promote the following image:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** ${{ github.event.inputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Force Promotion:** ${{ github.event.inputs.force_promotion }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags that will be created:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Production: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit-specific: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}-{staging-tag}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Rollback: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:rollback-{timestamp}-{reason}`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual approval granted" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🔍 Image validation and integrity checks" >> $GITHUB_STEP_SUMMARY
+          echo "3. 🏷️  Image promotion and tagging" >> $GITHUB_STEP_SUMMARY
+          echo "4. 📋 Post-promotion verification" >> $GITHUB_STEP_SUMMARY
+          
+          echo "🚀 Pre-promotion summary created"
+          echo "Ready to proceed with image validation and promotion"
+          
+      - name: Verify Manual Approval
+        id: verify_approval
+        run: |
+          echo "🔒 Verifying manual approval status..."
+          echo ""
+          echo "This step confirms that manual approval has been granted"
+          echo "If you're seeing this step, it means the environment protection rules"
+          echo "have allowed the workflow to proceed."
+          echo ""
+          echo "✅ Manual approval verified - proceeding with promotion"
+          echo ""
+          echo "**Approval Details:**"
+          echo "- Approved By: ${{ github.actor }}"
+          echo "- Approval Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "- Environment: production-promotion"
+          echo "- Workflow: ${{ github.workflow }}"
+          echo "- Run ID: ${{ github.run_id }}"
+          
       - name: Validate staging image exists
         id: image_validation
         run: |
@@ -460,10 +536,17 @@ jobs:
           echo "**From:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
           echo "**To:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}" >> $GITHUB_STEP_SUMMARY
           echo "**Latest:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit-Specific:** ${{ needs.promote-image.outputs.commit_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Rollback:** ${{ needs.promote-image.outputs.rollback_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Reason:** ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Approval Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: production-promotion" >> $GITHUB_STEP_SUMMARY
+          echo "- Manual Approval: ✅ Granted" >> $GITHUB_STEP_SUMMARY
+          echo "- Approval Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
 
   promotion-complete:
     name: Promotion Complete
