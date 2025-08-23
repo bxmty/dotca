@@ -7,6 +7,7 @@
 - `.github/workflows/stg-deploy.yml` - Staging deployment workflow enhanced with promotion readiness reporting
 - `.github/workflows/workflow-coordinator.yml` - New workflow for coordinating and validating dependencies between workflows
 - `.github/workflows/dependency-check.yml` - New workflow for checking deployment dependencies and ensuring proper sequencing
+- `.github/workflows/production-verification.yml` - Comprehensive standalone production verification workflow with health, performance, and security checks
 - `ansible/staging-deploy.yml` - Staging Ansible playbook that needs updates for image promotion integration
 - `ansible/production-deploy.yml` - Production Ansible playbook that needs updates to use promoted images and Jinja2 templates
 - `ansible/templates/docker-compose.yml.j2` - Docker Compose template that handles both staging and production environments
@@ -66,7 +67,7 @@
 - [ ] 5.0 Update Production Deployment Pipeline
   - [x] 5.1 Modify production GitHub Actions workflow to use image promotion
   - [x] 5.2 Update workflow dependencies to ensure proper sequencing
-  - [ ] 5.3 Add production deployment verification steps
+  - [x] 5.3 Add production deployment verification steps
   - [ ] 5.4 Implement deployment status reporting and notifications
   - [ ] 5.5 Add integration tests for the complete promotion pipeline
   - [ ] 5.6 Update documentation and deployment guides
