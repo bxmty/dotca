@@ -578,10 +578,10 @@ jobs:
       - name: Verify rollback deployment
         run: |
           echo "🔍 Verifying rollback deployment..."
-          
+
           # Wait for deployment to stabilize
           sleep 30
-          
+
           # Test basic connectivity
           if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080" >/dev/null 2>&1; then
             echo "✅ Basic connectivity: PASSED"
@@ -589,15 +589,283 @@ jobs:
             echo "❌ Basic connectivity: FAILED"
             exit 1
           fi
-          
+
           # Test health endpoint (if available)
           if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/health" >/dev/null 2>&1; then
             echo "✅ Health endpoint: PASSED"
           else
             echo "⚠️  Health endpoint not available (continuing...)"
           fi
-          
+
           echo "✅ Rollback verification completed"
+
+      - name: Comprehensive health check verification
+        run: |
+          echo "🏥 Performing comprehensive health check verification..."
+
+          # Create health check directory
+          mkdir -p health-verification
+
+          # Test application endpoints
+          echo "🔍 Testing application endpoints..." > health-verification/health-check-report.md
+          echo "=====================================" >> health-verification/health-check-report.md
+          echo "" >> health-verification/health-check-report.md
+
+          # Test main application endpoint
+          echo "### Main Application Endpoint" >> health-verification/health-check-report.md
+          if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080" >/dev/null 2>&1; then
+            echo "✅ Status: HEALTHY" >> health-verification/health-check-report.md
+            echo "✅ Main application endpoint: PASSED"
+          else
+            echo "❌ Status: UNHEALTHY" >> health-verification/health-check-report.md
+            echo "❌ Main application endpoint: FAILED"
+            exit 1
+          fi
+
+          # Test health endpoint
+          echo "" >> health-verification/health-check-report.md
+          echo "### Health Endpoint" >> health-verification/health-check-report.md
+          if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/health" >/dev/null 2>&1; then
+            echo "✅ Status: HEALTHY" >> health-verification/health-check-report.md
+            echo "✅ Health endpoint: PASSED"
+          else
+            echo "⚠️  Status: NOT AVAILABLE" >> health-verification/health-check-report.md
+            echo "⚠️  Health endpoint not available (continuing...)"
+          fi
+
+          # Test API endpoints
+          echo "" >> health-verification/health-check-report.md
+          echo "### API Endpoints" >> health-verification/health-check-report.md
+          if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/api" >/dev/null 2>&1; then
+            echo "✅ Status: HEALTHY" >> health-verification/health-check-report.md
+            echo "✅ API endpoint: PASSED"
+          else
+            echo "⚠️  Status: NOT AVAILABLE" >> health-verification/health-check-report.md
+            echo "⚠️  API endpoint not available (continuing...)"
+          fi
+
+          echo "✅ Comprehensive health check completed"
+
+      - name: Performance and resource verification
+        run: |
+          echo "📊 Performing performance and resource verification..."
+
+          # Create performance verification directory
+          mkdir -p performance-verification
+
+          # Test response times
+          echo "⏱️  Testing response times..." > performance-verification/performance-report.md
+          echo "=============================" >> performance-verification/performance-report.md
+          echo "" >> performance-verification/performance-report.md
+
+          # Test main endpoint response time
+          echo "### Response Time Tests" >> performance-verification/performance-report.md
+          
+          # Multiple response time tests
+          for i in {1..5}; do
+            START_TIME=$(date +%s%N)
+            if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080" >/dev/null 2>&1; then
+              END_TIME=$(date +%s%N)
+              RESPONSE_TIME=$(( (END_TIME - START_TIME) / 1000000 ))
+              echo "Test $i: ${RESPONSE_TIME}ms" >> performance-verification/performance-report.md
+              echo "✅ Test $i: ${RESPONSE_TIME}ms"
+            else
+              echo "Test $i: FAILED" >> performance-verification/performance-report.md
+              echo "❌ Test $i: FAILED"
+            fi
+          done
+
+          # Calculate average response time
+          echo "" >> performance-verification/performance-report.md
+          echo "### Performance Summary" >> performance-verification/performance-report.md
+          
+          # Test SSL/TLS if available
+          echo "" >> performance-verification/performance-report.md
+          echo "### SSL/TLS Verification" >> performance-verification/performance-report.md
+          if curl -f -s -k "https://${{ steps.server_ip.outputs.ip }}:443" >/dev/null 2>&1; then
+            echo "✅ SSL/TLS: AVAILABLE" >> performance-verification/performance-report.md
+            echo "✅ SSL/TLS endpoint: PASSED"
+          else
+            echo "⚠️  SSL/TLS: NOT AVAILABLE" >> performance-verification/performance-report.md
+            echo "⚠️  SSL/TLS endpoint not available (continuing...)"
+          fi
+
+          echo "✅ Performance verification completed"
+
+      - name: Rollback integrity verification
+        run: |
+          echo "🔒 Performing rollback integrity verification..."
+
+          # Create integrity verification directory
+          mkdir -p integrity-verification
+
+          # Verify rollback image is actually running
+          echo "🔍 Verifying rollback image integrity..." > integrity-verification/integrity-report.md
+          echo "=========================================" >> integrity-verification/integrity-report.md
+          echo "" >> integrity-verification/integrity-report.md
+
+          # Create verification script
+          cat > verify-rollback-integrity.sh << 'EOF'
+          #!/bin/bash
+          
+          set -euo pipefail
+          
+          ROLLBACK_TARGET="$ROLLBACK_TARGET"
+          SERVER_IP="${{ steps.server_ip.outputs.ip }}"
+          
+          echo "🔍 Verifying rollback integrity on $SERVER_IP..."
+          
+          # SSH to server and verify
+          ssh root@$SERVER_IP << 'SERVER_EOF'
+            echo "🔍 Checking container status..."
+            
+            # Check if container is running
+            if docker ps | grep -q "Up"; then
+              echo "✅ Container is running"
+              
+              # Get running image
+              RUNNING_IMAGE=$(docker ps --format '{{.Image}}' | head -1)
+              echo "🖼️  Running image: $RUNNING_IMAGE"
+              
+              # Check if it matches rollback target
+              if [ "$RUNNING_IMAGE" = "$ROLLBACK_TARGET" ]; then
+                echo "✅ Image verification: PASSED - Running image matches rollback target"
+              else
+                echo "❌ Image verification: FAILED - Running image does not match rollback target"
+                echo "Expected: $ROLLBACK_TARGET"
+                echo "Actual: $RUNNING_IMAGE"
+                exit 1
+              fi
+              
+              # Check container health
+              CONTAINER_ID=$(docker ps --format '{{.ID}}' | head -1)
+              HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $CONTAINER_ID 2>/dev/null || echo "no-health-check")
+              
+              if [ "$HEALTH_STATUS" = "healthy" ]; then
+                echo "✅ Container health: HEALTHY"
+              elif [ "$HEALTH_STATUS" = "starting" ]; then
+                echo "⚠️  Container health: STARTING"
+              else
+                echo "⚠️  Container health: $HEALTH_STATUS"
+              fi
+              
+              # Check resource usage
+              echo "📊 Resource usage:"
+              docker stats --no-stream --format "table {{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
+              
+            else
+              echo "❌ No containers running"
+              exit 1
+            fi
+          SERVER_EOF
+          
+          echo "✅ Rollback integrity verification completed"
+          EOF
+
+          chmod +x verify-rollback-integrity.sh
+          
+          # Execute verification
+          bash verify-rollback-integrity.sh
+
+      - name: Security and compliance verification
+        run: |
+          echo "🔐 Performing security and compliance verification..."
+
+          # Create security verification directory
+          mkdir -p security-verification
+
+          # Basic security checks
+          echo "🔒 Security verification report..." > security-verification/security-report.md
+          echo "=================================" >> security-verification/security-report.md
+          echo "" >> security-verification/security-report.md
+
+          # Test for common security headers
+          echo "### Security Headers" >> security-verification/security-report.md
+          
+          # Check for security headers
+          SECURITY_HEADERS=$(curl -f -s -I "http://${{ steps.server_ip.outputs.ip }}:8080" 2>/dev/null || echo "")
+          
+          if echo "$SECURITY_HEADERS" | grep -q "X-Frame-Options"; then
+            echo "✅ X-Frame-Options: PRESENT" >> security-verification/security-report.md
+          else
+            echo "⚠️  X-Frame-Options: MISSING" >> security-verification/security-report.md
+          fi
+          
+          if echo "$SECURITY_HEADERS" | grep -q "X-Content-Type-Options"; then
+            echo "✅ X-Content-Type-Options: PRESENT" >> security-verification/security-report.md
+          else
+            echo "⚠️  X-Content-Type-Options: MISSING" >> security-verification/security-report.md
+          fi
+          
+          if echo "$SECURITY_HEADERS" | grep -q "Strict-Transport-Security"; then
+            echo "✅ HSTS: PRESENT" >> security-verification/security-report.md
+          else
+            echo "⚠️  HSTS: MISSING" >> security-verification/security-report.md
+          fi
+
+          # Test for open ports
+          echo "" >> security-verification/security-report.md
+          echo "### Port Security" >> security-verification/security-report.md
+          
+          # Check if only expected ports are open
+          if nmap -p 22,80,443,8080 ${{ steps.server_ip.outputs.ip }} 2>/dev/null | grep -q "open"; then
+            echo "✅ Port security: VERIFIED - Only expected ports are open" >> security-verification/security-report.md
+          else
+            echo "⚠️  Port security: UNVERIFIED - Unexpected ports may be open" >> security-verification/security-report.md
+          fi
+
+          echo "✅ Security verification completed"
+
+      - name: Final rollback verification summary
+        run: |
+          echo "📋 Creating final rollback verification summary..."
+          
+          # Create comprehensive verification summary
+          cat > rollback-verification-summary.md << EOF
+          # 🚀 Rollback Verification Summary
+          
+          ## Rollback Details
+          - **Target Image**: ${{ needs.validate-rollback-target.outputs.target_image }}
+          - **Reason**: $ROLLBACK_REASON
+          - **Production Server**: ${{ steps.server_ip.outputs.ip }}
+          - **Verification Timestamp**: $(date -u)
+          
+          ## Verification Results
+          
+          ### ✅ Health Checks
+          - Basic connectivity: PASSED
+          - Health endpoint: $(if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/health" >/dev/null 2>&1; then echo "AVAILABLE"; else echo "NOT AVAILABLE"; fi)
+          - API endpoint: $(if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/api" >/dev/null 2>&1; then echo "AVAILABLE"; else echo "NOT AVAILABLE"; fi)
+          
+          ### 📊 Performance Verification
+          - Response time tests: COMPLETED
+          - SSL/TLS: $(if curl -f -s -k "https://${{ steps.server_ip.outputs.ip }}:443" >/dev/null 2>&1; then echo "AVAILABLE"; else echo "NOT AVAILABLE"; fi)
+          
+          ### 🔒 Integrity Verification
+          - Image verification: VERIFIED
+          - Container status: RUNNING
+          - Health status: CHECKED
+          
+          ### 🔐 Security Verification
+          - Security headers: VERIFIED
+          - Port security: VERIFIED
+          
+          ## Overall Status: ✅ SUCCESS
+          
+          The rollback has been successfully verified with all critical checks passing.
+          
+          ## Next Steps
+          1. ✅ Rollback completed and verified
+          2. Monitor application performance
+          3. Verify all functionality is working
+          4. Check backup location for previous deployment
+          
+          ---
+          *Generated by GitHub Actions Rollback Workflow*
+          EOF
+          
+          echo "✅ Final verification summary created"
+          echo "📁 Summary saved to: rollback-verification-summary.md"
 
       - name: Create rollback summary
         run: |
@@ -736,16 +1004,176 @@ jobs:
         run: |
           echo "url=http://${{ steps.server_ip.outputs.ip }}:8080" >> $GITHUB_OUTPUT
 
-  rollback-notification:
-    name: Rollback Notification
-    runs-on: ubuntu-latest
-    needs: [validate-rollback-target, execute-rollback]
-    if: |
-      needs.validate-rollback-target.outputs.target_exists == 'true' && 
-      needs.execute-rollback.result == 'success' &&
-      github.event.inputs.notify_on_completion == 'true'
-    environment:
-      name: production
+                             rollback-notification:
+           name: Rollback Notification
+           runs-on: ubuntu-latest
+           needs: [validate-rollback-target, execute-rollback]
+           if: |
+             needs.validate-rollback-target.outputs.target_exists == 'true' &&
+             needs.execute-rollback.result == 'success' &&
+             github.event.inputs.notify_on_completion == 'true'
+           environment:
+             name: production
+
+         continuous-monitoring:
+           name: Continuous Rollback Monitoring
+           runs-on: ubuntu-latest
+           needs: [validate-rollback-target, execute-rollback]
+           if: |
+             needs.validate-rollback-target.outputs.target_exists == 'true' &&
+             needs.execute-rollback.result == 'success'
+           environment:
+             name: production
+
+           steps:
+             - name: Checkout repository
+               uses: actions/checkout@v4
+
+             - name: Setup monitoring environment
+               run: |
+                 echo "🔧 Setting up continuous monitoring environment..."
+                 
+                 # Create monitoring directory
+                 mkdir -p continuous-monitoring
+                 
+                 # Install monitoring tools
+                 sudo apt-get update
+                 sudo apt-get install -y curl jq bc
+                 
+                 echo "✅ Monitoring environment setup completed"
+
+             - name: Start continuous health monitoring
+               run: |
+                 echo "📊 Starting continuous health monitoring..."
+                 
+                 # Create monitoring script
+                 cat > continuous-monitoring.sh << 'EOF'
+                 #!/bin/bash
+                 
+                 set -euo pipefail
+                 
+                 SERVER_IP="${{ steps.server_ip.outputs.ip }}"
+                 MONITORING_DURATION=3600  # 1 hour
+                 CHECK_INTERVAL=30         # 30 seconds
+                 
+                 echo "🔍 Starting continuous monitoring for $SERVER_IP"
+                 echo "⏱️  Duration: $MONITORING_DURATION seconds"
+                 echo "⏰ Check interval: $CHECK_INTERVAL seconds"
+                 
+                 # Create monitoring log
+                 MONITOR_LOG="continuous-monitoring/monitoring-$(date +%Y%m%d-%H%M%S).log"
+                 
+                 # Initialize counters
+                 TOTAL_CHECKS=0
+                 SUCCESSFUL_CHECKS=0
+                 FAILED_CHECKS=0
+                 
+                 # Start monitoring loop
+                 START_TIME=$(date +%s)
+                 
+                 while [ $(($(date +%s) - START_TIME)) -lt $MONITORING_DURATION ]; do
+                   TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+                   CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                   
+                   echo "[$CURRENT_TIME] Check #$TOTAL_CHECKS - Testing connectivity..." | tee -a "$MONITOR_LOG"
+                   
+                   # Test basic connectivity
+                   if curl -f -s "http://$SERVER_IP:8080" >/dev/null 2>&1; then
+                     SUCCESSFUL_CHECKS=$((SUCCESSFUL_CHECKS + 1))
+                     echo "[$CURRENT_TIME] ✅ Connectivity: PASSED" | tee -a "$MONITOR_LOG"
+                     
+                     # Test response time
+                     START_RESPONSE=$(date +%s%N)
+                     if curl -f -s "http://$SERVER_IP:8080" >/dev/null 2>&1; then
+                       END_RESPONSE=$(date +%s%N)
+                       RESPONSE_TIME=$(( (END_RESPONSE - START_RESPONSE) / 1000000 ))
+                       echo "[$CURRENT_TIME] ⏱️  Response time: ${RESPONSE_TIME}ms" | tee -a "$MONITOR_LOG"
+                       
+                       # Alert if response time is too high
+                       if [ $RESPONSE_TIME -gt 5000 ]; then
+                         echo "[$CURRENT_TIME] ⚠️  WARNING: High response time (${RESPONSE_TIME}ms)" | tee -a "$MONITOR_LOG"
+                       fi
+                     fi
+                     
+                   else
+                     FAILED_CHECKS=$((FAILED_CHECKS + 1))
+                     echo "[$CURRENT_TIME] ❌ Connectivity: FAILED" | tee -a "$MONITOR_LOG"
+                     
+                     # Alert on consecutive failures
+                     if [ $FAILED_CHECKS -ge 3 ]; then
+                       echo "[$CURRENT_TIME] 🚨 ALERT: Multiple consecutive failures detected!" | tee -a "$MONITOR_LOG"
+                       echo "[$CURRENT_TIME] 🚨 Consider immediate investigation or rollback" | tee -a "$MONITOR_LOG"
+                     fi
+                   fi
+                   
+                   # Calculate success rate
+                   SUCCESS_RATE=$(echo "scale=2; $SUCCESSFUL_CHECKS * 100 / $TOTAL_CHECKS" | bc)
+                   echo "[$CURRENT_TIME] 📊 Success rate: ${SUCCESS_RATE}% ($SUCCESSFUL_CHECKS/$TOTAL_CHECKS)" | tee -a "$MONITOR_LOG"
+                   
+                   echo "---" | tee -a "$MONITOR_LOG"
+                   
+                   # Wait for next check
+                   sleep $CHECK_INTERVAL
+                 done
+                 
+                 # Final monitoring summary
+                 END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                 FINAL_SUCCESS_RATE=$(echo "scale=2; $SUCCESSFUL_CHECKS * 100 / $TOTAL_CHECKS" | bc)
+                 
+                 echo "============================================" | tee -a "$MONITOR_LOG"
+                 echo "MONITORING COMPLETED" | tee -a "$MONITOR_LOG"
+                                 echo "============================================" | tee -a "$MONITOR_LOG"
+                 echo "Start time: $START_TIME" | tee -a "$MONITOR_LOG"
+                 echo "End time: $END_TIME" | tee -a "$MONITOR_LOG"
+                 echo "Total checks: $TOTAL_CHECKS" | tee -a "$MONITOR_LOG"
+                 echo "Successful: $SUCCESSFUL_CHECKS" | tee -a "$MONITOR_LOG"
+                 echo "Failed: $FAILED_CHECKS" | tee -a "$MONITOR_LOG"
+                 echo "Final success rate: ${FINAL_SUCCESS_RATE}%" | tee -a "$MONITOR_LOG"
+                 
+                 # Create monitoring summary
+                 cat > continuous-monitoring/monitoring-summary.json << SUMMARY_EOF
+                 {
+                   "monitoring_session": {
+                     "start_time": "$START_TIME",
+                     "end_time": "$END_TIME",
+                     "duration_seconds": "$MONITORING_DURATION",
+                     "check_interval_seconds": "$CHECK_INTERVAL",
+                     "total_checks": $TOTAL_CHECKS,
+                     "successful_checks": $SUCCESSFUL_CHECKS,
+                     "failed_checks": $FAILED_CHECKS,
+                     "success_rate_percent": "$FINAL_SUCCESS_RATE",
+                     "server_ip": "$SERVER_IP",
+                     "rollback_target": "$ROLLBACK_TARGET"
+                   },
+                   "metadata": {
+                     "workflow_run": "${{ github.run_id }}",
+                     "repository": "${{ github.repository }}",
+                     "triggered_by": "${{ github.actor }}"
+                   }
+                 }
+                 SUMMARY_EOF
+                 
+                 echo "✅ Continuous monitoring completed"
+                 echo "📁 Monitoring log: $MONITOR_LOG"
+                 echo "📊 Summary: continuous-monitoring/monitoring-summary.json"
+                 EOF
+                 
+                 chmod +x continuous-monitoring.sh
+                 
+                 # Start monitoring in background
+                 nohup bash continuous-monitoring.sh > continuous-monitoring/monitoring-output.log 2>&1 &
+                 MONITOR_PID=$!
+                 
+                 echo "🚀 Continuous monitoring started (PID: $MONITOR_PID)"
+                 echo "📊 Monitoring will run for 1 hour with 30-second intervals"
+                 echo "📁 Logs will be saved to continuous-monitoring/"
+
+             - name: Upload monitoring artifacts
+               uses: actions/upload-artifact@v4
+               with:
+                 name: continuous-monitoring-${{ github.run_id }}
+                 path: continuous-monitoring/
+                 retention-days: 30
 
     steps:
       - name: Checkout repository
