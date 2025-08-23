@@ -62,7 +62,7 @@
   - [x] 4.5 Implement rollback status reporting and audit logging
 
 - [ ] 5.0 Update Production Deployment Pipeline
-  - [ ] 5.1 Modify production GitHub Actions workflow to use image promotion
+  - [x] 5.1 Modify production GitHub Actions workflow to use image promotion
   - [ ] 5.2 Update workflow dependencies to ensure proper sequencing
   - [ ] 5.3 Add production deployment verification steps
   - [ ] 5.4 Implement deployment status reporting and notifications

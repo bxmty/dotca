@@ -772,6 +772,49 @@ jobs:
           echo "📊 Comprehensive status report generated"
           echo "Status: $STATUS_TEXT"
 
+  trigger-production-deployment:
+    name: Trigger Production Deployment
+    needs: [validate-promotion, promote-image]
+    if: ${{ needs.promote-image.outputs.promotion_success == 'true' && github.event.inputs.target_environment == 'production' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger production deployment workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: workflow } = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'prod-deploy.yml',
+              ref: 'main',
+              inputs: {
+                promoted_image_tag: '${{ github.event.inputs.staging_image_tag }}' === 'staging' ? 'main' : 'main-${{ github.event.inputs.staging_image_tag }}',
+                deployment_reason: 'Automatic deployment after successful image promotion: ${{ needs.validate-promotion.outputs.promotion_reason }}'
+              }
+            });
+            
+            console.log('🚀 Production deployment workflow triggered successfully');
+            console.log(`Workflow run will be available at: https://github.com/${context.repo.owner}/${context.repo.repo}/actions`);
+            
+            // Add to step summary
+            core.summary
+              .addHeading('🚀 Production Deployment Triggered', 2)
+              .addRaw('')
+              .addRaw('**Deployment Details:**')
+              .addRaw(`- Promoted Image Tag: main`)
+              .addRaw(`- Deployment Reason: Automatic deployment after successful image promotion`)
+              .addRaw(`- Target Environment: production`)
+              .addRaw('')
+              .addRaw('**Next Steps:**')
+              .addRaw('1. ✅ Image promotion completed successfully')
+              .addRaw('2. 🚀 Production deployment workflow has been triggered')
+              .addRaw('3. 📋 Monitor the production deployment progress')
+              .addRaw('4. 🔍 Verify production deployment success')
+              .addRaw('')
+              .addRaw(`[📊 View Production Deployment Progress](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/prod-deploy.yml)`)
+              .write();
+
   promotion-failed:
     name: Handle Promotion Failure
     needs: [validate-promotion, promote-image]
