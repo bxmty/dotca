@@ -41,7 +41,7 @@
   - [x] 2.2 Implement Docker image copying between staging and production registries
   - [x] 2.3 Add image validation and integrity checks before promotion
   - [x] 2.4 Implement image tagging strategy (staging → production)
-  - [ ] 2.5 Add promotion approval mechanism (manual or automated)
+  - [x] 2.5 Add promotion approval mechanism (manual or automated)
   - [ ] 2.6 Create image promotion status tracking and reporting
 
 - [ ] 3.0 Update Ansible Playbooks for Image Promotion
