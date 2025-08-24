@@ -396,7 +396,7 @@ jobs:
             local registry="$2"
             local image="$3"
             local result="$4"
-            local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC'
+            local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
             
             echo "[$timestamp] REGISTRY | Operation: $operation | Registry: $registry | Image: $image | Result: $result" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "📦 Registry: $operation on $image - $result"
