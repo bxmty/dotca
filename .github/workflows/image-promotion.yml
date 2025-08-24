@@ -446,23 +446,28 @@ jobs:
       can_promote: ${{ steps.validation.outputs.can_promote }}
       staging_image: ${{ steps.validation.outputs.staging_image }}
       promotion_reason: ${{ steps.validation.outputs.promotion_reason }}
-      error_utils: ${{ needs.error-handler.outputs.error_utils }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Download Error Handling Utilities
+        uses: actions/download-artifact@v4
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}
       
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
       
       - name: Validate promotion conditions
         id: validation
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "validation" "Validating promotion conditions and inputs"
@@ -561,13 +566,18 @@ jobs:
       promotion_status: ${{ steps.status_tracking.outputs.status }}
       promotion_timestamp: ${{ steps.status_tracking.outputs.timestamp }}
       promotion_duration: ${{ steps.status_tracking.outputs.duration }}
-      error_utils: ${{ needs.error-handler.outputs.error_utils }}
     steps:
+      - name: Download Error Handling Utilities
+        uses: actions/download-artifact@v4
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}
+      
       - name: Start Promotion Status Tracking
         id: status_tracking
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "status_tracking" "Starting promotion status tracking and monitoring"
@@ -619,7 +629,7 @@ jobs:
         id: approval
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "approval" "Waiting for manual approval of production image promotion"
@@ -659,7 +669,7 @@ jobs:
         id: error_setup
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
       
       - name: Log in to Container Registry
@@ -678,7 +688,7 @@ jobs:
         id: verify_login
         if: steps.docker_login.outcome == 'failure'
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "verify_login" "Verifying Docker authentication after login failure"
@@ -730,7 +740,7 @@ jobs:
         id: pre_promotion_summary
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "pre_promotion_summary" "Creating pre-promotion summary and planning"
@@ -781,7 +791,7 @@ jobs:
         id: verify_approval
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "verify_approval" "Verifying manual approval has been granted"
@@ -823,7 +833,7 @@ jobs:
         id: update_approval_status
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "update_approval_status" "Updating approval status and progress tracking"
@@ -867,7 +877,7 @@ jobs:
       - name: Validate staging image exists
         id: image_validation
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "image_validation" "Validating staging image exists and is accessible"
@@ -978,7 +988,7 @@ jobs:
       - name: Comprehensive image validation and integrity checks
         id: image_integrity
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "image_integrity" "Performing comprehensive image validation and integrity checks"
@@ -1190,7 +1200,7 @@ jobs:
       - name: Promote image to production
         id: promotion
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "promotion" "Starting image promotion from staging to production"
@@ -1533,7 +1543,7 @@ jobs:
         if: success()
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "create_summary" "Creating final promotion summary and documentation"
@@ -1587,16 +1597,22 @@ jobs:
     if: ${{ needs.promote-image.outputs.promotion_success == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Download Error Handling Utilities
+        uses: actions/download-artifact@v4
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
       
       - name: Create completion summary
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "completion_summary" "Creating final completion summary for successful promotion"
@@ -1668,17 +1684,23 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Download Error Handling Utilities
+        uses: actions/download-artifact@v4
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
       
       - name: Generate comprehensive status report
         id: status_report
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "status_report" "Generating comprehensive promotion status report"
@@ -1815,17 +1837,23 @@ jobs:
     if: ${{ failure() && needs.validate-promotion.outputs.can_promote == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Download Error Handling Utilities
+        uses: actions/download-artifact@v4
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
       
       - name: Log promotion failure
         id: failure_log
         run: |
-          source "${{ needs.error-handler.outputs.error_utils }}"
+          source "${{ github.workspace }}/error-utils.sh"
           
           # Log step start
           log_step_start "failure_log" "Logging promotion failure details and analysis"
