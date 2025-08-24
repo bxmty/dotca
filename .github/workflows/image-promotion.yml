@@ -42,12 +42,12 @@ env:
   # Error handling configuration
   MAX_RETRIES: 3
   RETRY_DELAY: 5
-  ERROR_LOG_FILE: /tmp/promotion-errors.log
+  ERROR_LOG_FILE: ${{ github.workspace }}/promotion-errors.log
   # Logging configuration
   LOG_LEVEL: INFO
-  LOG_FILE: /tmp/promotion.log
-  AUDIT_LOG_FILE: /tmp/promotion-audit.log
-  PERFORMANCE_LOG_FILE: /tmp/promotion-performance.log
+  LOG_FILE: ${{ github.workspace }}/promotion.log
+  AUDIT_LOG_FILE: ${{ github.workspace }}/promotion-audit.log
+  PERFORMANCE_LOG_FILE: ${{ github.workspace }}/promotion-performance.log
 
 jobs:
   # Error handling utility job
@@ -60,8 +60,8 @@ jobs:
       - name: Setup Error Handling Utilities
         id: setup
         run: |
-          # Create error handling utilities
-          cat > /tmp/error-utils.sh << 'EOF'
+          # Create error handling utilities in workspace directory for sharing
+          cat > "$GITHUB_WORKSPACE/error-utils.sh" << 'EOF'
           #!/bin/bash
           
           # Error handling utilities for image promotion workflow
@@ -89,7 +89,7 @@ jobs:
           HIGH_ERRORS=0
           MEDIUM_ERRORS=0
           LOW_ERRORS=0
-          ERROR_LOG_FILE="${ERROR_LOG_FILE:-/tmp/promotion-errors.log}"
+          ERROR_LOG_FILE="${ERROR_LOG_FILE:-$GITHUB_WORKSPACE/promotion-errors.log}"
           
           # Initialize error log
           init_error_log() {
@@ -265,31 +265,31 @@ jobs:
           # Initialize all log files
           init_logs() {
             # Main promotion log
-            echo "=== Image Promotion Log ===" > "${{ env.LOG_FILE }}"
-            echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "${{ env.LOG_FILE }}"
-            echo "Workflow: ${{ github.workflow }}" >> "${{ env.LOG_FILE }}"
-            echo "Run ID: ${{ github.run_id }}" >> "${{ env.LOG_FILE }}"
-            echo "Repository: ${{ github.repository }}" >> "${{ env.LOG_FILE }}"
-            echo "Actor: ${{ github.actor }}" >> "${{ env.LOG_FILE }}"
-            echo "Branch: ${{ github.ref_name }}" >> "${{ env.LOG_FILE }}"
-            echo "Commit: ${{ github.sha }}" >> "${{ env.LOG_FILE }}"
-            echo "=================================" >> "${{ env.LOG_FILE }}"
+            echo "=== Image Promotion Log ===" > "$GITHUB_WORKSPACE/promotion.log"
+            echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "Workflow: ${{ github.workflow }}" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "Run ID: ${{ github.run_id }}" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "Repository: ${{ github.repository }}" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "Actor: ${{ github.actor }}" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "Branch: ${{ github.ref_name }}" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "Commit: ${{ github.sha }}" >> "$GITHUB_WORKSPACE/promotion.log"
+            echo "=================================" >> "$GITHUB_WORKSPACE/promotion.log"
             
             # Audit log
-            echo "=== Image Promotion Audit Log ===" > "${{ env.AUDIT_LOG_FILE }}"
-            echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "${{ env.AUDIT_LOG_FILE }}"
-            echo "Workflow: ${{ github.workflow }}" >> "${{ env.AUDIT_LOG_FILE }}"
-            echo "Run ID: ${{ github.run_id }}" >> "${{ env.AUDIT_LOG_FILE }}"
-            echo "Repository: ${{ github.repository }}" >> "${{ env.AUDIT_LOG_FILE }}"
-            echo "Actor: ${{ github.actor }}" >> "${{ env.AUDIT_LOG_FILE }}"
-            echo "=================================" >> "${{ env.AUDIT_LOG_FILE }}"
+            echo "=== Image Promotion Audit Log ===" > "$GITHUB_WORKSPACE/promotion-audit.log"
+            echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_WORKSPACE/promotion-audit.log"
+            echo "Workflow: ${{ github.workflow }}" >> "$GITHUB_WORKSPACE/promotion-audit.log"
+            echo "Run ID: ${{ github.run_id }}" >> "$GITHUB_WORKSPACE/promotion-audit.log"
+            echo "Repository: ${{ github.repository }}" >> "$GITHUB_WORKSPACE/promotion-audit.log"
+            echo "Actor: ${{ github.actor }}" >> "$GITHUB_WORKSPACE/promotion-audit.log"
+            echo "=================================" >> "$GITHUB_WORKSPACE/promotion-audit.log"
             
             # Performance log
-            echo "=== Image Promotion Performance Log ===" > "${{ env.PERFORMANCE_LOG_FILE }}"
-            echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "${{ env.PERFORMANCE_LOG_FILE }}"
-            echo "Workflow: ${{ github.workflow }}" >> "${{ env.PERFORMANCE_LOG_FILE }}"
-            echo "Run ID: ${{ github.run_id }}" >> "${{ env.PERFORMANCE_LOG_FILE }}"
-            echo "=================================" >> "${{ env.PERFORMANCE_LOG_FILE }}"
+            echo "=== Image Promotion Performance Log ===" > "$GITHUB_WORKSPACE/promotion-performance.log"
+            echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_WORKSPACE/promotion-performance.log"
+            echo "Workflow: ${{ github.workflow }}" >> "$GITHUB_WORKSPACE/promotion-performance.log"
+            echo "Run ID: ${{ github.run_id }}" >> "$GITHUB_WORKSPACE/promotion-performance.log"
+            echo "=================================" >> "$GITHUB_WORKSPACE/promotion-performance.log"
           }
           
           # Log function with different levels
@@ -310,7 +310,7 @@ jobs:
             fi
             
             # Log to main log file
-            echo "$log_entry" >> "${{ env.LOG_FILE }}"
+            echo "$log_entry" >> "$GITHUB_WORKSPACE/promotion.log"
             
             # Log to console with appropriate emoji
             case "$level" in
@@ -331,7 +331,7 @@ jobs:
             local details="$3"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
             
-            echo "[$timestamp] $operation | Duration: ${duration}s | Details: $details" >> "${{ env.PERFORMANCE_LOG_FILE }}"
+            echo "[$timestamp] $operation | Duration: ${duration}s | Details: $details" >> "$GITHUB_WORKSPACE/promotion-performance.log"
             echo "⚡ Performance: $operation completed in ${duration}s"
           }
           
@@ -341,9 +341,9 @@ jobs:
             local resource="$2"
             local details="$3"
             local user="$4"
-          local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
             
-            echo "[$timestamp] AUDIT | Action: $action | Resource: $resource | User: $user | Details: $details" >> "${{ env.AUDIT_LOG_FILE }}"
+            echo "[$timestamp] AUDIT | Action: $action | Resource: $resource | User: $user | Details: $details" >> "$GITHUB_WORKSPACE/promotion-audit.log"
             echo "📋 Audit: $action on $resource by $user"
           }
           
@@ -386,7 +386,7 @@ jobs:
             local details="$4"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
             
-            echo "[$timestamp] IMAGE_OP | Operation: $operation | Source: $source | Target: $target | Details: $details" >> "${{ env.LOG_FILE }}"
+            echo "[$timestamp] IMAGE_OP | Operation: $operation | Source: $source | Target: $target | Details: $details" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "🖼️  Image Operation: $operation from $source to $target"
           }
           
@@ -396,9 +396,9 @@ jobs:
             local registry="$2"
             local image="$3"
             local result="$4"
-            local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC'
             
-            echo "[$timestamp] REGISTRY | Operation: $operation | Registry: $registry | Image: $image | Result: $result" >> "${{ env.LOG_FILE }}"
+            echo "[$timestamp] REGISTRY | Operation: $operation | Registry: $registry | Image: $image | Result: $result" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "📦 Registry: $operation on $image - $result"
           }
           
@@ -407,9 +407,9 @@ jobs:
             local tool="$1"
             local image="$2"
             local vulnerabilities="$3"
-          local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
             
-            echo "[$timestamp] SECURITY | Tool: $tool | Image: $image | Vulnerabilities: $vulnerabilities" >> "${{ env.LOG_FILE }}"
+            echo "[$timestamp] SECURITY | Tool: $tool | Image: $image | Vulnerabilities: $vulnerabilities" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "🔒 Security: $tool scan on $image - $vulnerabilities vulnerabilities found"
           }
           
@@ -421,15 +421,22 @@ jobs:
           export -f log_step_start log_step_end log_image_operation log_registry_operation log_security_scan
           EOF
           
-          chmod +x /tmp/error-utils.sh
+          chmod +x "$GITHUB_WORKSPACE/error-utils.sh"
           
           # Initialize all logs
-          source /tmp/error-utils.sh
+          source "$GITHUB_WORKSPACE/error-utils.sh"
           init_error_log
           init_logs
           
-          echo "error_utils=/tmp/error-utils.sh" >> $GITHUB_OUTPUT
+          echo "error_utils=$GITHUB_WORKSPACE/error-utils.sh" >> $GITHUB_OUTPUT
           echo "✅ Error handling utilities setup complete"
+      
+      - name: Upload Error Handling Utilities as Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}/error-utils.sh
+          retention-days: 30
 
   validate-promotion:
     name: Validate Promotion Conditions
@@ -596,6 +603,17 @@ jobs:
           echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
           echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
           echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload Log Files as Artifacts (Status Tracking Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-status-tracking
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
           
       - name: Manual Approval Required
         id: approval
@@ -625,6 +643,17 @@ jobs:
           
           # This step will pause until manual approval is granted
           # The environment protection rules will control the approval process
+      
+      - name: Upload Log Files as Artifacts (Approval Request Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-approval-request
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
           
       - name: Setup Error Handling
         id: error_setup
@@ -736,6 +765,17 @@ jobs:
           
           # Log step completion
           log_step_end "pre_promotion_summary" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Pre-Promotion Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-pre-promotion
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
           
       - name: Verify Manual Approval
         id: verify_approval
@@ -767,6 +807,17 @@ jobs:
           
           # Log step completion
           log_step_end "verify_approval" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Verify Approval Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-verify-approval
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
           
       - name: Update Approval Status
         id: update_approval_status
@@ -801,6 +852,17 @@ jobs:
           
           # Log step completion
           log_step_end "update_approval_status" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Approval Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-approval
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
           
       - name: Validate staging image exists
         id: image_validation
@@ -901,6 +963,17 @@ jobs:
           
           # Log step completion
           log_step_end "image_validation" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Validation Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-validation
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
       
       - name: Comprehensive image validation and integrity checks
         id: image_integrity
@@ -1102,6 +1175,17 @@ jobs:
           
           # Log step completion
           log_step_end "image_integrity" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Integrity Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-integrity
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
       
       - name: Promote image to production
         id: promotion
@@ -1434,6 +1518,17 @@ jobs:
           # Log step completion
           log_step_end "promotion" "success" "$(date +%s)"
       
+      - name: Upload Log Files as Artifacts (Promotion Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-promotion
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
+      
       - name: Create promotion summary
         if: success()
         run: |
@@ -1474,6 +1569,17 @@ jobs:
           
           # Log step completion
           log_step_end "create_summary" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Summary Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-summary
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
 
   promotion-complete:
     name: Promotion Complete
@@ -1520,6 +1626,17 @@ jobs:
           
           # Log step completion
           log_step_end "completion_summary" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Success Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-success
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
 
   send-promotion-notifications:
     name: Send Promotion Notifications
@@ -1661,6 +1778,17 @@ jobs:
           
           # Log step completion
           log_step_end "status_report" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
 
   trigger-production-deployment:
     name: Trigger Production Deployment
@@ -1754,3 +1882,14 @@ jobs:
           
           # Log step completion
           log_step_end "failure_log" "success" "$(date +%s)"
+      
+      - name: Upload Log Files as Artifacts (Failure Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-failure
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
