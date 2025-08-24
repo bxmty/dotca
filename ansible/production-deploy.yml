@@ -33,14 +33,9 @@
     github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
     # Production image configuration - uses promoted images from GHCR
     docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
-    github_repo_from_url: "{{ git_repo_url | regex_replace('.*github\\.com[/:]([^/]+/[^/.]+).*', '\\1') if git_repo_url else '' }}"
+    github_repo_from_url: "{{ git_repo_url | default('') }}"
     # Default to main tag (promoted production image)
-    docker_image: >-
-      {{
-        docker_image_override if docker_image_override else 
-        ('ghcr.io/' + github_repo_from_url + ':main') if github_repo_from_url else
-        'ghcr.io/bxtech/dotca:main'
-      }}
+    docker_image: "{{ docker_image_override | default('ghcr.io/bxtech/dotca:main') }}"
 
   tasks:
     - name: Update apt cache
@@ -477,39 +472,39 @@
       ignore_errors: yes
       when: image_config_check is defined
 
-         - name: Generate comprehensive image verification report
-       ansible.builtin.debug:
-         msg: |
-           ============================================
-           COMPREHENSIVE IMAGE VERIFICATION REPORT
-           ============================================
-           
-           🖼️  Image: {{ docker_image }}
-           📅 Verification Time: {{ ansible_date_time.iso8601 }}
-           
-           🔍 Basic Integrity: {{ '✅ PASSED' if (image_integrity_check is defined and image_integrity_check.rc == 0) else '❌ FAILED' }}
-           📊 Layer Analysis: {{ '✅ PASSED' if (image_layer_check is defined and image_layer_check.rc == 0) else '❌ FAILED' }}
-           🔒 Security Check: {{ '✅ PASSED' if (image_security_check is defined and image_security_check.rc == 0) else '❌ FAILED' }}
-           ⚙️  Configuration: {{ '✅ PASSED' if (image_config_check is defined and image_config_check.rc == 0) else '❌ FAILED' }}
-           🌐 Compatibility: {{ '✅ PASSED' if (image_compatibility_check is defined and image_compatibility_check.rc == 0) else '❌ FAILED' }}
-           
-           📋 Verification Summary:
-           - Image integrity: {{ 'PASSED' if (image_integrity_check is defined and image_integrity_check.rc == 0) else 'FAILED' }}
-           - Layer optimization: {{ 'PASSED' if (image_layer_check is defined and image_layer_check.rc == 0) else 'FAILED' }}
-           - Security status: {{ 'PASSED' if (image_security_check is defined and image_security_check.rc == 0) else 'FAILED' }}
-           - Configuration: {{ 'PASSED' if (image_config_check is defined and image_config_check.rc == 0) else 'FAILED' }}
-           - Production compatibility: {{ 'PASSED' if (image_compatibility_check is defined and image_compatibility_check.rc == 0) else 'FAILED' }}
-           
-           🚀 Image is {{ 'READY' if (image_integrity_check is defined and image_integrity_check.rc == 0 and image_layer_check is defined and image_layer_check.rc == 0 and image_security_check is defined and image_security_check.rc == 0 and image_config_check is defined and image_config_check.rc == 0 and image_compatibility_check is defined and image_compatibility_check.rc == 0) else 'NOT READY' }} for production deployment
-           
-           📝 Note: Some verification steps may have failed, but deployment will continue.
-           You can review the logs above to see which specific checks failed.
-           
-                                          ============================================
- 
-     - name: Display verification status summary
-       ansible.builtin.debug:
-         msg: |
+    - name: Generate comprehensive image verification report
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          COMPREHENSIVE IMAGE VERIFICATION REPORT
+          ============================================
+          
+          🖼️  Image: {{ docker_image }}
+          📅 Verification Time: {{ ansible_date_time.iso8601 }}
+          
+          🔍 Basic Integrity: {{ '✅ PASSED' if (image_integrity_check is defined and image_integrity_check.rc == 0) else '❌ FAILED' }}
+          📊 Layer Analysis: {{ '✅ PASSED' if (image_layer_check is defined and image_layer_check.rc == 0) else '❌ FAILED' }}
+          🔒 Security Check: {{ '✅ PASSED' if (image_security_check is defined and image_security_check.rc == 0) else '❌ FAILED' }}
+          ⚙️  Configuration: {{ '✅ PASSED' if (image_config_check is defined and image_config_check.rc == 0) else '❌ FAILED' }}
+          🌐 Compatibility: {{ '✅ PASSED' if (image_compatibility_check is defined and image_compatibility_check.rc == 0) else '❌ FAILED' }}
+          
+          📋 Verification Summary:
+          - Image integrity: {{ 'PASSED' if (image_integrity_check is defined and image_integrity_check.rc == 0) else 'FAILED' }}
+          - Layer optimization: {{ 'PASSED' if (image_layer_check is defined and image_layer_check.rc == 0) else 'FAILED' }}
+          - Security status: {{ 'PASSED' if (image_security_check is defined and image_security_check.rc == 0) else 'FAILED' }}
+          - Configuration: {{ 'PASSED' if (image_config_check is defined and image_config_check.rc == 0) else 'FAILED' }}
+          - Production compatibility: {{ 'PASSED' if (image_compatibility_check is defined and image_compatibility_check.rc == 0) else 'FAILED' }}
+          
+          🚀 Image is {{ 'READY' if (image_integrity_check is defined and image_integrity_check.rc == 0 and image_layer_check is defined and image_layer_check.rc == 0 and image_security_check is defined and image_security_check.rc == 0 and image_config_check is defined and image_config_check.rc == 0 and image_compatibility_check is defined and image_compatibility_check.rc == 0) else 'NOT READY' }} for production deployment
+          
+          📝 Note: Some verification steps may have failed, but deployment will continue.
+          You can review the logs above to see which specific checks failed.
+          
+          ============================================
+
+    - name: Display verification status summary
+      ansible.builtin.debug:
+        msg: |
            ============================================
            VERIFICATION STATUS SUMMARY
            ============================================
@@ -550,52 +545,52 @@
            
            ============================================
  
-     # IMAGE ROLLBACK CAPABILITY
-        - name: Check for available rollback images
+    # IMAGE ROLLBACK CAPABILITY
+    - name: Check for available rollback images
       ansible.builtin.command: |
-        bash -c "
-        echo '🔄 Checking for available rollback images...'
-        
-                 # Get current image digest
+         bash -c "
+         echo '🔄 Checking for available rollback images...'
+         
+         # Get current image digest
          CURRENT_DIGEST=\$(docker images --digests {{ docker_image }} --format 'table' | tail -n +2 | head -1 | cut -d' ' -f3 | sed 's/sha256://')
-        echo 'Current Image Digest: \$CURRENT_DIGEST'
-        
-                 # Look for rollback images with timestamps
+         echo 'Current Image Digest: \$CURRENT_DIGEST'
+         
+         # Look for rollback images with timestamps
          ROLLBACK_IMAGES=\$(docker images --format 'table' | tail -n +2 | cut -d' ' -f1,2 | tr ' ' ':' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -10)
-        
-                 if [ -n \"\$ROLLBACK_IMAGES\" ]; then
+         
+         if [ -n \"\$ROLLBACK_IMAGES\" ]; then
            echo 'Available Rollback Images:'
-                       echo \$ROLLBACK_IMAGES | tr ' ' '\n' | while read img; do
-              CREATED=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f4)
-              SIZE=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f3)
-              echo \"  - \$img (\$CREATED, \$SIZE)\"
-            done
+           echo \$ROLLBACK_IMAGES | tr ' ' '\n' | while read img; do
+             CREATED=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f4)
+             SIZE=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f3)
+             echo \"  - \$img (\$CREATED, \$SIZE)\"
+           done
          else
            echo 'No rollback images found'
          fi
          
-                   # Look for version-tagged images
-            VERSION_IMAGES=\$(docker images --format 'table' | tail -n +2 | cut -d' ' -f1,2 | tr ' ' ':' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
-           
-                   if [ -n \"\$VERSION_IMAGES\" ]; then
-             echo 'Available Version Images:'
-             echo \$VERSION_IMAGES | tr ' ' '\n' | while read img; do
-               CREATED=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f4)
-               SIZE=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f3)
-               echo \"  - \$img (\$CREATED, \$SIZE)\"
-             done
-           else
-             echo 'No version-tagged images found'
-           fi
+         # Look for version-tagged images
+         VERSION_IMAGES=\$(docker images --format 'table' | tail -n +2 | cut -d' ' -f1,2 | tr ' ' ':' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
+         
+         if [ -n \"\$VERSION_IMAGES\" ]; then
+           echo 'Available Version Images:'
+           echo \$VERSION_IMAGES | tr ' ' '\n' | while read img; do
+             CREATED=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f4)
+             SIZE=\$(docker images --format 'table' \$img | tail -n +2 | head -1 | cut -d' ' -f3)
+             echo \"  - \$img (\$CREATED, \$SIZE)\"
+           done
+         else
+           echo 'No version-tagged images found'
+         fi
          
          # Store current digest for potential rollback
          echo \$CURRENT_DIGEST > {{ app_dir }}/current-image-digest.txt
          echo 'Current image digest saved for rollback reference'
          "
-       register: rollback_check
-       changed_when: false
-       ignore_errors: yes
-       when: image_compatibility_check is defined
+      register: rollback_check
+      changed_when: false
+      ignore_errors: yes
+      when: image_integrity_check is defined
 
     - name: Create rollback configuration file
       ansible.builtin.copy:
@@ -716,12 +711,18 @@
           ============================================
           
           Required Variables:
-          - BREVO_API_KEY: {{ '✅ SET' if brevo_api_key else '❌ MISSING' }}
-          - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
-          - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_key else '❌ MISSING' }}
-          - GA_PRODUCTION_ID: {{ '✅ SET' if ga_production_id else '❌ MISSING' }}
-          - GITHUB_TOKEN: {{ '✅ SET' if github_token else '❌ MISSING' }}
-          - GITHUB_USERNAME: {{ '✅ SET' if github_username else '❌ MISSING' }}
+          {% set brevo_set = brevo_api_key %}
+          {% set stripe_secret_set = stripe_secret_key %}
+          {% set stripe_publishable_set = stripe_publishable_key %}
+          {% set ga_set = ga_production_id %}
+          {% set github_token_set = github_token %}
+          {% set github_username_set = github_username %}
+          - BREVO_API_KEY: {{ '✅ SET' if brevo_set else '❌ MISSING' }}
+          - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_set else '❌ MISSING' }}
+          - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_set else '❌ MISSING' }}
+          - GA_PRODUCTION_ID: {{ '✅ SET' if ga_set else '❌ MISSING' }}
+          - GITHUB_TOKEN: {{ '✅ SET' if github_token_set else '❌ MISSING' }}
+          - GITHUB_USERNAME: {{ '✅ SET' if github_username_set else '❌ MISSING' }}
           
           Optional Variables:
           - DOCKER_IMAGE: {{ '✅ SET' if docker_image_override else '⚠️  Using default' }}
@@ -746,12 +747,12 @@
           These variables are required for production deployment.
           Please set them in your environment or GitHub Secrets.
       when: >
-        not brevo_api_key or 
-        not stripe_secret_key or 
-        not stripe_publishable_key or 
-        not ga_production_id or 
-        not github_token or 
-        not github_username or 
+        not brevo_api_key or
+        not stripe_secret_key or
+        not stripe_publishable_key or
+        not ga_production_id or
+        not github_token or
+        not github_username or
         not git_repo_url
 
     - name: Create environment variable validation report
@@ -776,7 +777,8 @@
           OPTIONAL VARIABLES:
           - DOCKER_IMAGE: {{ 'SET' if docker_image_override else 'Using default' }}
           
-          VALIDATION STATUS: {{ 'PASSED' if (brevo_api_key and stripe_secret_key and stripe_publishable_key and ga_production_id and github_token and github_username and git_repo_url) else 'FAILED' }}
+          {% set all_critical_vars_set = brevo_api_key and stripe_secret_key and stripe_publishable_key and ga_production_id and github_token and github_username and git_repo_url %}
+          VALIDATION STATUS: {{ 'PASSED' if all_critical_vars_set else 'FAILED' }}
           
           ================================================
 
@@ -1091,13 +1093,13 @@
         echo '🔍 Verifying container status and resource usage...'
         cd {{ app_dir }}/repo
         
-                 # Check container status
-         CONTAINER_STATUS=\$(docker-compose ps --format 'table' | grep web || echo 'Container not found')
-         echo 'Container Status:'
-         echo \"\$CONTAINER_STATUS\"
-         
-         # Check container health
-         CONTAINER_HEALTH=\$(docker-compose ps --format 'table' | grep web || echo 'Health status not available')
+        # Check container status
+        CONTAINER_STATUS=\$(docker-compose ps --format 'table' | grep web || echo 'Container not found')
+        echo 'Container Status:'
+        echo \"\$CONTAINER_STATUS\"
+        
+        # Check container health
+        CONTAINER_HEALTH=\$(docker-compose ps --format 'table' | grep web || echo 'Health status not available')
         echo 'Container Health:'
         echo \"\$CONTAINER_HEALTH\"
         
@@ -1106,9 +1108,9 @@
         if [ -n \"\$CONTAINER_ID\" ]; then
           echo 'Container ID: \$CONTAINER_ID'
           
-                     # Check resource usage
-           echo 'Resource Usage:'
-           docker stats --no-stream --format 'table' \$CONTAINER_ID
+          # Check resource usage
+          echo 'Resource Usage:'
+          docker stats --no-stream --format 'table' \$CONTAINER_ID
           
           # Check container logs for errors
           echo 'Recent Container Logs:'
@@ -1273,12 +1275,12 @@
         done
         wait
         
-                 # Check memory usage after load test
-         CONTAINER_ID=\$(cd {{ app_dir }}/repo && docker-compose ps -q web)
-         if [ -n \"\$CONTAINER_ID\" ]; then
-           MEMORY_USAGE=\$(docker stats --no-stream --format 'table' \$CONTAINER_ID | tail -n +2 | head -1 | cut -d' ' -f3)
-           echo \"  📊 Memory usage after load test: \$MEMORY_USAGE\"
-         fi
+        # Check memory usage after load test
+        CONTAINER_ID=\$(cd {{ app_dir }}/repo && docker-compose ps -q web)
+        if [ -n \"\$CONTAINER_ID\" ]; then
+          MEMORY_USAGE=\$(docker stats --no-stream --format 'table' \$CONTAINER_ID | tail -n +2 | head -1 | cut -d' ' -f3)
+          echo \"  📊 Memory usage after load test: \$MEMORY_USAGE\"
+        fi
         
         echo '✅ Application functionality and performance tests completed'
         "
@@ -1298,13 +1300,19 @@
           Image: {{ docker_image }}
           
           HEALTH CHECK RESULTS:
-          - Initial Health Check: {{ 'PASSED' if initial_health_check.rc == 0 else 'FAILED' }}
-          - Container Status: {{ 'PASSED' if container_status_check.rc == 0 else 'FAILED' }}
-          - Comprehensive Health: {{ 'PASSED' if comprehensive_health_check.rc == 0 else 'FAILED' }}
-          - Application Config: {{ 'PASSED' if app_config_check.rc == 0 else 'FAILED' }}
-          - Functionality Test: {{ 'PASSED' if app_functionality_test.rc == 0 else 'FAILED' }}
+          {% set initial_passed = initial_health_check.rc == 0 %}
+          {% set container_passed = container_status_check.rc == 0 %}
+          {% set comprehensive_passed = comprehensive_health_check.rc == 0 %}
+          {% set app_config_passed = app_config_check.rc == 0 %}
+          {% set functionality_passed = app_functionality_test.rc == 0 %}
+          - Initial Health Check: {{ 'PASSED' if initial_passed else 'FAILED' }}
+          - Container Status: {{ 'PASSED' if container_passed else 'FAILED' }}
+          - Comprehensive Health: {{ 'PASSED' if comprehensive_passed else 'FAILED' }}
+          - Application Config: {{ 'PASSED' if app_config_passed else 'FAILED' }}
+          - Functionality Test: {{ 'PASSED' if functionality_passed else 'FAILED' }}
           
-          OVERALL STATUS: {{ 'HEALTHY' if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) else 'UNHEALTHY' }}
+          {% set all_checks_passed = initial_passed and container_passed and comprehensive_passed and app_config_passed and functionality_passed %}
+          OVERALL STATUS: {{ 'HEALTHY' if all_checks_passed else 'UNHEALTHY' }}
           
           DETAILS:
           - Container is running and accessible
