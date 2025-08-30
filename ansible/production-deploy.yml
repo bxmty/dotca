@@ -110,6 +110,8 @@
       command: timedatectl set-timezone America/New_York
       changed_when: false
 
+    
+
     - name: Start and enable Docker service
       systemd:
         name: docker
@@ -164,6 +166,8 @@
       retries: 3
       delay: 5
       until: git_pull is success
+
+    
 
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
@@ -1604,6 +1608,41 @@
           {% endif %}
           
           ============================================
+
+    - name: Fix Docker volume permissions for Next.js cache
+      ansible.builtin.shell: |
+        # Stop any running containers first
+        cd {{ app_dir }}/repo
+        docker-compose down || true
+        
+        # Remove the problematic volume if it exists
+        if docker volume ls | grep -q repo_next_cache; then
+          echo "Removing existing volume with wrong permissions..."
+          docker volume rm repo_next_cache || true
+        fi
+        
+        # Create the volume explicitly
+        docker volume create repo_next_cache
+        
+        # Get the volume mount path
+        VOLUME_PATH=$(docker volume inspect repo_next_cache | jq -r '.[0].Mountpoint')
+        echo "Volume mount path: $VOLUME_PATH"
+        
+        # Create a temporary container to fix permissions
+        docker run --rm -v repo_next_cache:/app/.next/cache alpine:latest sh -c '
+          # Create the cache and images directories
+          mkdir -p /app/.next/cache/images
+          
+          # Set ownership to match nextjs user (typically UID 1001)
+          # Note: We use numeric IDs since user names may not exist in alpine
+          chown -R 1001:1001 /app/.next/cache
+          chmod -R 755 /app/.next/cache
+          
+          echo "Permissions set successfully"
+          ls -la /app/.next/cache
+        '
+      register: volume_permission_fix
+      changed_when: true
 
     - name: Start Docker Compose services
       command: docker-compose up -d web
