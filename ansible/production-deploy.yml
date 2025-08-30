@@ -311,22 +311,22 @@
         cd {{ app_dir }}/repo
         
         # Get image details using a simpler approach
-        IMAGE_ID=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | cut -d' ' -f1)
-        IMAGE_SIZE=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | cut -d' ' -f3)
-        IMAGE_CREATED=\$(docker images {{ docker_image }} --format 'table' | tail -n +2 | head -1 | cut -d' ' -f4)
+        IMAGE_ID=\$(docker images {{ docker_image }} --format 'table {{.Repository}}:{{.Tag}} {{.ID}} {{.Size}} {{.CreatedSince}}' | tail -n +2 | head -1 | awk '{print \$2}')
+        IMAGE_SIZE=\$(docker images {{ docker_image }} --format 'table {{.Repository}}:{{.Tag}} {{.ID}} {{.Size}} {{.CreatedSince}}' | tail -n +2 | head -1 | awk '{print \$3}')
+        IMAGE_CREATED=\$(docker images {{ docker_image }} --format 'table {{.Repository}}:{{.Tag}} {{.ID}} {{.Size}} {{.CreatedSince}}' | tail -n +2 | head -1 | awk '{print \$4}')
         
         echo 'Production Image Details:'
         echo '  - Image: {{ docker_image }}'
-        echo '  - ID: \$IMAGE_ID'
-        echo '  - Size: \$IMAGE_SIZE'
-        echo '  - Created: \$IMAGE_CREATED'
+        echo \"  - ID: \$IMAGE_ID\"
+        echo \"  - Size: \$IMAGE_SIZE\"
+        echo \"  - Created: \$IMAGE_CREATED\"
         
         # Verify image can run
         echo 'Testing image startup...'
         if docker run --rm {{ docker_image }} --help >/dev/null 2>&1; then
-          echo '✅ Image integrity verified - can start container'
+          echo 'Image integrity verified - can start container'
         else
-          echo '⚠️  Image startup test failed, but continuing...'
+          echo 'Image startup test failed, but continuing...'
         fi
         
         # Check for required labels
@@ -336,7 +336,7 @@
       register: image_integrity_check
       changed_when: false
       ignore_errors: yes
-      when: docker_pull is success
+      when: docker_pull is success and volume_permission_fix is success
 
     # Enhanced image verification tasks
     - name: Verify image layer count and size
