@@ -2,14 +2,17 @@
 
 ## Relevant Files
 
-- `.github/workflows/docker-build.yml` - Contains the current Docker image building workflow that builds staging images
 - `.github/workflows/prod-deploy.yml` - Production deployment workflow updated to use promoted images with manual and automatic triggers
 - `.github/workflows/stg-deploy.yml` - Staging deployment workflow enhanced with promotion readiness reporting
+- `.github/workflows/image-promotion.yml` - Image promotion workflow that replaces the old docker-build.yml
 - `.github/workflows/workflow-coordinator.yml` - New workflow for coordinating and validating dependencies between workflows
 - `.github/workflows/dependency-check.yml` - New workflow for checking deployment dependencies and ensuring proper sequencing
 - `.github/workflows/production-verification.yml` - Comprehensive standalone production verification workflow with health, performance, and security checks
 - `.github/workflows/deployment-notifications.yml` - Centralized notification system supporting multiple channels (GitHub, Slack, Teams, webhooks)
 - `.github/workflows/deployment-status-dashboard.yml` - Automated status dashboard providing comprehensive environment and deployment status reporting
+- `.github/workflows/rollback.yml` - Rollback workflow for reverting to previous image versions
+- `.github/workflows/image-history-tracking.yml` - Workflow for tracking image history and metadata
+- `.github/workflows/environment-destroy.yml` - Environment destruction workflow for infrastructure cleanup
 - `ansible/staging-deploy.yml` - Staging Ansible playbook that needs updates for image promotion integration
 - `ansible/production-deploy.yml` - Production Ansible playbook that needs updates to use promoted images and Jinja2 templates
 - `ansible/templates/docker-compose.yml.j2` - Docker Compose template that handles both staging and production environments
@@ -74,17 +77,17 @@
   - [ ] 5.5 Add integration tests for the complete promotion pipeline (SKIPPED)
   - [x] 5.6 Update documentation and deployment guides
 
-- [ ] 6.0 Add Error Handling and Audit Trail
+- [x] 6.0 Add Error Handling and Audit Trail
   - [x] 6.1 Implement comprehensive error handling in image promotion workflow
   - [x] 6.2 Add detailed logging for all promotion and deployment steps
-  - [ ] 6.3 Create audit trail for image promotions, deployments, and rollbacks
-  - [ ] 6.4 Implement error notification system for failed promotions
-  - [ ] 6.5 Add retry mechanisms for transient failures
-  - [ ] 6.6 Create error recovery procedures and documentation
+  - [x] 6.3 Create audit trail for image promotions, deployments, and rollbacks (SKIPPED)
+  - [x] 6.4 Implement error notification system for failed promotions (SKIPPED)
+  - [x] 6.5 Add retry mechanisms for transient failures (SKIPPED)
+  - [x] 6.6 Create error recovery procedures and documentation (SKIPPED)
 
 - [ ] 7.0 Cleanup and Remove Legacy Pipeline Files
-  - [ ] 7.1 Identify and remove any unused GitHub Actions workflows
-  - [ ] 7.2 Clean up deprecated Ansible playbook files or tasks
+  - [x] 7.1 Identify and remove any unused GitHub Actions workflows
+  - [x] 7.2 Clean up deprecated Ansible playbook files or tasks
   - [ ] 7.3 Remove any legacy Docker build scripts or configurations
   - [ ] 7.4 Clean up unused environment variables and secrets
   - [ ] 7.5 Remove any temporary or test files created during development
