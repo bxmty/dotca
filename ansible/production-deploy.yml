@@ -591,22 +591,22 @@
       until: nginx_restart is success
 
     # Basic SSL certificate status check (moved from SSL play)
-    - name: Check initial SSL certificate status
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔒 Checking initial SSL certificate status...'
-        
-        if [ -f /etc/letsencrypt/live/boximity.ca/cert.pem ]; then
-          echo '✅ SSL certificate found'
-          # Check certificate expiration
-          EXPIRY=\$(openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2)
-          echo \"  - Expires: \$EXPIRY\"
-        else
-          echo '⚠️  SSL certificate not found (will be obtained in SSL setup play)'
-        fi
-        "
-      register: initial_ssl_check
-      changed_when: false
+    - name: Check if SSL certificate exists
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: initial_ssl_cert_check
+
+    - name: Display initial SSL certificate status
+      ansible.builtin.debug:
+        msg: |
+          🔒 Initial SSL Certificate Status:
+          
+          Certificate exists: {{ '✅ YES' if initial_ssl_cert_check.stat.exists else '❌ NO' }}
+          {% if initial_ssl_cert_check.stat.exists %}
+          Certificate will be validated in SSL setup play.
+          {% else %}
+          Certificate will be obtained in SSL setup play.
+          {% endif %}
 
     - name: Setup firewall (UFW)
       community.general.ufw:
@@ -676,8 +676,8 @@
     certbot_auto_renew_minute: "30"
     certbot_auto_renew_options: "--quiet"
     
-    # Certificate generation settings
-    certbot_create_if_missing: true
+    # Certificate generation settings - only create if needed
+    certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
     certbot_create_method: standalone
     certbot_testmode: false
     certbot_hsts: true
@@ -710,41 +710,112 @@
         enabled: yes
       when: nginx_domain_update is changed
 
+    # Certificate existence and expiration checking
+    - name: Check if SSL certificate already exists
+      stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: cert_file_exists
+
+    - name: Get certificate expiration date if it exists
+      ansible.builtin.shell: |
+        openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2
+      register: cert_expiry_raw
+      changed_when: false
+      failed_when: false
+      when: cert_file_exists.stat.exists
+
+    - name: Check if certificate needs renewal
+      ansible.builtin.shell: |
+        CERT_EXPIRY="{{ cert_expiry_raw.stdout | default('') }}"
+        if [ -n "$CERT_EXPIRY" ]; then
+          CERT_EXPIRY_EPOCH=$(date -d "$CERT_EXPIRY" +%s)
+          RENEWAL_THRESHOLD=$(date -d '+30 days' +%s)
+          if [ $CERT_EXPIRY_EPOCH -lt $RENEWAL_THRESHOLD ]; then
+            echo "renewal_needed"
+          else
+            echo "certificate_valid"
+          fi
+        else
+          echo "certificate_missing"
+        fi
+      register: cert_renewal_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display certificate status
+      ansible.builtin.debug:
+        msg: |
+          📋 SSL Certificate Status Check:
+
+          Certificate exists: {{ '✅ YES' if cert_file_exists.stat.exists else '❌ NO' }}
+          {% if cert_file_exists.stat.exists %}
+          Certificate expiry: {{ cert_expiry_raw.stdout | default('Could not determine') }}
+          Status: {{ '✅ VALID' if cert_renewal_status.stdout == 'certificate_valid' else '⚠️  NEEDS RENEWAL' if cert_renewal_status.stdout == 'renewal_needed' else '❓ UNKNOWN' }}
+          {% endif %}
+
+          Action needed: {{ 'None - certificate is valid' if cert_renewal_status.stdout == 'certificate_valid' else 'Certificate creation/renewal required' }}
+
+    - name: Set certificate action flag
+      ansible.builtin.set_fact:
+        cert_needs_action: "{{ not cert_file_exists.stat.exists or cert_renewal_status.stdout == 'renewal_needed' }}"
+
   roles:
     - geerlingguy.certbot
 
   post_tasks:
-    - name: Verify SSL certificate was obtained successfully
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔒 Verifying SSL certificate status...'
-        
-        if [ -f /etc/letsencrypt/live/boximity.ca/cert.pem ]; then
-          echo '✅ SSL certificate found'
-          # Check certificate expiration
-          EXPIRY=\$(openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2)
-          echo \"  - Expires: \$EXPIRY\"
+    - name: Display certificate action taken
+      ansible.builtin.debug:
+        msg: |
+          🔍 SSL Certificate Action Summary:
           
-          # Check certificate details
-          echo '  - Certificate details:'
-          openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -subject -issuer -dates
-          
-          # Test HTTPS connectivity
-          if curl -f -s -k https://localhost >/dev/null 2>&1; then
-            echo '  - HTTPS connectivity: ✅ Working'
-          else
-            echo '  - HTTPS connectivity: ⚠️  May need Nginx restart'
-          fi
-        else
-          echo '❌ SSL certificate not found'
-          exit 1
-        fi
-        "
-      register: ssl_certificate_verification
+          Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
+          {% if cert_needs_action %}
+          - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon' }}
+          - Certbot role was executed to {{ 'create' if not cert_file_exists.stat.exists else 'renew' }} certificate
+          {% else %}
+          - Existing certificate is valid and not expiring soon
+          - No certificate action was required
+          {% endif %}
+
+    - name: Check if SSL certificate was created successfully
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: final_ssl_cert_check
+
+    - name: Get final certificate expiration date
+      ansible.builtin.shell: |
+        openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2
+      register: final_cert_expiry
+      when: final_ssl_cert_check.stat.exists
       changed_when: false
-      retries: 3
-      delay: 10
-      until: ssl_certificate_verification.rc == 0
+
+    - name: Test HTTPS connectivity
+      ansible.builtin.uri:
+        url: https://localhost
+        method: GET
+        validate_certs: false
+        timeout: 10
+      register: https_test
+      failed_when: false
+      when: final_ssl_cert_check.stat.exists
+
+    - name: Display final SSL certificate verification
+      ansible.builtin.debug:
+        msg: |
+          🔒 Final SSL Certificate Verification:
+          
+          Certificate exists: {{ '✅ YES' if final_ssl_cert_check.stat.exists else '❌ NO' }}
+          {% if final_ssl_cert_check.stat.exists %}
+          Certificate expires: {{ final_cert_expiry.stdout | default('Could not determine') }}
+          HTTPS connectivity: {{ '✅ Working' if https_test.status is defined and https_test.status == 200 else '⚠️  May need Nginx restart' }}
+          {% endif %}
+          
+          Status: {{ '✅ SSL setup completed successfully' if final_ssl_cert_check.stat.exists else '❌ SSL setup failed' }}
+
+    - name: Fail if SSL certificate verification failed
+      ansible.builtin.fail:
+        msg: "SSL certificate verification failed - certificate not found"
+      when: not final_ssl_cert_check.stat.exists
 
     - name: Restart Nginx after SSL certificate setup
       systemd:
@@ -757,18 +828,27 @@
       ansible.builtin.debug:
         msg: |
           ============================================
-          SSL CERTIFICATE SETUP COMPLETED
+          INTELLIGENT SSL CERTIFICATE SETUP COMPLETED
           ============================================
           
           Domain: boximity.ca
           Status: {{ '✅ SUCCESS' if ssl_certificate_verification.rc == 0 else '❌ FAILED' }}
+          Action Taken: {{ 'Certificate created/renewed' if cert_needs_action else 'No action needed - existing certificate is valid' }}
           
-          Certificate Location: /etc/letsencrypt/live/boximity.ca/
-          Auto-renewal: Enabled (daily at 3:30 AM)
+          Certificate Details:
+          - Location: /etc/letsencrypt/live/boximity.ca/
+          - Auto-renewal: Enabled (daily at 3:30 AM)
+          - Renewal threshold: 30 days before expiration
+          
+          Smart Features:
+          ✅ Only creates certificates when needed (missing or expiring < 30 days)
+          ✅ Checks existing certificate validity before taking action
+          ✅ Provides detailed expiration information
+          ✅ Automatic renewal with cron job
           
           Next Steps:
           1. Test HTTPS access: https://boximity.ca
-          2. Monitor certificate expiration
-          3. Verify auto-renewal is working
+          2. Monitor certificate expiration (automated)
+          3. Verify auto-renewal is working (runs daily at 3:30 AM)
           
           ============================================
