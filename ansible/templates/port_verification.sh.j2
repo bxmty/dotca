@@ -3,12 +3,12 @@ echo "=== Final port 8080 verification ==="
 
 # Check for any remaining Docker containers
 echo "Checking for any remaining Docker containers..."
-REMAINING=$(docker ps --format '{{.Names}}\t{{.Ports}}' | grep ':8080' || true)
+REMAINING=$(docker ps --format '{% raw %}{{.Names}}\t{{.Ports}}{% endraw %}' | grep ':8080' || true)
 if [ ! -z "$REMAINING" ]; then
   echo "ERROR: Found Docker containers still using port 8080:"
   echo "$REMAINING"
   echo "Force stopping them..."
-  docker ps --format '{{.ID}}' | xargs -r docker inspect --format='{{.Id}} {{.NetworkSettings.Ports}}' | grep '8080' | cut -d' ' -f1 | xargs -r docker stop || true
+  docker ps --format '{% raw %}{{.ID}}{% endraw %}' | xargs -r docker inspect --format='{% raw %}{{.Id}} {{.NetworkSettings.Ports}}{% endraw %}' | grep '8080' | cut -d' ' -f1 | xargs -r docker stop || true
 fi
 
 # Check system level port usage
