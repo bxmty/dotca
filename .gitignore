@@ -58,3 +58,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+
+
+# ansible
+ansible/inventory/*
+ansible/*.log
