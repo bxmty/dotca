@@ -68,7 +68,7 @@ op signin
 source .env.local
 
 # Deploy locally
-./deploy.sh staging
+# Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
 ```
 
 ## Key Rotation Process
@@ -171,7 +171,7 @@ If 1Password is unavailable:
 
 - `scripts/setup-local-env.sh`: Local development environment setup
 - `scripts/rotate-ssh-keys.sh`: Automated key rotation
-- `deploy.sh`: Main deployment script (handles SSH key setup)
+- GitHub Actions workflows: Automated deployment with SSH key management
 
 ## Compliance Notes
 
