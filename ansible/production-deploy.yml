@@ -822,7 +822,7 @@
         name: nginx
         state: restarted
         enabled: yes
-      when: ssl_certificate_verification.rc == 0
+      when: final_ssl_cert_check.stat.exists
 
     - name: Final SSL certificate status
       ansible.builtin.debug:
