@@ -47,7 +47,7 @@ jobs:
           
           # Define the expected workflow sequence
           echo "📋 Expected Workflow Sequence:"
-          echo "1. 🔨 Docker Build (docker-build.yml) - Builds staging images"
+          echo "1. 🔨 Image Build (image-promotion.yml) - Builds and promotes staging images"
           echo "2. 🚀 Staging Deploy (stg-deploy.yml) - Deploys to staging"
           echo "3. ✅ Image Promotion (image-promotion.yml) - Promotes staging → production"
           echo "4. 🌟 Production Deploy (prod-deploy.yml) - Deploys promoted images"
@@ -57,7 +57,7 @@ jobs:
           # Check for workflow files existence
           WORKFLOWS_DIR=".github/workflows"
           REQUIRED_WORKFLOWS=(
-            "docker-build.yml"
+            "image-promotion.yml"
             "stg-deploy.yml" 
             "image-promotion.yml"
             "prod-deploy.yml"
@@ -330,14 +330,14 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Workflow Dependencies:**" >> $GITHUB_STEP_SUMMARY
-          echo "1. 🔨 **Docker Build** → Builds staging images from code changes" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🔨 **Image Build** → Builds staging images from code changes" >> $GITHUB_STEP_SUMMARY
           echo "2. 🚀 **Staging Deploy** → Deploys and tests staging images" >> $GITHUB_STEP_SUMMARY  
           echo "3. ✅ **Image Promotion** → Promotes tested staging images to production tags" >> $GITHUB_STEP_SUMMARY
           echo "4. 🌟 **Production Deploy** → Deploys promoted images to production" >> $GITHUB_STEP_SUMMARY
           echo "5. 🔄 **Rollback** → Emergency rollback using previous images" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Quick Actions:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [🔨 Trigger Docker Build](https://github.com/${{ github.repository }}/actions/workflows/docker-build.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- [🔨 Trigger Image Build](https://github.com/${{ github.repository }}/actions/workflows/image-promotion.yml)" >> $GITHUB_STEP_SUMMARY
           echo "- [🚀 Trigger Staging Deploy](https://github.com/${{ github.repository }}/actions/workflows/stg-deploy.yml)" >> $GITHUB_STEP_SUMMARY
           echo "- [✅ Trigger Image Promotion](https://github.com/${{ github.repository }}/actions/workflows/image-promotion.yml)" >> $GITHUB_STEP_SUMMARY
           echo "- [🌟 Trigger Production Deploy](https://github.com/${{ github.repository }}/actions/workflows/prod-deploy.yml)" >> $GITHUB_STEP_SUMMARY

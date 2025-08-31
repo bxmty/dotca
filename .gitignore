@@ -63,3 +63,22 @@ terraform.rc
 # ansible
 ansible/inventory/*
 ansible/*.log
+
+# CI/CD temporary files
+promotion*.log
+promotion-*.log
+monitoring*.log
+monitoring-*.log
+continuous-monitoring/
+*.tmp
+*.bak
+*.old
+*~
+.#*
+*.swp
+*.swo
+*.orig
+*.rej
+
+# GitHub Actions workspace files
+.github/workflows/*.log

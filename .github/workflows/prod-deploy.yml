@@ -473,32 +473,28 @@ jobs:
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
           cat inventory.ini
           
-          # Ensure script is executable
-          chmod +x ./deploy.sh
-          
           # Test SSH connection
           echo "Testing SSH connection to $DROPLET_IP..."
           ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
           
-          # Run the deployment with retry logic
-          echo "Starting deployment..."
-          DEPLOY_SUCCESS=false
-          for i in {1..3}; do
-            echo "Deployment attempt $i..."
-            if ANSIBLE_HOST_KEY_CHECKING=False ./deploy.sh production; then
-              echo "Deployment successful on attempt $i"
-              DEPLOY_SUCCESS=true
-              break
-            else
-              echo "Deployment attempt $i failed. Waiting before retry..."
-              sleep 30
-            fi
-          done
+          # Run the Ansible deployment directly
+          echo "Starting Ansible deployment..."
+          cd ansible
           
-          if [ "$DEPLOY_SUCCESS" != "true" ]; then
-            echo "::error::All deployment attempts failed"
-            echo "ansible_failed=true" >> $GITHUB_OUTPUT
-            exit 1  # This ensures the job fails if all deployment attempts fail
+          # Create inventory file
+          cat > inventory.ini << 'EOF'
+[digitalocean]
+$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'
+EOF
+          
+          # Run production deployment playbook
+          if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml; then
+            echo "Deployment successful"
+            echo "deployment_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Deployment failed"
+            echo "deployment_success=false" >> $GITHUB_OUTPUT
+            exit 1
           fi
   
   deployment-verification:
