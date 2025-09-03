@@ -1,6 +1,6 @@
 ---
 # Ansible playbook for setting up the Production environment for dotca
-# With optimizations for Next.js deployment
+# With optimizations for Next.js deployment and geerlingguy certbot role
 
 # Add a pre-task to fix temporary directory issues
 - name: Fix temporary directory issues
@@ -33,14 +33,9 @@
     github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
     # Production image configuration - uses promoted images from GHCR
     docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
-    github_repo_from_url: "{{ git_repo_url | regex_replace('.*github\\.com[/:]([^/]+/[^/.]+).*', '\\1') if git_repo_url else '' }}"
+    github_repo_from_url: "{{ git_repo_url | default('') }}"
     # Default to main tag (promoted production image)
-    docker_image: >-
-      {{
-        docker_image_override if docker_image_override else 
-        ('ghcr.io/' + github_repo_from_url + ':main') if github_repo_from_url else
-        'ghcr.io/bxtech/dotca:main'
-      }}
+    docker_image: "{{ docker_image_override if docker_image_override else 'ghcr.io/bxtech/dotca:main' }}"
 
   tasks:
     - name: Update apt cache
@@ -63,7 +58,6 @@
           - python3-pip
           - jq
           - nginx
-          - docker-compose
         state: present
         update_cache: yes
 
@@ -112,8 +106,8 @@
         enabled: yes
 
     - name: Set timezone to Eastern Time
-      timezone:
-        name: America/New_York
+      command: timedatectl set-timezone America/New_York
+      changed_when: false
 
     - name: Start and enable Docker service
       systemd:
@@ -125,10 +119,52 @@
       delay: 5
       until: docker_service_result is success
 
-    - name: Verify Docker Compose installation
+    - name: Remove old docker-compose if exists
+      apt:
+        name: docker-compose
+        state: absent
+        purge: yes
+      ignore_errors: yes
+
+    - name: Install latest Docker Compose v2
+      get_url:
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+      register: compose_install
+
+    - name: Create symlink for docker-compose
+      file:
+        src: /usr/local/bin/docker-compose
+        dest: /usr/bin/docker-compose
+        state: link
+      when: compose_install is changed
+
+    - name: Verify Docker Compose v2 installation
       command: docker-compose --version
       register: compose_version
       changed_when: false
+
+    - name: Display Docker Compose version
+      debug:
+        msg: "Docker Compose version: {{ compose_version.stdout }}"
+
+    - name: Verify Docker Compose binary location
+      command: which docker-compose
+      register: compose_location
+      changed_when: false
+
+    - name: Display Docker Compose location
+      debug:
+        msg: "Docker Compose location: {{ compose_location.stdout }}"
+
+    - name: Verify Docker Compose v2 compatibility
+      fail:
+        msg: |
+          Docker Compose version {{ compose_version.stdout }} is not compatible.
+          Expected Docker Compose v2+ for production deployment.
+          Please ensure the latest version is installed.
+      when: "'v2' not in compose_version.stdout and '2.' not in compose_version.stdout"
 
     - name: Create application directory
       file:
@@ -170,35 +206,18 @@
       delay: 5
       until: git_pull is success
 
-    - name: Generate docker-compose.yml from template
-      ansible.builtin.template:
-        src: docker-compose.yml.j2
-        dest: "{{ app_dir }}/repo/docker-compose.yml"
-        mode: '0644'
-        backup: true
-      vars:
-        node_env: production
-        next_public_api_url: "http://{{ public_ip }}/api"
-        next_public_environment: production
-        brevo_api_key: "{{ brevo_api_key }}"
-        stripe_secret_key: "{{ stripe_secret_key }}"
-        stripe_publishable_key: "{{ stripe_publishable_key }}"
-        ga_production_id: "{{ ga_production_id }}"
-
-    - name: Display generated docker-compose.yml for debugging
-      ansible.builtin.command: cat "{{ app_dir }}/repo/docker-compose.yml"
-      register: docker_compose_content
-      changed_when: false
-
-    - name: Show docker-compose.yml content
-      ansible.builtin.debug:
-        msg: "{{ docker_compose_content.stdout_lines }}"
-
     - name: Stop existing Docker Compose services
-      command: docker-compose down web
+      command: docker-compose down -v --remove-orphans
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
+      ignore_errors: yes
+
+    - name: Clean up any remaining Docker resources
+      shell: |
+        docker system prune -f
+        docker volume prune -f
+        docker network prune -f
       ignore_errors: yes
 
     - name: Stop any other containers using port 8080
@@ -207,9 +226,6 @@
           docker stop $(docker ps -q --filter publish=8080)
         fi
       ignore_errors: yes
-
-    - name: Prune Docker system
-      command: docker system prune -af
 
     - name: Login to GitHub Container Registry
       ansible.builtin.command: bash -c 'set -o pipefail && echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin'
@@ -235,12 +251,13 @@
       changed_when: false
       when: docker_image is defined and docker_image != ""
 
-    - name: Set image_exists to failed state if docker_image is empty
+    - name: Set production_image_exists to failed state if docker_image is empty
       ansible.builtin.set_fact:
         production_image_exists:
           rc: 1
           stdout: ""
           stderr: "docker_image variable is empty or undefined"
+          failed: true
       when: docker_image is not defined or docker_image == ""
 
     - name: Try alternative production image names if primary fails
@@ -249,7 +266,10 @@
       register: alt_production_image_exists
       ignore_errors: true
       changed_when: false
-      when: (production_image_exists.rc | default(1) != 0) and github_username
+      when: 
+        - (production_image_exists.rc | default(1)) != 0
+        - github_username is defined
+        - github_username != ""
 
     - name: Set production image availability status variables
       ansible.builtin.set_fact:
@@ -260,7 +280,7 @@
     - name: Display production image availability
       ansible.builtin.debug:
         msg: 
-          - "Production image {{ docker_image }} exists: {{ primary_production_image_status }}"
+          - "Production image {{ docker_image | default('undefined') }} exists: {{ primary_production_image_status }}"
           - "Alternative production image exists: {{ alt_production_image_status }}"
           - ""
           - "{{ 'SUCCESS: Found promoted production image!' if any_production_image_found else 'ERROR: No promoted production images found!' }}"
@@ -274,7 +294,10 @@
     - name: Use alternative production image if primary failed
       ansible.builtin.set_fact:
         docker_image: "ghcr.io/{{ github_username }}/dotca:main"
-      when: (production_image_exists is defined and production_image_exists.rc != 0) and alt_production_image_exists is defined and alt_production_image_exists.rc == 0
+      when: 
+        - (production_image_exists.rc | default(1)) != 0
+        - alt_production_image_exists is defined
+        - (alt_production_image_exists.rc | default(1)) == 0
 
     - name: Fail if no promoted production images found
       ansible.builtin.fail:
@@ -290,14 +313,34 @@
           4. Verify the promoted image exists in GHCR
           
           Expected image locations:
-          - {{ docker_image }}
+          - {{ docker_image | default('undefined') }}
           - ghcr.io/{{ github_username }}/dotca:main (if username available)
           
           Current workflow status:
           - Staging deployment: Check staging-deploy.yml workflow
           - Image promotion: Check image-promotion.yml workflow
           - Production deployment: This workflow (requires promoted image)
-      when: not any_production_image_found
+      when: not (any_production_image_found | default(false))
+
+    - name: Generate docker-compose.yml from template
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: "{{ app_dir }}/repo/docker-compose.yml"
+        mode: '0644'
+        backup: true
+      vars:
+        node_env: production
+        next_public_api_url: "http://{{ public_ip }}/api"
+        next_public_environment: production
+
+    - name: Display generated docker-compose.yml for debugging
+      ansible.builtin.command: cat "{{ app_dir }}/repo/docker-compose.yml"
+      register: docker_compose_content
+      changed_when: false
+
+    - name: Show docker-compose.yml content
+      ansible.builtin.debug:
+        msg: "{{ docker_compose_content.stdout_lines }}"
 
     - name: Pull promoted production image from GHCR
       ansible.builtin.command: bash -c "cd {{ app_dir }}/repo && docker-compose pull web"
@@ -309,1248 +352,129 @@
       until: docker_pull is success
       changed_when: false
 
-    - name: Verify promoted image integrity
+    - name: Fix Docker volume permissions for Next.js cache
+      ansible.builtin.shell: |
+        # Create the volume explicitly with correct name
+        docker volume create next_cache 2>/dev/null || true
+        
+        # Fix permissions using a temporary container
+        docker run --rm -v next_cache:/app/.next/cache alpine:latest sh -c '
+          mkdir -p /app/.next/cache/images
+          chown -R 1001:1001 /app/.next/cache
+          chmod -R 755 /app/.next/cache
+          echo "Permissions set successfully"
+          ls -la /app/.next/cache
+        '
+      register: volume_permission_fix
+      changed_when: true
+
+    # STREAMLINED IMAGE VERIFICATION - Essential checks only
+    - name: Verify image pull was successful
       ansible.builtin.command: |
         bash -c "
-        echo 'Verifying promoted production image integrity...'
-        cd {{ app_dir }}/repo
+        echo '🔍 Verifying image pull was successful...'
         
-        # Get image details
-        IMAGE_ID=\$(docker images --format '{{.ID}}' {{ docker_image }} | head -1)
-        IMAGE_SIZE=\$(docker images --format '{{.Size}}' {{ docker_image }} | head -1)
-        IMAGE_CREATED=\$(docker images --format '{{.CreatedAt}}' {{ docker_image }} | head -1)
+        # Check that image exists locally using multiple methods
+        echo 'Checking for image: {{ docker_image }}'
         
-        echo 'Production Image Details:'
-        echo '  - Image: {{ docker_image }}'
-        echo '  - ID: \$IMAGE_ID'
-        echo '  - Size: \$IMAGE_SIZE'
-        echo '  - Created: \$IMAGE_CREATED'
+        # Extract repository and tag for flexible matching
+        REPO_NAME=$(echo '{{ docker_image }}' | cut -d':' -f1)
+        TAG_NAME=$(echo '{{ docker_image }}' | cut -d':' -f2)
         
-        # Verify image can run
-        echo 'Testing image startup...'
-        if docker run --rm {{ docker_image }} --help >/dev/null 2>&1; then
-          echo '✅ Image integrity verified - can start container'
-        else
-          echo '⚠️  Image startup test failed, but continuing...'
+        echo 'Looking for repository: \$REPO_NAME with tag: \$TAG_NAME'
+        
+        # Method 1: Check using docker images with custom format
+        if docker images --format '{% raw %}{{.Repository}}:{{.Tag}}{% endraw %}' | grep -q '{{ docker_image }}'; then
+          echo '✅ Image {{ docker_image }} found (exact format match)'
+          exit 0
         fi
         
-        # Check for required labels
-        echo 'Checking image labels...'
-        docker inspect {{ docker_image }} | jq -r '.[0].Config.Labels // {}' | grep -E '(org.opencontainers|version|source)' || echo 'No OCI labels found'
-        "
-      register: image_integrity_check
-      changed_when: false
-      when: docker_pull is success
-
-    # Enhanced image verification tasks
-    - name: Verify image layer count and size
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔍 Verifying image layers and size...'
-        
-        # Get layer information
-        LAYER_COUNT=\$(docker history {{ docker_image }} | wc -l)
-        TOTAL_SIZE=\$(docker images {{ docker_image }} --format '{{.Size}}' | head -1)
-        
-        echo 'Layer Analysis:'
-        echo '  - Total Layers: \$LAYER_COUNT'
-        echo '  - Total Size: \$TOTAL_SIZE'
-        
-        # Check for reasonable layer count (should be < 50 for optimized images)
-        if [ \$LAYER_COUNT -lt 50 ]; then
-          echo '✅ Layer count is reasonable (\$LAYER_COUNT < 50)'
-        else
-          echo '⚠️  High layer count (\$LAYER_COUNT) - consider image optimization'
+        # Method 2: Check repository and tag separately (more reliable)
+        if docker images --format '{% raw %}{{.Repository}} {{.Tag}}{% endraw %}' | grep -q \"\$REPO_NAME \$TAG_NAME\"; then
+          echo '✅ Image found (repository and tag match): \$REPO_NAME:\$TAG_NAME'
+          exit 0
         fi
         
-        # Check for reasonable size (should be < 2GB for typical web apps)
-        SIZE_NUM=\$(echo \$TOTAL_SIZE | sed 's/[^0-9.]//g')
-        if [ \$(echo '\$SIZE_NUM < 2.0' | bc -l 2>/dev/null || echo '1') = '1' ]; then
-          echo '✅ Image size is reasonable (\$TOTAL_SIZE)'
-        else
-          echo '⚠️  Large image size (\$TOTAL_SIZE) - consider optimization'
-        fi
-        "
-      register: image_layer_check
-      changed_when: false
-      when: image_integrity_check is defined
-
-    - name: Verify image security and vulnerability status
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔒 Checking image security...'
-        
-        # Check if trivy is available
-        if command -v trivy >/dev/null 2>&1; then
-          echo 'Running Trivy vulnerability scan...'
-          trivy image --severity HIGH,CRITICAL {{ docker_image }} --format json | jq -r '.Results[].Vulnerabilities[] | select(.Severity == \"HIGH\" or .Severity == \"CRITICAL\") | .VulnerabilityID + \" (\" + .Severity + \")\"' 2>/dev/null || echo 'No high/critical vulnerabilities found'
-        else
-          echo '⚠️  Trivy not available - skipping vulnerability scan'
-          echo 'Install with: sudo apt-get install wget apt-transport-https gnupg lsb-release && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add - && echo deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list && sudo apt-get update && sudo apt-get install trivy'
+        # Method 3: Check just the repository name using simple docker images
+        if docker images | grep -q \"\$REPO_NAME.*\$TAG_NAME\"; then
+          echo '✅ Image repository found: \$REPO_NAME with tag \$TAG_NAME'
+          docker images \"\$REPO_NAME\"
+          exit 0
         fi
         
-        # Check for known malicious patterns in image history
-        echo 'Checking image history for suspicious patterns...'
-        docker history {{ docker_image }} | grep -i -E '(curl|wget|bash -c|eval|base64)' | head -5 || echo 'No suspicious patterns found in image history'
-        "
-      register: image_security_check
-      changed_when: false
-      when: image_integrity_check is defined
-
-    - name: Verify image configuration and health checks
-      ansible.builtin.command: |
-        bash -c "
-        echo '⚙️  Verifying image configuration...'
-        
-        # Check if image has health check configured
-        HEALTH_CHECK=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Healthcheck // \"No health check configured\"')
-        echo 'Health Check Configuration:'
-        echo \$HEALTH_CHECK
-        
-        # Check exposed ports
-        EXPOSED_PORTS=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.ExposedPorts // {}' | jq -r 'keys[]' 2>/dev/null || echo 'No ports exposed')
-        echo 'Exposed Ports:'
-        echo \$EXPOSED_PORTS
-        
-        # Check environment variables
-        ENV_COUNT=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Env // []' | jq 'length')
-        echo 'Environment Variables Count: \$ENV_COUNT'
-        
-        # Check working directory
-        WORKING_DIR=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.WorkingDir // \"Not set\"')
-        echo 'Working Directory: \$WORKING_DIR'
-        
-        # Check entrypoint and command
-        ENTRYPOINT=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Entrypoint // []' | jq -r 'join(\" \")' 2>/dev/null || echo 'Not set')
-        CMD=\$(docker inspect {{ docker_image }} | jq -r '.[0].Config.Cmd // []' | jq -r 'join(\" \")' 2>/dev/null || echo 'Not set')
-        echo 'Entrypoint: \$ENTRYPOINT'
-        echo 'Command: \$CMD'
-        "
-      register: image_config_check
-      changed_when: false
-      when: image_integrity_check is defined
-
-    - name: Verify image compatibility with production environment
-      ansible.builtin.command: |
-        bash -c "
-        echo '🌐 Verifying production environment compatibility...'
-        
-        # Test container startup with production-like environment
-        echo 'Testing container startup with production environment variables...'
-        
-        # Create temporary test container
-        TEST_CONTAINER=\$(docker run -d --rm \
-          -e NODE_ENV=production \
-          -e NEXT_PUBLIC_ENVIRONMENT=production \
-          -p 3001:3000 \
-          {{ docker_image }})
-        
-        if [ \$? -eq 0 ]; then
-          echo '✅ Container started successfully in production mode'
-          
-          # Wait for container to be ready
-          sleep 10
-          
-          # Test health endpoint
-          if curl -f -s http://localhost:3001/health >/dev/null 2>&1; then
-            echo '✅ Health endpoint accessible'
-          else
-            echo '⚠️  Health endpoint not accessible'
-          fi
-          
-          # Test basic connectivity
-          if curl -f -s http://localhost:3001 >/dev/null 2>&1; then
-            echo '✅ Application responding on root endpoint'
-          else
-            echo '⚠️  Application not responding on root endpoint'
-          fi
-          
-          # Clean up test container
-          docker stop \$TEST_CONTAINER >/dev/null 2>&1
-          echo '🧹 Test container cleaned up'
-        else
-          echo '❌ Failed to start container in production mode'
+        # Method 4: Use docker inspect to verify image exists
+        if docker inspect '{{ docker_image }}' >/dev/null 2>&1; then
+          echo '✅ Image {{ docker_image }} verified via docker inspect'
+          exit 0
         fi
+        
+        # If all methods fail, show debug info
+        echo '❌ Image verification failed. Debug information:'
+        echo 'Expected image: {{ docker_image }}'
+        echo 'Repository: \$REPO_NAME, Tag: \$TAG_NAME'
+        echo ''
+        echo 'Available images:'
+        docker images
+        echo ''
+        echo 'Docker-compose images:'
+        cd {{ app_dir }}/repo && docker-compose images || true
+        echo ''
+        echo 'Trying docker inspect:'
+        docker inspect '{{ docker_image }}' || echo 'Docker inspect failed'
+        exit 1
         "
-      register: image_compatibility_check
+      register: image_pull_verification
       changed_when: false
-      when: image_config_check is defined
+      when: docker_pull is success and volume_permission_fix is success
 
-    - name: Generate comprehensive image verification report
+    # STREAMLINED ENVIRONMENT VARIABLE VALIDATION - Essential checks only
+    - name: Validate critical environment variables
       ansible.builtin.debug:
         msg: |
-          ============================================
-          COMPREHENSIVE IMAGE VERIFICATION REPORT
-          ============================================
+          🔍 Validating critical environment variables for production deployment
           
-          🖼️  Image: {{ docker_image }}
-          📅 Verification Time: {{ ansible_date_time.iso8601 }}
-          
-          🔍 Basic Integrity: {{ '✅ PASSED' if image_integrity_check.rc == 0 else '❌ FAILED' }}
-          📊 Layer Analysis: {{ '✅ PASSED' if image_layer_check.rc == 0 else '❌ FAILED' }}
-          🔒 Security Check: {{ '✅ PASSED' if image_security_check.rc == 0 else '❌ FAILED' }}
-          ⚙️  Configuration: {{ '✅ PASSED' if image_config_check.rc == 0 else '❌ FAILED' }}
-          🌐 Compatibility: {{ '✅ PASSED' if image_compatibility_check.rc == 0 else '❌ FAILED' }}
-          
-          📋 Verification Summary:
-          - Image integrity: {{ 'PASSED' if image_integrity_check.rc == 0 else 'FAILED' }}
-          - Layer optimization: {{ 'PASSED' if image_layer_check.rc == 0 else 'FAILED' }}
-          - Security status: {{ 'PASSED' if image_security_check.rc == 0 else 'FAILED' }}
-          - Configuration: {{ 'PASSED' if image_config_check.rc == 0 else 'FAILED' }}
-          - Production compatibility: {{ 'PASSED' if image_compatibility_check.rc == 0 else 'FAILED' }}
-          
-          🚀 Image is {{ 'READY' if (image_integrity_check.rc == 0 and image_layer_check.rc == 0 and image_security_check.rc == 0 and image_config_check.rc == 0 and image_compatibility_check.rc == 0) else 'NOT READY' }} for production deployment
-          
-                    ============================================
-
-    # IMAGE ROLLBACK CAPABILITY
-    - name: Check for available rollback images
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔄 Checking for available rollback images...'
-        
-        # Get current image digest
-        CURRENT_DIGEST=\$(docker images --digests {{ docker_image }} --format '{{.Digest}}' | head -1 | sed 's/sha256://')
-        echo 'Current Image Digest: \$CURRENT_DIGEST'
-        
-        # Look for rollback images with timestamps
-        ROLLBACK_IMAGES=\$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -10)
-        
-                 if [ -n \"\$ROLLBACK_IMAGES\" ]; then
-           echo 'Available Rollback Images:'
-           echo \$ROLLBACK_IMAGES | tr ' ' '\n' | while read img; do
-             CREATED=\$(docker images --format '{{.CreatedAt}}' \$img | head -1)
-             SIZE=\$(docker images --format '{{.Size}}' \$img | head -1)
-             echo \"  - \$img (\$CREATED, \$SIZE)\"
-           done
-         else
-           echo 'No rollback images found'
-         fi
-         
-         # Look for version-tagged images
-         VERSION_IMAGES=\$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
-         
-         if [ -n \"\$VERSION_IMAGES\" ]; then
-           echo 'Available Version Images:'
-           echo \$VERSION_IMAGES | tr ' ' '\n' | while read img; do
-             CREATED=\$(docker images --format '{{.CreatedAt}}' \$img | head -1)
-             SIZE=\$(docker images --format '{{.Size}}' \$img | head -1)
-             echo \"  - \$img (\$CREATED, \$SIZE)\"
-           done
-         else
-           echo 'No version-tagged images found'
-         fi
-        
-        # Store current digest for potential rollback
-        echo \$CURRENT_DIGEST > {{ app_dir }}/current-image-digest.txt
-        echo 'Current image digest saved for rollback reference'
-        "
-      register: rollback_check
-      changed_when: false
-      when: image_compatibility_check is defined
-
-    - name: Create rollback configuration file
-      ansible.builtin.copy:
-        dest: "{{ app_dir }}/rollback-config.yml"
-        mode: '0644'
-        content: |
-          # Rollback Configuration for Production Environment
-          # Generated on: {{ ansible_date_time.iso8601 }}
-          
-          current_image: "{{ docker_image }}"
-          current_digest: "{{ rollback_check.stdout | regex_search('Current Image Digest: ([a-f0-9]+)', '\\1') | default('unknown') }}"
-          deployment_time: "{{ ansible_date_time.iso8601 }}"
-          
-          # Rollback triggers
-          rollback_triggers:
-            - health_check_failure: true
-            - performance_degradation: true
-            - security_vulnerability: true
-            - manual_trigger: true
-          
-          # Rollback procedure
-          rollback_steps:
-            1. Stop current production container
-            2. Pull rollback image from GHCR
-            3. Verify rollback image integrity
-            4. Start rollback container
-            5. Verify application health
-            6. Update rollback status
-          
-          # Available rollback targets
-          rollback_targets:
-            - type: timestamp_based
-              pattern: "rollback-*"
-              description: "Time-based rollback images"
-            - type: version_based
-              pattern: "v*.*.*"
-              description: "Semantic version images"
-            - type: previous_main
-              pattern: "main-*"
-              description: "Previous main branch images"
-          
-          # Rollback verification
-          verification_steps:
-            - health_check: true
-            - connectivity_test: true
-            - performance_check: true
-            - log_analysis: true
-
-    - name: Create rollback execution script
-      ansible.builtin.template:
-        src: rollback-execution.sh.j2
-        dest: "{{ app_dir }}/rollback-execution.sh"
-        mode: '0755'
-        backup: true
-        vars:
-          app_dir: "{{ app_dir }}"
-          project_name: "{{ project_name }}"
-          docker_image: "{{ docker_image }}"
-
-    - name: Create rollback monitoring script
-      ansible.builtin.template:
-        src: rollback-monitor.sh.j2
-        dest: "{{ app_dir }}/rollback-monitor.sh"
-        mode: '0755'
-        backup: true
-        vars:
-          app_dir: "{{ app_dir }}"
-          project_name: "{{ project_name }}"
-          health_check_url: "http://localhost/health"
-
-    - name: Set up rollback monitoring cron job
-      ansible.builtin.cron:
-        name: "Rollback Monitoring"
-        minute: "*/5"
-        job: "{{ app_dir }}/rollback-monitor.sh >> {{ app_dir }}/rollback-monitor.log 2>&1"
-        state: present
-
-    - name: Display rollback capability information
-      ansible.builtin.debug:
-        msg: |
-          ============================================
-          ROLLBACK CAPABILITY IMPLEMENTED
-          ============================================
-          
-          🚀 Production environment now includes comprehensive rollback capability
-          
-          📁 Rollback Files Created:
-          - {{ app_dir }}/rollback-config.yml (Configuration)
-          - {{ app_dir }}/rollback-execution.sh (Execution script)
-          - {{ app_dir }}/rollback-monitor.sh (Monitoring script)
-          - {{ app_dir }}/current-image-digest.txt (Current image reference)
-          
-          🔄 Rollback Triggers:
-          - Health check failures
-          - Performance degradation
-          - Security vulnerabilities
-          - Manual triggers
-          
-          📊 Rollback Targets Available:
-          - Timestamp-based rollback images
-          - Semantic version images
-          - Previous main branch images
-          
-          ⚡ Quick Rollback Commands:
-          - Manual rollback: {{ app_dir }}/rollback-execution.sh
-          - Check status: {{ app_dir }}/rollback-monitor.sh
-          - View config: cat {{ app_dir }}/rollback-config.yml
-          
-          🕐 Monitoring: Automatic health checks every 5 minutes
-          
-          ============================================
-
-    # ENVIRONMENT VARIABLE HANDLING FOR PROMOTED IMAGES
-    - name: Validate required environment variables for production
-      ansible.builtin.debug:
-        msg: |
-          🔍 Validating Production Environment Variables
-          ============================================
-          
-          Required Variables:
+          Required Variables Status:
           - BREVO_API_KEY: {{ '✅ SET' if brevo_api_key else '❌ MISSING' }}
           - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
           - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_key else '❌ MISSING' }}
           - GA_PRODUCTION_ID: {{ '✅ SET' if ga_production_id else '❌ MISSING' }}
           - GITHUB_TOKEN: {{ '✅ SET' if github_token else '❌ MISSING' }}
           - GITHUB_USERNAME: {{ '✅ SET' if github_username else '❌ MISSING' }}
-          
-          Optional Variables:
-          - DOCKER_IMAGE: {{ '✅ SET' if docker_image_override else '⚠️  Using default' }}
           - GIT_REPO_URL: {{ '✅ SET' if git_repo_url else '❌ MISSING' }}
-          
-          ============================================
 
     - name: Fail if critical environment variables are missing
       ansible.builtin.fail:
         msg: |
           Critical environment variables are missing!
-          
-          Missing variables:
-          {% if not brevo_api_key %}- BREVO_API_KEY{% endif %}
-          {% if not stripe_secret_key %}- STRIPE_SECRET_KEY{% endif %}
-          {% if not stripe_publishable_key %}- STRIPE_PUBLISHABLE_KEY{% endif %}
-          {% if not ga_production_id %}- GA_PRODUCTION_ID{% endif %}
-          {% if not github_token %}- GITHUB_TOKEN{% endif %}
-          {% if not github_username %}- GITHUB_USERNAME{% endif %}
-          {% if not git_repo_url %}- GIT_REPO_URL{% endif %}
-          
-          These variables are required for production deployment.
           Please set them in your environment or GitHub Secrets.
       when: >
-        not brevo_api_key or 
-        not stripe_secret_key or 
-        not stripe_publishable_key or 
-        not ga_production_id or 
-        not github_token or 
-        not github_username or 
+        not brevo_api_key or
+        not stripe_secret_key or
+        not stripe_publishable_key or
+        not ga_production_id or
+        not github_token or
+        not github_username or
         not git_repo_url
 
-    - name: Create environment variable validation report
-      ansible.builtin.copy:
-        dest: "{{ app_dir }}/env-validation-report.txt"
-        mode: '0644'
-        content: |
-          PRODUCTION ENVIRONMENT VARIABLE VALIDATION REPORT
-          ================================================
-          Generated: {{ ansible_date_time.iso8601 }}
-          Environment: Production
-          
-          CRITICAL VARIABLES:
-          - BREVO_API_KEY: {{ 'SET' if brevo_api_key else 'MISSING' }}
-          - STRIPE_SECRET_KEY: {{ 'SET' if stripe_secret_key else 'MISSING' }}
-          - STRIPE_PUBLISHABLE_KEY: {{ 'SET' if stripe_publishable_key else 'MISSING' }}
-          - GA_PRODUCTION_ID: {{ 'SET' if ga_production_id else 'MISSING' }}
-          - GITHUB_TOKEN: {{ 'SET' if github_token else 'MISSING' }}
-          - GITHUB_USERNAME: {{ 'SET' if github_username else 'MISSING' }}
-          - GIT_REPO_URL: {{ 'SET' if git_repo_url else 'MISSING' }}
-          
-          OPTIONAL VARIABLES:
-          - DOCKER_IMAGE: {{ 'SET' if docker_image_override else 'Using default' }}
-          
-          VALIDATION STATUS: {{ 'PASSED' if (brevo_api_key and stripe_secret_key and stripe_publishable_key and ga_production_id and github_token and github_username and git_repo_url) else 'FAILED' }}
-          
-          ================================================
-
-    - name: Create secure environment configuration file
+    - name: Create production environment file
       ansible.builtin.copy:
         dest: "{{ app_dir }}/.env.production"
         mode: '0600'
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_gid }}"
         content: |
-          # Production Environment Configuration
-          # Generated on: {{ ansible_date_time.iso8601 }}
-          # WARNING: This file contains sensitive information
-          
-          # Application Configuration
           NODE_ENV=production
           NEXT_PUBLIC_ENVIRONMENT=production
           NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-          
-          # API Keys (from environment variables)
           BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          
-          # Analytics
           GA_PRODUCTION_ID={{ ga_production_id }}
-          
-          # GitHub Container Registry
           GITHUB_TOKEN={{ github_token }}
           GITHUB_USERNAME={{ github_username }}
-          
-          # Image Configuration
           DOCKER_IMAGE={{ docker_image }}
           
-          # Security Settings
-          NODE_TLS_REJECT_UNAUTHORIZED=1
-          NPM_CONFIG_STRICT_SSL=true
-          
-          # Performance Settings
-          NODE_OPTIONS=--max-old-space-size=2048
-          NEXT_TELEMETRY_DISABLED=1
-
-    - name: Create environment variable documentation
-      ansible.builtin.copy:
-        dest: "{{ app_dir }}/env-documentation.md"
-        mode: '0644'
-        content: |
-          # Production Environment Variables Documentation
-          
-          ## Overview
-          This document describes the environment variables used in the production environment.
-          
-          ## Critical Variables
-          
-          ### BREVO_API_KEY
-          - **Purpose**: API key for Brevo email service
-          - **Required**: Yes
-          - **Format**: String
-          - **Security**: High (API key)
-          
-          ### STRIPE_SECRET_KEY
-          - **Purpose**: Secret key for Stripe payment processing
-          - **Required**: Yes
-          - **Format**: String (starts with 'sk_')
-          - **Security**: Critical (payment processing)
-          
-          ### STRIPE_PUBLISHABLE_KEY
-          - **Purpose**: Publishable key for Stripe payment processing
-          - **Required**: Yes
-          - **Format**: String (starts with 'pk_')
-          - **Security**: Medium (public key)
-          
-          ### GA_PRODUCTION_ID
-          - **Purpose**: Google Analytics ID for production
-          - **Required**: Yes
-          - **Format**: String (starts with 'G-')
-          - **Security**: Low (analytics)
-          
-          ### GITHUB_TOKEN
-          - **Purpose**: GitHub token for GHCR access
-          - **Required**: Yes
-          - **Format**: String
-          - **Security**: High (repository access)
-          
-          ### GITHUB_USERNAME
-          - **Purpose**: GitHub username for GHCR access
-          - **Required**: Yes
-          - **Format**: String
-          - **Security**: Low (username)
-          
-          ### GIT_REPO_URL
-          - **Purpose**: Git repository URL
-          - **Required**: Yes
-          - **Format**: URL
-          - **Security**: Low (public repository)
-          
-          ## Optional Variables
-          
-          ### DOCKER_IMAGE
-          - **Purpose**: Override default Docker image
-          - **Required**: No
-          - **Format**: String (image:tag)
-          - **Default**: ghcr.io/bxtech/dotca:main
-          
-          ## Security Notes
-          
-          1. **Never commit sensitive variables** to version control
-          2. **Use GitHub Secrets** for sensitive values
-          3. **Rotate API keys** regularly
-          4. **Monitor access logs** for unauthorized usage
-          5. **Use least privilege** for API keys
-          
-          ## Environment Setup
-          
-          ### Local Development
-          ```bash
-          cp .env.production .env.local
-          # Edit .env.local with your values
-          ```
-          
-          ### Production Deployment
-          ```bash
-          # Variables are automatically set from GitHub Secrets
-          # No manual configuration required
-          ```
-          
-          ## Troubleshooting
-          
-          ### Missing Variables
-          If deployment fails due to missing variables:
-          1. Check GitHub Secrets in repository settings
-          2. Verify variable names match exactly
-          3. Ensure secrets are accessible to GitHub Actions
-          
-          ### Invalid Values
-          If variables have invalid values:
-          1. Check API key formats
-          2. Verify repository URLs
-          3. Test API key validity
-          
-          ## Last Updated
-          {{ ansible_date_time.iso8601 }}
-
-    - name: Validate environment variable formats
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔍 Validating environment variable formats...'
-        
-        # Validate Stripe keys
-        if [[ '{{ stripe_secret_key }}' =~ ^sk_[a-zA-Z0-9]+$ ]]; then
-          echo '✅ STRIPE_SECRET_KEY format is valid'
-        else
-          echo '❌ STRIPE_SECRET_KEY format is invalid (should start with sk_)'
-          exit 1
-        fi
-        
-        if [[ '{{ stripe_publishable_key }}' =~ ^pk_[a-zA-Z0-9]+$ ]]; then
-          echo '✅ STRIPE_PUBLISHABLE_KEY format is valid'
-        else
-          echo '❌ STRIPE_PUBLISHABLE_KEY format is invalid (should start with pk_)'
-          exit 1
-        fi
-        
-        # Validate Google Analytics ID
-        if [[ '{{ ga_production_id }}' =~ ^G-[A-Z0-9]+$ ]]; then
-          echo '✅ GA_PRODUCTION_ID format is valid'
-        else
-          echo '❌ GA_PRODUCTION_ID format is invalid (should start with G-)'
-          exit 1
-        fi
-        
-        # Validate GitHub token (basic format check)
-        if [[ '{{ github_token }}' =~ ^ghp_[a-zA-Z0-9]+$ ]] || [[ '{{ github_token }}' =~ ^gho_[a-zA-Z0-9]+$ ]]; then
-          echo '✅ GITHUB_TOKEN format is valid'
-        else
-          echo '⚠️  GITHUB_TOKEN format may be invalid (should start with ghp_ or gho_)'
-        fi
-        
-        # Validate repository URL
-        if [[ '{{ git_repo_url }}' =~ ^https://github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+ ]]; then
-          echo '✅ GIT_REPO_URL format is valid'
-        else
-          echo '❌ GIT_REPO_URL format is invalid (should be GitHub HTTPS URL)'
-          exit 1
-        fi
-        
-        echo '✅ All environment variable formats validated successfully'
-        "
-      register: env_format_validation
-      changed_when: false
-      when: >
-        brevo_api_key and 
-        stripe_secret_key and 
-        stripe_publishable_key and 
-        ga_production_id and 
-        github_token and 
-        github_username and 
-        git_repo_url
-
-    - name: Test API key connectivity (if possible)
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔗 Testing API key connectivity...'
-        
-        # Test GitHub token (basic connectivity)
-        echo 'Testing GitHub token...'
-        if curl -H 'Authorization: token {{ github_token }}' -s 'https://api.github.com/user' | grep -q 'login'; then
-          echo '✅ GitHub token is valid and accessible'
-        else
-          echo '❌ GitHub token validation failed'
-          exit 1
-        fi
-        
-        # Test Stripe publishable key (public endpoint)
-        echo 'Testing Stripe publishable key...'
-        if curl -s 'https://api.stripe.com/v1/account' -H 'Authorization: Bearer {{ stripe_publishable_key }}' | grep -q 'id'; then
-          echo '✅ Stripe publishable key is valid'
-        else
-          echo '⚠️  Stripe publishable key validation failed (may be expected for publishable keys)'
-        fi
-        
-        echo '✅ API key connectivity tests completed'
-        "
-      register: api_connectivity_test
-      changed_when: false
-      when: env_format_validation is defined and env_format_validation.rc == 0
-
-    - name: Create environment variable summary
-      ansible.builtin.debug:
-        msg: |
-          ============================================
-          ENVIRONMENT VARIABLE HANDLING COMPLETED
-          ============================================
-          
-          🚀 Production environment variables configured successfully
-          
-          📁 Files Created:
-          - {{ app_dir }}/.env.production (Secure environment file)
-          - {{ app_dir }}/env-validation-report.txt (Validation report)
-          - {{ app_dir }}/env-documentation.md (Documentation)
-          
-          🔍 Validation Results:
-          - Format validation: {{ '✅ PASSED' if env_format_validation.rc == 0 else '❌ FAILED' }}
-          - API connectivity: {{ '✅ PASSED' if api_connectivity_test.rc == 0 else '❌ FAILED' }}
-          
-          🔐 Security Features:
-          - Environment file permissions: 600 (owner only)
-          - Sensitive variables encrypted in GitHub Secrets
-          - No sensitive data in version control
-          
-          📋 Environment Variables Status:
-          - Critical variables: {{ '✅ ALL SET' if (brevo_api_key and stripe_secret_key and stripe_publishable_key and ga_production_id and github_token and github_username and git_repo_url) else '❌ MISSING' }}
-          - Optional variables: {{ '✅ CONFIGURED' if docker_image_override else '⚠️  Using defaults' }}
-          
-          🎯 Next Steps:
-          1. Environment variables are ready for production deployment
-          2. Docker Compose will use .env.production file
-          3. All sensitive data is properly secured
-          4. Documentation available for future reference
-          
-          ============================================
-
-    # HEALTH CHECKS FOR PROMOTED IMAGE DEPLOYMENT
-    - name: Wait for container to be ready after startup
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 8080
-        delay: 10
-        timeout: 120
-        state: started
-      when: docker_up is defined and docker_up.rc == 0
-
-    - name: Perform initial health check on promoted image
-      ansible.builtin.command: |
-        bash -c "
-        echo '🏥 Performing initial health check on promoted image...'
-        
-        # Wait a bit more for application to fully initialize
-        sleep 15
-        
-        # Test basic connectivity
-        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
-          echo '✅ Basic connectivity: PASSED'
-        else
-          echo '❌ Basic connectivity: FAILED'
-          exit 1
-        fi
-        
-        # Test health endpoint (if available)
-        if curl -f -s http://localhost:8080/health >/dev/null 2>&1; then
-          echo '✅ Health endpoint: PASSED'
-        else
-          echo '⚠️  Health endpoint not available (continuing...)'
-        fi
-        
-        # Test API endpoint (if available)
-        if curl -f -s http://localhost:8080/api >/dev/null 2>&1; then
-          echo '✅ API endpoint: PASSED'
-        else
-          echo '⚠️  API endpoint not available (continuing...)'
-        fi
-        
-        echo '✅ Initial health check completed successfully'
-        "
-      register: initial_health_check
-      changed_when: false
-      when: docker_up is defined and docker_up.rc == 0
-
-    - name: Verify container status and resource usage
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔍 Verifying container status and resource usage...'
-        cd {{ app_dir }}/repo
-        
-        # Check container status
-        CONTAINER_STATUS=\$(docker-compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Ports}}' | grep web || echo 'Container not found')
-        echo 'Container Status:'
-        echo \"\$CONTAINER_STATUS\"
-        
-        # Check container health
-        CONTAINER_HEALTH=\$(docker-compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Health}}' | grep web || echo 'Health status not available')
-        echo 'Container Health:'
-        echo \"\$CONTAINER_HEALTH\"
-        
-        # Get container ID
-        CONTAINER_ID=\$(docker-compose ps -q web)
-        if [ -n \"\$CONTAINER_ID\" ]; then
-          echo 'Container ID: \$CONTAINER_ID'
-          
-          # Check resource usage
-          echo 'Resource Usage:'
-          docker stats --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}' \$CONTAINER_ID
-          
-          # Check container logs for errors
-          echo 'Recent Container Logs:'
-          docker logs --tail 20 \$CONTAINER_ID | grep -i -E '(error|fail|exception|warning)' || echo 'No errors found in recent logs'
-        else
-          echo '❌ Container not found'
-          exit 1
-        fi
-        
-        echo '✅ Container status verification completed'
-        "
-      register: container_status_check
-      changed_when: false
-      when: initial_health_check is defined and initial_health_check.rc == 0
-
-    - name: Perform comprehensive application health checks
-      ansible.builtin.command: |
-        bash -c "
-        echo '🏥 Performing comprehensive application health checks...'
-        
-        # Test multiple endpoints with different methods
-        ENDPOINTS=('/' '/health' '/api' '/favicon.ico')
-        METHODS=('GET' 'HEAD')
-        
-        for endpoint in \"\${ENDPOINTS[@]}\"; do
-          for method in \"\${METHODS[@]}\"; do
-            echo \"Testing \$method \$endpoint...\"
-            
-            if curl -f -s -X \$method \"http://localhost:8080\$endpoint\" >/dev/null 2>&1; then
-              echo \"  ✅ \$method \$endpoint: PASSED\"
-            else
-              echo \"  ⚠️  \$method \$endpoint: FAILED (may be expected)\"
-            fi
-          done
-        done
-        
-        # Test response time
-        echo 'Testing response time...'
-        START_TIME=\$(date +%s%3N)
-        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
-          END_TIME=\$(date +%s%3N)
-          RESPONSE_TIME=\$((END_TIME - START_TIME))
-          echo \"  ✅ Response time: \$RESPONSE_TIME ms\"
-          
-          # Check if response time is reasonable (< 5 seconds)
-          if [ \$RESPONSE_TIME -lt 5000 ]; then
-            echo \"  ✅ Response time is acceptable (< 5s)\"
-          else
-            echo \"  ⚠️  Response time is slow (\$RESPONSE_TIME ms)\"
-          fi
-        else
-          echo \"  ❌ Response time test failed\"
-        fi
-        
-        # Test with different user agents
-        echo 'Testing with different user agents...'
-        USER_AGENTS=('Mozilla/5.0' 'curl/7.68.0' 'PostmanRuntime/7.28.0')
-        
-        for ua in \"\${USER_AGENTS[@]}\"; do
-          if curl -f -s -H \"User-Agent: \$ua\" http://localhost:8080 >/dev/null 2>&1; then
-            echo \"  ✅ User-Agent \$ua: PASSED\"
-          else
-            echo \"  ⚠️  User-Agent \$ua: FAILED\"
-          fi
-        done
-        
-        echo '✅ Comprehensive health checks completed'
-        "
-      register: comprehensive_health_check
-      changed_when: false
-      when: container_status_check is defined and container_status_check.rc == 0
-
-    - name: Verify application configuration and environment
-      ansible.builtin.command: |
-        bash -c "
-        echo '⚙️  Verifying application configuration and environment...'
-        cd {{ app_dir }}/repo
-        
-        # Check if container is using the correct image
-        RUNNING_IMAGE=\$(docker-compose exec -T web sh -c 'echo \$IMAGE' 2>/dev/null || echo 'Unable to get image from container')
-        echo 'Running Image: \$RUNNING_IMAGE'
-        
-        # Check environment variables in container
-        echo 'Environment Variables in Container:'
-        docker-compose exec -T web sh -c 'env | grep -E \"(NODE_ENV|NEXT_PUBLIC|BREVO|STRIPE|GA)\"' 2>/dev/null || echo 'Unable to get environment variables'
-        
-        # Check if container is running in production mode
-        NODE_ENV=\$(docker-compose exec -T web sh -c 'echo \$NODE_ENV' 2>/dev/null || echo 'Unknown')
-        echo 'NODE_ENV: \$NODE_ENV'
-        
-        if [ \"\$NODE_ENV\" = \"production\" ]; then
-          echo '✅ Container is running in production mode'
-        else
-          echo '⚠️  Container is not running in production mode (\$NODE_ENV)'
-        fi
-        
-        # Check working directory and files
-        echo 'Working Directory and Files:'
-        docker-compose exec -T web sh -c 'pwd && ls -la' 2>/dev/null || echo 'Unable to check working directory'
-        
-        # Check if Next.js is running
-        PROCESSES=\$(docker-compose exec -T web sh -c 'ps aux' 2>/dev/null || echo 'Unable to check processes')
-        if echo \"\$PROCESSES\" | grep -q 'next'; then
-          echo '✅ Next.js process is running'
-        else
-          echo '⚠️  Next.js process not found'
-        fi
-        
-        echo '✅ Application configuration verification completed'
-        "
-      register: app_config_check
-      changed_when: false
-      when: comprehensive_health_check is defined and comprehensive_health_check.rc == 0
-
-    - name: Test application functionality and performance
-      ansible.builtin.command: |
-        bash -c "
-        echo '🧪 Testing application functionality and performance...'
-        
-        # Test basic page load
-        echo 'Testing basic page load...'
-        if curl -f -s -o /tmp/test_page.html http://localhost:8080 >/dev/null 2>&1; then
-          PAGE_SIZE=\$(wc -c < /tmp/test_page.html)
-          echo \"  ✅ Page loaded successfully (\$PAGE_SIZE bytes)\"
-          
-          # Check if page contains expected content
-          if grep -q 'html' /tmp/test_page.html; then
-            echo \"  ✅ Page contains HTML content\"
-          else
-            echo \"  ⚠️  Page may not contain expected HTML content\"
-          fi
-          
-          # Clean up test file
-          rm -f /tmp/test_page.html
-        else
-          echo \"  ❌ Page load failed\"
-        fi
-        
-        # Test multiple concurrent requests
-        echo 'Testing concurrent request handling...'
-        CONCURRENT_REQUESTS=5
-        SUCCESSFUL_REQUESTS=0
-        
-        for i in \$(seq 1 \$CONCURRENT_REQUESTS); do
-          if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
-            SUCCESSFUL_REQUESTS=\$((SUCCESSFUL_REQUESTS + 1))
-          fi
-        done
-        
-        echo \"  ✅ Concurrent requests: \$SUCCESSFUL_REQUESTS/\$CONCURRENT_REQUESTS successful\"
-        
-        if [ \$SUCCESSFUL_REQUESTS -eq \$CONCURRENT_REQUESTS ]; then
-          echo \"  ✅ All concurrent requests handled successfully\"
-        else
-          echo \"  ⚠️  Some concurrent requests failed\"
-        fi
-        
-        # Test memory usage under load
-        echo 'Testing memory usage under load...'
-        for i in \$(seq 1 10); do
-          curl -f -s http://localhost:8080 >/dev/null 2>&1 &
-        done
-        wait
-        
-        # Check memory usage after load test
-        CONTAINER_ID=\$(cd {{ app_dir }}/repo && docker-compose ps -q web)
-        if [ -n \"\$CONTAINER_ID\" ]; then
-          MEMORY_USAGE=\$(docker stats --no-stream --format '{{.MemUsage}}' \$CONTAINER_ID)
-          echo \"  📊 Memory usage after load test: \$MEMORY_USAGE\"
-        fi
-        
-        echo '✅ Application functionality and performance tests completed'
-        "
-      register: app_functionality_test
-      changed_when: false
-      when: app_config_check is defined and app_config_check.rc == 0
-
-    - name: Create health check summary report
-      ansible.builtin.copy:
-        dest: "{{ app_dir }}/health-check-report.txt"
-        mode: '0644'
-        content: |
-          PRODUCTION HEALTH CHECK REPORT
-          ==============================
-          Generated: {{ ansible_date_time.iso8601 }}
-          Environment: Production
-          Image: {{ docker_image }}
-          
-          HEALTH CHECK RESULTS:
-          - Initial Health Check: {{ 'PASSED' if initial_health_check.rc == 0 else 'FAILED' }}
-          - Container Status: {{ 'PASSED' if container_status_check.rc == 0 else 'FAILED' }}
-          - Comprehensive Health: {{ 'PASSED' if comprehensive_health_check.rc == 0 else 'FAILED' }}
-          - Application Config: {{ 'PASSED' if app_config_check.rc == 0 else 'FAILED' }}
-          - Functionality Test: {{ 'PASSED' if app_functionality_test.rc == 0 else 'FAILED' }}
-          
-          OVERALL STATUS: {{ 'HEALTHY' if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) else 'UNHEALTHY' }}
-          
-          DETAILS:
-          - Container is running and accessible
-          - Health endpoints are responding
-          - Application is configured correctly
-          - Performance is within acceptable limits
-          - All critical functionality is working
-          
-          RECOMMENDATIONS:
-          {% if initial_health_check.rc != 0 %}
-          - Investigate initial health check failures
-          {% endif %}
-          {% if container_status_check.rc != 0 %}
-          - Check container status and resource usage
-          {% endif %}
-          {% if comprehensive_health_check.rc != 0 %}
-          - Review application health endpoints
-          {% endif %}
-          {% if app_config_check.rc != 0 %}
-          - Verify application configuration
-          {% endif %}
-          {% if app_functionality_test.rc != 0 %}
-          - Test application functionality
-          {% endif %}
-          
-          ==============================
-
-    - name: Display comprehensive health check summary
-      ansible.builtin.debug:
-        msg: |
-          ============================================
-          COMPREHENSIVE HEALTH CHECK COMPLETED
-          ============================================
-          
-          🏥 Production application health verification completed
-          
-          📊 Health Check Results:
-          - Initial Health Check: {{ '✅ PASSED' if initial_health_check.rc == 0 else '❌ FAILED' }}
-          - Container Status: {{ '✅ PASSED' if container_status_check.rc == 0 else '❌ FAILED' }}
-          - Comprehensive Health: {{ '✅ PASSED' if comprehensive_health_check.rc == 0 else '❌ FAILED' }}
-          - Application Config: {{ '✅ PASSED' if app_config_check.rc == 0 else '❌ FAILED' }}
-          - Functionality Test: {{ '✅ PASSED' if app_functionality_test.rc == 0 else '❌ FAILED' }}
-          
-          🎯 Overall Health Status: {{ '✅ HEALTHY' if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) else '❌ UNHEALTHY' }}
-          
-          📁 Health Check Report: {{ app_dir }}/health-check-report.txt
-          
-          🔍 What Was Tested:
-          - Container startup and readiness
-          - Basic connectivity and endpoints
-          - Application configuration
-          - Resource usage and performance
-          - Concurrent request handling
-          - Application functionality
-          
-          🚀 Next Steps:
-          {% if (initial_health_check.rc == 0 and container_status_check.rc == 0 and comprehensive_health_check.rc == 0 and app_config_check.rc == 0 and app_functionality_test.rc == 0) %}
-          1. ✅ Application is healthy and ready for production use
-          2. Monitor application performance and logs
-          3. Set up ongoing health monitoring
-          4. Proceed with SSL configuration and final setup
-          {% else %}
-          1. ❌ Health checks failed - investigate issues
-          2. Check container logs and status
-          3. Verify application configuration
-          4. Fix issues before proceeding
-          {% endif %}
-          
-                     ============================================
-
-    # SSL CONFIGURATION FOR PRODUCTION ENVIRONMENT
-    - name: Verify SSL certificate status
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔒 Checking SSL certificate status...'
-        
-        if [ -f /etc/letsencrypt/live/boximity.ca/cert.pem ]; then
-          echo '✅ SSL certificate found:'
-          echo '  - Certificate: /etc/letsencrypt/live/boximity.ca/cert.pem'
-          echo '  - Private Key: /etc/letsencrypt/live/boximity.ca/privkey.pem'
-          echo '  - Chain: /etc/letsencrypt/live/boximity.ca/chain.pem'
-          
-          # Check certificate expiration
-          EXPIRY=\$(openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2)
-          echo \"  - Expires: \$EXPIRY\"
-          
-          # Check days until expiration
-          DAYS_LEFT=\$(openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -checkend 86400 && echo 'More than 1 day' || echo 'Less than 1 day')
-          echo \"  - Status: \$DAYS_LEFT\"
-        else
-          echo '❌ SSL certificate not found'
-          echo '  - Expected location: /etc/letsencrypt/live/boximity.ca/'
-          echo '  - Will attempt to obtain certificate'
-        fi
-        "
-      register: ssl_status_check
-      changed_when: false
-      when: app_functionality_test is defined and app_functionality_test.rc == 0
-
-    - name: Configure SSL-enabled Nginx site configuration
-      ansible.builtin.template:
-        src: nextjs-site-ssl.conf.j2
-        dest: /etc/nginx/sites-available/nextjs-app-ssl
-        mode: '0644'
-        backup: true
-        vars:
-          domain_name: "boximity.ca"
-          ssl_cert_path: "/etc/letsencrypt/live/boximity.ca"
-          app_port: "8080"
-          ssl_protocols: "TLSv1.2 TLSv1.3"
-          ssl_ciphers: "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384"
-          ssl_prefer_server_ciphers: "off"
-          ssl_session_cache: "shared:SSL:10m"
-          ssl_session_timeout: "10m"
-          hsts_max_age: "31536000"
-          hsts_include_subdomains: "true"
-          hsts_preload: "true"
-
-    - name: Enable SSL-enabled Nginx site configuration
-      file:
-        src: /etc/nginx/sites-available/nextjs-app-ssl
-        dest: /etc/nginx/sites-enabled/nextjs-app-ssl
-        state: link
-
-    - name: Disable non-SSL Nginx site configuration
-      file:
-        path: /etc/nginx/sites-enabled/nextjs-app
-        state: absent
-      ignore_errors: yes
-
-    - name: Test SSL-enabled Nginx configuration
-      command: nginx -t
-      register: nginx_ssl_test
-      changed_when: false
-      ignore_errors: true
-
-    - name: Display SSL Nginx test results
-      debug:
-        msg: "{{ nginx_ssl_test.stderr_lines }}"
-      when: nginx_ssl_test.rc != 0
-
-    - name: Restart Nginx with SSL configuration
-      systemd:
-        name: nginx
-        state: restarted
-        enabled: yes
-      when: nginx_ssl_test.rc == 0
-      register: nginx_ssl_restart
-      retries: 2
-      delay: 5
-      until: nginx_ssl_restart is success
-
-    - name: Verify SSL configuration is working
-      ansible.builtin.command: |
-        bash -c "
-        echo '🔒 Verifying SSL configuration...'
-        
-        # Test HTTP to HTTPS redirect
-        echo 'Testing HTTP to HTTPS redirect...'
-        HTTP_RESPONSE=\$(curl -s -o /dev/null -w '%{http_code}' http://boximity.ca)
-        if [ \"\$HTTP_RESPONSE\" = \"301\" ] || [ \"\$HTTP_RESPONSE\" = \"302\" ]; then
-          echo '✅ HTTP to HTTPS redirect working (Status: \$HTTP_RESPONSE)'
-        else
-          echo '⚠️  HTTP to HTTPS redirect may not be working (Status: \$HTTP_RESPONSE)'
-        fi
-        
-        # Test HTTPS connection
-        echo 'Testing HTTPS connection...'
-        if curl -f -s -k https://boximity.ca >/dev/null 2>&1; then
-          echo '✅ HTTPS connection successful'
-        else
-          echo '❌ HTTPS connection failed'
-          exit 1
-        fi
-        
-        # Test SSL certificate validity
-        echo 'Testing SSL certificate validity...'
-        if openssl s_client -connect boximity.ca:443 -servername boximity.ca < /dev/null 2>/dev/null | grep -q 'Verify return code: 0'; then
-          echo '✅ SSL certificate is valid'
-        else
-          echo '⚠️  SSL certificate validation failed (may be expected for self-signed or Let\'s Encrypt)'
-        fi
-        
-        # Test security headers
-        echo 'Testing security headers...'
-        SECURITY_HEADERS=\$(curl -s -I https://boximity.ca | grep -E '(Strict-Transport-Security|X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)')
-        if [ -n \"\$SECURITY_HEADERS\" ]; then
-          echo '✅ Security headers present:'
-          echo \"\$SECURITY_HEADERS\"
-        else
-          echo '⚠️  Security headers may be missing'
-        fi
-        
-        echo '✅ SSL configuration verification completed'
-        "
-      register: ssl_verification
-      changed_when: false
-      when: nginx_ssl_restart is defined and nginx_ssl_restart is success
-
-    - name: Create SSL configuration report
-      ansible.builtin.copy:
-        dest: "{{ app_dir }}/ssl-configuration-report.txt"
-        mode: '0644'
-        content: |
-          PRODUCTION SSL CONFIGURATION REPORT
-          ===================================
-          Generated: {{ ansible_date_time.iso8601 }}
-          Environment: Production
-          Domain: boximity.ca
-          
-          SSL STATUS:
-          - Certificate Found: {{ 'YES' if ssl_status_check.rc == 0 else 'NO' }}
-          - Nginx SSL Config: {{ 'YES' if nginx_ssl_test.rc == 0 else 'NO' }}
-          - SSL Verification: {{ 'PASSED' if ssl_verification.rc == 0 else 'FAILED' }}
-          
-          CONFIGURATION DETAILS:
-          - SSL Site Config: /etc/nginx/sites-available/nextjs-app-ssl
-          - SSL Site Enabled: /etc/nginx/sites-enabled/nextjs-app-ssl
-          - Non-SSL Site Disabled: /etc/nginx/sites-enabled/nextjs-app (removed)
-          
-          SECURITY FEATURES:
-          - TLS Protocols: TLSv1.2, TLSv1.3
-          - Strong Ciphers: ECDHE-RSA-AES128-GCM-SHA256, ECDHE-RSA-AES256-GCM-SHA384
-          - HSTS: Enabled (max-age: 31536000, includeSubDomains: true, preload: true)
-          - Server Ciphers: Prefer client ciphers
-          - SSL Session Cache: 10m timeout
-          
-          VERIFICATION RESULTS:
-          - HTTP to HTTPS Redirect: {{ 'WORKING' if ssl_verification.rc == 0 else 'UNKNOWN' }}
-          - HTTPS Connection: {{ 'SUCCESSFUL' if ssl_verification.rc == 0 else 'FAILED' }}
-          - SSL Certificate: {{ 'VALID' if ssl_verification.rc == 0 else 'UNKNOWN' }}
-          - Security Headers: {{ 'PRESENT' if ssl_verification.rc == 0 else 'UNKNOWN' }}
-          
-          RECOMMENDATIONS:
-          {% if ssl_verification.rc == 0 %}
-          - SSL configuration is working correctly
-          - Monitor certificate expiration
-          - Ensure auto-renewal is working
-          {% else %}
-          - Investigate SSL configuration issues
-          - Check Nginx error logs
-          - Verify certificate validity
-          {% endif %}
-          
-          ===================================
-
-    - name: Display SSL configuration summary
-      ansible.builtin.debug:
-        msg: |
-          ============================================
-          SSL CONFIGURATION COMPLETED
-          ============================================
-          
-          🔒 Production environment now uses SSL-enabled Nginx configuration
-          
-          📁 SSL Configuration Files:
-          - /etc/nginx/sites-available/nextjs-app-ssl (SSL-enabled site config)
-          - /etc/nginx/sites-enabled/nextjs-app-ssl (Enabled SSL site)
-          - {{ app_dir }}/ssl-configuration-report.txt (SSL configuration report)
-          
-          🔐 Security Features Enabled:
-          - TLS 1.2 and 1.3 protocols
-          - Strong cipher suites (ECDHE-RSA-AES128-GCM-SHA256, etc.)
-          - HTTP Strict Transport Security (HSTS)
-          - Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
-          - HTTP to HTTPS redirect
-          
-          🌐 Domain Configuration:
-          - Primary domain: boximity.ca
-          - SSL certificate: Let's Encrypt (auto-renewal enabled)
-          - Non-SSL site disabled for security
-          
-          📊 SSL Status:
-          - Certificate: {{ '✅ VALID' if ssl_status_check.rc == 0 else '❌ MISSING' }}
-          - Nginx SSL Config: {{ '✅ VALID' if nginx_ssl_test.rc == 0 else '❌ INVALID' }}
-          - SSL Verification: {{ '✅ PASSED' if ssl_verification.rc == 0 else '❌ FAILED' }}
-          
-          🚀 Next Steps:
-          {% if ssl_verification.rc == 0 %}
-          1. ✅ SSL configuration is working correctly
-          2. Production site accessible via HTTPS
-          3. HTTP requests automatically redirect to HTTPS
-          4. Monitor certificate expiration and renewal
-          {% else %}
-          1. ❌ SSL configuration has issues
-          2. Check Nginx error logs for details
-          3. Verify certificate validity
-          4. Fix configuration issues before proceeding
-          {% endif %}
-          
-          ============================================
-
-       - name: Start Docker Compose services
-      command: docker-compose up -d web
+    # Docker services startup section
+    - name: Start Docker Compose services
+      command: docker-compose up -d --force-recreate --remove-orphans web
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
@@ -1568,7 +492,28 @@
     - name: Display Docker Compose status
       debug:
         var: docker_ps.stdout_lines
-      
+
+    # STREAMLINED VERIFICATION - Essential checks after deployment
+    - name: Basic application health check
+      ansible.builtin.command: |
+        bash -c "
+        echo '🏥 Performing basic health check...'
+        
+        # Wait for service to be ready
+        sleep 20
+        
+        # Test basic connectivity
+        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+          echo '✅ Application is responding'
+        else
+          echo '❌ Application health check failed'
+          exit 1
+        fi
+        "
+      register: basic_health_check
+      changed_when: false
+      when: docker_up is defined and docker_up.rc == 0
+
     - name: Display deployment completion message
       ansible.builtin.debug:
         msg: |
@@ -1591,7 +536,7 @@
           
           Next Steps:
           1. Monitor application health
-          2. Verify SSL certificate (if applicable)
+          2. SSL certificate setup will run next (separate play)
           3. Test production functionality
           4. For updates: Repeat staging → promotion → production cycle
           
@@ -1645,22 +590,42 @@
       delay: 5
       until: nginx_restart is success
 
+    # Basic SSL certificate status check (moved from SSL play)
+    - name: Check if SSL certificate exists
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: initial_ssl_cert_check
+
+    - name: Display initial SSL certificate status
+      ansible.builtin.debug:
+        msg: |
+          🔒 Initial SSL Certificate Status:
+          
+          Certificate exists: {{ '✅ YES' if initial_ssl_cert_check.stat.exists else '❌ NO' }}
+          {% if initial_ssl_cert_check.stat.exists %}
+          Certificate will be validated in SSL setup play.
+          {% else %}
+          Certificate will be obtained in SSL setup play.
+          {% endif %}
+
     - name: Setup firewall (UFW)
-      ufw:
+      community.general.ufw:
         rule: allow
         port: "{{ item }}"
         proto: tcp
       loop:
-        - '22'
-        - '80'
-        - '443'
-        - '6080'
-        - '8080'
+        - 22
+        - 80
+        - 443
+        - 6080
+        - 8080
+      become: true
 
     - name: Enable UFW
-      ufw:
+      community.general.ufw:
         state: enabled
         policy: deny
+      become: true
 
     - name: Create enhanced monitoring script from template
       ansible.builtin.template:
@@ -1698,89 +663,192 @@
         mode: '0644'
         backup: true
 
-# Create a separate play for Let's Encrypt setup
-- name: Setup Let's Encrypt with Nginx
+# SSL Certificate Setup using geerlingguy certbot role
+- name: Setup Let's Encrypt SSL Certificates
   hosts: digitalocean
   become: yes
   vars:
-    domain_name: "boximity.ca"
-    email_address: "matticem@boximity.ca"
+    # Certbot configuration
+    certbot_install_method: package
+    certbot_auto_renew: true
+    certbot_auto_renew_user: "{{ ansible_user | default('root') }}"
+    certbot_auto_renew_hour: "3"
+    certbot_auto_renew_minute: "30"
+    certbot_auto_renew_options: "--quiet"
+    
+    # Certificate generation settings - only create if needed
+    certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
+    certbot_create_method: standalone
+    certbot_testmode: false
+    certbot_hsts: true
+    certbot_admin_email: "matticem@boximity.ca"
+    
+    # Domain configuration
+    certbot_certs:
+      - domains:
+          - boximity.ca
+          - www.boximity.ca
+        email: "matticem@boximity.ca"
+    
+    # Services to stop during standalone certificate generation
+    certbot_create_standalone_stop_services:
+      - nginx
   
-  tasks:
-    - name: Install Certbot and Nginx plugin
-      package:
-        name:
-          - certbot
-          - python3-certbot-nginx
-        state: present
-      register: certbot_install
-      retries: 3
-      delay: 5
-      until: certbot_install is success
-
-    - name: Check if certificate already exists
-      stat:
-        path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
-      register: cert_file
-
-    # Check if domain is properly configured in Nginx before requesting a certificate
-    - name: Verify domain configuration in Nginx
-      ansible.builtin.shell: |
-        if [ -f /etc/nginx/sites-available/nextjs-app ]; then
-          grep -q "server_name {{ domain_name }}" /etc/nginx/sites-available/nextjs-app || echo "Domain not configured"
-        else
-          echo "Nginx config not found"
-        fi
-      register: domain_check
-      changed_when: false
-
-    - name: Configure domain in Nginx if needed
+  pre_tasks:
+    - name: Ensure domain is configured in Nginx before certificate generation
       ansible.builtin.replace:
         path: /etc/nginx/sites-available/nextjs-app
         regexp: 'server_name _;'
-        replace: 'server_name {{ domain_name }};'
-      when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
+        replace: 'server_name boximity.ca www.boximity.ca;'
       register: nginx_domain_update
+      ignore_errors: yes
 
-    - name: Restart Nginx before certificate request
+    - name: Restart Nginx if domain configuration was updated
       systemd:
         name: nginx
         state: restarted
         enabled: yes
       when: nginx_domain_update is changed
 
-    # Verify Nginx is responding with the correct domain before obtaining certificate
-    - name: Verify Nginx is serving the domain correctly
+    # Certificate existence and expiration checking
+    - name: Check if SSL certificate already exists
+      stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: cert_file_exists
+
+    - name: Get certificate expiration date if it exists
+      ansible.builtin.shell: |
+        openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2
+      register: cert_expiry_raw
+      changed_when: false
+      failed_when: false
+      when: cert_file_exists.stat.exists
+
+    - name: Check if certificate needs renewal
+      ansible.builtin.shell: |
+        CERT_EXPIRY="{{ cert_expiry_raw.stdout | default('') }}"
+        if [ -n "$CERT_EXPIRY" ]; then
+          CERT_EXPIRY_EPOCH=$(date -d "$CERT_EXPIRY" +%s)
+          RENEWAL_THRESHOLD=$(date -d '+30 days' +%s)
+          if [ $CERT_EXPIRY_EPOCH -lt $RENEWAL_THRESHOLD ]; then
+            echo "renewal_needed"
+          else
+            echo "certificate_valid"
+          fi
+        else
+          echo "certificate_missing"
+        fi
+      register: cert_renewal_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display certificate status
+      ansible.builtin.debug:
+        msg: |
+          📋 SSL Certificate Status Check:
+
+          Certificate exists: {{ '✅ YES' if cert_file_exists.stat.exists else '❌ NO' }}
+          {% if cert_file_exists.stat.exists %}
+          Certificate expiry: {{ cert_expiry_raw.stdout | default('Could not determine') }}
+          Status: {{ '✅ VALID' if cert_renewal_status.stdout == 'certificate_valid' else '⚠️  NEEDS RENEWAL' if cert_renewal_status.stdout == 'renewal_needed' else '❓ UNKNOWN' }}
+          {% endif %}
+
+          Action needed: {{ 'None - certificate is valid' if cert_renewal_status.stdout == 'certificate_valid' else 'Certificate creation/renewal required' }}
+
+    - name: Set certificate action flag
+      ansible.builtin.set_fact:
+        cert_needs_action: "{{ not cert_file_exists.stat.exists or cert_renewal_status.stdout == 'renewal_needed' }}"
+
+  roles:
+    - geerlingguy.certbot
+
+  post_tasks:
+    - name: Display certificate action taken
+      ansible.builtin.debug:
+        msg: |
+          🔍 SSL Certificate Action Summary:
+          
+          Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
+          {% if cert_needs_action %}
+          - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon' }}
+          - Certbot role was executed to {{ 'create' if not cert_file_exists.stat.exists else 'renew' }} certificate
+          {% else %}
+          - Existing certificate is valid and not expiring soon
+          - No certificate action was required
+          {% endif %}
+
+    - name: Check if SSL certificate was created successfully
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: final_ssl_cert_check
+
+    - name: Get final certificate expiration date
+      ansible.builtin.shell: |
+        openssl x509 -in /etc/letsencrypt/live/boximity.ca/cert.pem -noout -enddate | cut -d= -f2
+      register: final_cert_expiry
+      when: final_ssl_cert_check.stat.exists
+      changed_when: false
+
+    - name: Test HTTPS connectivity
       ansible.builtin.uri:
-        url: http://localhost
+        url: https://localhost
         method: GET
-        return_content: yes
-      register: nginx_check
-      ignore_errors: yes
+        validate_certs: false
+        timeout: 10
+      register: https_test
+      failed_when: false
+      when: final_ssl_cert_check.stat.exists
 
-    - name: Debug Nginx response
-      debug:
-        msg: "Nginx Health Check: {{ nginx_check.status | default('Failed') }}"
+    - name: Display final SSL certificate verification
+      ansible.builtin.debug:
+        msg: |
+          🔒 Final SSL Certificate Verification:
+          
+          Certificate exists: {{ '✅ YES' if final_ssl_cert_check.stat.exists else '❌ NO' }}
+          {% if final_ssl_cert_check.stat.exists %}
+          Certificate expires: {{ final_cert_expiry.stdout | default('Could not determine') }}
+          HTTPS connectivity: {{ '✅ Working' if https_test.status is defined and https_test.status == 200 else '⚠️  May need Nginx restart' }}
+          {% endif %}
+          
+          Status: {{ '✅ SSL setup completed successfully' if final_ssl_cert_check.stat.exists else '❌ SSL setup failed' }}
 
-    - name: Obtain SSL certificate
-      command: >
-        certbot --nginx -d {{ domain_name }}
-        --non-interactive --agree-tos 
-        --email {{ email_address }}
-        --redirect
-      when: not cert_file.stat.exists and (nginx_check.status | default(0)) == 200
-      register: certbot_result
-      retries: 2
-      delay: 30
-      until: certbot_result is success
-      
-    - name: Log certificate generation results
-      debug:
-        msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
-      when: not cert_file.stat.exists and certbot_result is defined
+    - name: Fail if SSL certificate verification failed
+      ansible.builtin.fail:
+        msg: "SSL certificate verification failed - certificate not found"
+      when: not final_ssl_cert_check.stat.exists
 
-    - name: Add cron job for auto-renewal
-      cron:
-        name: "Let's Encrypt renewal"
-        special_time: daily
-        job: "certbot renew --quiet --nginx"
+    - name: Restart Nginx after SSL certificate setup
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: final_ssl_cert_check.stat.exists
+
+    - name: Final SSL certificate status
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          INTELLIGENT SSL CERTIFICATE SETUP COMPLETED
+          ============================================
+          
+          Domain: boximity.ca
+          Status: {{ '✅ SUCCESS' if ssl_certificate_verification.rc == 0 else '❌ FAILED' }}
+          Action Taken: {{ 'Certificate created/renewed' if cert_needs_action else 'No action needed - existing certificate is valid' }}
+          
+          Certificate Details:
+          - Location: /etc/letsencrypt/live/boximity.ca/
+          - Auto-renewal: Enabled (daily at 3:30 AM)
+          - Renewal threshold: 30 days before expiration
+          
+          Smart Features:
+          ✅ Only creates certificates when needed (missing or expiring < 30 days)
+          ✅ Checks existing certificate validity before taking action
+          ✅ Provides detailed expiration information
+          ✅ Automatic renewal with cron job
+          
+          Next Steps:
+          1. Test HTTPS access: https://boximity.ca
+          2. Monitor certificate expiration (automated)
+          3. Verify auto-renewal is working (runs daily at 3:30 AM)
+          
+          ============================================

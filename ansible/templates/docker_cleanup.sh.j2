@@ -3,7 +3,7 @@ echo "=== Checking for containers using port 8080 ==="
 
 # Method 1: Find containers by publish filter
 echo "Method 1: Checking with publish filter..."
-CONTAINERS=$(docker ps --format '{{.ID}}' --filter 'publish=8080' 2>/dev/null || true)
+CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}{% endraw %}' --filter 'publish=8080' 2>/dev/null || true)
 if [ ! -z "$CONTAINERS" ]; then
   echo "Found containers with publish=8080: $CONTAINERS"
   for container in $CONTAINERS; do
@@ -17,7 +17,7 @@ fi
 
 # Method 2: Find containers by port binding in output
 echo "Method 2: Checking port bindings in container list..."
-PORT_CONTAINERS=$(docker ps --format '{{.ID}}\t{{.Ports}}' | grep ':8080' | cut -f1 || true)
+PORT_CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}\t{{.Ports}}{% endraw %}' | grep ':8080' | cut -f1 || true)
 if [ ! -z "$PORT_CONTAINERS" ]; then
   echo "Found containers with :8080 in ports: $PORT_CONTAINERS"
   for container in $PORT_CONTAINERS; do
@@ -31,7 +31,7 @@ fi
 
 # Method 3: Stop all containers from this project specifically
 echo "Method 3: Stopping all project containers..."
-PROJECT_CONTAINERS=$(docker ps --format '{{.ID}}' --filter 'name=repo-' 2>/dev/null || true)
+PROJECT_CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}{% endraw %}' --filter 'name=repo-' 2>/dev/null || true)
 if [ ! -z "$PROJECT_CONTAINERS" ]; then
   echo "Found project containers (repo-*): $PROJECT_CONTAINERS"
   for container in $PROJECT_CONTAINERS; do
@@ -45,6 +45,6 @@ fi
 
 # Method 4: List what's actually running before we continue
 echo "=== Current running containers after cleanup ==="
-docker ps --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}' || true
+docker ps --format 'table {% raw %}{{.Names}}\t{{.Ports}}\t{{.Status}}{% endraw %}' || true
 
 echo "=== Cleanup completed ==="

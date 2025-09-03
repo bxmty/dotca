@@ -8,7 +8,8 @@ export default function Footer() {
             <p className="small text-secondary mb-0">© 2025 boximity msp. All rights reserved.</p>
           </div>
           <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
-            <div className="d-flex gap-4">
+            <div className="d-flex gap-4 align-items-center">
+              <a href="/privacy-policy" className="text-secondary me-4 small">Privacy Policy</a>
               <a href="https://www.linkedin.com/company/19035825/" className="text-secondary">
                 <span className="visually-hidden">LinkedIn</span>
                 <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">

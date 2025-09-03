@@ -29,10 +29,10 @@ To deploy to an environment:
 # From the project root
 
 # Deploy to staging
-./deploy.sh staging
+# Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
 
 # Deploy to production
-./deploy.sh production
+# Use GitHub Actions: Go to Actions → prod-deploy → Run workflow
 ```
 
 This will:
@@ -41,7 +41,7 @@ This will:
    - Update and install required packages
    - Set up Docker
    - Clone the repository from the appropriate branch
-   - Build and run the Docker container
+   - Pull and run the promoted Docker image
    - Configure the firewall
 
 ### Manual Execution

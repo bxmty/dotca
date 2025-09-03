@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 
 export default function Navbar() {
@@ -14,16 +15,17 @@ export default function Navbar() {
     <header className="py-4 px-3 px-md-5">
       <div className="d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
-            <Link href="/" className="d-flex align-items-center fs-4 fw-semibold text-decoration-none text-body">
-            <img 
+          <Link href="/" className="d-flex align-items-center fs-4 fw-semibold text-decoration-none text-body">
+            <Image 
               src="/images/logo.svg" 
               alt="Boximity MSP Logo" 
               className="me-2" 
-              width="30" 
-              height="auto" 
+              width={30} 
+              height={30} 
+              priority
             />
             boximity msp
-            </Link>
+          </Link>
         </div>
         <nav className="d-none d-md-flex gap-4">
           <Link href="/#solutions" className="text-decoration-none text-body">Solutions</Link>

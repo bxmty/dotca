@@ -16,24 +16,26 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 
 ### 🔨 Build & CI Workflows
 
-#### `docker-build.yml`
-**Purpose**: Builds and pushes Docker images to GitHub Container Registry (GHCR)
-- **Triggers**: Push to `main`/`staging` branches, PRs to `main`
-- **Outputs**: Tagged Docker images in GHCR
+#### `image-promotion.yml`
+**Purpose**: Builds staging images and promotes them to production with validation
+- **Triggers**: Manual dispatch, staging deployment completion
+- **Outputs**: Promoted Docker images in GHCR
 - **Key Features**:
   - Smart path filtering (only builds when code changes)
   - Multi-architecture builds
   - Automatic tagging based on branch/commit
   - Security scanning with Trivy
+  - Image promotion workflow with manual approval
 
-#### `qa-deploy.yml`
-**Purpose**: QA environment pipeline for testing and validation
-- **Triggers**: Push to `qa` branch
+#### `image-promotion.yml`
+**Purpose**: Builds staging images and promotes them to production with validation
+- **Triggers**: Manual dispatch, staging deployment completion
 - **Features**:
   - Runs comprehensive test suite
   - Code quality checks (linting, formatting)
   - Unit and integration tests
   - Test coverage reporting
+  - Image promotion workflow with manual approval
 
 ### 🚀 Deployment Workflows
 
@@ -92,9 +94,9 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
   - Resource verification
   - Cost optimization
 
-#### `qa-destroy.yml`
-**Purpose**: Clean up QA environment resources
-- **Triggers**: Manual dispatch
+#### `environment-destroy.yml`
+**Purpose**: Clean up staging or production environment resources
+- **Triggers**: Manual dispatch with confirmation
 - **Purpose**: Resource cleanup and cost management
 
 ### 📊 Monitoring & Coordination
@@ -149,12 +151,12 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 
 ```mermaid
 graph TD
-    A[Code Push] --> B[docker-build.yml]
+    A[Code Push] --> B[image-promotion.yml]
     B --> C[stg-deploy.yml]
     C --> D[image-promotion.yml]
     D --> E[prod-deploy.yml]
     
-    F[qa branch] --> G[qa-deploy.yml]
+    F[staging branch] --> G[stg-deploy.yml]
     
     H[Manual Trigger] --> I[rollback.yml]
     H --> J[production-verification.yml]
@@ -174,8 +176,8 @@ graph TD
 
 | Workflow | Automatic | Manual | Branch-based | Scheduled |
 |----------|-----------|--------|--------------|-----------|
-| docker-build | ✅ | ❌ | ✅ | ❌ |
-| qa-deploy | ✅ | ❌ | ✅ (qa) | ❌ |
+| image-promotion | ✅ | ❌ | ✅ | ❌ |
+| stg-deploy | ✅ | ❌ | ✅ (staging) | ❌ |
 | stg-deploy | ✅ | ✅ | ✅ (staging) | ❌ |
 | image-promotion | ❌ | ✅ | ❌ | ❌ |
 | prod-deploy | ❌ | ✅ | ❌ | ❌ |

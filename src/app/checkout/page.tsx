@@ -43,6 +43,16 @@ export default function Checkout() {
   // Pricing plans data
   const pricingPlans = useMemo(() => [
     {
+      name: "Free",
+      unit_price: "$0.00", // Changed from price to unit_price
+      description: "Ideal for startups and small teams looking to explore our services",
+      features: [
+        "Automatic Windows Updates",
+        "Basic Antivirus Protection",
+        "24/7 Device Monitoring"
+      ]
+    },
+    {
       name: "Basic",
       unit_price: "$99.00", // Changed from price to unit_price
       description: "Perfect for small teams needing essential IT security and communication tools",
@@ -418,7 +428,7 @@ export default function Checkout() {
                     <div className="col-12">
                       <label htmlFor="phone" className="form-label">Phone Number*</label>
                       <PhoneInput
-                        country={'us'} // Default country
+                        country={'ca'} // Default country
                         value={formData.phone.replace(/^\+/, '')} // Remove + prefix for the component
                         onChange={handlePhoneChange}
                         inputClass="form-control bg-secondary bg-opacity-25 text-white border-secondary"

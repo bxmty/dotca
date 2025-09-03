@@ -364,7 +364,7 @@ docker push ghcr.io/your_username/dotca:staging
 ## Migration Checklist
 
 ### Initial Setup:
-- [ ] Set up GitHub Actions workflow (`.github/workflows/docker-build.yml`)
+- [ ] Set up image promotion workflow (`.github/workflows/image-promotion.yml`)
 - [ ] Configure GitHub environment protection rules for `production-promotion`
 - [ ] Set up image promotion workflow (`.github/workflows/image-promotion.yml`)
 - [ ] Configure environment variables (`GITHUB_TOKEN`, `GITHUB_USERNAME`)
