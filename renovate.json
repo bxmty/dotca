@@ -3,5 +3,12 @@
   "extends": [
     "config:recommended"
   ],
-  "rangeStrategy": "pin"
+  "rangeStrategy": "pin",
+  "baseBranches": ["staging"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on Monday"]
+  },
+  "schedule": ["after 9am and before 5pm on weekdays"],
+  "timezone": "America/New_York"
 }
