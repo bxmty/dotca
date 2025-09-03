@@ -64,9 +64,24 @@
           - python3-pip
           - jq
           - nginx
-          - docker-compose
         state: present
         update_cache: true
+
+    - name: Remove old Docker Compose version
+      ansible.builtin.apt:
+        name: docker-compose
+        state: absent
+      ignore_errors: true
+
+    - name: Install Docker Compose v2
+      ansible.builtin.get_url:
+        url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+      register: docker_compose_install
+      retries: 3
+      delay: 5
+      until: docker_compose_install is success
 
     - name: Add Docker's official GPG key
       ansible.builtin.apt_key:
@@ -308,6 +323,36 @@
       delay: 10
       until: docker_pull is success
       changed_when: false
+
+    - name: Verify Docker image integrity
+      ansible.builtin.command: docker inspect "{{ docker_image }}"
+      register: image_inspect
+      changed_when: false
+      ignore_errors: true
+
+    - name: Remove corrupted image if inspection fails
+      ansible.builtin.command: docker rmi "{{ docker_image }}" || true
+      when: image_inspect is failed
+      changed_when: false
+
+    - name: Re-pull image if it was corrupted
+      ansible.builtin.command: docker pull "{{ docker_image }}"
+      when: image_inspect is failed
+      register: repull_result
+      retries: 3
+      delay: 10
+      until: repull_result is success
+      changed_when: false
+
+    - name: Clean up Docker environment before starting services
+      ansible.builtin.command: |
+        docker-compose down --volumes --remove-orphans || true
+        docker system prune -f || true
+        docker volume prune -f || true
+      args:
+        chdir: "{{ app_dir }}/repo"
+      changed_when: false
+      ignore_errors: true
 
     - name: Start Docker Compose services
       ansible.builtin.command: docker-compose up -d web
