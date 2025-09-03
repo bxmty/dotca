@@ -5,7 +5,7 @@
   ],
   "rangeStrategy": "pin",
   "baseBranches": ["staging"],
-  "schedule": ["after 9am and before 5pm on weekdays"],
+  "schedule": ["after 9am and before 5pm every weekday"],
   "timezone": "America/New_York",
   "lockFileMaintenance": {
     "enabled": true,
