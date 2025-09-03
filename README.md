@@ -65,16 +65,26 @@ This project includes a multi-environment deployment setup for Digital Ocean:
 
 ```bash
 # Deploy to Staging
-./deploy.sh staging
+# Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
 
-# Deploy to Production
-./deploy.sh production
+# Deploy to Production  
+# Use GitHub Actions: Go to Actions → prod-deploy → Run workflow
 ```
 
 ### Manual Deployment
 
-If you need to manually build and deploy:
+This project uses GitHub Actions for automated deployment. To deploy manually:
 
+1. **Staging Deployment**:
+   - Go to GitHub Actions → stg-deploy
+   - Click "Run workflow"
+   - Select staging branch and run
+
+2. **Production Deployment**:
+   - First promote an image using image-promotion workflow
+   - Then use prod-deploy workflow with the promoted image
+
+For local development only:
 ```bash
 # Build the Docker image with environment-specific variables
 docker build \

@@ -273,7 +273,7 @@
           - "{{ 'SUCCESS: Found working image!' if any_image_found else 'ERROR: No images found!' }}"
           - ""
           - "If no images found, check:"
-          - "1. Has GitHub Actions docker-build workflow completed? Check: https://github.com/{{ github_repo_from_url }}/actions"
+          - "1. Has GitHub Actions image promotion workflow completed? Check: https://github.com/{{ github_repo_from_url }}/actions"
           - "2. Does the image name match what GitHub Actions created?"
           - "3. Are you authenticated to GHCR properly?"
 
@@ -287,11 +287,11 @@
         msg: |
           No Docker images found in GHCR! 
           
-          This means the GitHub Actions docker-build workflow hasn't run yet or failed.
+          This means the GitHub Actions image promotion workflow hasn't run yet or failed.
           
           Steps to fix:
           1. Check GitHub Actions: https://github.com/{{ github_repo_from_url }}/actions
-          2. Make sure docker-build.yml workflow completed successfully
+          2. Make sure image-promotion.yml workflow completed successfully
           3. Verify the image was pushed to GHCR
           
           Expected image locations:

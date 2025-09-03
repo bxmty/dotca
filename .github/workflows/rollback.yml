@@ -1004,18 +1004,18 @@ jobs:
         run: |
           echo "url=http://${{ steps.server_ip.outputs.ip }}:8080" >> $GITHUB_OUTPUT
 
-                             rollback-notification:
-           name: Rollback Notification
-           runs-on: ubuntu-latest
-           needs: [validate-rollback-target, execute-rollback]
-           if: |
-             needs.validate-rollback-target.outputs.target_exists == 'true' &&
-             needs.execute-rollback.result == 'success' &&
-             github.event.inputs.notify_on_completion == 'true'
-           environment:
-             name: production
+  rollback-notification:
+    name: Rollback Notification
+    runs-on: ubuntu-latest
+    needs: [validate-rollback-target, execute-rollback]
+    if: |
+      needs.validate-rollback-target.outputs.target_exists == 'true' &&
+      needs.execute-rollback.result == 'success' &&
+      github.event.inputs.notify_on_completion == 'true'
+    environment:
+      name: production
 
-           steps:
+    steps:
              - name: Checkout repository
                uses: actions/checkout@v4
 
