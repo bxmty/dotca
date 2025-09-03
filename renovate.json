@@ -2,5 +2,19 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "rangeStrategy": "pin",
+  "baseBranches": ["staging"],
+  "schedule": ["after 9am and before 5pm every weekday"],
+  "timezone": "America/New_York",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on Friday"]
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "enabled": true
+    }
   ]
 }

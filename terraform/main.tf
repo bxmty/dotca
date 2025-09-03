@@ -25,6 +25,11 @@ provider "digitalocean" {
   token = var.do_token
 }
 
+# Get environment-specific subdomain
+locals {
+  subdomain = var.subdomain != "" ? var.subdomain : var.environment
+}
+
 # Look up existing project
 data "digitalocean_project" "existing_project" {
   name = var.project_name
@@ -37,26 +42,31 @@ resource "digitalocean_project" "project" {
   name        = var.project_name
   description = "${var.project_name} project created with Terraform"
   purpose     = "Web Application"
-  environment = "Development"
+  environment = var.environment == "production" ? "Production" : "Development"
 }
 
 # Add resources to project
 resource "digitalocean_project_resources" "project_resources" {
   project = var.use_existing_project ? data.digitalocean_project.existing_project[0].id : digitalocean_project.project[0].id
   resources = [
-    digitalocean_droplet.qa_dotca.urn
+    digitalocean_droplet.app_droplet.urn
   ]
-  depends_on = [digitalocean_droplet.qa_dotca]
+  depends_on = [digitalocean_droplet.app_droplet]
 }
 
-# Create a new Droplet for QA environment
-resource "digitalocean_droplet" "qa_dotca" {
+# Get SSH key data
+data "digitalocean_ssh_key" "ssh_key" {
+  name = var.ssh_key_name
+}
+
+# Create a new Droplet for the environment
+resource "digitalocean_droplet" "app_droplet" {
   image    = "docker-20-04"  # Docker-ready Ubuntu image
-  name     = "${var.project_name}-qa"
+  name     = "${var.project_name}-${var.environment}"
   region   = var.region
-  size     = "s-1vcpu-1gb"   # Small droplet with 1 CPU, 1GB RAM
-  ssh_keys = [var.ssh_key_fingerprint]
-  tags     = ["qa", "nextjs", var.project_name]
+  size     = "s-1vcpu-2gb"   # Small droplet with 1 CPU, 2GB RAM
+  ssh_keys = [data.digitalocean_ssh_key.ssh_key.id]
+  tags     = [var.environment, "nextjs", var.project_name]
 
   # Minimal setup script for Ansible compatibility
   user_data = <<-EOF
@@ -65,7 +75,7 @@ resource "digitalocean_droplet" "qa_dotca" {
 
     # Create a startup log file
     exec > >(tee /var/log/user-data.log) 2>&1
-    echo "Starting minimal initialization: $(date)"
+    echo "Starting minimal initialization for ${var.environment} environment: $(date)"
     
     # Wait until apt is available
     echo "Waiting for apt to be available..."
@@ -89,9 +99,9 @@ resource "digitalocean_droplet" "qa_dotca" {
 }
 
 # Create a firewall
-resource "digitalocean_firewall" "qa_firewall" {
+resource "digitalocean_firewall" "app_firewall" {
   count = var.use_existing_firewall ? 0 : 1
-  name = "${var.project_name}-qa-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
+  name = "${var.project_name}-${var.environment}-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
   
   # Allow SSH
   inbound_rule {
@@ -133,5 +143,5 @@ resource "digitalocean_firewall" "qa_firewall" {
   }
 
   # Apply the firewall to the droplet
-  droplet_ids = [digitalocean_droplet.qa_dotca.id]
+  droplet_ids = [digitalocean_droplet.app_droplet.id]
 }
