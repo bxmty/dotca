@@ -1,0 +1,45 @@
+#!/bin/bash
+echo "=== Final port 8080 verification ==="
+
+# Check for any remaining Docker containers
+echo "Checking for any remaining Docker containers..."
+REMAINING=$(docker ps --format '{% raw %}{{.Names}}\t{{.Ports}}{% endraw %}' | grep ':8080' || true)
+if [ ! -z "$REMAINING" ]; then
+  echo "ERROR: Found Docker containers still using port 8080:"
+  echo "$REMAINING"
+  echo "Force stopping them..."
+  docker ps --format '{% raw %}{{.ID}}{% endraw %}' | xargs -r docker inspect --format='{% raw %}{{.Id}} {{.NetworkSettings.Ports}}{% endraw %}' | grep '8080' | cut -d' ' -f1 | xargs -r docker stop || true
+fi
+
+# Check system level port usage
+if command -v netstat >/dev/null; then
+  if netstat -tlnp 2>/dev/null | grep ":8080 "; then
+    echo "ERROR: Port 8080 is still in use by system process:"
+    netstat -tlnp | grep ":8080" || true
+    echo "Attempting to kill processes using port 8080..."
+    lsof -ti:8080 | xargs -r kill -9 || true
+    sleep 5
+    # Re-check after killing
+    if netstat -tlnp 2>/dev/null | grep ":8080 "; then
+      echo "CRITICAL: Port 8080 still in use after cleanup attempts"
+      netstat -tlnp | grep ":8080" || true
+      exit 1
+    else
+      echo "SUCCESS: Port 8080 freed after process cleanup"
+    fi
+  else
+    echo "SUCCESS: Port 8080 is free (netstat)"
+  fi
+elif command -v ss >/dev/null; then
+  if ss -tlnp | grep ":8080 "; then
+    echo "ERROR: Port 8080 is still in use:"
+    ss -tlnp | grep ":8080" || true
+    exit 1
+  else
+    echo "SUCCESS: Port 8080 is free (ss)"
+  fi
+else
+  echo "WARNING: Cannot verify port status (netstat/ss not available)"
+fi
+
+echo "=== Port verification completed ==="

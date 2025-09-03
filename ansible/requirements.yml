@@ -1,0 +1,8 @@
+---
+# Ansible Galaxy requirements file
+# Install required roles for the dotca project
+
+# Certbot role for Let's Encrypt SSL certificates
+- name: geerlingguy.certbot
+  version: 4.0.0
+  src: https://github.com/geerlingguy/ansible-role-certbot.git
