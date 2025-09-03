@@ -613,7 +613,6 @@ jobs:
 
   send-staging-notifications:
     name: Send Staging Notifications
-    runs-on: ubuntu-latest
     needs: [setup-infra, deploy-app, selenium-tests]
     if: always()
     uses: ./.github/workflows/deployment-notifications.yml
