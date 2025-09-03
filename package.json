@@ -16,7 +16,7 @@
     "@stripe/react-stripe-js": "4.0.0",
     "@stripe/stripe-js": "7.9.0",
     "bootstrap": "5.3.4",
-    "libphonenumber-js": "1.12.6",
+    "libphonenumber-js": "1.12.15",
     "next": "15.4.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
