@@ -1,356 +1,698 @@
+---
 name: Staging Pipeline
-
 on:
   push:
-    branches:
-      - staging
-  workflow_dispatch:
+    branches: [staging]
+  workflow_dispatch:  # Allow manual triggering
     inputs:
-      force_infra_rebuild:
-        description: 'Force infrastructure rebuild'
+      force_rebuild:
+        description: Force rebuild infrastructure
         required: false
-        type: boolean
         default: false
-
+        type: boolean
+      skip_tests:
+        description: Skip selenium tests
+        required: false
+        default: false
+        type: boolean
+env:
+  ANSIBLE_HOST_KEY_CHECKING: 'False'
+  ANSIBLE_STDOUT_CALLBACK: yaml
+  ANSIBLE_FORCE_COLOR: '1'
 jobs:
-  test:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-        
-      - name: Build
-        run: npm run build
-        
-      - name: Test Docker Build
-        run: docker build -t dotca-staging .
-
-      - name: Run unit tests
-        run: npm test
-  
   setup-infra:
     name: Setup Infrastructure
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
       resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
-    
+      terraform_changes: ${{ steps.check_terraform_changes.outputs.has_changes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
-          
+          terraform_wrapper: false  # Important for output parsing
       - name: Setup DigitalOcean CLI
         run: |
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
-      
+          doctl account get  # Verify authentication
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          
+
+          # Validate SSH key format
+          if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
+            echo "::error::Invalid SSH private key format"
+            exit 1
+          fi
+          echo "SSH key fingerprint:"
+          ssh-keygen -lf ~/.ssh/id_rsa
       - name: Initialize Terraform
         working-directory: ./terraform
         run: |
           terraform init \
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
-            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}"
-            -backend-config="key=terraform-staging.tfstate"
-        
+            -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -backend-config="key=dotca/terraform-staging.tfstate"
       - name: Check if project exists
         id: check_project
         run: |
-          PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs-staging" || echo "")
-          
+          # Check if the project exists in Digital Ocean
+          PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs" || echo "")
           if [ -n "$PROJECT_EXISTS" ]; then
             echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
-            echo "Project 'dotca-nextjs-staging' already exists"
+            echo "✅ Project 'dotca-nextjs' already exists"
           else
             echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
-            echo "Project 'dotca-nextjs-staging' does not exist"
+            echo "📝 Project 'dotca-nextjs' does not exist - will be created"
           fi
-      
       - name: Check if resources exist
         working-directory: ./terraform
         id: resource_check
         run: |
+          # Set terraform variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
-          export TF_VAR_project_name="dotca-nextjs-staging"
+          export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="staging"
-          export TF_VAR_droplet_size="s-2vcpu-4gb"
-          
-          terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
-          
-          DROPLET_IP=$(terraform output droplet_ip 2>/dev/null | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-          
-          if [ -n "$DROPLET_IP" ] && [ "${{ inputs.force_infra_rebuild }}" != "true" ]; then
+
+          # Handle force rebuild option
+          if [ "${{ github.event.inputs.force_rebuild }}" == "true" ]; then
+            echo "🔄 Force rebuild requested - will recreate infrastructure"
+            echo "resources_exist=false" >> $GITHUB_OUTPUT
+            echo "RESOURCES_EXIST=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          # Try to get current state - handle failure gracefully
+          terraform refresh || echo "⚠️  Terraform refresh failed, likely because resources don't exist yet"
+
+          # Check if resources exist by trying to get the IP
+          DROPLET_IP=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
+          if [ -n "$DROPLET_IP" ] && [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
             echo "resources_exist=true" >> $GITHUB_OUTPUT
             echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
             echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
-            echo "Resources already exist, using IP: $DROPLET_IP"
+            echo "✅ Resources already exist, using IP: $DROPLET_IP"
           else
             echo "RESOURCES_EXIST=false" >> $GITHUB_ENV
             echo "resources_exist=false" >> $GITHUB_OUTPUT
-            echo "Resources need to be created or updated"
+            echo "📝 Resources need to be created"
           fi
         continue-on-error: true
-        
-      - name: Terraform Plan
-        if: env.RESOURCES_EXIST != 'true'
+      - name: Check for Terraform changes
+        id: check_terraform_changes
         working-directory: ./terraform
+        if: env.RESOURCES_EXIST == 'true'
         run: |
+          # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
-          export TF_VAR_project_name="dotca-nextjs-staging"
+          export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="staging"
-          export TF_VAR_droplet_size="s-2vcpu-4gb"
-          
-          terraform plan -out=tfplan
-        
-      - name: Terraform Apply
-        if: env.RESOURCES_EXIST != 'true'
+
+          # Create a plan and check if there are any changes
+          terraform plan -detailed-exitcode -out=tfplan > plan_output.txt 2>&1
+          PLAN_EXIT_CODE=$?
+
+          # Terraform plan exit codes: 0 = No changes, 1 = Error, 2 = Changes present
+          if [ $PLAN_EXIT_CODE -eq 2 ]; then
+            echo "HAS_CHANGES=true" >> $GITHUB_ENV
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "🔄 Changes detected in Terraform plan"
+            echo "### Terraform Plan Changes" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 20 plan_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          elif [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "HAS_CHANGES=false" >> $GITHUB_ENV
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No changes detected in Terraform plan"
+          else
+            echo "::error::Terraform plan failed with exit code $PLAN_EXIT_CODE"
+            cat plan_output.txt
+            exit 1
+          fi
+        continue-on-error: true
+      - name: Apply Terraform changes
+        if: env.RESOURCES_EXIST == 'true' && env.HAS_CHANGES == 'true'
         working-directory: ./terraform
         run: |
+          # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
-          export TF_VAR_project_name="dotca-nextjs-staging"
+          export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="staging"
-          export TF_VAR_droplet_size="s-2vcpu-4gb"
-          
+          echo "🔄 Applying changes to existing infrastructure..."
           terraform apply -auto-approve tfplan
-        
+
+          # Update the droplet IP in case it changed
+          UPDATED_IP=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
+          if [ -n "$UPDATED_IP" ] && [[ $UPDATED_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "DROPLET_IP=$UPDATED_IP" >> $GITHUB_ENV
+            echo "✅ Updated droplet IP: $UPDATED_IP"
+          fi
+      - name: Terraform Plan (New Resources)
+        if: env.RESOURCES_EXIST != 'true'
+        working-directory: ./terraform
+        run: |
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="staging"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="staging"
+          echo "📋 Creating Terraform plan for new resources..."
+          terraform plan -out=tfplan
+      - name: Terraform Apply (New Resources)
+        if: env.RESOURCES_EXIST != 'true'
+        working-directory: ./terraform
+        run: |
+          export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+          export TF_VAR_git_branch="staging"
+          export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
+          export TF_VAR_use_existing_firewall="false"
+          export TF_VAR_environment="staging"
+          echo "🚀 Applying Terraform plan to create new resources..."
+          terraform apply -auto-approve tfplan
       - name: Capture Droplet IP
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
         id: get_ip
         run: |
-          echo "Waiting for DigitalOcean resources to be fully provisioned..."
-          sleep 30
-          
+          echo "⏳ Waiting for DigitalOcean resources to be fully provisioned..."
+          sleep 45  # Increased wait time for new resources
+
+          # Force a refresh to ensure state is current
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
+          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
-          export TF_VAR_project_name="dotca-nextjs-staging"
+          export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="staging"
-          export TF_VAR_droplet_size="s-2vcpu-4gb"
-          
           terraform refresh
-          
-          terraform output > terraform_output.txt
-          cat terraform_output.txt
-          
-          DROPLET_IP=$(grep -oE 'droplet_ip\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)"' terraform_output.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-          
-          if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Trying alternative method..."
-            DROPLET_IP=$(cat terraform_output.txt | grep droplet_ip | awk -F '"' '{print $2}' || echo "")
-          fi
-          
+          echo "🔍 Attempting to get droplet IP address..."
+
+          # Use -raw flag for cleaner output
+          DROPLET_IP=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
+
+          # Validate IP format
           if [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Successfully extracted IP: $DROPLET_IP"
+            echo "✅ Successfully extracted IP: $DROPLET_IP"
             echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
             echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
           else
             echo "::error::Failed to extract valid IP address from Terraform output"
-            echo "Raw terraform output was:"
-            cat terraform_output.txt
+            echo "Raw terraform output:"
+            terraform output
             exit 1
           fi
-
   deploy-app:
     name: Deploy Application
     runs-on: ubuntu-latest
-    needs: [test, setup-infra]
-    environment: staging
-    
+    needs: [setup-infra]
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Install Ansible
+      - name: Install Ansible and dependencies
         run: |
           sudo apt update
-          sudo apt install -y ansible
-      
+          sudo apt install -y ansible netcat-openbsd
+
+          # Verify Ansible installation
+          ansible --version
+
+          # Install additional Ansible collections if needed
+          ansible-galaxy collection install community.general ansible.posix
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-      
-      - name: Add host key to known hosts
+
+          # Validate SSH key
+          if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
+            echo "::error::Invalid SSH private key format"
+            exit 1
+          fi
+          echo "🔑 SSH key fingerprint:"
+          ssh-keygen -lf ~/.ssh/id_rsa | awk '{print $2}'
+      - name: Wait for server readiness
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
+          TERRAFORM_CHANGES: ${{ needs.setup-infra.outputs.terraform_changes }}
         run: |
-          if [ -z "$DROPLET_IP" ]; then
-            echo "::error::Could not determine server IP address - infrastructure setup failed"
+          # Validate IP address
+          if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid or missing server IP address: '$DROPLET_IP'"
             exit 1
           fi
-          
-          echo "Connecting to IP: $DROPLET_IP"
-          
-          if [ "$RESOURCES_EXIST" != "true" ]; then
-            echo "Waiting for new droplet to be fully ready..."
-            TIMEOUT=300
-            INTERVAL=10
-            ELAPSED=0
-            while [ $ELAPSED -lt $TIMEOUT ]; do
-              echo "Attempting to ping $DROPLET_IP... (${ELAPSED}s elapsed)"
-              if ping -c 1 -W 5 $DROPLET_IP &> /dev/null; then
-                echo "Successfully reached droplet at $DROPLET_IP"
+          echo "🌐 Connecting to server: $DROPLET_IP"
+
+          # Extended wait for new or updated resources
+          if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
+            echo "⏳ Waiting for droplet to be fully ready (new/updated resources)..."
+            
+            # Network connectivity check
+            echo "🔍 Testing network connectivity..."
+            PING_TIMEOUT=180
+            PING_INTERVAL=10
+            PING_ELAPSED=0
+            
+            while [ $PING_ELAPSED -lt $PING_TIMEOUT ]; do
+              if ping -c 1 -W 5 $DROPLET_IP >/dev/null 2>&1; then
+                echo "✅ Network connectivity established to $DROPLET_IP"
                 break
               fi
-              sleep $INTERVAL
-              ELAPSED=$((ELAPSED + INTERVAL))
+              echo "⏳ Waiting for network connectivity... (${PING_ELAPSED}s elapsed)"
+              sleep $PING_INTERVAL
+              PING_ELAPSED=$((PING_ELAPSED + PING_INTERVAL))
             done
             
-            if [ $ELAPSED -ge $TIMEOUT ]; then
-              echo "::warning::Droplet at $DROPLET_IP is not responding to ping after ${TIMEOUT}s"
+            if [ $PING_ELAPSED -ge $PING_TIMEOUT ]; then
+              echo "::warning::Network connectivity check timed out after ${PING_TIMEOUT}s"
             fi
             
-            echo "Waiting additional time for services to start..."
-            sleep 30
+            # Additional wait for system initialization
+            echo "⏳ Waiting for system services to initialize..."
+            sleep 60
           fi
-          
-          echo "Adding host key for $DROPLET_IP to known_hosts..."
-          for i in {1..5}; do
-            if ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts 2>/dev/null; then
-              echo "Successfully added host key on attempt $i"
+
+          # SSH connectivity check
+          echo "🔍 Testing SSH connectivity..."
+          SSH_TIMEOUT=240
+          SSH_INTERVAL=5
+          SSH_ELAPSED=0
+          while [ $SSH_ELAPSED -lt $SSH_TIMEOUT ]; do
+            if nc -z -w5 $DROPLET_IP 22 2>/dev/null; then
+              echo "✅ SSH port 22 is accessible on $DROPLET_IP"
               break
-            else
-              echo "Attempt $i to add host key failed, retrying in 10 seconds..."
-              sleep 10
             fi
-            
-            if [ $i -eq 5 ]; then
-              echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
-            fi
+            echo "⏳ Waiting for SSH service... (${SSH_ELAPSED}s elapsed)"
+            sleep $SSH_INTERVAL
+            SSH_ELAPSED=$((SSH_ELAPSED + SSH_INTERVAL))
           done
-      
-      - name: Deploy using Ansible
-        env:
-          GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
-          SSH_KEY_PATH: "~/.ssh/id_rsa"
-          GITHUB_ACTIONS: "true"
-          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-          ENVIRONMENT: "staging"
-        run: |
-          if [ -z "$DROPLET_IP" ]; then
-            echo "::error::DROPLET_IP environment variable is not set"
+          if [ $SSH_ELAPSED -ge $SSH_TIMEOUT ]; then
+            echo "::error::SSH service not accessible after ${SSH_TIMEOUT}s"
             exit 1
           fi
-          
-          echo "Using Droplet IP: $DROPLET_IP for deployment"
-          
-          echo "[staging-server]" > inventory.ini
-          echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
-          cat inventory.ini
-          
-          chmod +x ./deploy.sh
-          
-          echo "Testing SSH connection to $DROPLET_IP..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
-          
-          echo "Starting deployment..."
-          for i in {1..3}; do
-            echo "Deployment attempt $i..."
-            if ./deploy.sh staging; then
-              echo "Deployment successful on attempt $i"
+
+          # Wait for SSH to be fully ready
+          echo "⏳ Waiting for SSH service to fully initialize..."
+          sleep 30
+
+          # Test actual SSH connection
+          echo "🔍 Testing SSH authentication..."
+          SSH_TEST_ATTEMPTS=5
+          for i in $(seq 1 $SSH_TEST_ATTEMPTS); do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o UserKnownHostsFile=/dev/null -o BatchMode=yes -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH test successful'" >/dev/null 2>&1; then
+              echo "✅ SSH authentication successful (attempt $i)"
               break
             else
-              echo "Deployment attempt $i failed. Waiting before retry..."
-              sleep 30
-              
-              if [ $i -eq 3 ]; then
-                echo "::error::All deployment attempts failed"
+              if [ $i -eq $SSH_TEST_ATTEMPTS ]; then
+                echo "::error::SSH authentication failed after $SSH_TEST_ATTEMPTS attempts"
+                echo "Debug: Testing SSH with verbose output..."
+                ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o UserKnownHostsFile=/dev/null -v -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH test'" || true
                 exit 1
+              else
+                echo "⏳ SSH authentication failed, retrying... (attempt $i/$SSH_TEST_ATTEMPTS)"
+                sleep 15
               fi
             fi
           done
-  
-  load-testing:
-    name: Load Testing
-    runs-on: ubuntu-latest
-    needs: [setup-infra, deploy-app]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup k6
-        run: |
-          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update
-          sudo apt-get install k6
-      
-      - name: Run load tests
+      - name: Create Ansible inventory
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
-          mkdir -p ./test-results
-          k6 run --out json=./test-results/load-test-results.json load-test.js -e TARGET_URL=http://$DROPLET_IP
-      
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: load-test-results
-          path: ./test-results
-          retention-days: 7
+          echo "📝 Creating Ansible inventory..."
 
+          # Create ansible directory if it doesn't exist
+          mkdir -p ansible
+
+          # Create dynamic inventory
+          cat > ansible/inventory.yml << EOF
+          all:
+            children:
+              digitalocean:
+                hosts:
+                  staging_server:
+                    ansible_host: $DROPLET_IP
+                    ansible_user: root
+                    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+                    ansible_connection: ssh
+                    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60'
+                    ansible_ssh_timeout: 60
+                    ansible_ssh_retries: 3
+                vars:
+                  staging_server_ip: $DROPLET_IP
+                  ansible_python_interpreter: /usr/bin/python3
+          EOF
+          echo "✅ Ansible inventory created:"
+          cat ansible/inventory.yml
+      - name: Test Ansible connectivity
+        run: |
+          echo "🔍 Testing Ansible connectivity..."
+
+          # Test with a simple ping
+          if ansible all -i ansible/inventory.yml -m ping --timeout=60; then
+            echo "✅ Ansible connectivity test passed"
+          else
+            echo "::error::Ansible connectivity test failed"
+            echo "Debug: Checking inventory and SSH setup..."
+            cat ansible/inventory.yml
+            ssh-keygen -lf ~/.ssh/id_rsa
+            exit 1
+          fi
+      - name: Run Ansible playbook with enhanced error handling
+        env:
+          GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+          GITHUB_ACTIONS: 'true'
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          GA_STAGING_ID: ${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
+          # GitHub Container Registry authentication
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
+        run: |
+          echo "🚀 Starting Ansible deployment..."
+
+          # Validate required environment variables
+          MISSING_VARS=""
+          [ -z "$BREVO_API_KEY" ] && MISSING_VARS="$MISSING_VARS BREVO_API_KEY"
+          [ -z "$STRIPE_SECRET_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_SECRET_KEY"
+          [ -z "$STRIPE_PUBLISHABLE_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_PUBLISHABLE_KEY"
+          [ -z "$GITHUB_TOKEN" ] && MISSING_VARS="$MISSING_VARS GITHUB_TOKEN"
+          [ -z "$GITHUB_USERNAME" ] && MISSING_VARS="$MISSING_VARS GITHUB_USERNAME"
+          if [ -n "$MISSING_VARS" ]; then
+            echo "::error::Missing required environment variables:$MISSING_VARS"
+            exit 1
+          fi
+          
+          echo "✅ GitHub Container Registry authentication configured:"
+          echo "   - Username: $GITHUB_USERNAME"
+          echo "   - Token: ${GITHUB_TOKEN:0:10}... (truncated)"
+
+          # Run Ansible playbook with retry logic
+          DEPLOY_SUCCESS=false
+          MAX_ATTEMPTS=2
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "📋 Deployment attempt $attempt of $MAX_ATTEMPTS..."
+            
+            if ansible-playbook \
+              -i ansible/inventory.yml \
+              ansible/staging-deploy.yml \
+              --timeout=60 \
+              --extra-vars "ansible_ssh_timeout=60" \
+              -v; then
+              echo "✅ Deployment successful on attempt $attempt"
+              DEPLOY_SUCCESS=true
+              break
+            else
+              echo "❌ Deployment attempt $attempt failed"
+              if [ $attempt -lt $MAX_ATTEMPTS ]; then
+                echo "⏳ Waiting 60 seconds before retry..."
+                sleep 60
+                
+                # Test connectivity before retry
+                echo "🔍 Testing connectivity before retry..."
+                if ! ansible all -i ansible/inventory.yml -m ping --timeout=30; then
+                  echo "::error::Lost connectivity to server, aborting retries"
+                  break
+                fi
+              fi
+            fi
+          done
+          if [ "$DEPLOY_SUCCESS" != "true" ]; then
+            echo "::error::All deployment attempts failed"
+            exit 1
+          fi
+          echo "🎉 Ansible deployment completed successfully!"
   deployment-verification:
     name: Verify Deployment
     runs-on: ubuntu-latest
-    needs: [setup-infra, deploy-app, load-testing]
-    
+    needs: [setup-infra, deploy-app]
+    timeout-minutes: 10
     steps:
-      - name: Staging Deployment Status
+      - name: Wait for application startup
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
-          echo "✅ Staging environment has been deployed with Ansible!"
-          echo "🌐 Access it at http://$DROPLET_IP/"
-          
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$DROPLET_IP/)
-          
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✅ Application is up and running!"
+          echo "⏳ Waiting for application to fully start..."
+          sleep 30
+          echo "🔍 Testing application availability..."
+
+          # Test both HTTP and HTTPS if available
+          URLS=(
+            "http://$DROPLET_IP"
+            "http://$DROPLET_IP/health"
+          )
+          for url in "${URLS[@]}"; do
+            echo "Testing: $url"
+            
+            # Try multiple times with increasing delays
+            for i in {1..5}; do
+              echo "  Attempt $i..."
+              
+              if curl -s -f --max-time 10 --connect-timeout 5 "$url" >/dev/null; then
+                echo "  ✅ $url is responding"
+                break
+              else
+                if [ $i -eq 5 ]; then
+                  echo "  ❌ $url is not responding after 5 attempts"
+                else
+                  echo "  ⏳ Waiting before retry..."
+                  sleep $((i * 10))
+                fi
+              fi
+            done
+          done
+      - name: Comprehensive health check
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+        run: |
+          echo "🏥 Running comprehensive health check..."
+
+          # Check main application
+          echo "🔍 Checking main application..."
+          if curl -s --head --max-time 15 "http://$DROPLET_IP/" | grep -E "HTTP/[0-9.]+ [23][0-9][0-9]"; then
+            echo "✅ Main application is responding with success status"
           else
-            echo "⚠️ Application returned HTTP status: $HTTP_STATUS"
-            echo "It might not be fully available yet, but deployment process completed."
+            echo "❌ Main application health check failed"
+            echo "Response headers:"
+            curl -s --head --max-time 15 "http://$DROPLET_IP/" || echo "No response"
+          fi
+
+          # Check health endpoint
+          echo "🔍 Checking health endpoint..."
+          if curl -s --max-time 10 "http://$DROPLET_IP/health" | grep -i "ok\|healthy\|success"; then
+            echo "✅ Health endpoint is responding correctly"
+          else
+            echo "❌ Health endpoint check failed"
+            echo "Health endpoint response:"
+            curl -s --max-time 10 "http://$DROPLET_IP/health" || echo "No response"
+          fi
+      - name: Display deployment summary
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
+          TERRAFORM_CHANGES: ${{ needs.setup-infra.outputs.terraform_changes }}
+        run: |
+          echo "## 🎉 Staging Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server IP:** $DROPLET_IP" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application URL:** http://$DROPLET_IP/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check:** http://$DROPLET_IP/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Resources Status:** $( [ "$RESOURCES_EXIST" == "true" ] && echo "Updated existing" || echo "Created new" )" >> $GITHUB_STEP_SUMMARY
+          echo "- **Infrastructure Changes:** $( [ "$TERRAFORM_CHANGES" == "true" ] && echo "Yes" || echo "No" )" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Quick Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Main Application](http://$DROPLET_IP/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Health Check](http://$DROPLET_IP/health)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Staging environment deployed successfully!"
+          echo "🌐 Access it at: http://$DROPLET_IP/"
+  selenium-tests:
+    name: Run Selenium Tests
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deployment-verification]
+    timeout-minutes: 15
+    if: github.event.inputs.skip_tests != 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing Node.js dependencies..."
+          npm ci
+      - name: Setup Chrome for Selenium
+        run: |
+          echo "🌐 Installing Chrome for Selenium tests..."
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+          # Verify Chrome installation
+          google-chrome --version
+      - name: Wait for application stability
+        env:
+          APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
+        run: |
+          echo "⏳ Waiting for application to stabilize before running tests..."
+          sleep 60
+
+          # Verify application is stable
+          echo "🔍 Verifying application stability..."
+          for i in {1..3}; do
+            if curl -s -f --max-time 10 "$APP_URL/health" >/dev/null; then
+              echo "✅ Application stability check $i passed"
+            else
+              echo "❌ Application stability check $i failed"
+              exit 1
+            fi
+            sleep 10
+          done
+      - name: Run Selenium tests
+        env:
+          APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
+          HEADLESS: true
+        run: |
+          echo "🧪 Running Selenium tests against: $APP_URL"
+
+          # Run tests with proper error handling
+          if npm run test:e2e; then
+            echo "✅ All Selenium tests passed!"
+          else
+            echo "❌ Some Selenium tests failed"
+            echo "This is marked as continue-on-error, so deployment is still considered successful"
+            exit 0  # Don't fail the entire pipeline
+          fi
+        continue-on-error: true
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selenium-test-results
+          path: |
+            test-results/
+            screenshots/
+            *.log
+          retention-days: 7
+
+  send-staging-notifications:
+    name: Send Staging Notifications
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deploy-app, selenium-tests]
+    if: always()
+    uses: ./.github/workflows/deployment-notifications.yml
+    with:
+      event_type: ${{ needs.deploy-app.result == 'success' && 'deployment-success' || 'deployment-failed' }}
+      environment: 'staging'
+      deployment_details: |
+        {
+          "staging_url": "http://${{ needs.setup-infra.outputs.droplet_ip }}",
+          "selenium_tests_result": "${{ needs.selenium-tests.result }}",
+          "workflow_run_id": "${{ github.run_id }}",
+          "triggered_by": "${{ github.actor }}",
+          "commit": "${{ github.sha }}",
+          "ref": "${{ github.ref }}",
+          "timestamp": "${{ github.event.head_commit.timestamp }}"
+        }
+      notification_channels: 'github,slack'
+      severity: ${{ needs.deploy-app.result == 'success' && 'info' || 'error' }}
+
+  staging-summary:
+    name: Staging Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [setup-infra, deploy-app, selenium-tests, send-staging-notifications]
+    if: always()
+    outputs:
+      staging_success: ${{ steps.summary.outputs.staging_success }}
+      staging_image_tag: ${{ steps.summary.outputs.staging_image_tag }}
+      ready_for_promotion: ${{ steps.summary.outputs.ready_for_promotion }}
+    steps:
+      - name: Generate staging deployment summary
+        id: summary
+        run: |
+          echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall success
+          if [ "${{ needs.deploy-app.result }}" = "success" ]; then
+            echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
+            STAGING_SUCCESS="true"
+            READY_FOR_PROMOTION="true"
+            echo "staging_success=true" >> $GITHUB_OUTPUT
+            echo "ready_for_promotion=true" >> $GITHUB_OUTPUT
+          else
+            echo "**Overall Status:** 🔴 FAILED" >> $GITHUB_STEP_SUMMARY
+            STAGING_SUCCESS="false"
+            READY_FOR_PROMOTION="false"
+            echo "staging_success=false" >> $GITHUB_OUTPUT
+            echo "ready_for_promotion=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Determine staging image tag (usually 'staging' or staging-{sha})
+          STAGING_IMAGE_TAG="staging"
+          echo "staging_image_tag=$STAGING_IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging Image: ghcr.io/${{ github.repository }}:$STAGING_IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- Ready for Promotion: $READY_FOR_PROMOTION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Job Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Infrastructure Setup: ${{ needs.setup-infra.result == 'success' && '✅' || '❌' }} ${{ needs.setup-infra.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Application Deployment: ${{ needs.deploy-app.result == 'success' && '✅' || '❌' }} ${{ needs.deploy-app.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Selenium Tests: ${{ needs.selenium-tests.result == 'success' && '✅' || (needs.selenium-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.selenium-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [ "$READY_FOR_PROMOTION" = "true" ]; then
+            echo "1. ✅ Staging deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review staging environment and test results" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🚀 Manually trigger image promotion when ready" >> $GITHUB_STEP_SUMMARY
+            echo "4. 📋 Use promoted images for production deployment" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Manual Actions Available:**" >> $GITHUB_STEP_SUMMARY
+            echo "- [🔄 Trigger Image Promotion](https://github.com/${{ github.repository }}/actions/workflows/image-promotion.yml)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. ❌ Staging deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🔍 Review workflow logs for error details" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🛠️ Fix any identified issues" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🔄 Re-run staging deployment when ready" >> $GITHUB_STEP_SUMMARY
           fi

@@ -1,0 +1,9 @@
+{{ app_dir }}/monitoring.log {
+  weekly
+  rotate 4
+  compress
+  delaycompress
+  missingok
+  notifempty
+  create 0644 root root
+}

@@ -1,4 +1,4 @@
-[![QA Pipeline](https://github.com/bxmty/dotca/actions/workflows/qa-deploy.yml/badge.svg?branch=qa)](https://github.com/bxmty/dotca/actions/workflows/qa-deploy.yml)
+
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
@@ -31,6 +31,18 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Web Vitals Monitoring
+
+This project includes Web Vitals monitoring to track Core Web Vitals metrics:
+
+- **CLS (Cumulative Layout Shift)**: Measures visual stability
+- **FID (First Input Delay)**: Measures interactivity
+- **LCP (Largest Contentful Paint)**: Measures loading performance
+- **FCP (First Contentful Paint)**: Measures when the first content is painted
+- **TTFB (Time to First Byte)**: Measures time until first byte is received
+
+Web Vitals are automatically collected on the client side and sent to the `/api/analytics/web-vitals` endpoint. In production, you can connect this endpoint to your analytics platform of choice.
+
 ## Deployment
 
 ### Local Development
@@ -41,32 +53,38 @@ For local development, use the development Docker setup:
 docker-compose -f docker-compose.dev.yml up
 ```
 
-### Remote Deployment (QA, Staging, Production)
+### Remote Deployment (Staging, Production)
 
 This project includes a multi-environment deployment setup for Digital Ocean:
 
 1. Environment configuration files:
-   - `.env.qa` - QA environment variables
    - `.env.staging` - Staging environment variables
    - `.env.production` - Production environment variables
 
 2. Deploy to a specific environment:
 
 ```bash
-# Deploy to QA
-./deploy.sh qa
-
 # Deploy to Staging
-./deploy.sh staging
+# Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
 
-# Deploy to Production
-./deploy.sh production
+# Deploy to Production  
+# Use GitHub Actions: Go to Actions → prod-deploy → Run workflow
 ```
 
 ### Manual Deployment
 
-If you need to manually build and deploy:
+This project uses GitHub Actions for automated deployment. To deploy manually:
 
+1. **Staging Deployment**:
+   - Go to GitHub Actions → stg-deploy
+   - Click "Run workflow"
+   - Select staging branch and run
+
+2. **Production Deployment**:
+   - First promote an image using image-promotion workflow
+   - Then use prod-deploy workflow with the promoted image
+
+For local development only:
 ```bash
 # Build the Docker image with environment-specific variables
 docker build \

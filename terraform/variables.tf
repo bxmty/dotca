@@ -5,14 +5,27 @@ variable "do_token" {
 }
 
 variable "ssh_key_fingerprint" {
-  description = "SSH public key for Droplet access"
+  description = "SSH public key for Droplet access (deprecated - use ssh_key_name instead)"
   type        = string
+  default     = ""
+}
+
+variable "ssh_key_name" {
+  description = "Name of the SSH key in DigitalOcean for Droplet access"
+  type        = string
+  default     = "GitHub Actions Key"
 }
 
 variable "project_name" {
   description = "Name of the Next.js project"
   type        = string
   default     = "dotca-nextjs"
+}
+
+variable "environment" {
+  description = "Deployment environment (staging, production)"
+  type        = string
+  default     = "staging"
 }
 
 variable "region" {
@@ -39,21 +52,21 @@ variable "allowed_ssh_ips" {
 }
 
 variable "create_domain" {
-  description = "Whether to create a domain record for the QA environment"
+  description = "Whether to create a domain record for the environment"
   type        = bool
   default     = false
 }
 
 variable "domain_name" {
-  description = "Base domain name for the QA environment"
+  description = "Base domain name for the environment"
   type        = string
   default     = "boximity.ca"
 }
 
 variable "subdomain" {
-  description = "Subdomain for the QA environment"
+  description = "Subdomain for the environment (defaults to environment value)"
   type        = string
-  default     = "qa"
+  default     = ""
 }
 
 variable "use_existing_project" {
