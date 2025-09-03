@@ -17,8 +17,10 @@ services:
       - BREVO_API_KEY={{ brevo_api_key }}
       - NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id | default('') }}
       - NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id | default('') }}
+      - HOST=0.0.0.0
+      - HOSTNAME=0.0.0.0
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "sh", "-c", "curl -f http://$(hostname -i):3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
