@@ -594,6 +594,16 @@
   vars:
     domain_name: "staging.boximity.ca"
     email_address: "matticem@boximity.ca"
+    app_dir: /app
+    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
+    github_repo_from_url: "{{ git_repo_url | regex_replace('.*github\\.com[/:]([^/]+/[^/.]+).*', '\\1') if git_repo_url else '' }}"
+    docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
+    docker_image: >-
+      {{
+        docker_image_override if docker_image_override else
+        ('ghcr.io/' + github_repo_from_url + ':staging') if github_repo_from_url else
+        'ghcr.io/bxtech/dotca:staging'
+      }}
   
   tasks:
     - name: Install DNS utilities and Certbot
