@@ -5,10 +5,16 @@
   ],
   "rangeStrategy": "pin",
   "baseBranches": ["staging"],
+  "schedule": ["after 9am and before 5pm on weekdays"],
+  "timezone": "America/New_York",
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on Monday"]
+    "schedule": ["before 6am on Friday"]
   },
-  "schedule": ["after 9am and before 5pm on weekdays"],
-  "timezone": "America/New_York"
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "enabled": true
+    }
+  ]
 }
