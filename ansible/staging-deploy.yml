@@ -23,6 +23,7 @@
     git_branch: staging
     app_dir: /app
     public_ip: "{{ ansible_host }}"
+    staging_domain: "staging.boximity.ca"
     brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
     stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
     stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
@@ -440,38 +441,14 @@
             include /etc/nginx/sites-enabled/*;
           }
 
-    - name: Configure Nginx as reverse proxy
-      ansible.builtin.copy:
+    - name: Configure Nginx as reverse proxy for staging
+      ansible.builtin.template:
+        src: nextjs-site.conf.j2
         dest: /etc/nginx/sites-available/nextjs-app
         mode: '0644'
-        content: |
-          server {
-              listen 80;
-              server_name _;
-              
-              # Add basic health check endpoint
-              location /health {
-                  access_log off;
-                  add_header Content-Type text/plain;
-                  return 200 'OK';
-              }
-              
-              location / {
-                  proxy_pass http://localhost:8080;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_cache_bypass $http_upgrade;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-                  
-                  # Caching
-                  proxy_cache_valid 200 302 10m;
-                  proxy_cache_valid 404 1m;
-              }
-          }
+        backup: true
+      vars:
+        server_name: "{{ staging_domain }}"
 
     - name: Enable Nginx site configuration
       ansible.builtin.file:
@@ -640,11 +617,14 @@
       register: domain_check
       changed_when: false
 
-    - name: Configure domain in Nginx if needed
-      ansible.builtin.replace:
-        path: /etc/nginx/sites-available/nextjs-app
-        regexp: 'server_name _;'
-        replace: 'server_name {{ domain_name }};'
+    - name: Reconfigure Nginx for SSL using template if domain needs updating
+      ansible.builtin.template:
+        src: nextjs-site.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
+        backup: true
+      vars:
+        server_name: "{{ domain_name }}"
       when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
       register: nginx_domain_update
 
@@ -707,20 +687,7 @@
         group: www-data
       when: not cert_file.stat.exists
 
-    # Add Let's Encrypt challenge location to Nginx config temporarily
-    - name: Add Let's Encrypt challenge location to Nginx
-      ansible.builtin.blockinfile:
-        path: /etc/nginx/sites-available/nextjs-app
-        marker: "# {mark} ANSIBLE MANAGED BLOCK - Let's Encrypt"
-        insertbefore: "location / {"
-        block: |
-          # Let's Encrypt challenge location
-          location ^~ /.well-known/acme-challenge/ {
-              root /var/www/html;
-              try_files $uri =404;
-          }
-      register: nginx_le_config
-      when: not cert_file.stat.exists
+
 
     - name: Test Nginx configuration before SSL setup
       ansible.builtin.command: nginx -t
@@ -732,11 +699,11 @@
         msg: "{{ nginx_pre_ssl_test.stderr_lines }}"
       when: nginx_pre_ssl_test.rc != 0
 
-    - name: Reload Nginx for Let's Encrypt configuration
+    - name: Reload Nginx after domain configuration
       ansible.builtin.systemd:
         name: nginx
         state: reloaded
-      when: nginx_le_config is changed and nginx_pre_ssl_test.rc == 0
+      when: nginx_domain_update is changed and nginx_pre_ssl_test.rc == 0
 
     # Check if Let's Encrypt can reach the domain
     - name: Perform Let's Encrypt dry run to test domain validation
@@ -779,6 +746,8 @@
         dest: /etc/nginx/sites-available/nextjs-app
         mode: '0644'
         backup: true
+      vars:
+        domain_name: "{{ domain_name }}"
       when: certbot_result is success and certbot_result is defined
       register: nginx_ssl_config
 
