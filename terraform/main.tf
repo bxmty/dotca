@@ -3,10 +3,10 @@ terraform {
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
-      version = "~> 2.0"
+      version = "2.66.0"
     }
   }
-  required_version = ">= 1.0.0"
+  required_version = "1.13.1"
   
   backend "s3" {
     endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
