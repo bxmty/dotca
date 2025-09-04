@@ -569,7 +569,7 @@
   hosts: digitalocean
   become: yes
   vars:
-    domain_name: "staging.boximity.ca"
+    ssl_domain_name: "staging.boximity.ca"
     email_address: "matticem@boximity.ca"
     app_dir: /app
     git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
@@ -597,13 +597,13 @@
 
     - name: Check if certificate already exists
       ansible.builtin.stat:
-        path: /etc/letsencrypt/live/{{ domain_name }}/cert.pem
+        path: /etc/letsencrypt/live/{{ ssl_domain_name }}/cert.pem
       register: cert_file
 
     # Enhanced domain validation before requesting certificate
     - name: Check DNS resolution for domain
       ansible.builtin.command: |
-        bash -c "echo 'Checking DNS resolution for {{ domain_name }}...'; nslookup {{ domain_name }} || echo 'DNS resolution failed'; echo 'Expected IP: {{ ansible_host }}'; echo 'Resolved IP:'; dig +short {{ domain_name }} || echo 'dig failed'"
+        bash -c "echo 'Checking DNS resolution for {{ ssl_domain_name }}...'; nslookup {{ ssl_domain_name }} || echo 'DNS resolution failed'; echo 'Expected IP: {{ ansible_host }}'; echo 'Resolved IP:'; dig +short {{ ssl_domain_name }} || echo 'dig failed'"
       register: dns_check
       changed_when: false
       ignore_errors: true
@@ -613,7 +613,7 @@
         msg: "{{ dns_check.stdout_lines }}"
 
     - name: Verify domain configuration in Nginx
-      ansible.builtin.command: bash -c "if [ -f /etc/nginx/sites-available/nextjs-app ]; then grep -q 'server_name {{ domain_name }}' /etc/nginx/sites-available/nextjs-app || echo 'Domain not configured'; else echo 'Nginx config not found'; fi"
+      ansible.builtin.command: bash -c "if [ -f /etc/nginx/sites-available/nextjs-app ]; then grep -q 'server_name {{ ssl_domain_name }}' /etc/nginx/sites-available/nextjs-app || echo 'Domain not configured'; else echo 'Nginx config not found'; fi"
       register: domain_check
       changed_when: false
 
@@ -624,7 +624,7 @@
         mode: '0644'
         backup: true
       vars:
-        server_name: "{{ domain_name }}"
+        server_name: "{{ ssl_domain_name }}"
       when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
       register: nginx_domain_update
 
@@ -650,7 +650,7 @@
     # Test domain accessibility from the server itself
     - name: Test domain accessibility locally
       ansible.builtin.uri:
-        url: "http://{{ domain_name }}/health"
+        url: "http://{{ ssl_domain_name }}/health"
         method: GET
         status_code: 200
         timeout: 10
@@ -672,7 +672,7 @@
     - name: Display connectivity test results
       ansible.builtin.debug:
         msg:
-          - "Domain {{ domain_name }} accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Domain {{ ssl_domain_name }} accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
           - "Localhost accessibility: {{ 'SUCCESS' if localhost_check.status | default(0) == 200 else 'FAILED' }}"
           - "Domain status code: {{ local_domain_check.status | default('N/A') }}"
           - "Localhost status code: {{ localhost_check.status | default('N/A') }}"
@@ -708,7 +708,7 @@
     # Check if Let's Encrypt can reach the domain
     - name: Perform Let's Encrypt dry run to test domain validation
       ansible.builtin.command: >
-        certbot certonly --webroot -w /var/www/html -d {{ domain_name }}
+        certbot certonly --webroot -w /var/www/html -d {{ ssl_domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
         --dry-run
@@ -727,7 +727,7 @@
 
     - name: Obtain SSL certificate (only if dry run succeeded)
       ansible.builtin.command: >
-        certbot certonly --webroot -w /var/www/html -d {{ domain_name }}
+        certbot certonly --webroot -w /var/www/html -d {{ ssl_domain_name }}
         --non-interactive --agree-tos 
         --email {{ email_address }}
       when: |
@@ -747,7 +747,7 @@
         mode: '0644'
         backup: true
       vars:
-        domain_name: "{{ domain_name }}"
+        domain_name: "{{ ssl_domain_name }}"
       when: certbot_result is success and certbot_result is defined
       register: nginx_ssl_config
 
@@ -780,13 +780,13 @@
           - "SSL Certificate Setup Status"
           - "============================================"
           - "Certificate exists: {{ cert_file.stat.exists | default(false) }}"
-          - "Domain: {{ domain_name }}"
+          - "Domain: {{ ssl_domain_name }}"
           - "DNS resolution: {{ 'Check DNS output above' }}"
           - "Domain accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
           - "Dry run status: {{ 'SUCCESS' if certbot_dryrun.rc | default(1) == 0 else 'FAILED' }}"
           - "============================================"
           - "If SSL failed, ensure:"
-          - "1. DNS for {{ domain_name }} points to {{ ansible_host }}"
+          - "1. DNS for {{ ssl_domain_name }} points to {{ ansible_host }}"
           - "2. Port 80 is open and accessible from internet"
           - "3. Nginx is serving the domain correctly"
           - "4. Wait for rate limit to reset (check error message above)"
