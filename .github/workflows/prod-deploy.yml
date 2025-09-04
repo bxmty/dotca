@@ -382,6 +382,52 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
       
+      - name: Validate DNS configuration
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+        run: |
+          echo "🔍 Validating DNS configuration for boximity.ca..."
+
+          # Check if DNS resolves to our droplet IP
+          echo "Expected IP: $DROPLET_IP"
+          echo "DNS resolution for boximity.ca:"
+
+          # Try multiple DNS lookup methods
+          DNS_IP=$(nslookup boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
+          if [ -z "$DNS_IP" ]; then
+            DNS_IP=$(dig +short boximity.ca | head -1 || echo "")
+          fi
+
+          echo "Resolved IP: $DNS_IP"
+
+          if [ "$DNS_IP" = "$DROPLET_IP" ]; then
+            echo "✅ DNS configuration is correct - boximity.ca resolves to $DROPLET_IP"
+          else
+            echo "⚠️ DNS configuration issue detected:"
+            echo "  - Expected: $DROPLET_IP"
+            echo "  - Actual: $DNS_IP"
+            echo "  - This may cause SSL certificate issues"
+            echo "  - Please ensure boximity.ca points to $DROPLET_IP in your DNS settings"
+          fi
+
+          # Also check www.boximity.ca
+          echo "DNS resolution for www.boximity.ca:"
+          WWW_DNS_IP=$(nslookup www.boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
+          if [ -z "$WWW_DNS_IP" ]; then
+            WWW_DNS_IP=$(dig +short www.boximity.ca | head -1 || echo "")
+          fi
+
+          echo "Resolved IP: $WWW_DNS_IP"
+
+          if [ "$WWW_DNS_IP" = "$DROPLET_IP" ]; then
+            echo "✅ DNS configuration is correct - www.boximity.ca resolves to $DROPLET_IP"
+          else
+            echo "⚠️ DNS configuration issue detected for www.boximity.ca:"
+            echo "  - Expected: $DROPLET_IP"
+            echo "  - Actual: $WWW_DNS_IP"
+            echo "  - This may cause SSL certificate issues"
+          fi
+
       - name: Add host key to known hosts
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
@@ -393,9 +439,9 @@ jobs:
             echo "::error::Could not determine server IP address - infrastructure setup failed"
             exit 1
           fi
-          
+
           echo "Connecting to IP: $DROPLET_IP"
-          
+
           # Wait longer for new or updated resources to be fully ready
           if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
             echo "Waiting for droplet to be fully ready..."
@@ -412,17 +458,17 @@ jobs:
               sleep $INTERVAL
               ELAPSED=$((ELAPSED + INTERVAL))
             done
-            
+
             if [ $ELAPSED -ge $TIMEOUT ]; then
               echo "::warning::Droplet at $DROPLET_IP is not responding to ping after ${TIMEOUT}s"
               # Continue anyway, since SSH might still work
             fi
-            
+
             # Additional wait time for services to start
             echo "Waiting additional time for services to start..."
             sleep 30
           fi
-          
+
           # Add host key to known_hosts
           echo "Adding host key for $DROPLET_IP to known_hosts..."
           for i in {1..5}; do
@@ -433,7 +479,7 @@ jobs:
               echo "Attempt $i to add host key failed, retrying in 10 seconds..."
               sleep 10
             fi
-            
+
             if [ $i -eq 5 ]; then
               echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
             fi
