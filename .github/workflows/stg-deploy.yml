@@ -80,7 +80,7 @@ jobs:
         run: |
           # Set terraform variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -119,7 +119,7 @@ jobs:
         run: |
           # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -155,7 +155,7 @@ jobs:
         run: |
           # Set terraform variables as environment variables
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -175,7 +175,7 @@ jobs:
         working-directory: ./terraform
         run: |
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -188,7 +188,7 @@ jobs:
         working-directory: ./terraform
         run: |
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -206,7 +206,7 @@ jobs:
 
           # Force a refresh to ensure state is current
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
-          export TF_VAR_ssh_key_name="${{ secrets.SSH_KEY_NAME }}"
+          export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
           export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
           export TF_VAR_git_branch="staging"
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
@@ -344,6 +344,34 @@ jobs:
               fi
             fi
           done
+      - name: Validate DNS configuration
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+        run: |
+          echo "🔍 Validating DNS configuration for staging.boximity.ca..."
+
+          # Check if DNS resolves to our droplet IP
+          echo "Expected IP: $DROPLET_IP"
+          echo "DNS resolution for staging.boximity.ca:"
+
+          # Try multiple DNS lookup methods
+          DNS_IP=$(nslookup staging.boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
+          if [ -z "$DNS_IP" ]; then
+            DNS_IP=$(dig +short staging.boximity.ca | head -1 || echo "")
+          fi
+
+          echo "Resolved IP: $DNS_IP"
+
+          if [ "$DNS_IP" = "$DROPLET_IP" ]; then
+            echo "✅ DNS configuration is correct - staging.boximity.ca resolves to $DROPLET_IP"
+          else
+            echo "⚠️ DNS configuration issue detected:"
+            echo "  - Expected: $DROPLET_IP"
+            echo "  - Actual: $DNS_IP"
+            echo "  - This may cause SSL certificate issues"
+            echo "  - Please ensure staging.boximity.ca points to $DROPLET_IP in your DNS settings"
+          fi
+
       - name: Create Ansible inventory
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
