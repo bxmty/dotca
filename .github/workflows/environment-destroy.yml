@@ -31,7 +31,7 @@ jobs:
           echo "✅ Environment '${{ github.event.inputs.environment }}' is valid"
           
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
