@@ -218,7 +218,7 @@
         msg: "{{ docker_compose_content.stdout_lines }}"
 
     - name: Stop existing Docker Compose services
-      ansible.builtin.command: docker-compose down web
+      ansible.builtin.command: docker-compose down --remove-orphans
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
@@ -226,9 +226,66 @@
       changed_when: docker_down_result.rc == 0
 
     - name: Stop any other containers using port 8080
-      ansible.builtin.command: bash -c "if docker ps -q --filter publish=8080 | grep -q .; then docker stop \$(docker ps -q --filter publish=8080); fi"
+      ansible.builtin.command: >
+        bash -c "
+        if docker ps -q --filter publish=8080 | grep -q .; then
+          echo 'Found containers using port 8080, stopping them...'
+          docker ps -q --filter publish=8080 | xargs docker stop
+          echo 'Containers stopped successfully'
+        else
+          echo 'No containers found using port 8080'
+        fi
+        "
+      register: port_stop_result
       ignore_errors: true
       changed_when: false
+
+    - name: Display port 8080 cleanup results
+      ansible.builtin.debug:
+        msg: "{{ port_stop_result.stdout_lines | default(['No output']) }}"
+      when: port_stop_result is defined
+
+    - name: Verify port 8080 is free
+      ansible.builtin.command: >
+        bash -c "
+        if lsof -i :8080 >/dev/null 2>&1; then
+          echo 'WARNING: Port 8080 is still in use by:'
+          lsof -i :8080
+          exit 1
+        else
+          echo 'SUCCESS: Port 8080 is now free'
+        fi
+        "
+      register: port_check_result
+      ignore_errors: true
+      changed_when: false
+
+    - name: Display port verification results
+      ansible.builtin.debug:
+        msg:
+          - "Port 8080 status: {{ 'FREE' if port_check_result.rc == 0 else 'STILL IN USE' }}"
+          - "Details: {{ port_check_result.stdout_lines | default(['No details available']) }}"
+      when: port_check_result is defined
+
+    - name: Force stop any remaining containers on port 8080 if verification failed
+      ansible.builtin.command: >
+        bash -c "
+        if lsof -i :8080 >/dev/null 2>&1; then
+          echo 'Force stopping remaining processes on port 8080...'
+          lsof -ti :8080 | xargs kill -9 2>/dev/null || true
+          sleep 2
+          if lsof -i :8080 >/dev/null 2>&1; then
+            echo 'Some processes may still be using port 8080'
+            exit 1
+          else
+            echo 'Successfully freed port 8080'
+          fi
+        fi
+        "
+      register: force_stop_result
+      ignore_errors: true
+      changed_when: false
+      when: port_check_result is defined and port_check_result.rc != 0
 
     - name: Prune Docker system
       ansible.builtin.command: docker system prune -af
