@@ -43,6 +43,20 @@
       }}
     # Additional production GA ID for future use
     ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
+    # Umami Analytics configuration variables
+    umami_db_password: "{{ lookup('env', 'UMAMI_DB_PASSWORD') | default('umami_password', true) }}"
+    umami_app_secret: "{{ lookup('env', 'UMAMI_APP_SECRET') | default('your-secret-key-change-this-in-production', true) }}"
+    umami_disable_login: "{{ lookup('env', 'UMAMI_DISABLE_LOGIN') | default('false', true) }}"
+    umami_disable_signup: "{{ lookup('env', 'UMAMI_DISABLE_SIGNUP') | default('false', true) }}"
+    umami_allow_report: "{{ lookup('env', 'UMAMI_ALLOW_REPORT') | default('true', true) }}"
+    umami_disable_telemetry: "{{ lookup('env', 'UMAMI_DISABLE_TELEMETRY') | default('false', true) }}"
+    umami_log_level: "{{ lookup('env', 'UMAMI_LOG_LEVEL') | default('info', true) }}"
+    umami_rate_limit: "{{ lookup('env', 'UMAMI_RATE_LIMIT') | default('1000', true) }}"
+    umami_rate_limit_window: "{{ lookup('env', 'UMAMI_RATE_LIMIT_WINDOW') | default('3600000', true) }}"
+    umami_session_timeout: "{{ lookup('env', 'UMAMI_SESSION_TIMEOUT') | default('2592000000', true) }}"
+    umami_admin_username: "{{ lookup('env', 'UMAMI_ADMIN_USERNAME') | default('admin', true) }}"
+    umami_admin_password: "{{ lookup('env', 'UMAMI_ADMIN_PASSWORD') | default('umami', true) }}"
+    umami_admin_email: "{{ lookup('env', 'UMAMI_ADMIN_EMAIL') | default('admin@staging.boximity.ca', true) }}"
 
   tasks:
     - name: Update apt cache
@@ -413,7 +427,7 @@
       ignore_errors: true
 
     - name: Start Docker Compose services
-      ansible.builtin.command: docker-compose up -d web
+      ansible.builtin.command: docker-compose up -d db umami web
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_up
@@ -549,6 +563,7 @@
         - '443'
         - '6080'
         - '8080'
+        - '3001'  # Umami Analytics dashboard
       changed_when: false
 
     - name: Enable UFW
