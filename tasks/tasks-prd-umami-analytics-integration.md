@@ -22,46 +22,80 @@
 
 ## Tasks
 
-- [ ] 2.0 Set up Umami infrastructure (Docker deployment, database, SSL configuration)
-  - [ ] 2.1 Create Umami environment configuration file with database connection settings
-  - [ ] 2.2 Update docker-compose.yml.j2 template to include Umami service with PostgreSQL database
-  - [ ] 2.3 Configure Umami environment variables for production/staging environments
-  - [ ] 2.4 Set up persistent volumes for Umami database data using existing volume patterns
-  - [ ] 2.5 Configure SSL certificate for Umami dashboard subdomain using existing Let's Encrypt setup
-  - [ ] 2.6 Update firewall rules to allow access to Umami dashboard port (if different from main app)
+### Phase 1: Staging Environment Setup and Testing
 
-- [ ] 3.0 Configure Ansible playbooks for Umami deployment and nginx reverse proxy
-  - [ ] 3.1 Update staging-deploy.yml to include Umami Docker image pull and service startup
-  - [ ] 3.2 Create nginx-umami-site.conf.j2 template for Umami dashboard reverse proxy
-  - [ ] 3.3 Add Umami nginx site configuration to Ansible deployment tasks
-  - [ ] 3.4 Configure automated backup tasks for Umami database in monitoring script
-  - [ ] 3.5 Update health check monitoring to include Umami service status
-  - [ ] 3.6 Add Umami environment variables to Ansible variable management
+- [ ] 1.0 Set up Umami infrastructure for staging environment
+  - [ ] 1.1 Create Umami environment configuration file with database connection settings for staging
+  - [ ] 1.2 Update docker-compose.yml.j2 template to include Umami service with PostgreSQL database
+  - [ ] 1.3 Configure Umami environment variables for staging environment
+  - [ ] 1.4 Set up persistent volumes for Umami database data using existing volume patterns
+  - [ ] 1.5 Configure SSL certificate for Umami dashboard subdomain in staging environment
+  - [ ] 1.6 Update firewall rules to allow access to Umami dashboard port in staging
 
-- [ ] 4.0 Integrate Umami tracking into Next.js application
-  - [ ] 4.1 Install @umami/node package for server-side tracking capabilities
-  - [ ] 4.2 Create src/lib/umami.ts with tracking utility functions (pageview, event tracking)
-  - [ ] 4.3 Create src/app/components/UmamiAnalytics.tsx React component for client-side tracking
-  - [ ] 4.4 Add Umami tracking script to src/app/layout.tsx alongside existing Google Analytics
-  - [ ] 4.5 Create src/lib/analytics.ts unified interface for both GA and Umami tracking
-  - [ ] 4.6 Add Umami environment variables to existing Next.js environment configuration
+- [ ] 2.0 Configure staging Ansible playbook for Umami deployment
+  - [ ] 2.1 Update staging-deploy.yml to include Umami Docker image pull and service startup
+  - [ ] 2.2 Create nginx-umami-site.conf.j2 template for Umami dashboard reverse proxy
+  - [ ] 2.3 Add Umami nginx site configuration to staging deployment tasks
+  - [ ] 2.4 Configure automated backup tasks for Umami database in staging monitoring script
+  - [ ] 2.5 Update health check monitoring to include Umami service status in staging
+  - [ ] 2.6 Add Umami environment variables to staging Ansible variable management
 
-- [ ] 5.0 Implement custom event tracking for lead generation conversion
-  - [ ] 5.1 Identify all lead generation forms in the application (contact forms, signup forms, etc.)
-  - [ ] 5.2 Add Umami event tracking to form submission handlers for conversion measurement
-  - [ ] 5.3 Implement custom events for key user interactions (button clicks, feature usage)
-  - [ ] 5.4 Add server-side event tracking for critical conversion events using @umami/node
-  - [ ] 5.5 Create reusable tracking hooks for consistent event tracking across components
-  - [ ] 5.6 Test event tracking implementation in development environment
+- [ ] 3.0 Integrate Umami tracking into Next.js application (staging)
+  - [ ] 3.1 Install @umami/node package for server-side tracking capabilities
+  - [ ] 3.2 Create src/lib/umami.ts with tracking utility functions (pageview, event tracking)
+  - [ ] 3.3 Create src/app/components/UmamiAnalytics.tsx React component for client-side tracking
+  - [ ] 3.4 Add Umami tracking script to src/app/layout.tsx alongside existing Google Analytics
+  - [ ] 3.5 Create src/lib/analytics.ts unified interface for both GA and Umami tracking
+  - [ ] 3.6 Add Umami environment variables to staging Next.js environment configuration
 
-- [ ] 6.0 Test and validate analytics data accuracy and performance
-  - [ ] 6.1 Deploy Umami to staging environment and verify dashboard accessibility
-  - [ ] 6.2 Validate that page view tracking works correctly on route changes
-  - [ ] 6.3 Test custom event tracking for lead generation forms in staging
-  - [ ] 6.4 Measure performance impact of Umami tracking on page load times (<100ms target)
-  - [ ] 6.5 Compare Umami data accuracy with Google Analytics for same time period
-  - [ ] 6.6 Test Umami dashboard functionality (date filtering, export features, real-time data)
-  - [ ] 6.7 Validate SSL certificate setup and secure access to analytics dashboard
-  - [ ] 6.8 Perform load testing to ensure Umami doesn't impact main application performance
-  - [ ] 6.9 Test automated backup and monitoring functionality
-  - [ ] 6.10 Document dashboard access and usage instructions for stakeholders
+- [ ] 4.0 Implement and test custom event tracking in staging
+  - [ ] 4.1 Identify all lead generation forms in the application (contact forms, signup forms, etc.)
+  - [ ] 4.2 Add Umami event tracking to form submission handlers for conversion measurement
+  - [ ] 4.3 Implement custom events for key user interactions (button clicks, feature usage)
+  - [ ] 4.4 Add server-side event tracking for critical conversion events using @umami/node
+  - [ ] 4.5 Create reusable tracking hooks for consistent event tracking across components
+  - [ ] 4.6 Test event tracking implementation in development environment
+  - [ ] 4.7 Test custom event tracking in staging environment
+
+- [ ] 5.0 Test and validate staging environment
+  - [ ] 5.1 Deploy Umami to staging environment and verify dashboard accessibility
+  - [ ] 5.2 Validate that page view tracking works correctly on route changes in staging
+  - [ ] 5.3 Test custom event tracking for lead generation forms in staging
+  - [ ] 5.4 Measure performance impact of Umami tracking on page load times in staging (<100ms target)
+  - [ ] 5.5 Compare Umami data accuracy with Google Analytics for same time period in staging
+  - [ ] 5.6 Test Umami dashboard functionality in staging (date filtering, export features, real-time data)
+  - [ ] 5.7 Validate SSL certificate setup and secure access to analytics dashboard in staging
+  - [ ] 5.8 Perform load testing to ensure Umami doesn't impact main application performance in staging
+  - [ ] 5.9 Test automated backup and monitoring functionality in staging
+
+### Phase 2: Production Environment Setup and Testing (After Staging Validation)
+
+- [ ] 6.0 Set up Umami infrastructure for production environment
+  - [ ] 6.1 Update Umami environment configuration file with production database connection settings
+  - [ ] 6.2 Configure Umami environment variables for production environment
+  - [ ] 6.3 Configure SSL certificate for Umami dashboard subdomain in production environment
+  - [ ] 6.4 Update firewall rules to allow access to Umami dashboard port in production
+
+- [ ] 7.0 Configure production Ansible playbook for Umami deployment
+  - [ ] 7.1 Update production-deploy.yml to include Umami Docker image pull and service startup
+  - [ ] 7.2 Add Umami nginx site configuration to production deployment tasks
+  - [ ] 7.3 Configure automated backup tasks for Umami database in production monitoring script
+  - [ ] 7.4 Update health check monitoring to include Umami service status in production
+  - [ ] 7.5 Add Umami environment variables to production Ansible variable management
+
+- [ ] 8.0 Deploy Umami tracking to production
+  - [ ] 8.1 Add Umami environment variables to production Next.js environment configuration
+  - [ ] 8.2 Test custom event tracking in production environment
+
+- [ ] 9.0 Test and validate production environment
+  - [ ] 9.1 Deploy Umami to production environment and verify dashboard accessibility
+  - [ ] 9.2 Validate that page view tracking works correctly on route changes in production
+  - [ ] 9.3 Test custom event tracking for lead generation forms in production
+  - [ ] 9.4 Measure performance impact of Umami tracking on page load times in production (<100ms target)
+  - [ ] 9.5 Compare Umami data accuracy with Google Analytics for same time period in production
+  - [ ] 9.6 Test Umami dashboard functionality in production (date filtering, export features, real-time data)
+  - [ ] 9.7 Validate SSL certificate setup and secure access to analytics dashboard in production
+  - [ ] 9.8 Perform load testing to ensure Umami doesn't impact main application performance in production
+  - [ ] 9.9 Test automated backup and monitoring functionality in production
+  - [ ] 9.10 Document dashboard access and usage instructions for stakeholders (staging and production)
+  - [ ] 9.11 Validate data synchronization between staging and production environments
