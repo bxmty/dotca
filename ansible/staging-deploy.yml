@@ -386,8 +386,8 @@
           - ghcr.io/{{ github_username }}/dotca:staging (if username available)
       when: not any_image_found
 
-    - name: Pull latest Docker image from GHCR
-      ansible.builtin.command: bash -c "cd {{ app_dir }}/repo && docker-compose pull web"
+    - name: Pull latest Docker images from GHCR (including Umami)
+      ansible.builtin.command: bash -c "cd {{ app_dir }}/repo && docker-compose pull db umami web"
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_pull
@@ -609,7 +609,7 @@
           if ! docker ps | grep -q "{{ project_name }}.*web"; then
             log_message "Web container not running properly! Attempting to restart..."
             docker-compose down web
-            docker-compose up -d web
+            docker-compose up -d db umami web
             sleep 15
           fi
           
@@ -617,7 +617,7 @@
           if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
             log_message "Application not responding. Restarting services..."
             cd {{ app_dir }}/repo
-            docker-compose down web && docker-compose up -d web
+            docker-compose down --remove-orphans && docker-compose up -d db umami web
             sleep 5
             systemctl restart nginx
           fi

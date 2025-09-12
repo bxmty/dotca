@@ -33,9 +33,9 @@
   - [x] 1.6 Update firewall rules to allow access to Umami dashboard port in staging
 
 - [ ] 2.0 Configure staging Ansible playbook for Umami deployment
-  - [ ] 2.1 Update staging-deploy.yml to include Umami Docker image pull and service startup
-  - [ ] 2.2 Create nginx-umami-site.conf.j2 template for Umami dashboard reverse proxy
-  - [ ] 2.3 Add Umami nginx site configuration to staging deployment tasks
+  - [x] 2.1 Update staging-deploy.yml to include Umami Docker image pull and service startup
+  - [x] 2.2 Create nginx-umami-site.conf.j2 template for Umami dashboard reverse proxy
+  - [x] 2.3 Add Umami nginx site configuration to staging deployment tasks
   - [ ] 2.4 Configure automated backup tasks for Umami database in staging monitoring script
   - [ ] 2.5 Update health check monitoring to include Umami service status in staging
   - [ ] 2.6 Add Umami environment variables to staging Ansible variable management
