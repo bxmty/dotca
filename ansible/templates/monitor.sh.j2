@@ -8,49 +8,12 @@ log_message() {
   echo "[$(date)] $1" | tee -a $LOG_FILE
 }
 
-# Function to backup Umami database
+# Function to backup Umami database (calls separate backup script)
 backup_umami_database() {
   log_message "Starting Umami database backup..."
-
-  # Create backup directory if it doesn't exist
-  mkdir -p "$BACKUP_DIR"
-
-  # Generate timestamp for backup file
-  TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-  BACKUP_FILE="$BACKUP_DIR/umami_backup_$TIMESTAMP.sql"
-
-  # Check if Umami database container is running
-  if ! docker ps | grep -q "$DB_CONTAINER"; then
-    log_message "ERROR: Umami database container ($DB_CONTAINER) is not running. Skipping backup."
-    return 1
-  fi
-
-  # Perform database backup using pg_dump
-  if docker exec "$DB_CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null; then
-    # Compress the backup file
-    gzip "$BACKUP_FILE"
-    COMPRESSED_FILE="$BACKUP_FILE.gz"
-
-    # Get backup file size
-    BACKUP_SIZE=$(du -h "$COMPRESSED_FILE" | cut -f1)
-
-    log_message "SUCCESS: Umami database backup completed - $COMPRESSED_FILE ($BACKUP_SIZE)"
-
-    # Clean up old backups (keep only last RETENTION_DAYS days)
-    log_message "Cleaning up backups older than $RETENTION_DAYS days..."
-    find "$BACKUP_DIR" -name "umami_backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
-    CLEANED_COUNT=$?
-    if [ $CLEANED_COUNT -gt 0 ]; then
-      log_message "Cleaned up old backup files"
-    fi
-
-    return 0
-  else
-    log_message "ERROR: Failed to backup Umami database"
-    # Clean up failed backup file
-    rm -f "$BACKUP_FILE"
-    return 1
-  fi
+  # Call the dedicated backup script
+  "{{ app_dir }}/umami-backup.sh"
+  return $?
 }
 
 # Function to check Umami service health
@@ -88,13 +51,6 @@ check_umami_health() {
 # Application health check
 HEALTH_CHECK_URL="http://localhost/health"
 UMAMI_HEALTH_URL="http://localhost:3001/api/health"
-
-# Database backup configuration
-BACKUP_DIR="{{ app_dir }}/backups"
-DB_CONTAINER="umami-db"
-DB_NAME="umami"
-DB_USER="umami"
-RETENTION_DAYS=7
 
 # Check if manual backup is requested
 FORCE_BACKUP=false
