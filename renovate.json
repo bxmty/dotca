@@ -5,7 +5,7 @@
   ],
   "rangeStrategy": "pin",
   "baseBranchPatterns": [
-    "staging"
+    "renovations"
   ],
   "schedule": [
     "after 9am and before 5pm every weekday"
