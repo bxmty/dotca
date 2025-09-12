@@ -37,7 +37,7 @@
   - [x] 2.2 Create nginx-umami-site.conf.j2 template for Umami dashboard reverse proxy
   - [x] 2.3 Add Umami nginx site configuration to staging deployment tasks
   - [x] 2.4 Configure automated backup tasks for Umami database in staging monitoring script
-  - [ ] 2.5 Update health check monitoring to include Umami service status in staging
+  - [x] 2.5 Update health check monitoring to include Umami service status in staging
   - [ ] 2.6 Add Umami environment variables to staging Ansible variable management
 
 - [ ] 3.0 Integrate Umami tracking into Next.js application (staging)
