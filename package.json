@@ -17,7 +17,7 @@
     "@stripe/stripe-js": "7.9.0",
     "bootstrap": "5.3.8",
     "libphonenumber-js": "1.12.15",
-    "next": "15.4.7",
+    "next": "15.5.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-phone-input-2": "^2.15.1",
