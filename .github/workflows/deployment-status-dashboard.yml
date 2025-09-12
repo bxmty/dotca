@@ -42,7 +42,7 @@ jobs:
       issues_count: ${{ steps.dashboard.outputs.issues_count }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Check production status
         id: check-production

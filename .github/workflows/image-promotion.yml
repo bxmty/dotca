@@ -448,7 +448,7 @@ jobs:
       promotion_reason: ${{ steps.validation.outputs.promotion_reason }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Download Error Handling Utilities
         uses: actions/download-artifact@v4

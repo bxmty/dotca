@@ -30,7 +30,7 @@ jobs:
       terraform_changes: ${{ steps.check_terraform_changes.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -236,7 +236,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Ansible and dependencies
         run: |
           sudo apt update
@@ -574,7 +574,7 @@ jobs:
     if: github.event.inputs.skip_tests != 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
