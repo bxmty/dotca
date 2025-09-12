@@ -575,6 +575,13 @@
         src: monitor.sh.j2
         dest: "{{ app_dir }}/monitor.sh"
         mode: '0755'
+
+    - name: Create Umami database backup script
+      ansible.builtin.template:
+        src: umami-backup.sh.j2
+        dest: "{{ app_dir }}/umami-backup.sh"
+        mode: '0755'
+
     - name: Set up monitoring cron job
       ansible.builtin.cron:
         name: "Monitor dotca-nextjs"
