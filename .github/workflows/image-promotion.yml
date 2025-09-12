@@ -451,7 +451,7 @@ jobs:
         uses: actions/checkout@v5
       
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -568,7 +568,7 @@ jobs:
       promotion_duration: ${{ steps.status_tracking.outputs.duration }}
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -1598,7 +1598,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -1685,7 +1685,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -1838,7 +1838,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
