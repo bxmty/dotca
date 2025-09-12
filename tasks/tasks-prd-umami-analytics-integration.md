@@ -29,7 +29,7 @@
   - [x] 1.2 Update docker-compose.yml.j2 template to include Umami service with PostgreSQL database
   - [x] 1.3 Configure Umami environment variables for staging environment
   - [x] 1.4 Set up persistent volumes for Umami database data using existing volume patterns
-  - [ ] 1.5 Configure SSL certificate for Umami dashboard subdomain in staging environment
+  - [x] 1.5 Configure SSL certificate for Umami dashboard subdomain in staging environment
   - [x] 1.6 Update firewall rules to allow access to Umami dashboard port in staging
 
 - [ ] 2.0 Configure staging Ansible playbook for Umami deployment
