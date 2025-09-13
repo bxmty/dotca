@@ -53,6 +53,11 @@ services:
       - ADMIN_USERNAME={{ umami_admin_username | default('admin') }}
       - ADMIN_PASSWORD={{ umami_admin_password | default('umami') }}
       - ADMIN_EMAIL={{ umami_admin_email | default('admin@example.com') }}
+      - WEBSITE_URL={{ umami_website_url | default('https://umami.staging.boximity.ca') }}
+      - FORCE_HTTPS={{ umami_force_https | default('true') }}
+      - DISABLE_UPDATE_CHECK={{ umami_disable_update_check | default('false') }}
+      - TRACKER_TIMEOUT={{ umami_tracker_timeout | default('5000') }}
+      - COLLECTOR_TIMEOUT={{ umami_collector_timeout | default('30000') }}
     depends_on:
       db:
         condition: service_healthy
