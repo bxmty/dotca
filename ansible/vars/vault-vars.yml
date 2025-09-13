@@ -1,0 +1,65 @@
+# Ansible Vault Variables for staging-deploy.yml
+# Encrypt this file with: ansible-vault encrypt vault-vars.yml
+# Edit with: ansible-vault edit vault-vars.yml
+
+# Repository Configuration
+GIT_REPO_URL: "https://github.com/bxmty/dotca.git"
+
+# Docker Image Configuration
+DOCKER_IMAGE: "ghcr.io/bxmty/dotca:staging"
+
+# GitHub Container Registry Authentication
+GITHUB_TOKEN: "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"
+GITHUB_USERNAME: "bxmty"
+GITHUB_REPO: "bxmty/dotca"
+
+# Email Service Configuration (Brevo)
+BREVO_API_KEY: "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"
+
+# Stripe Payment Processing
+STRIPE_SECRET_KEY: "sk_test_51R2xhnKwLW2Ci0HIGOMtTLWuLm95WSFKOL1FGGbXjPwOfkjzGHGoXDGb9ruhnUPkw7I0wBusKCRoLhbuIzbkDAXk00FZO1Q8LA"
+STRIPE_PUBLISHABLE_KEY: "pk_test_51R2xhnKwLW2Ci0HInHq0pjsF2m1QLNpmNAF1uwhIkir4UYAeVDYBG05Ahp2IZGvXK1jSRd3pbQX5tqgMCwCXWUaD00pYTKgodg"
+
+# Google Analytics
+GA_STAGING_ID: "G-P890DC395M"
+GA_PRODUCTION_ID: "G-P890DC395M"
+
+# ============================================================================
+# Umami Analytics Configuration
+# ============================================================================
+
+# Database Configuration
+UMAMI_DB_PASSWORD: "6c854bc0c46253050a0a1607cbd5edc4"
+
+# Security & Authentication
+UMAMI_APP_SECRET: "+0YXiALlbMcifgHd3bHF9/o+JDhnniHDcbx4hDJJVAI="
+
+# User Management (optional - defaults provided)
+UMAMI_DISABLE_LOGIN: "false"
+UMAMI_DISABLE_SIGNUP: "true"
+
+# Feature Flags (optional - defaults provided)
+UMAMI_ALLOW_REPORT: "true"
+UMAMI_DISABLE_TELEMETRY: "true"
+
+# Logging & Performance (optional - defaults provided)
+UMAMI_LOG_LEVEL: "info"
+
+# Rate Limiting (optional - defaults provided)
+UMAMI_RATE_LIMIT: "1000"
+UMAMI_RATE_LIMIT_WINDOW: "3600000"
+
+# Session Management (optional - defaults provided)
+UMAMI_SESSION_TIMEOUT: "2592000000"
+
+# Admin Configuration
+UMAMI_ADMIN_USERNAME: "admin"
+UMAMI_ADMIN_PASSWORD: "rl+jyg8JrVQtqU2X"
+UMAMI_ADMIN_EMAIL: "admin@staging.boximity.ca"
+
+# Additional Umami Configuration (optional - defaults provided)
+UMAMI_WEBSITE_URL: "https://umami.staging.boximity.ca"
+UMAMI_FORCE_HTTPS: "true"
+UMAMI_DISABLE_UPDATE_CHECK: "false"
+UMAMI_TRACKER_TIMEOUT: "5000"
+UMAMI_COLLECTOR_TIMEOUT: "30000"

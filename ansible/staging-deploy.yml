@@ -1,9 +1,11 @@
 ---
 # Ansible playbook for setting up the Staging environment for dotca
-# With optimizations for Next.js deployment
+# With optimizations for Next.js deployment using container images from GHCR
+# Repository cloning eliminated - uses pre-built container images instead
 
 # Add a pre-task to fix temporary directory issues
 - name: Fix temporary directory issues
+  vars_files: vars/vault-vars.yml
   hosts: digitalocean
   become: true
   gather_facts: false
@@ -17,71 +19,66 @@
 - name: Setup Staging environment for dotca
   hosts: digitalocean
   become: true
+  vars_files: vars/vault-vars.yml
   vars:
     project_name: dotca-nextjs
-    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
-    git_branch: staging
+    # Git variables removed - using container image from GHCR instead
     app_dir: /app
     public_ip: "{{ ansible_host }}"
     staging_domain: "staging.boximity.ca"
-    brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
-    stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
-    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
-    ga_staging_id: "{{ lookup('env', 'GA_STAGING_ID') }}"
-    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
+    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
+    stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
+    stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
+    docker_compose_file: "{{ app_dir }}/docker-compose.yml"
     # GitHub Container Registry settings
-    github_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
-    github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
+    github_token: "{{ GITHUB_TOKEN | default('') }}"
+    github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
     # Try multiple possible image names based on repository
-    docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
-    github_repo_from_url: "{{ git_repo_url | regex_replace('.*github\\.com[/:]([^/]+/[^/.]+).*', '\\1') if git_repo_url else '' }}"
-    docker_image: >-
-      {{
-        docker_image_override if docker_image_override else 
-        ('ghcr.io/' + github_repo_from_url + ':staging') if github_repo_from_url else
-        'ghcr.io/bxtech/dotca:staging'
-      }}
+    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
+    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
+    docker_image: "{{ docker_image_override }}"
     # Additional production GA ID for future use
-    ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
+    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
 
     # ============================================================================
     # Umami Analytics Configuration Variables
     # ============================================================================
     # Database Configuration
-    umami_db_password: "{{ lookup('env', 'UMAMI_DB_PASSWORD') | default('umami_password', true) }}"
+    umami_db_password: "{{ UMAMI_DB_PASSWORD | default('umami_password') }}"
 
     # Security & Authentication
-    umami_app_secret: "{{ lookup('env', 'UMAMI_APP_SECRET') | default('your-secret-key-change-this-in-production', true) }}"
+    umami_app_secret: "{{ UMAMI_APP_SECRET | default('your-secret-key-change-this-in-production') }}"
 
     # User Management
-    umami_disable_login: "{{ lookup('env', 'UMAMI_DISABLE_LOGIN') | default('false', true) }}"
-    umami_disable_signup: "{{ lookup('env', 'UMAMI_DISABLE_SIGNUP') | default('false', true) }}"
+    umami_disable_login: "{{ UMAMI_DISABLE_LOGIN | default('false') }}"
+    umami_disable_signup: "{{ UMAMI_DISABLE_SIGNUP | default('false') }}"
 
     # Feature Flags
-    umami_allow_report: "{{ lookup('env', 'UMAMI_ALLOW_REPORT') | default('true', true) }}"
-    umami_disable_telemetry: "{{ lookup('env', 'UMAMI_DISABLE_TELEMETRY') | default('false', true) }}"
+    umami_allow_report: "{{ UMAMI_ALLOW_REPORT | default('true') }}"
+    umami_disable_telemetry: "{{ UMAMI_DISABLE_TELEMETRY | default('false') }}"
 
     # Logging & Performance
-    umami_log_level: "{{ lookup('env', 'UMAMI_LOG_LEVEL') | default('info', true) }}"
+    umami_log_level: "{{ UMAMI_LOG_LEVEL | default('info') }}"
 
     # Rate Limiting
-    umami_rate_limit: "{{ lookup('env', 'UMAMI_RATE_LIMIT') | default('1000', true) }}"
-    umami_rate_limit_window: "{{ lookup('env', 'UMAMI_RATE_LIMIT_WINDOW') | default('3600000', true) }}"
+    umami_rate_limit: "{{ UMAMI_RATE_LIMIT | default('1000') }}"
+    umami_rate_limit_window: "{{ UMAMI_RATE_LIMIT_WINDOW | default('3600000') }}"
 
     # Session Management
-    umami_session_timeout: "{{ lookup('env', 'UMAMI_SESSION_TIMEOUT') | default('2592000000', true) }}"
+    umami_session_timeout: "{{ UMAMI_SESSION_TIMEOUT | default('2592000000') }}"
 
     # Admin Configuration
-    umami_admin_username: "{{ lookup('env', 'UMAMI_ADMIN_USERNAME') | default('admin', true) }}"
-    umami_admin_password: "{{ lookup('env', 'UMAMI_ADMIN_PASSWORD') | default('umami', true) }}"
-    umami_admin_email: "{{ lookup('env', 'UMAMI_ADMIN_EMAIL') | default('admin@staging.boximity.ca', true) }}"
+    umami_admin_username: "{{ UMAMI_ADMIN_USERNAME | default('admin') }}"
+    umami_admin_password: "{{ UMAMI_ADMIN_PASSWORD | default('umami') }}"
+    umami_admin_email: "{{ UMAMI_ADMIN_EMAIL | default('admin@staging.boximity.ca') }}"
 
     # Additional Umami configuration variables
-    umami_website_url: "{{ lookup('env', 'UMAMI_WEBSITE_URL') | default('https://umami.staging.boximity.ca', true) }}"
-    umami_force_https: "{{ lookup('env', 'UMAMI_FORCE_HTTPS') | default('true', true) }}"
-    umami_disable_update_check: "{{ lookup('env', 'UMAMI_DISABLE_UPDATE_CHECK') | default('false', true) }}"
-    umami_tracker_timeout: "{{ lookup('env', 'UMAMI_TRACKER_TIMEOUT') | default('5000', true) }}"
-    umami_collector_timeout: "{{ lookup('env', 'UMAMI_COLLECTOR_TIMEOUT') | default('30000', true) }}"
+    umami_website_url: "{{ UMAMI_WEBSITE_URL | default('https://umami.staging.boximity.ca') }}"
+    umami_force_https: "{{ UMAMI_FORCE_HTTPS | default('true') }}"
+    umami_disable_update_check: "{{ UMAMI_DISABLE_UPDATE_CHECK | default('false') }}"
+    umami_tracker_timeout: "{{ UMAMI_TRACKER_TIMEOUT | default('5000') }}"
+    umami_collector_timeout: "{{ UMAMI_COLLECTOR_TIMEOUT | default('30000') }}"
 
     # ============================================================================
     # Umami Environment Variables Documentation
@@ -234,54 +231,23 @@
         state: directory
         mode: '0755'
 
-    - name: Clone the repository
-      ansible.builtin.git:
-        repo: "{{ git_repo_url }}"
-        dest: "{{ app_dir }}/repo"
-        version: "{{ git_branch }}"
-        force: true
-      register: git_clone
-      retries: 3
-      delay: 10
-      until: git_clone is success
-
-    - name: Verify Next.js configuration file
-      ansible.builtin.stat:
-        path: "{{ app_dir }}/repo/next.config.js"
-      register: next_config
-
-    - name: Fail if Next.js configuration is missing
-      ansible.builtin.fail:
-        msg: "Missing Next.js configuration file. Please ensure next.config.js exists in the repository."
-      when: not next_config.stat.exists
-
-    # DEPLOYMENT TASKS START HERE
-    - name: Pull latest changes from git
-      ansible.builtin.git:
-        repo: "{{ git_repo_url }}"
-        dest: "{{ app_dir }}/repo"
-        version: "{{ git_branch }}"
-        force: true
-        update: true
-      register: git_pull
-      retries: 3
-      delay: 5
-      until: git_pull is success
+    # Repository cloning removed - using container image from GHCR instead
+    # This optimization eliminates the need to clone the repository since we're using
+    # a pre-built container image from GitHub Container Registry (ghcr.io)
 
     - name: Debug GHCR variables
       ansible.builtin.debug:
-        msg: 
-          - "GITHUB_TOKEN (first 10 chars): {{ github_token[:10] if github_token else 'NOT SET' }}..."
-          - "GITHUB_USERNAME: {{ github_username if github_username else 'NOT SET' }}"
-          - "GIT_REPO_URL: {{ git_repo_url if git_repo_url else 'NOT SET' }}"
-          - "Extracted repo from URL: {{ github_repo_from_url if github_repo_from_url else 'NOT SET' }}"
-          - "DOCKER_IMAGE env var override: {{ docker_image_override if docker_image_override else 'NOT SET' }}"
-          - "Final docker_image: {{ docker_image if docker_image else 'NOT SET' }}"
+        msg:
+          - "GITHUB_TOKEN (first 10 chars): {{ github_token | default('NOT SET') }}..."
+          - "GITHUB_USERNAME: {{ github_username | default('NOT SET') }}"
+          - "GITHUB_REPO: {{ github_repo_from_url | default('NOT SET') }}"
+          - "DOCKER_IMAGE env var override: {{ docker_image_override | default('NOT SET') }}"
+          - "Final docker_image: {{ docker_image | default('NOT SET') }}"
 
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
         src: docker-compose.yml.j2
-        dest: "{{ app_dir }}/repo/docker-compose.yml"
+        dest: "{{ app_dir }}/docker-compose.yml"
         mode: '0644'
         backup: true
       vars:
@@ -290,7 +256,7 @@
         next_public_environment: staging
 
     - name: Display generated docker-compose.yml for debugging
-      ansible.builtin.command: cat "{{ app_dir }}/repo/docker-compose.yml"
+      ansible.builtin.command: cat "{{ app_dir }}/docker-compose.yml"
       register: docker_compose_content
       changed_when: false
 
@@ -301,7 +267,7 @@
     - name: Stop existing Docker Compose services
       ansible.builtin.command: docker-compose down --remove-orphans
       args:
-        chdir: "{{ app_dir }}/repo"
+        chdir: "{{ app_dir }}"
       register: docker_down_result
       ignore_errors: true
       changed_when: docker_down_result.rc == 0
@@ -369,7 +335,7 @@
       when: port_check_result is defined and port_check_result.rc != 0
 
     - name: Prune Docker system
-      ansible.builtin.command: docker system prune -af
+      ansible.builtin.command: docker system prune --force
       changed_when: false
 
     - name: Login to GitHub Container Registry
@@ -454,9 +420,9 @@
       when: not any_image_found
 
     - name: Pull latest Docker images from GHCR (including Umami)
-      ansible.builtin.command: bash -c "cd {{ app_dir }}/repo && docker-compose pull db umami web"
+      ansible.builtin.command: bash -c "cd {{ app_dir }} && docker-compose pull db umami web"
       args:
-        chdir: "{{ app_dir }}/repo"
+        chdir: "{{ app_dir }}"
       register: docker_pull
       retries: 3
       delay: 10
@@ -486,17 +452,17 @@
     - name: Clean up Docker environment before starting services
       ansible.builtin.command: |
         docker-compose down --volumes --remove-orphans || true
-        docker system prune -f || true
-        docker volume prune -f || true
+        docker system prune --force || true
+        docker volume prune --force || true
       args:
-        chdir: "{{ app_dir }}/repo"
+        chdir: "{{ app_dir }}"
       changed_when: false
       ignore_errors: true
 
     - name: Start Docker Compose services
       ansible.builtin.command: docker-compose up -d db umami web
       args:
-        chdir: "{{ app_dir }}/repo"
+        chdir: "{{ app_dir }}"
       register: docker_up
       retries: 3
       delay: 15
@@ -506,7 +472,7 @@
     - name: Check if Docker Compose services started successfully
       ansible.builtin.command: docker-compose ps
       args:
-        chdir: "{{ app_dir }}/repo"
+        chdir: "{{ app_dir }}"
       register: docker_ps
       changed_when: false
       
@@ -578,6 +544,11 @@
             include /etc/nginx/conf.d/*.conf;
             include /etc/nginx/sites-enabled/*;
           }
+
+    - name: Remove existing nextjs nginx config to force recreation
+      ansible.builtin.file:
+        path: /etc/nginx/sites-available/nextjs-app
+        state: absent
 
     - name: Configure Nginx as reverse proxy for staging
       ansible.builtin.template:
@@ -660,19 +631,14 @@
 - name: Setup Let's Encrypt with Nginx
   hosts: digitalocean
   become: yes
+  vars_files: vars/vault-vars.yml
   vars:
     ssl_domain_name: "staging.boximity.ca"
     email_address: "matticem@boximity.ca"
     app_dir: /app
-    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
-    github_repo_from_url: "{{ git_repo_url | regex_replace('.*github\\.com[/:]([^/]+/[^/.]+).*', '\\1') if git_repo_url else '' }}"
-    docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
-    docker_image: >-
-      {{
-        docker_image_override if docker_image_override else
-        ('ghcr.io/' + github_repo_from_url + ':staging') if github_repo_from_url else
-        'ghcr.io/bxtech/dotca:staging'
-      }}
+    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
+    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
+    docker_image: "{{ docker_image_override }}"
   
   tasks:
     - name: Install DNS utilities and Certbot
@@ -859,6 +825,22 @@
         name: nginx
         state: reloaded
       when: nginx_ssl_config is changed and nginx_ssl_test.rc == 0
+      register: nginx_reload_result
+      failed_when: nginx_reload_result.failed
+
+    - name: Debug nginx failure if reload fails
+      ansible.builtin.command: systemctl status nginx.service
+      register: nginx_status_debug
+      when: nginx_reload_result.failed
+      changed_when: false
+
+    - name: Show nginx error details
+      ansible.builtin.debug:
+        msg:
+          - "Nginx reload failed!"
+          - "Status: {{ nginx_status_debug.stdout | default('No status available') }}"
+          - "Check nginx configuration: nginx -t"
+      when: nginx_reload_result.failed
       
     - name: Log certificate generation results
       ansible.builtin.debug:
@@ -929,9 +911,9 @@
             content: |
               STAGING DEPLOYMENT COMPLETED
               ===========================
-              
+
               Timestamp: {{ ansible_date_time.iso8601 }}
-              Staging Image: {{ docker_image }}
+              Staging Image: {{ docker_image_override | default('ghcr.io/bxmty/dotca:staging') }}
               Environment: staging
               Status: READY_FOR_PROMOTION
               
@@ -963,6 +945,11 @@
     app_dir: /app
 
   tasks:
+    - name: Remove existing umami nginx config to force recreation
+      ansible.builtin.file:
+        path: /etc/nginx/sites-available/umami-dashboard
+        state: absent
+
     - name: Create Umami nginx site configuration
       ansible.builtin.template:
         src: nginx-umami-site.conf.j2
