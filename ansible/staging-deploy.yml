@@ -43,20 +43,87 @@
       }}
     # Additional production GA ID for future use
     ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
-    # Umami Analytics configuration variables
+
+    # ============================================================================
+    # Umami Analytics Configuration Variables
+    # ============================================================================
+    # Database Configuration
     umami_db_password: "{{ lookup('env', 'UMAMI_DB_PASSWORD') | default('umami_password', true) }}"
+
+    # Security & Authentication
     umami_app_secret: "{{ lookup('env', 'UMAMI_APP_SECRET') | default('your-secret-key-change-this-in-production', true) }}"
+
+    # User Management
     umami_disable_login: "{{ lookup('env', 'UMAMI_DISABLE_LOGIN') | default('false', true) }}"
     umami_disable_signup: "{{ lookup('env', 'UMAMI_DISABLE_SIGNUP') | default('false', true) }}"
+
+    # Feature Flags
     umami_allow_report: "{{ lookup('env', 'UMAMI_ALLOW_REPORT') | default('true', true) }}"
     umami_disable_telemetry: "{{ lookup('env', 'UMAMI_DISABLE_TELEMETRY') | default('false', true) }}"
+
+    # Logging & Performance
     umami_log_level: "{{ lookup('env', 'UMAMI_LOG_LEVEL') | default('info', true) }}"
+
+    # Rate Limiting
     umami_rate_limit: "{{ lookup('env', 'UMAMI_RATE_LIMIT') | default('1000', true) }}"
     umami_rate_limit_window: "{{ lookup('env', 'UMAMI_RATE_LIMIT_WINDOW') | default('3600000', true) }}"
+
+    # Session Management
     umami_session_timeout: "{{ lookup('env', 'UMAMI_SESSION_TIMEOUT') | default('2592000000', true) }}"
+
+    # Admin Configuration
     umami_admin_username: "{{ lookup('env', 'UMAMI_ADMIN_USERNAME') | default('admin', true) }}"
     umami_admin_password: "{{ lookup('env', 'UMAMI_ADMIN_PASSWORD') | default('umami', true) }}"
     umami_admin_email: "{{ lookup('env', 'UMAMI_ADMIN_EMAIL') | default('admin@staging.boximity.ca', true) }}"
+
+    # Additional Umami configuration variables
+    umami_website_url: "{{ lookup('env', 'UMAMI_WEBSITE_URL') | default('https://umami.staging.boximity.ca', true) }}"
+    umami_force_https: "{{ lookup('env', 'UMAMI_FORCE_HTTPS') | default('true', true) }}"
+    umami_disable_update_check: "{{ lookup('env', 'UMAMI_DISABLE_UPDATE_CHECK') | default('false', true) }}"
+    umami_tracker_timeout: "{{ lookup('env', 'UMAMI_TRACKER_TIMEOUT') | default('5000', true) }}"
+    umami_collector_timeout: "{{ lookup('env', 'UMAMI_COLLECTOR_TIMEOUT') | default('30000', true) }}"
+
+    # ============================================================================
+    # Umami Environment Variables Documentation
+    # ============================================================================
+    #
+    # Database Configuration:
+    # - UMAMI_DB_PASSWORD: PostgreSQL database password for Umami
+    #
+    # Security & Authentication:
+    # - UMAMI_APP_SECRET: Secret key for JWT tokens and encryption
+    #
+    # User Management:
+    # - UMAMI_DISABLE_LOGIN: Disable user login (true/false)
+    # - UMAMI_DISABLE_SIGNUP: Disable user registration (true/false)
+    #
+    # Feature Flags:
+    # - UMAMI_ALLOW_REPORT: Allow report generation (true/false)
+    # - UMAMI_DISABLE_TELEMETRY: Disable telemetry to Umami team (true/false)
+    #
+    # Logging & Performance:
+    # - UMAMI_LOG_LEVEL: Log level (error/warn/info/debug)
+    #
+    # Rate Limiting:
+    # - UMAMI_RATE_LIMIT: Requests per window (default: 1000)
+    # - UMAMI_RATE_LIMIT_WINDOW: Window in milliseconds (default: 3600000 = 1 hour)
+    #
+    # Session Management:
+    # - UMAMI_SESSION_TIMEOUT: Session timeout in milliseconds (default: 30 days)
+    #
+    # Admin Configuration:
+    # - UMAMI_ADMIN_USERNAME: Default admin username
+    # - UMAMI_ADMIN_PASSWORD: Default admin password
+    # - UMAMI_ADMIN_EMAIL: Default admin email
+    #
+    # Additional Configuration:
+    # - UMAMI_WEBSITE_URL: Full URL of the Umami dashboard
+    # - UMAMI_FORCE_HTTPS: Force HTTPS connections (true/false)
+    # - UMAMI_DISABLE_UPDATE_CHECK: Disable update notifications (true/false)
+    # - UMAMI_TRACKER_TIMEOUT: Tracker request timeout in ms (default: 5000)
+    # - UMAMI_COLLECTOR_TIMEOUT: Collector request timeout in ms (default: 30000)
+    #
+    # ============================================================================
 
   tasks:
     - name: Update apt cache
