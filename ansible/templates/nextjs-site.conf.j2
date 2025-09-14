@@ -1,0 +1,55 @@
+# Upstream for load balancing (future expansion)
+upstream nextjs_backend {
+    server localhost:8080 max_fails=3 fail_timeout=30s;
+}
+
+server {
+    listen 80;
+    server_name {{ server_name | default('_') }};
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    
+    # Health check endpoint (no rate limiting)
+    location /health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 'OK';
+    }
+    
+    # Rate limiting for general requests
+    location / {
+        limit_req zone=general burst=20 nodelay;
+        
+        proxy_pass http://nextjs_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Proxy timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Caching for static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            proxy_pass http://nextjs_backend;
+        }
+    }
+    
+    # Block common attack patterns
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}

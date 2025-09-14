@@ -1,0 +1,1095 @@
+---
+# Ansible playbook for setting up the Staging environment for dotca
+# With optimizations for Next.js deployment using container images from GHCR
+# Repository cloning eliminated - uses pre-built container images instead
+
+# Add a pre-task to fix temporary directory issues
+- name: Fix temporary directory issues
+  vars_files: vars/vault-vars.yml
+  hosts: digitalocean
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure /tmp directory exists with proper permissions
+      ansible.builtin.raw: |
+        mkdir -p /tmp
+        chmod 1777 /tmp
+        df -h /tmp
+
+- name: Setup Staging environment for dotca
+  hosts: digitalocean
+  become: true
+  vars_files: vars/vault-vars.yml
+  vars:
+    project_name: dotca-nextjs
+    # Git variables removed - using container image from GHCR instead
+    app_dir: /app
+    public_ip: "{{ ansible_host }}"
+    staging_domain: "staging.boximity.ca"
+    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
+    stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
+    stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
+    docker_compose_file: "{{ app_dir }}/docker-compose.yml"
+    # GitHub Container Registry settings
+    github_token: "{{ GITHUB_TOKEN | default('') }}"
+    github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
+    # Try multiple possible image names based on repository
+    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
+    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
+    docker_image: "{{ docker_image_override }}"
+    # Additional production GA ID for future use
+    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
+
+    # Umami Analytics Configuration for Next.js Application
+    umami_website_id: "{{ UMAMI_WEBSITE_ID | default('') }}"
+    umami_host_url: "{{ UMAMI_HOST_URL | default('https://umami.staging.boximity.ca') }}"
+
+    # ============================================================================
+    # Umami Analytics Configuration Variables
+    # ============================================================================
+    # Database Configuration
+    umami_db_password: "{{ UMAMI_DB_PASSWORD | default('umami_password') }}"
+
+    # Security & Authentication
+    umami_app_secret: "{{ UMAMI_APP_SECRET | default('your-secret-key-change-this-in-production') }}"
+
+    # User Management
+    umami_disable_login: "{{ UMAMI_DISABLE_LOGIN | default('false') }}"
+    umami_disable_signup: "{{ UMAMI_DISABLE_SIGNUP | default('false') }}"
+
+    # Feature Flags
+    umami_allow_report: "{{ UMAMI_ALLOW_REPORT | default('true') }}"
+    umami_disable_telemetry: "{{ UMAMI_DISABLE_TELEMETRY | default('false') }}"
+
+    # Logging & Performance
+    umami_log_level: "{{ UMAMI_LOG_LEVEL | default('info') }}"
+
+    # Rate Limiting
+    umami_rate_limit: "{{ UMAMI_RATE_LIMIT | default('1000') }}"
+    umami_rate_limit_window: "{{ UMAMI_RATE_LIMIT_WINDOW | default('3600000') }}"
+
+    # Session Management
+    umami_session_timeout: "{{ UMAMI_SESSION_TIMEOUT | default('2592000000') }}"
+
+    # Admin Configuration
+    umami_admin_username: "{{ UMAMI_ADMIN_USERNAME | default('admin') }}"
+    umami_admin_password: "{{ UMAMI_ADMIN_PASSWORD | default('umami') }}"
+    umami_admin_email: "{{ UMAMI_ADMIN_EMAIL | default('admin@staging.boximity.ca') }}"
+
+    # ============================================================================
+    # Next.js Application Environment Variables (Umami Integration)
+    # ============================================================================
+    #
+    # Analytics Configuration:
+    # - UMAMI_WEBSITE_ID: Unique identifier for your Umami website (required for tracking)
+    # - UMAMI_HOST_URL: URL of your Umami instance (e.g., https://umami.staging.boximity.ca)
+
+    # Additional Umami configuration variables
+    umami_website_url: "{{ UMAMI_WEBSITE_URL | default('https://umami.staging.boximity.ca') }}"
+    umami_force_https: "{{ UMAMI_FORCE_HTTPS | default('true') }}"
+    umami_disable_update_check: "{{ UMAMI_DISABLE_UPDATE_CHECK | default('false') }}"
+    umami_tracker_timeout: "{{ UMAMI_TRACKER_TIMEOUT | default('5000') }}"
+    umami_collector_timeout: "{{ UMAMI_COLLECTOR_TIMEOUT | default('30000') }}"
+
+    # ============================================================================
+    # Umami Environment Variables Documentation
+    # ============================================================================
+    #
+    # Database Configuration:
+    # - UMAMI_DB_PASSWORD: PostgreSQL database password for Umami
+    #
+    # Security & Authentication:
+    # - UMAMI_APP_SECRET: Secret key for JWT tokens and encryption
+    #
+    # User Management:
+    # - UMAMI_DISABLE_LOGIN: Disable user login (true/false)
+    # - UMAMI_DISABLE_SIGNUP: Disable user registration (true/false)
+    #
+    # Feature Flags:
+    # - UMAMI_ALLOW_REPORT: Allow report generation (true/false)
+    # - UMAMI_DISABLE_TELEMETRY: Disable telemetry to Umami team (true/false)
+    #
+    # Logging & Performance:
+    # - UMAMI_LOG_LEVEL: Log level (error/warn/info/debug)
+    #
+    # Rate Limiting:
+    # - UMAMI_RATE_LIMIT: Requests per window (default: 1000)
+    # - UMAMI_RATE_LIMIT_WINDOW: Window in milliseconds (default: 3600000 = 1 hour)
+    #
+    # Session Management:
+    # - UMAMI_SESSION_TIMEOUT: Session timeout in milliseconds (default: 30 days)
+    #
+    # Admin Configuration:
+    # - UMAMI_ADMIN_USERNAME: Default admin username
+    # - UMAMI_ADMIN_PASSWORD: Default admin password
+    # - UMAMI_ADMIN_EMAIL: Default admin email
+    #
+    # Additional Configuration:
+    # - UMAMI_WEBSITE_URL: Full URL of the Umami dashboard
+    # - UMAMI_FORCE_HTTPS: Force HTTPS connections (true/false)
+    # - UMAMI_DISABLE_UPDATE_CHECK: Disable update notifications (true/false)
+    # - UMAMI_TRACKER_TIMEOUT: Tracker request timeout in ms (default: 5000)
+    # - UMAMI_COLLECTOR_TIMEOUT: Collector request timeout in ms (default: 30000)
+    #
+    # ============================================================================
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: true
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - python3-pip
+          - jq
+          - nginx
+        state: present
+        update_cache: true
+
+    - name: Remove old Docker Compose version
+      ansible.builtin.apt:
+        name: docker-compose
+        state: absent
+      ignore_errors: true
+
+    - name: Install Docker Compose v2
+      ansible.builtin.get_url:
+        url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+      register: docker_compose_install
+      retries: 3
+      delay: 5
+      until: docker_compose_install is success
+
+    - name: Add Docker's official GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: true
+
+    - name: Install Docker Engine
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: true
+      register: docker_install_result
+      retries: 3
+      delay: 5
+      until: docker_install_result is success
+
+    - name: Install NTP for time synchronization
+      ansible.builtin.apt:
+        name: ntp
+        state: present
+        update_cache: true
+
+    - name: Configure NTP to use time.nist.gov
+      ansible.builtin.lineinfile:
+        path: /etc/ntp.conf
+        regexp: '^server'
+        line: 'server time.nist.gov iburst'
+        state: present
+        backup: true
+
+    - name: Restart NTP service
+      ansible.builtin.systemd:
+        name: ntp
+        state: restarted
+        enabled: true
+
+    - name: Set timezone to Eastern Time
+      ansible.builtin.command: timedatectl set-timezone America/New_York
+      changed_when: false
+
+    - name: Start and enable Docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+      register: docker_service_result
+      retries: 3
+      delay: 5
+      until: docker_service_result is success
+
+    - name: Verify Docker Compose installation
+      ansible.builtin.command: docker-compose --version
+      register: compose_version
+      changed_when: false
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    # Repository cloning removed - using container image from GHCR instead
+    # This optimization eliminates the need to clone the repository since we're using
+    # a pre-built container image from GitHub Container Registry (ghcr.io)
+
+    - name: Debug GHCR variables
+      ansible.builtin.debug:
+        msg:
+          - "GITHUB_TOKEN (first 10 chars): {{ github_token | default('NOT SET') }}..."
+          - "GITHUB_USERNAME: {{ github_username | default('NOT SET') }}"
+          - "GITHUB_REPO: {{ github_repo_from_url | default('NOT SET') }}"
+          - "DOCKER_IMAGE env var override: {{ docker_image_override | default('NOT SET') }}"
+          - "Final docker_image: {{ docker_image | default('NOT SET') }}"
+
+    - name: Generate docker-compose.yml from template
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: "{{ app_dir }}/docker-compose.yml"
+        mode: '0644'
+        backup: true
+      vars:
+        node_env: production
+        next_public_api_url: "http://{{ public_ip }}/api"
+        next_public_environment: staging
+
+    - name: Display generated docker-compose.yml for debugging
+      ansible.builtin.command: cat "{{ app_dir }}/docker-compose.yml"
+      register: docker_compose_content
+      changed_when: false
+
+    - name: Show docker-compose.yml content
+      ansible.builtin.debug:
+        msg: "{{ docker_compose_content.stdout_lines }}"
+
+    - name: Stop existing Docker Compose services
+      ansible.builtin.command: docker-compose down --remove-orphans
+      args:
+        chdir: "{{ app_dir }}"
+      register: docker_down_result
+      ignore_errors: true
+      changed_when: docker_down_result.rc == 0
+
+    - name: Stop any other containers using port 8080
+      ansible.builtin.command: >
+        bash -c "
+        if docker ps -q --filter publish=8080 | grep -q .; then
+          echo 'Found containers using port 8080, stopping them...'
+          docker ps -q --filter publish=8080 | xargs docker stop
+          echo 'Containers stopped successfully'
+        else
+          echo 'No containers found using port 8080'
+        fi
+        "
+      register: port_stop_result
+      ignore_errors: true
+      changed_when: false
+
+    - name: Display port 8080 cleanup results
+      ansible.builtin.debug:
+        msg: "{{ port_stop_result.stdout_lines | default(['No output']) }}"
+      when: port_stop_result is defined
+
+    - name: Verify port 8080 is free
+      ansible.builtin.command: >
+        bash -c "
+        if lsof -i :8080 >/dev/null 2>&1; then
+          echo 'WARNING: Port 8080 is still in use by:'
+          lsof -i :8080
+          exit 1
+        else
+          echo 'SUCCESS: Port 8080 is now free'
+        fi
+        "
+      register: port_check_result
+      ignore_errors: true
+      changed_when: false
+
+    - name: Display port verification results
+      ansible.builtin.debug:
+        msg:
+          - "Port 8080 status: {{ 'FREE' if port_check_result.rc == 0 else 'STILL IN USE' }}"
+          - "Details: {{ port_check_result.stdout_lines | default(['No details available']) }}"
+      when: port_check_result is defined
+
+    - name: Force stop any remaining containers on port 8080 if verification failed
+      ansible.builtin.command: >
+        bash -c "
+        if lsof -i :8080 >/dev/null 2>&1; then
+          echo 'Force stopping remaining processes on port 8080...'
+          lsof -ti :8080 | xargs kill -9 2>/dev/null || true
+          sleep 2
+          if lsof -i :8080 >/dev/null 2>&1; then
+            echo 'Some processes may still be using port 8080'
+            exit 1
+          else
+            echo 'Successfully freed port 8080'
+          fi
+        fi
+        "
+      register: force_stop_result
+      ignore_errors: true
+      changed_when: false
+      when: port_check_result is defined and port_check_result.rc != 0
+
+    - name: Prune Docker system
+      ansible.builtin.command: docker system prune --force
+      changed_when: false
+
+    - name: Login to GitHub Container Registry
+      ansible.builtin.command: bash -c 'set -o pipefail && echo "***masked***" | docker login ghcr.io -u {{ github_username }} --password-stdin'
+      when: github_token is defined and github_username is defined
+      register: docker_login
+      retries: 3
+      delay: 5
+      until: docker_login is success
+      changed_when: false
+      no_log: true
+
+    - name: Check if Docker image exists in GHCR
+      ansible.builtin.command: |
+        bash -c "
+        if [ -z '{{ docker_image | default('') }}' ]; then 
+          echo 'ERROR: docker_image variable is empty or undefined'
+          exit 1
+        fi
+        echo 'Checking if image exists: {{ docker_image }}'
+        docker manifest inspect '{{ docker_image }}'
+        "
+      register: image_exists
+      ignore_errors: true
+      changed_when: false
+      when: docker_image is defined and docker_image != ""
+
+    - name: Set image_exists to failed state if docker_image is empty
+      ansible.builtin.set_fact:
+        image_exists:
+          rc: 1
+          stdout: ""
+          stderr: "docker_image variable is empty or undefined"
+      when: docker_image is not defined or docker_image == ""
+
+    - name: Try alternative image names if primary fails
+      ansible.builtin.command: |
+        bash -c "echo \"Trying alternative image name: ghcr.io/{{ github_username }}/dotca:staging\"; docker manifest inspect \"ghcr.io/{{ github_username }}/dotca:staging\""
+      register: alt_image_exists
+      ignore_errors: true
+      changed_when: false
+      when: (image_exists.rc | default(1) != 0) and github_username
+
+    - name: Set image availability status variables
+      ansible.builtin.set_fact:
+        primary_image_status: "{{ 'YES' if (image_exists.rc | default(1) == 0) else 'NO' }}"
+        alt_image_status: "{{ 'YES' if (alt_image_exists.rc | default(1) == 0) else 'NO' }}"
+        any_image_found: "{{ (image_exists.rc | default(1) == 0) or (alt_image_exists.rc | default(1) == 0) }}"
+
+    - name: Display image availability
+      ansible.builtin.debug:
+        msg: 
+          - "Primary image {{ docker_image }} exists: {{ primary_image_status }}"
+          - "Alternative image exists: {{ alt_image_status }}"
+          - ""
+          - "{{ 'SUCCESS: Found working image!' if any_image_found else 'ERROR: No images found!' }}"
+          - ""
+          - "If no images found, check:"
+          - "1. Has GitHub Actions image promotion workflow completed? Check: https://github.com/{{ github_repo_from_url }}/actions"
+          - "2. Does the image name match what GitHub Actions created?"
+          - "3. Are you authenticated to GHCR properly?"
+
+    - name: Use alternative image if primary failed
+      ansible.builtin.set_fact:
+        docker_image: "ghcr.io/{{ github_username }}/dotca:staging"
+      when: (image_exists is defined and image_exists.rc != 0) and alt_image_exists is defined and alt_image_exists.rc == 0
+
+    - name: Fail if no images found
+      ansible.builtin.fail:
+        msg: |
+          No Docker images found in GHCR! 
+          
+          This means the GitHub Actions image promotion workflow hasn't run yet or failed.
+          
+          Steps to fix:
+          1. Check GitHub Actions: https://github.com/{{ github_repo_from_url }}/actions
+          2. Make sure image-promotion.yml workflow completed successfully
+          3. Verify the image was pushed to GHCR
+          
+          Expected image locations:
+          - {{ docker_image }}
+          - ghcr.io/{{ github_username }}/dotca:staging (if username available)
+      when: not any_image_found
+
+    - name: Pull latest Docker images from GHCR (including Umami)
+      ansible.builtin.command: bash -c "cd {{ app_dir }} && docker-compose pull db umami web"
+      args:
+        chdir: "{{ app_dir }}"
+      register: docker_pull
+      retries: 3
+      delay: 10
+      until: docker_pull is success
+      changed_when: false
+
+    - name: Verify Docker image integrity
+      ansible.builtin.command: docker inspect "{{ docker_image }}"
+      register: image_inspect
+      changed_when: false
+      ignore_errors: true
+
+    - name: Remove corrupted image if inspection fails
+      ansible.builtin.command: docker rmi "{{ docker_image }}" || true
+      when: image_inspect is failed
+      changed_when: false
+
+    - name: Re-pull image if it was corrupted
+      ansible.builtin.command: docker pull "{{ docker_image }}"
+      when: image_inspect is failed
+      register: repull_result
+      retries: 3
+      delay: 10
+      until: repull_result is success
+      changed_when: false
+
+    - name: Clean up Docker environment before starting services
+      ansible.builtin.command: |
+        docker-compose down --volumes --remove-orphans || true
+        docker system prune --force || true
+        docker volume prune --force || true
+      args:
+        chdir: "{{ app_dir }}"
+      changed_when: false
+      ignore_errors: true
+
+    - name: Start Docker Compose services
+      ansible.builtin.command: docker-compose up -d db umami web
+      args:
+        chdir: "{{ app_dir }}"
+      register: docker_up
+      retries: 3
+      delay: 15
+      until: docker_up is success
+      changed_when: false
+      
+    - name: Check if Docker Compose services started successfully
+      ansible.builtin.command: docker-compose ps
+      args:
+        chdir: "{{ app_dir }}"
+      register: docker_ps
+      changed_when: false
+      
+    - name: Display Docker Compose status
+      ansible.builtin.debug:
+        var: docker_ps.stdout_lines
+      
+    - name: Display deployment completion message
+      ansible.builtin.debug:
+        msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
+
+    - name: Configure Nginx worker processes
+      ansible.builtin.copy:
+        dest: /etc/nginx/nginx.conf
+        mode: '0644'
+        content: |
+          user www-data;
+          worker_processes auto;
+          pid /run/nginx.pid;
+          include /etc/nginx/modules-enabled/*.conf;
+
+          events {
+            worker_connections 1024;
+            multi_accept on;
+          }
+
+          http {
+            sendfile on;
+            tcp_nopush on;
+            tcp_nodelay on;
+            keepalive_timeout 65;
+            types_hash_max_size 2048;
+            server_tokens off;
+            
+            # Shared memory zones
+            limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+            limit_conn_zone $binary_remote_addr zone=addr:10m;
+            
+            # SSL session cache zone
+            ssl_session_cache shared:SSL:50m;
+            
+            include /etc/nginx/mime.types;
+            default_type application/octet-stream;
+
+            # Optimize buffers
+            client_body_buffer_size 10K;
+            client_header_buffer_size 1k;
+            client_max_body_size 8m;
+            large_client_header_buffers 2 1k;
+            
+            # Timeouts
+            client_body_timeout 12;
+            client_header_timeout 12;
+            send_timeout 10;
+            
+            # Enable gzip
+            gzip on;
+            gzip_comp_level 2;
+            gzip_min_length 1000;
+            gzip_proxied expired no-cache no-store private auth;
+            gzip_types text/plain application/x-javascript text/xml text/css application/xml application/json;
+            
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_prefer_server_ciphers on;
+            
+            access_log /var/log/nginx/access.log;
+            error_log /var/log/nginx/error.log;
+
+            include /etc/nginx/conf.d/*.conf;
+            include /etc/nginx/sites-enabled/*;
+          }
+
+    - name: Remove existing nextjs nginx config to force recreation
+      ansible.builtin.file:
+        path: /etc/nginx/sites-available/nextjs-app
+        state: absent
+
+    - name: Configure Nginx as reverse proxy for staging
+      ansible.builtin.template:
+        src: nextjs-site.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
+        backup: true
+      vars:
+        server_name: "{{ staging_domain }}"
+
+    - name: Enable Nginx site configuration
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/nextjs-app
+        dest: /etc/nginx/sites-enabled/nextjs-app
+        state: link
+
+    - name: Remove default Nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      ignore_errors: true
+
+    - name: Test Nginx configuration
+      ansible.builtin.command: nginx -t
+      register: nginx_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display Nginx test results
+      ansible.builtin.debug:
+        msg: "{{ nginx_test.stderr_lines }}"
+      when: nginx_test.rc != 0
+
+    - name: Restart Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+        enabled: true
+      when: nginx_test.rc == 0
+      register: nginx_restart
+      retries: 2
+      delay: 5
+      until: nginx_restart is success
+
+    - name: Setup firewall (UFW)
+      ansible.builtin.command: ufw allow {{ item }}/tcp
+      loop:
+        - '22'
+        - '80'
+        - '443'
+        - '6080'
+        - '8080'
+        - '3001'  # Umami Analytics dashboard
+      changed_when: false
+
+    - name: Enable UFW
+      ansible.builtin.command: bash -c "ufw --force enable && ufw default deny incoming"
+      changed_when: false
+
+    - name: Create enhanced monitoring script
+      ansible.builtin.template:
+        src: monitor.sh.j2
+        dest: "{{ app_dir }}/monitor.sh"
+        mode: '0755'
+
+    - name: Create Umami database backup script
+      ansible.builtin.template:
+        src: umami-backup.sh.j2
+        dest: "{{ app_dir }}/umami-backup.sh"
+        mode: '0755'
+
+    - name: Set up monitoring cron job
+      ansible.builtin.cron:
+        name: "Monitor dotca-nextjs"
+        minute: "*/15"
+        job: "{{ app_dir }}/monitor.sh >> {{ app_dir }}/monitoring.log 2>&1"
+        state: present
+
+# Create a separate play for Let's Encrypt setup
+- name: Setup Let's Encrypt with Nginx
+  hosts: digitalocean
+  become: yes
+  vars_files: vars/vault-vars.yml
+  vars:
+    ssl_domain_name: "staging.boximity.ca"
+    email_address: "matticem@boximity.ca"
+    app_dir: /app
+    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
+    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
+    docker_image: "{{ docker_image_override }}"
+  
+  tasks:
+    - name: Install DNS utilities and Certbot
+      ansible.builtin.package:
+        name:
+          - certbot
+          - python3-certbot-nginx
+          - dnsutils
+        state: present
+      register: certbot_install
+      retries: 3
+      delay: 5
+      until: certbot_install is success
+
+    - name: Check if certificate already exists
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ ssl_domain_name }}/cert.pem
+      register: cert_file
+
+    # Enhanced domain validation before requesting certificate
+    - name: Check DNS resolution for domain
+      ansible.builtin.command: |
+        bash -c "echo 'Checking DNS resolution for {{ ssl_domain_name }}...'; nslookup {{ ssl_domain_name }} || echo 'DNS resolution failed'; echo 'Expected IP: {{ ansible_host }}'; echo 'Resolved IP:'; dig +short {{ ssl_domain_name }} || echo 'dig failed'"
+      register: dns_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display DNS check results
+      ansible.builtin.debug:
+        msg: "{{ dns_check.stdout_lines }}"
+
+    - name: Verify domain configuration in Nginx
+      ansible.builtin.command: bash -c "if [ -f /etc/nginx/sites-available/nextjs-app ]; then grep -q 'server_name {{ ssl_domain_name }}' /etc/nginx/sites-available/nextjs-app || echo 'Domain not configured'; else echo 'Nginx config not found'; fi"
+      register: domain_check
+      changed_when: false
+
+    - name: Reconfigure Nginx for SSL using template if domain needs updating
+      ansible.builtin.template:
+        src: nextjs-site.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
+        backup: true
+      vars:
+        server_name: "{{ ssl_domain_name }}"
+      when: domain_check.stdout == "Domain not configured" or domain_check.stdout == "Nginx config not found"
+      register: nginx_domain_update
+
+    - name: Test Nginx configuration after domain update
+      ansible.builtin.command: nginx -t
+      register: nginx_test_ssl
+      changed_when: false
+      when: nginx_domain_update is changed
+
+    - name: Restart Nginx before certificate request
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+        enabled: true
+      when: nginx_domain_update is changed and nginx_test_ssl.rc == 0
+
+    # Wait for Nginx to fully restart
+    - name: Wait for Nginx to be ready
+      ansible.builtin.pause:
+        seconds: 5
+      when: nginx_domain_update is changed
+
+    # Test domain accessibility from the server itself
+    - name: Test domain accessibility locally
+      ansible.builtin.uri:
+        url: "http://{{ ssl_domain_name }}/health"
+        method: GET
+        status_code: 200
+        timeout: 10
+        follow_redirects: yes
+      register: local_domain_check
+      ignore_errors: yes
+      retries: 3
+      delay: 5
+
+    - name: Test localhost accessibility
+      ansible.builtin.uri:
+        url: http://localhost/health
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: localhost_check
+      ignore_errors: yes
+
+    - name: Display connectivity test results
+      ansible.builtin.debug:
+        msg:
+          - "Domain {{ ssl_domain_name }} accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Localhost accessibility: {{ 'SUCCESS' if localhost_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Domain status code: {{ local_domain_check.status | default('N/A') }}"
+          - "Localhost status code: {{ localhost_check.status | default('N/A') }}"
+
+    # Create temporary webroot directory for Let's Encrypt validation
+    - name: Create webroot directory for Let's Encrypt
+      ansible.builtin.file:
+        path: /var/www/html
+        state: directory
+        mode: '0755'
+        owner: www-data
+        group: www-data
+      when: not cert_file.stat.exists
+
+
+
+    - name: Test Nginx configuration before SSL setup
+      ansible.builtin.command: nginx -t
+      register: nginx_pre_ssl_test
+      changed_when: false
+
+    - name: Display Nginx pre-SSL test results
+      ansible.builtin.debug:
+        msg: "{{ nginx_pre_ssl_test.stderr_lines }}"
+      when: nginx_pre_ssl_test.rc != 0
+
+    - name: Reload Nginx after domain configuration
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+      when: nginx_domain_update is changed and nginx_pre_ssl_test.rc == 0
+
+    # Check if Let's Encrypt can reach the domain
+    - name: Perform Let's Encrypt dry run to test domain validation
+      ansible.builtin.command: >
+        certbot certonly --webroot -w /var/www/html -d {{ ssl_domain_name }}
+        --non-interactive --agree-tos 
+        --email {{ email_address }}
+        --dry-run
+      register: certbot_dryrun
+      ignore_errors: true
+      when: not cert_file.stat.exists and (local_domain_check.status | default(0) == 200 or localhost_check.status | default(0) == 200)
+      changed_when: false
+
+    - name: Display dry run results
+      ansible.builtin.debug:
+        msg:
+          - "Dry run result: {{ 'SUCCESS' if certbot_dryrun.rc | default(1) == 0 else 'FAILED' }}"
+          - "Dry run output: {{ certbot_dryrun.stdout_lines | default(['No output']) }}"
+          - "Dry run errors: {{ certbot_dryrun.stderr_lines | default(['No errors']) }}"
+      when: certbot_dryrun is defined
+
+    - name: Obtain SSL certificate (only if dry run succeeded)
+      ansible.builtin.command: >
+        certbot certonly --webroot -w /var/www/html -d {{ ssl_domain_name }}
+        --non-interactive --agree-tos 
+        --email {{ email_address }}
+      when: |
+        not cert_file.stat.exists and 
+        (certbot_dryrun is defined and certbot_dryrun.rc | default(1) == 0) and
+        (local_domain_check.status | default(0) == 200 or localhost_check.status | default(0) == 200)
+      register: certbot_result
+      retries: 1
+      delay: 60
+      until: certbot_result is success
+      changed_when: false
+
+    - name: Deploy SSL-enabled Nginx configuration from template
+      ansible.builtin.template:
+        src: nextjs-site-ssl.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
+        backup: true
+      vars:
+        domain_name: "{{ ssl_domain_name }}"
+      when: certbot_result is success and certbot_result is defined
+      register: nginx_ssl_config
+
+    - name: Test Nginx configuration after SSL setup
+      ansible.builtin.command: nginx -t
+      register: nginx_ssl_test
+      changed_when: false
+      when: nginx_ssl_config is changed
+
+    - name: Display Nginx SSL test results
+      ansible.builtin.debug:
+        msg: "{{ nginx_ssl_test.stderr_lines }}"
+      when: nginx_ssl_test.rc != 0
+
+    - name: Reload Nginx with SSL configuration
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+      when: nginx_ssl_config is changed and nginx_ssl_test.rc == 0
+      register: nginx_reload_result
+      failed_when: nginx_reload_result.failed
+
+    - name: Debug nginx failure if reload fails
+      ansible.builtin.command: systemctl status nginx.service
+      register: nginx_status_debug
+      when: nginx_reload_result.failed
+      changed_when: false
+
+    - name: Show nginx error details
+      ansible.builtin.debug:
+        msg:
+          - "Nginx reload failed!"
+          - "Status: {{ nginx_status_debug.stdout | default('No status available') }}"
+          - "Check nginx configuration: nginx -t"
+      when: nginx_reload_result.failed
+      
+    - name: Log certificate generation results
+      ansible.builtin.debug:
+        msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
+      when: not cert_file.stat.exists and certbot_result is defined
+
+    - name: Display SSL setup status and troubleshooting info
+      ansible.builtin.debug:
+        msg:
+          - "============================================"
+          - "SSL Certificate Setup Status"
+          - "============================================"
+          - "Certificate exists: {{ cert_file.stat.exists | default(false) }}"
+          - "Domain: {{ ssl_domain_name }}"
+          - "DNS resolution: {{ 'Check DNS output above' }}"
+          - "Domain accessibility: {{ 'SUCCESS' if local_domain_check.status | default(0) == 200 else 'FAILED' }}"
+          - "Dry run status: {{ 'SUCCESS' if certbot_dryrun.rc | default(1) == 0 else 'FAILED' }}"
+          - "============================================"
+          - "If SSL failed, ensure:"
+          - "1. DNS for {{ ssl_domain_name }} points to {{ ansible_host }}"
+          - "2. Port 80 is open and accessible from internet"
+          - "3. Nginx is serving the domain correctly"
+          - "4. Wait for rate limit to reset (check error message above)"
+          - "============================================"
+
+    - name: Add cron job for auto-renewal
+      ansible.builtin.cron:
+        name: "Let's Encrypt renewal"
+        special_time: daily
+        job: "certbot renew --quiet --nginx"
+
+    # IMAGE PROMOTION TRIGGER TASK
+    - name: Trigger Image Promotion Workflow
+      block:
+        - name: Display promotion trigger information
+          ansible.builtin.debug:
+            msg: |
+              ============================================
+              STAGING DEPLOYMENT COMPLETED SUCCESSFULLY
+              ============================================
+              
+              The staging environment is now ready for testing.
+              
+              To promote this image to production:
+              1. Test the staging deployment thoroughly
+              2. Go to GitHub Actions → Image Promotion Workflow
+              3. Click "Run workflow" → "Run workflow"
+              4. Fill in the required inputs:
+                 - staging_image_tag: staging
+                 - promotion_reason: Manual testing passed
+                 - target_environment: production
+                 - force_promotion: false
+              5. Click "Run workflow"
+              
+              The promotion workflow will:
+              - Validate the staging image
+              - Perform integrity checks
+              - Create production tags
+              - Enable manual approval
+              - Promote the image to production registry
+              
+              ============================================
+              
+        - name: Create promotion trigger file
+          ansible.builtin.copy:
+            dest: "{{ app_dir }}/promotion-trigger.txt"
+            mode: '0644'
+            content: |
+              STAGING DEPLOYMENT COMPLETED
+              ===========================
+
+              Timestamp: {{ ansible_date_time.iso8601 }}
+              Staging Image: {{ docker_image_override | default('ghcr.io/bxmty/dotca:staging') }}
+              Environment: staging
+              Status: READY_FOR_PROMOTION
+              
+              Next Steps:
+              1. Test staging deployment
+              2. Trigger image promotion workflow
+              3. Approve promotion in GitHub
+              4. Deploy to production
+              
+              Promotion Workflow:
+              https://github.com/{{ github_repo_from_url }}/actions/workflows/image-promotion.yml
+              
+        - name: Log promotion readiness
+          ansible.builtin.debug:
+            msg: |
+              🚀 STAGING READY FOR PROMOTION
+              
+              Image: {{ docker_image }}
+              Status: Deployed and ready for testing
+              Next: Manual testing + Image promotion workflow
+              
+              Promotion trigger file created at: {{ app_dir }}/promotion-trigger.txt
+
+# Configure Nginx for Umami Dashboard
+- name: Setup Nginx Configuration for Umami Dashboard
+  hosts: digitalocean
+  become: yes
+  vars:
+    app_dir: /app
+
+  tasks:
+    - name: Remove existing umami nginx config to force recreation
+      ansible.builtin.file:
+        path: /etc/nginx/sites-available/umami-dashboard
+        state: absent
+
+    - name: Create Umami nginx site configuration
+      ansible.builtin.template:
+        src: nginx-umami-site.conf.j2
+        dest: /etc/nginx/sites-available/umami-dashboard
+        mode: '0644'
+        backup: true
+
+    - name: Enable Umami nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/umami-dashboard
+        dest: /etc/nginx/sites-enabled/umami-dashboard
+        state: link
+
+    - name: Test Umami nginx configuration
+      ansible.builtin.command: nginx -t
+      register: nginx_umami_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display Umami nginx test results
+      ansible.builtin.debug:
+        msg: "{{ nginx_umami_test.stderr_lines }}"
+      when: nginx_umami_test.rc != 0
+
+    - name: Reload nginx with Umami configuration
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+      when: nginx_umami_test.rc == 0
+
+    - name: Log Umami nginx setup completion
+      ansible.builtin.debug:
+        msg: |
+          ✅ Umami Nginx Configuration Complete
+
+          Umami dashboard will be available at:
+          🔗 https://umami.staging.boximity.ca
+
+          Configuration details:
+          - SSL enabled with Let's Encrypt certificate
+          - Reverse proxy to Umami service on port 3001
+          - Security headers enabled
+          - Optimized for analytics dashboard performance
+
+# SSL Certificate Setup for Umami Dashboard using geerlingguy certbot role
+- name: Setup Let's Encrypt SSL Certificate for Umami Dashboard
+  hosts: digitalocean
+  become: yes
+  vars:
+    # Certbot configuration
+    certbot_install_method: package
+    certbot_auto_renew: true
+    certbot_auto_renew_user: "{{ ansible_user | default('root') }}"
+    certbot_auto_renew_hour: "3"
+    certbot_auto_renew_minute: "30"
+    certbot_auto_renew_options: "--quiet"
+
+    # Certificate generation settings - only create if needed
+    certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
+    certbot_create_method: standalone
+    certbot_testmode: false
+    certbot_hsts: true
+    certbot_admin_email: "matticem@boximity.ca"
+
+    # Domain configuration for Umami dashboard
+    certbot_certs:
+      - domains:
+          - umami.staging.boximity.ca
+        email: "matticem@boximity.ca"
+
+    # Services to stop during standalone certificate generation
+    certbot_create_standalone_stop_services:
+      - nginx
+
+  pre_tasks:
+    - name: Check if Umami certificate already exists
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/umami.staging.boximity.ca/cert.pem
+      register: cert_file_exists
+
+    - name: Check certificate expiration (if it exists)
+      ansible.builtin.command: |
+        bash -c "
+        if [ -f /etc/letsencrypt/live/umami.staging.boximity.ca/cert.pem ]; then
+          # Calculate days until expiration
+          openssl x509 -enddate -noout -in /etc/letsencrypt/live/umami.staging.boximity.ca/cert.pem | cut -d= -f2 | xargs -I {} date -d {} +%s | awk '{print int(($1 - systime()) / 86400)}'
+        else
+          echo 'certificate_missing'
+        fi
+        "
+      register: cert_expiry_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Determine if certificate action is needed
+      ansible.builtin.set_fact:
+        cert_needs_action: "{{ not cert_file_exists.stat.exists or (cert_expiry_check.stdout | default('certificate_missing') != 'certificate_missing' and (cert_expiry_check.stdout | int) < 30) }}"
+
+    - name: Log certificate check results
+      ansible.builtin.debug:
+        msg:
+          - "Certificate exists: {{ cert_file_exists.stat.exists }}"
+          - "Days until expiry: {{ cert_expiry_check.stdout | default('certificate_missing') }}"
+          - "Certificate action needed: {{ cert_needs_action }}"
+
+  roles:
+    - geerlingguy.certbot
+
+  post_tasks:
+    - name: Display certificate action taken
+      ansible.builtin.debug:
+        msg: |
+          🔍 Umami SSL Certificate Action Summary:
+
+          Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
+          {% if cert_needs_action %}
+          - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon (' ~ cert_expiry_check.stdout ~ ' days left)' }}
+          - New certificate generated for: umami.staging.boximity.ca
+          {% else %}
+          - Certificate is valid ({{ cert_expiry_check.stdout | default('unknown') }} days remaining)
+          {% endif %}
+
+          📋 Next Steps:
+          - Ensure DNS points umami.staging.boximity.ca to {{ ansible_host }}
+          - Umami dashboard will be available at: https://umami.staging.boximity.ca
+
+    - name: Log certificate generation completion
+      ansible.builtin.debug:
+        msg: "🎉 Umami SSL certificate setup completed successfully!"
+      when: cert_needs_action
