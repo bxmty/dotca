@@ -41,6 +41,10 @@
     # Additional production GA ID for future use
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
 
+    # Umami Analytics Configuration for Next.js Application
+    umami_website_id: "{{ UMAMI_WEBSITE_ID | default('') }}"
+    umami_host_url: "{{ UMAMI_HOST_URL | default('https://umami.staging.boximity.ca') }}"
+
     # ============================================================================
     # Umami Analytics Configuration Variables
     # ============================================================================
@@ -72,6 +76,14 @@
     umami_admin_username: "{{ UMAMI_ADMIN_USERNAME | default('admin') }}"
     umami_admin_password: "{{ UMAMI_ADMIN_PASSWORD | default('umami') }}"
     umami_admin_email: "{{ UMAMI_ADMIN_EMAIL | default('admin@staging.boximity.ca') }}"
+
+    # ============================================================================
+    # Next.js Application Environment Variables (Umami Integration)
+    # ============================================================================
+    #
+    # Analytics Configuration:
+    # - UMAMI_WEBSITE_ID: Unique identifier for your Umami website (required for tracking)
+    # - UMAMI_HOST_URL: URL of your Umami instance (e.g., https://umami.staging.boximity.ca)
 
     # Additional Umami configuration variables
     umami_website_url: "{{ UMAMI_WEBSITE_URL | default('https://umami.staging.boximity.ca') }}"

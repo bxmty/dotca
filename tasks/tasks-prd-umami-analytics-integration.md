@@ -46,7 +46,7 @@
   - [x] 3.3 Create src/app/components/UmamiAnalytics.tsx React component for client-side tracking
   - [x] 3.4 Add Umami tracking script to src/app/layout.tsx alongside existing Google Analytics
   - [x] 3.5 Create src/lib/analytics.ts unified interface for both GA and Umami tracking
-  - [ ] 3.6 Add Umami environment variables to staging Next.js environment configuration
+  - [x] 3.6 Add Umami environment variables to staging Next.js environment configuration
 
 - [ ] 4.0 Implement and test custom event tracking in staging
   - [ ] 4.1 Identify all lead generation forms in the application (contact forms, signup forms, etc.)
