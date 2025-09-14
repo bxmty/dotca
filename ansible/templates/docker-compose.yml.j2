@@ -1,6 +1,76 @@
 version: '3'
 
 services:
+  # PostgreSQL database for Umami analytics
+  db:
+    image: postgres:15-alpine
+    container_name: umami-db
+    restart: always
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: {{ umami_db_password | default('umami_password') }}
+    volumes:
+      - umami_db_data:/var/lib/postgresql/data
+    networks:
+      - umami-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Umami Analytics service
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: umami-app
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://umami:{{ umami_db_password | default('umami_password') }}@db:5432/umami
+      - DB_TYPE=postgresql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=umami
+      - DB_USERNAME=umami
+      - DB_PASSWORD={{ umami_db_password | default('umami_password') }}
+      - NODE_ENV=production
+      - APP_SECRET={{ umami_app_secret | default('your-secret-key-change-this-in-production') }}
+      - DISABLE_LOGIN={{ umami_disable_login | default('false') }}
+      - DISABLE_SIGNUP={{ umami_disable_signup | default('false') }}
+      - TRACKER_SCRIPT_NAME=umami
+      - COLLECT_API_ENDPOINT=/api/collect
+      - PORT=3000
+      - HOST=0.0.0.0
+      - ALLOW_REPORT={{ umami_allow_report | default('true') }}
+      - DISABLE_TELEMETRY={{ umami_disable_telemetry | default('false') }}
+      - LOG_LEVEL={{ umami_log_level | default('info') }}
+      - CORS_ORIGINS={{ next_public_api_url | default('http://localhost:3000') }}
+      - RATE_LIMIT={{ umami_rate_limit | default('1000') }}
+      - RATE_LIMIT_WINDOW={{ umami_rate_limit_window | default('3600000') }}
+      - SESSION_TIMEOUT={{ umami_session_timeout | default('2592000000') }}
+      - ADMIN_USERNAME={{ umami_admin_username | default('admin') }}
+      - ADMIN_PASSWORD={{ umami_admin_password | default('umami') }}
+      - ADMIN_EMAIL={{ umami_admin_email | default('admin@example.com') }}
+      - WEBSITE_URL={{ umami_website_url | default('https://umami.staging.boximity.ca') }}
+      - FORCE_HTTPS={{ umami_force_https | default('true') }}
+      - DISABLE_UPDATE_CHECK={{ umami_disable_update_check | default('false') }}
+      - TRACKER_TIMEOUT={{ umami_tracker_timeout | default('5000') }}
+      - COLLECTOR_TIMEOUT={{ umami_collector_timeout | default('30000') }}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - umami-network
+    volumes:
+      - umami_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Define web service (for staging) and alias it as app (for production)
   web:
     image: "{{ docker_image }}"
@@ -17,6 +87,8 @@ services:
       - BREVO_API_KEY={{ brevo_api_key }}
       - NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id | default('') }}
       - NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id | default('') }}
+      - NEXT_PUBLIC_UMAMI_WEBSITE_ID={{ umami_website_id | default('') }}
+      - NEXT_PUBLIC_UMAMI_HOST_URL={{ umami_host_url | default('') }}
       - HOST=0.0.0.0
       - HOSTNAME=0.0.0.0
     healthcheck:
@@ -40,3 +112,10 @@ services:
 # Define volumes for persistent data
 volumes:
   next_cache:
+  umami_db_data:
+  umami_data:
+
+# Define networks
+networks:
+  umami-network:
+    driver: bridge
