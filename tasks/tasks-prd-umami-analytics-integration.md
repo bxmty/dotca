@@ -41,9 +41,9 @@
   - [x] 2.6 Add Umami environment variables to staging Ansible variable management
 
 - [ ] 3.0 Integrate Umami tracking into Next.js application (staging)
-  - [ ] 3.1 Install @umami/node package for server-side tracking capabilities
-  - [ ] 3.2 Create src/lib/umami.ts with tracking utility functions (pageview, event tracking)
-  - [ ] 3.3 Create src/app/components/UmamiAnalytics.tsx React component for client-side tracking
+  - [x] 3.1 Install @umami/node package for server-side tracking capabilities
+  - [x] 3.2 Create src/lib/umami.ts with tracking utility functions (pageview, event tracking)
+  - [x] 3.3 Create src/app/components/UmamiAnalytics.tsx React component for client-side tracking
   - [ ] 3.4 Add Umami tracking script to src/app/layout.tsx alongside existing Google Analytics
   - [ ] 3.5 Create src/lib/analytics.ts unified interface for both GA and Umami tracking
   - [ ] 3.6 Add Umami environment variables to staging Next.js environment configuration
