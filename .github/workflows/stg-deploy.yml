@@ -247,6 +247,78 @@ jobs:
 
           # Install additional Ansible collections if needed
           ansible-galaxy collection install community.general ansible.posix
+
+      - name: Setup Ansible Vault password file
+        run: |
+          echo "🔐 Setting up Ansible Vault password file..."
+
+          # SECURITY: Validate vault password format before creating file
+          VAULT_PASS="${{ secrets.ANSIBLE_VAULT_PASSWORD }}"
+          if [ -z "$VAULT_PASS" ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD secret is empty"
+            exit 1
+          fi
+
+          if [ ${#VAULT_PASS} -lt 8 ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD is too short (minimum 8 characters)"
+            exit 1
+          fi
+
+          # Create the vault password file from GitHub secret
+          echo "$VAULT_PASS" > ~/.ansible_vault_pass
+
+          # Set proper permissions (only owner can read/write)
+          chmod 600 ~/.ansible_vault_pass
+
+          echo "✅ Ansible Vault password file created and secured"
+          echo ""
+          echo "📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!"
+          echo "   To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml"
+          echo "   To edit:    ansible-vault edit ansible/vars/vault-vars.yml"
+          echo "   Password should match the ANSIBLE_VAULT_PASSWORD secret"
+
+      - name: Validate Ansible Vault encryption
+        run: |
+          echo "🔍 Validating Ansible Vault encryption..."
+
+          # Check if vault-vars.yml exists
+          if [ ! -f "ansible/vars/vault-vars.yml" ]; then
+            echo "::error::ansible/vars/vault-vars.yml file not found!"
+            exit 1
+          fi
+
+          # Check if the file is encrypted (Ansible Vault files start with $ANSIBLE_VAULT)
+          if ! head -1 ansible/vars/vault-vars.yml | grep -q "^\$ANSIBLE_VAULT"; then
+            echo "::error::ansible/vars/vault-vars.yml is not encrypted with Ansible Vault!"
+            echo ""
+            echo "🚨 SECURITY ISSUE DETECTED!"
+            echo "Your vault-vars.yml file contains sensitive data but is not encrypted."
+            echo ""
+            echo "To fix this issue:"
+            echo "1. Encrypt the file: ansible-vault encrypt ansible/vars/vault-vars.yml"
+            echo "2. When editing:    ansible-vault edit ansible/vars/vault-vars.yml"
+            echo "3. Use the same password as your ANSIBLE_VAULT_PASSWORD secret"
+            echo ""
+            echo "This deployment will fail until the file is properly encrypted."
+            exit 1
+          fi
+
+          # Test if we can decrypt the file with our password
+          if ! ansible-vault view ansible/vars/vault-vars.yml --vault-password-file ~/.ansible_vault_pass >/dev/null 2>&1; then
+            echo "::error::Cannot decrypt ansible/vars/vault-vars.yml with the provided vault password!"
+            echo ""
+            echo "Possible issues:"
+            echo "1. ANSIBLE_VAULT_PASSWORD secret doesn't match the encryption password"
+            echo "2. The vault-vars.yml file was encrypted with a different password"
+            echo "3. The file may be corrupted"
+            echo ""
+            echo "To fix:"
+            echo "1. Update the ANSIBLE_VAULT_PASSWORD secret to match the encryption password"
+            echo "2. Or re-encrypt the file with: ansible-vault encrypt ansible/vars/vault-vars.yml"
+            exit 1
+          fi
+
+          echo "✅ Ansible Vault encryption validation passed"
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -430,7 +502,7 @@ jobs:
         run: |
           echo "🚀 Starting Ansible deployment..."
 
-          # Validate required environment variables
+          # SECURITY: Validate required environment variables without exposing values
           MISSING_VARS=""
           [ -z "$BREVO_API_KEY" ] && MISSING_VARS="$MISSING_VARS BREVO_API_KEY"
           [ -z "$STRIPE_SECRET_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_SECRET_KEY"
@@ -441,10 +513,17 @@ jobs:
             echo "::error::Missing required environment variables:$MISSING_VARS"
             exit 1
           fi
+
+          # SECURITY: Verify secrets are not empty and have expected format (without logging values)
+          echo "🔐 Validating secret formats..."
+          [[ ${#BREVO_API_KEY} -gt 10 ]] || { echo "::error::BREVO_API_KEY appears to be invalid"; exit 1; }
+          [[ ${#STRIPE_SECRET_KEY} -gt 20 ]] || { echo "::error::STRIPE_SECRET_KEY appears to be invalid"; exit 1; }
+          [[ ${#GITHUB_TOKEN} -gt 10 ]] || { echo "::error::GITHUB_TOKEN appears to be invalid"; exit 1; }
+          echo "✅ Secret validation passed"
           
           echo "✅ GitHub Container Registry authentication configured:"
           echo "   - Username: $GITHUB_USERNAME"
-          echo "   - Token: ${GITHUB_TOKEN:0:10}... (truncated)"
+          echo "   - Token: ***masked***"
 
           # Run Ansible playbook with retry logic
           DEPLOY_SUCCESS=false
@@ -457,7 +536,7 @@ jobs:
               ansible/staging-deploy.yml \
               --timeout=60 \
               --extra-vars "ansible_ssh_timeout=60" \
-              -v; then
+              --vault-password-file ~/.ansible_vault_pass; then
               echo "✅ Deployment successful on attempt $attempt"
               DEPLOY_SUCCESS=true
               break
@@ -481,6 +560,19 @@ jobs:
             exit 1
           fi
           echo "🎉 Ansible deployment completed successfully!"
+
+      - name: Cleanup vault password file
+        if: always()
+        run: |
+          echo "🧹 Cleaning up sensitive files..."
+          rm -f ~/.ansible_vault_pass
+
+          # SECURITY: Clean up any Ansible log files that might contain sensitive data
+          rm -f ansible/ansible.log
+          rm -f ansible.log
+
+          echo "✅ Vault password file and logs securely removed"
+
   deployment-verification:
     name: Verify Deployment
     runs-on: ubuntu-latest
