@@ -28,6 +28,10 @@ GA_PRODUCTION_ID: "G-P890DC395M"
 # Umami Analytics Configuration
 # ============================================================================
 
+# Next.js Application Analytics Configuration
+UMAMI_WEBSITE_ID: "umami-website-staging-001"
+UMAMI_HOST_URL: "https://umami.staging.boximity.ca"
+
 # Database Configuration
 UMAMI_DB_PASSWORD: "6c854bc0c46253050a0a1607cbd5edc4"
 
@@ -58,7 +62,7 @@ UMAMI_ADMIN_PASSWORD: "rl+jyg8JrVQtqU2X"
 UMAMI_ADMIN_EMAIL: "admin@staging.boximity.ca"
 
 # Additional Umami Configuration (optional - defaults provided)
-UMAMI_WEBSITE_URL: "https://umami.staging.boximity.ca"
+
 UMAMI_FORCE_HTTPS: "true"
 UMAMI_DISABLE_UPDATE_CHECK: "false"
 UMAMI_TRACKER_TIMEOUT: "5000"
