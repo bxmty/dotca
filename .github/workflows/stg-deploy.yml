@@ -248,6 +248,9 @@ jobs:
           # Install additional Ansible collections if needed
           ansible-galaxy collection install community.general ansible.posix
 
+          # Install required Ansible roles
+          ansible-galaxy install -r ansible/requirements.yml
+
       - name: Setup Ansible Vault password file
         run: |
           echo "🔐 Setting up Ansible Vault password file..."
