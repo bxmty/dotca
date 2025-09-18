@@ -1,0 +1,939 @@
+﻿2025-09-18T18:10:46.8092090Z Current runner version: '2.328.0'
+2025-09-18T18:10:46.8115596Z ##[group]Runner Image Provisioner
+2025-09-18T18:10:46.8116467Z Hosted Compute Agent
+2025-09-18T18:10:46.8117557Z Version: 20250829.383
+2025-09-18T18:10:46.8118297Z Commit: 27cb235aab5b0e52e153a26cd86b4742e89dac5d
+2025-09-18T18:10:46.8119039Z Build Date: 2025-08-29T13:48:48Z
+2025-09-18T18:10:46.8120359Z ##[endgroup]
+2025-09-18T18:10:46.8120963Z ##[group]Operating System
+2025-09-18T18:10:46.8121672Z Ubuntu
+2025-09-18T18:10:46.8122229Z 24.04.3
+2025-09-18T18:10:46.8122726Z LTS
+2025-09-18T18:10:46.8123306Z ##[endgroup]
+2025-09-18T18:10:46.8123907Z ##[group]Runner Image
+2025-09-18T18:10:46.8124587Z Image: ubuntu-24.04
+2025-09-18T18:10:46.8125212Z Version: 20250907.24.1
+2025-09-18T18:10:46.8126401Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20250907.24/images/ubuntu/Ubuntu2404-Readme.md
+2025-09-18T18:10:46.8128092Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20250907.24
+2025-09-18T18:10:46.8129478Z ##[endgroup]
+2025-09-18T18:10:46.8130751Z ##[group]GITHUB_TOKEN Permissions
+2025-09-18T18:10:46.8132954Z Contents: read
+2025-09-18T18:10:46.8133586Z Metadata: read
+2025-09-18T18:10:46.8134288Z Packages: read
+2025-09-18T18:10:46.8134869Z ##[endgroup]
+2025-09-18T18:10:46.8137155Z Secret source: Actions
+2025-09-18T18:10:46.8138266Z Prepare workflow directory
+2025-09-18T18:10:46.8511456Z Prepare all required actions
+2025-09-18T18:10:46.8551384Z Getting action download info
+2025-09-18T18:10:47.3007310Z Download action repository 'actions/checkout@v5' (SHA:08c6903cd8c0fde910a37f88322edcfb5dd907a8)
+2025-09-18T18:10:47.5436783Z Complete job name: Deploy Application
+2025-09-18T18:10:47.6138065Z ##[group]Run actions/checkout@v5
+2025-09-18T18:10:47.6138939Z with:
+2025-09-18T18:10:47.6139553Z   repository: bxmty/dotca
+2025-09-18T18:10:47.6140219Z   token: ***
+2025-09-18T18:10:47.6140650Z   ssh-strict: true
+2025-09-18T18:10:47.6141091Z   ssh-user: git
+2025-09-18T18:10:47.6141647Z   persist-credentials: true
+2025-09-18T18:10:47.6142221Z   clean: true
+2025-09-18T18:10:47.6142680Z   sparse-checkout-cone-mode: true
+2025-09-18T18:10:47.6143205Z   fetch-depth: 1
+2025-09-18T18:10:47.6143651Z   fetch-tags: false
+2025-09-18T18:10:47.6144105Z   show-progress: true
+2025-09-18T18:10:47.6144558Z   lfs: false
+2025-09-18T18:10:47.6144993Z   submodules: false
+2025-09-18T18:10:47.6145454Z   set-safe-directory: true
+2025-09-18T18:10:47.6146196Z env:
+2025-09-18T18:10:47.6146634Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:10:47.6147187Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:10:47.6147706Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:10:47.6148165Z ##[endgroup]
+2025-09-18T18:10:47.7106705Z Syncing repository: bxmty/dotca
+2025-09-18T18:10:47.7108623Z ##[group]Getting Git version info
+2025-09-18T18:10:47.7109588Z Working directory is '/home/runner/work/dotca/dotca'
+2025-09-18T18:10:47.7110632Z [command]/usr/bin/git version
+2025-09-18T18:10:47.7217569Z git version 2.51.0
+2025-09-18T18:10:47.7237767Z ##[endgroup]
+2025-09-18T18:10:47.7251288Z Temporarily overriding HOME='/home/runner/work/_temp/ca65487c-c9b7-4a9d-bff6-c13c86d74b6f' before making global git config changes
+2025-09-18T18:10:47.7253814Z Adding repository directory to the temporary git global config as a safe directory
+2025-09-18T18:10:47.7256539Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dotca/dotca
+2025-09-18T18:10:47.7294017Z Deleting the contents of '/home/runner/work/dotca/dotca'
+2025-09-18T18:10:47.7297895Z ##[group]Initializing the repository
+2025-09-18T18:10:47.7302523Z [command]/usr/bin/git init /home/runner/work/dotca/dotca
+2025-09-18T18:10:47.7419711Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-09-18T18:10:47.7421296Z hint: is subject to change. To configure the initial branch name to use in all
+2025-09-18T18:10:47.7422265Z hint: of your new repositories, which will suppress this warning, call:
+2025-09-18T18:10:47.7423203Z hint:
+2025-09-18T18:10:47.7424088Z hint: 	git config --global init.defaultBranch <name>
+2025-09-18T18:10:47.7425147Z hint:
+2025-09-18T18:10:47.7426260Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-09-18T18:10:47.7428054Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-09-18T18:10:47.7429682Z hint:
+2025-09-18T18:10:47.7430534Z hint: 	git branch -m <name>
+2025-09-18T18:10:47.7431437Z hint:
+2025-09-18T18:10:47.7432581Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-09-18T18:10:47.7434522Z Initialized empty Git repository in /home/runner/work/dotca/dotca/.git/
+2025-09-18T18:10:47.7437459Z [command]/usr/bin/git remote add origin https://github.com/bxmty/dotca
+2025-09-18T18:10:47.7475096Z ##[endgroup]
+2025-09-18T18:10:47.7476482Z ##[group]Disabling automatic garbage collection
+2025-09-18T18:10:47.7478659Z [command]/usr/bin/git config --local gc.auto 0
+2025-09-18T18:10:47.7506671Z ##[endgroup]
+2025-09-18T18:10:47.7508079Z ##[group]Setting up auth
+2025-09-18T18:10:47.7513614Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-09-18T18:10:47.7543995Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-09-18T18:10:47.7920479Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-09-18T18:10:47.7951482Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-09-18T18:10:47.8167757Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-09-18T18:10:47.8200997Z ##[endgroup]
+2025-09-18T18:10:47.8202434Z ##[group]Fetching the repository
+2025-09-18T18:10:47.8211189Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8065c1d64a19c8a1a366990e17a7dd8838d5c5f9:refs/remotes/origin/staging
+2025-09-18T18:10:48.5627565Z From https://github.com/bxmty/dotca
+2025-09-18T18:10:48.5629848Z  * [new ref]         8065c1d64a19c8a1a366990e17a7dd8838d5c5f9 -> origin/staging
+2025-09-18T18:10:48.5662331Z ##[endgroup]
+2025-09-18T18:10:48.5663828Z ##[group]Determining the checkout info
+2025-09-18T18:10:48.5665691Z ##[endgroup]
+2025-09-18T18:10:48.5671182Z [command]/usr/bin/git sparse-checkout disable
+2025-09-18T18:10:48.5715347Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-09-18T18:10:48.5744370Z ##[group]Checking out the ref
+2025-09-18T18:10:48.5750589Z [command]/usr/bin/git checkout --progress --force -B staging refs/remotes/origin/staging
+2025-09-18T18:10:48.5961423Z Switched to a new branch 'staging'
+2025-09-18T18:10:48.5964066Z branch 'staging' set up to track 'origin/staging'.
+2025-09-18T18:10:48.5972050Z ##[endgroup]
+2025-09-18T18:10:48.6006657Z [command]/usr/bin/git log -1 --format=%H
+2025-09-18T18:10:48.6028469Z 8065c1d64a19c8a1a366990e17a7dd8838d5c5f9
+2025-09-18T18:10:48.6236006Z ##[group]Run sudo apt update
+2025-09-18T18:10:48.6237534Z [36;1msudo apt update[0m
+2025-09-18T18:10:48.6239034Z [36;1msudo apt install -y ansible netcat-openbsd[0m
+2025-09-18T18:10:48.6240865Z [36;1m[0m
+2025-09-18T18:10:48.6242017Z [36;1m# Verify Ansible installation[0m
+2025-09-18T18:10:48.6243466Z [36;1mansible --version[0m
+2025-09-18T18:10:48.6244674Z [36;1m[0m
+2025-09-18T18:10:48.6245921Z [36;1m# Install additional Ansible collections if needed[0m
+2025-09-18T18:10:48.6248097Z [36;1mansible-galaxy collection install community.general ansible.posix[0m
+2025-09-18T18:10:48.6250091Z [36;1m[0m
+2025-09-18T18:10:48.6251126Z [36;1m# Install required Ansible roles[0m
+2025-09-18T18:10:48.6252818Z [36;1mansible-galaxy install -r ansible/requirements.yml[0m
+2025-09-18T18:10:48.6312538Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:10:48.6313760Z env:
+2025-09-18T18:10:48.6314742Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:10:48.6316389Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:10:48.6317670Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:10:48.6318798Z ##[endgroup]
+2025-09-18T18:10:48.6511725Z 
+2025-09-18T18:10:48.6513288Z WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+2025-09-18T18:10:48.6514822Z 
+2025-09-18T18:10:48.8000792Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2025-09-18T18:10:48.8494891Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2025-09-18T18:10:48.8497520Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2025-09-18T18:10:48.8498608Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2025-09-18T18:10:48.8533995Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2025-09-18T18:10:48.8546905Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2025-09-18T18:10:48.8601894Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2025-09-18T18:10:49.0645901Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [53.6 kB]
+2025-09-18T18:10:49.0822839Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [10.2 kB]
+2025-09-18T18:10:49.1011232Z Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [36.1 kB]
+2025-09-18T18:10:49.1082417Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1415 kB]
+2025-09-18T18:10:49.1170286Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [278 kB]
+2025-09-18T18:10:49.1197833Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [175 kB]
+2025-09-18T18:10:49.1214507Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 c-n-f Metadata [15.2 kB]
+2025-09-18T18:10:49.1226629Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1484 kB]
+2025-09-18T18:10:49.1307376Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [299 kB]
+2025-09-18T18:10:49.1332787Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [377 kB]
+2025-09-18T18:10:49.1362052Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 c-n-f Metadata [31.1 kB]
+2025-09-18T18:10:49.1371291Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1901 kB]
+2025-09-18T18:10:49.1481283Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [426 kB]
+2025-09-18T18:10:49.1933520Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Components [212 B]
+2025-09-18T18:10:49.1940003Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 c-n-f Metadata [544 B]
+2025-09-18T18:10:49.1953282Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [32.0 kB]
+2025-09-18T18:10:49.1965558Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [5500 B]
+2025-09-18T18:10:49.1973172Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2025-09-18T18:10:49.1979743Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 c-n-f Metadata [488 B]
+2025-09-18T18:10:49.1988580Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [7060 B]
+2025-09-18T18:10:49.2000424Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [19.2 kB]
+2025-09-18T18:10:49.2010322Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+2025-09-18T18:10:49.2017183Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+2025-09-18T18:10:49.2227322Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1143 kB]
+2025-09-18T18:10:49.2287344Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [195 kB]
+2025-09-18T18:10:49.2308296Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.6 kB]
+2025-09-18T18:10:49.2317631Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 c-n-f Metadata [8748 B]
+2025-09-18T18:10:49.2771377Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [880 kB]
+2025-09-18T18:10:49.2822233Z Get:36 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [195 kB]
+2025-09-18T18:10:49.2844998Z Get:37 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [52.2 kB]
+2025-09-18T18:10:49.2857108Z Get:38 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 c-n-f Metadata [18.0 kB]
+2025-09-18T18:10:49.2866880Z Get:39 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1815 kB]
+2025-09-18T18:10:49.2952536Z Get:40 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [408 kB]
+2025-09-18T18:10:49.2981560Z Get:41 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Components [212 B]
+2025-09-18T18:10:49.2990477Z Get:42 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 c-n-f Metadata [496 B]
+2025-09-18T18:10:49.2999313Z Get:43 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [28.0 kB]
+2025-09-18T18:10:49.3008891Z Get:44 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [5228 B]
+2025-09-18T18:10:49.3017065Z Get:45 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Components [212 B]
+2025-09-18T18:10:49.3024741Z Get:46 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 c-n-f Metadata [452 B]
+2025-09-18T18:10:56.7426776Z Fetched 11.7 MB in 1s (7869 kB/s)
+2025-09-18T18:10:57.4403432Z Reading package lists...
+2025-09-18T18:10:57.5862783Z Building dependency tree...
+2025-09-18T18:10:57.5868765Z Reading state information...
+2025-09-18T18:10:57.6002639Z 46 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2025-09-18T18:10:57.6112665Z 
+2025-09-18T18:10:57.6113124Z WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+2025-09-18T18:10:57.6113661Z 
+2025-09-18T18:10:57.6245641Z Reading package lists...
+2025-09-18T18:10:57.7782863Z Building dependency tree...
+2025-09-18T18:10:57.7790144Z Reading state information...
+2025-09-18T18:10:57.9263707Z netcat-openbsd is already the newest version (1.226-1ubuntu2).
+2025-09-18T18:10:57.9264768Z netcat-openbsd set to manually installed.
+2025-09-18T18:10:57.9265465Z The following additional packages will be installed:
+2025-09-18T18:10:57.9269361Z   ansible-core python3-argcomplete python3-dnspython python3-kerberos
+2025-09-18T18:10:57.9270281Z   python3-libcloud python3-lockfile python3-ntlm-auth python3-passlib
+2025-09-18T18:10:57.9271154Z   python3-requests-ntlm python3-resolvelib python3-selinux python3-simplejson
+2025-09-18T18:10:57.9271859Z   python3-winrm python3-xmltodict
+2025-09-18T18:10:57.9277518Z Suggested packages:
+2025-09-18T18:10:57.9278663Z   cowsay python3-trio python3-aioquic python3-h2 python3-httpx
+2025-09-18T18:10:57.9279487Z   python3-httpcore python-lockfile-doc
+2025-09-18T18:10:58.0024953Z The following NEW packages will be installed:
+2025-09-18T18:10:58.0030501Z   ansible ansible-core python3-argcomplete python3-dnspython python3-kerberos
+2025-09-18T18:10:58.0031360Z   python3-libcloud python3-lockfile python3-ntlm-auth python3-passlib
+2025-09-18T18:10:58.0031999Z   python3-requests-ntlm python3-resolvelib python3-selinux python3-simplejson
+2025-09-18T18:10:58.0032498Z   python3-winrm python3-xmltodict
+2025-09-18T18:10:58.0234541Z 0 upgraded, 15 newly installed, 0 to remove and 46 not upgraded.
+2025-09-18T18:10:58.0533587Z Need to get 19.5 MB of archives.
+2025-09-18T18:10:58.0534339Z After this operation, 315 MB of additional disk space will be used.
+2025-09-18T18:10:58.0535183Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2025-09-18T18:10:58.1506628Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-resolvelib all 1.0.1-1 [25.7 kB]
+2025-09-18T18:10:58.2327658Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 python3-dnspython all 2.6.1-1ubuntu1 [163 kB]
+2025-09-18T18:10:58.3197938Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 ansible-core all 2.16.3-0ubuntu2 [1280 kB]
+2025-09-18T18:10:58.5654315Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 ansible all 9.2.0+dfsg-0ubuntu5 [16.4 MB]
+2025-09-18T18:10:59.4675817Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 python3-argcomplete all 3.1.4-1ubuntu0.1 [33.8 kB]
+2025-09-18T18:10:59.5484415Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-kerberos amd64 1.1.14-3.1build9 [21.2 kB]
+2025-09-18T18:10:59.6294393Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-lockfile all 1:0.12.2-3 [13.7 kB]
+2025-09-18T18:10:59.7111516Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 python3-simplejson amd64 3.19.2-1build2 [54.5 kB]
+2025-09-18T18:10:59.7945439Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-libcloud all 3.4.1-5 [751 kB]
+2025-09-18T18:10:59.9614744Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-ntlm-auth all 1.5.0-1 [21.3 kB]
+2025-09-18T18:11:00.0436780Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-requests-ntlm all 1.1.0-3 [6308 B]
+2025-09-18T18:11:00.1299900Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 python3-selinux amd64 3.5-2ubuntu2.1 [165 kB]
+2025-09-18T18:11:00.2160606Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 python3-xmltodict all 0.13.0-1ubuntu0.24.04.1 [14.3 kB]
+2025-09-18T18:11:00.2967501Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-winrm all 0.4.3-2 [31.9 kB]
+2025-09-18T18:11:00.3801219Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 python3-passlib all 1.7.4-4 [476 kB]
+2025-09-18T18:11:00.7358372Z Fetched 19.5 MB in 2s (8058 kB/s)
+2025-09-18T18:11:00.7686749Z Selecting previously unselected package python3-resolvelib.
+2025-09-18T18:11:00.8842793Z (Reading database ... 
+2025-09-18T18:11:00.8843224Z (Reading database ... 5%
+2025-09-18T18:11:00.8843617Z (Reading database ... 10%
+2025-09-18T18:11:00.8843931Z (Reading database ... 15%
+2025-09-18T18:11:00.8844182Z (Reading database ... 20%
+2025-09-18T18:11:00.8844428Z (Reading database ... 25%
+2025-09-18T18:11:00.8844672Z (Reading database ... 30%
+2025-09-18T18:11:00.8844923Z (Reading database ... 35%
+2025-09-18T18:11:00.8845168Z (Reading database ... 40%
+2025-09-18T18:11:00.8845415Z (Reading database ... 45%
+2025-09-18T18:11:00.8845657Z (Reading database ... 50%
+2025-09-18T18:11:00.9901531Z (Reading database ... 55%
+2025-09-18T18:11:01.4421157Z (Reading database ... 60%
+2025-09-18T18:11:01.8830900Z (Reading database ... 65%
+2025-09-18T18:11:02.3368669Z (Reading database ... 70%
+2025-09-18T18:11:02.7879048Z (Reading database ... 75%
+2025-09-18T18:11:03.2796991Z (Reading database ... 80%
+2025-09-18T18:11:03.7964187Z (Reading database ... 85%
+2025-09-18T18:11:04.3535510Z (Reading database ... 90%
+2025-09-18T18:11:04.8449732Z (Reading database ... 95%
+2025-09-18T18:11:04.8450325Z (Reading database ... 100%
+2025-09-18T18:11:04.8450883Z (Reading database ... 218657 files and directories currently installed.)
+2025-09-18T18:11:04.8496458Z Preparing to unpack .../00-python3-resolvelib_1.0.1-1_all.deb ...
+2025-09-18T18:11:04.8542772Z Unpacking python3-resolvelib (1.0.1-1) ...
+2025-09-18T18:11:04.8974593Z Selecting previously unselected package python3-dnspython.
+2025-09-18T18:11:04.9107447Z Preparing to unpack .../01-python3-dnspython_2.6.1-1ubuntu1_all.deb ...
+2025-09-18T18:11:04.9126017Z Unpacking python3-dnspython (2.6.1-1ubuntu1) ...
+2025-09-18T18:11:04.9680205Z Selecting previously unselected package ansible-core.
+2025-09-18T18:11:04.9885502Z Preparing to unpack .../02-ansible-core_2.16.3-0ubuntu2_all.deb ...
+2025-09-18T18:11:04.9886693Z Unpacking ansible-core (2.16.3-0ubuntu2) ...
+2025-09-18T18:11:05.3044771Z Selecting previously unselected package ansible.
+2025-09-18T18:11:05.3186191Z Preparing to unpack .../03-ansible_9.2.0+dfsg-0ubuntu5_all.deb ...
+2025-09-18T18:11:05.3358785Z Unpacking ansible (9.2.0+dfsg-0ubuntu5) ...
+2025-09-18T18:11:09.1135932Z Selecting previously unselected package python3-argcomplete.
+2025-09-18T18:11:09.1375717Z Preparing to unpack .../04-python3-argcomplete_3.1.4-1ubuntu0.1_all.deb ...
+2025-09-18T18:11:09.1388622Z Unpacking python3-argcomplete (3.1.4-1ubuntu0.1) ...
+2025-09-18T18:11:09.1893209Z Selecting previously unselected package python3-kerberos.
+2025-09-18T18:11:09.2075580Z Preparing to unpack .../05-python3-kerberos_1.1.14-3.1build9_amd64.deb ...
+2025-09-18T18:11:09.2084637Z Unpacking python3-kerberos (1.1.14-3.1build9) ...
+2025-09-18T18:11:09.2345295Z Selecting previously unselected package python3-lockfile.
+2025-09-18T18:11:09.2498367Z Preparing to unpack .../06-python3-lockfile_1%3a0.12.2-3_all.deb ...
+2025-09-18T18:11:09.2506375Z Unpacking python3-lockfile (1:0.12.2-3) ...
+2025-09-18T18:11:09.2738411Z Selecting previously unselected package python3-simplejson.
+2025-09-18T18:11:09.2898692Z Preparing to unpack .../07-python3-simplejson_3.19.2-1build2_amd64.deb ...
+2025-09-18T18:11:09.2909369Z Unpacking python3-simplejson (3.19.2-1build2) ...
+2025-09-18T18:11:09.3195493Z Selecting previously unselected package python3-libcloud.
+2025-09-18T18:11:09.3345842Z Preparing to unpack .../08-python3-libcloud_3.4.1-5_all.deb ...
+2025-09-18T18:11:09.3355020Z Unpacking python3-libcloud (3.4.1-5) ...
+2025-09-18T18:11:09.4213680Z Selecting previously unselected package python3-ntlm-auth.
+2025-09-18T18:11:09.4368929Z Preparing to unpack .../09-python3-ntlm-auth_1.5.0-1_all.deb ...
+2025-09-18T18:11:09.4381618Z Unpacking python3-ntlm-auth (1.5.0-1) ...
+2025-09-18T18:11:09.4689732Z Selecting previously unselected package python3-requests-ntlm.
+2025-09-18T18:11:09.4843682Z Preparing to unpack .../10-python3-requests-ntlm_1.1.0-3_all.deb ...
+2025-09-18T18:11:09.4853277Z Unpacking python3-requests-ntlm (1.1.0-3) ...
+2025-09-18T18:11:09.5084669Z Selecting previously unselected package python3-selinux.
+2025-09-18T18:11:09.5236647Z Preparing to unpack .../11-python3-selinux_3.5-2ubuntu2.1_amd64.deb ...
+2025-09-18T18:11:09.5247162Z Unpacking python3-selinux (3.5-2ubuntu2.1) ...
+2025-09-18T18:11:09.5507790Z Selecting previously unselected package python3-xmltodict.
+2025-09-18T18:11:09.5655867Z Preparing to unpack .../12-python3-xmltodict_0.13.0-1ubuntu0.24.04.1_all.deb ...
+2025-09-18T18:11:09.5670996Z Unpacking python3-xmltodict (0.13.0-1ubuntu0.24.04.1) ...
+2025-09-18T18:11:09.5902255Z Selecting previously unselected package python3-winrm.
+2025-09-18T18:11:09.6051527Z Preparing to unpack .../13-python3-winrm_0.4.3-2_all.deb ...
+2025-09-18T18:11:09.6061138Z Unpacking python3-winrm (0.4.3-2) ...
+2025-09-18T18:11:09.6329993Z Selecting previously unselected package python3-passlib.
+2025-09-18T18:11:09.6475956Z Preparing to unpack .../14-python3-passlib_1.7.4-4_all.deb ...
+2025-09-18T18:11:09.6484390Z Unpacking python3-passlib (1.7.4-4) ...
+2025-09-18T18:11:09.7300599Z Setting up python3-lockfile (1:0.12.2-3) ...
+2025-09-18T18:11:09.8566210Z Setting up python3-passlib (1.7.4-4) ...
+2025-09-18T18:11:10.1780717Z Setting up python3-ntlm-auth (1.5.0-1) ...
+2025-09-18T18:11:10.2855422Z Setting up python3-resolvelib (1.0.1-1) ...
+2025-09-18T18:11:10.3860275Z Setting up python3-kerberos (1.1.14-3.1build9) ...
+2025-09-18T18:11:10.3886119Z Setting up python3-simplejson (3.19.2-1build2) ...
+2025-09-18T18:11:10.5237549Z Setting up python3-xmltodict (0.13.0-1ubuntu0.24.04.1) ...
+2025-09-18T18:11:10.6227924Z Setting up python3-dnspython (2.6.1-1ubuntu1) ...
+2025-09-18T18:11:10.8817391Z Setting up python3-selinux (3.5-2ubuntu2.1) ...
+2025-09-18T18:11:10.9854067Z Setting up python3-argcomplete (3.1.4-1ubuntu0.1) ...
+2025-09-18T18:11:11.0954930Z Setting up python3-requests-ntlm (1.1.0-3) ...
+2025-09-18T18:11:11.1928747Z Setting up ansible-core (2.16.3-0ubuntu2) ...
+2025-09-18T18:11:12.1965513Z Setting up python3-libcloud (3.4.1-5) ...
+2025-09-18T18:11:12.9241123Z Setting up python3-winrm (0.4.3-2) ...
+2025-09-18T18:11:13.0394332Z Setting up ansible (9.2.0+dfsg-0ubuntu5) ...
+2025-09-18T18:11:32.6825154Z Processing triggers for man-db (2.12.0-4build2) ...
+2025-09-18T18:12:48.4733632Z 
+2025-09-18T18:12:48.4734008Z Running kernel seems to be up-to-date.
+2025-09-18T18:12:48.4734327Z 
+2025-09-18T18:12:48.4734476Z Restarting services...
+2025-09-18T18:12:48.4804306Z 
+2025-09-18T18:12:48.4804637Z Service restarts being deferred:
+2025-09-18T18:12:48.4809608Z  systemctl restart hosted-compute-agent.service
+2025-09-18T18:12:48.4810011Z 
+2025-09-18T18:12:48.4811010Z No containers need to be restarted.
+2025-09-18T18:12:48.4811317Z 
+2025-09-18T18:12:48.4811527Z No user sessions are running outdated binaries.
+2025-09-18T18:12:48.4811873Z 
+2025-09-18T18:12:48.4812203Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2025-09-18T18:12:51.2138870Z ansible [core 2.18.8]
+2025-09-18T18:12:51.2139643Z   config file = None
+2025-09-18T18:12:51.2140312Z   configured module search path = ['/home/runner/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+2025-09-18T18:12:51.2141185Z   ansible python module location = /opt/pipx/venvs/ansible-core/lib/python3.12/site-packages/ansible
+2025-09-18T18:12:51.2141967Z   ansible collection location = /home/runner/.ansible/collections:/usr/share/ansible/collections
+2025-09-18T18:12:51.2142534Z   executable location = /opt/pipx_bin/ansible
+2025-09-18T18:12:51.2143059Z   python version = 3.12.3 (main, Aug 14 2025, 17:47:21) [GCC 13.3.0] (/opt/pipx/venvs/ansible-core/bin/python)
+2025-09-18T18:12:51.2143549Z   jinja version = 3.1.6
+2025-09-18T18:12:51.2143815Z   libyaml = True
+2025-09-18T18:12:54.7122285Z Starting galaxy collection install process
+2025-09-18T18:12:54.7123133Z Nothing to do. All requested collections are already installed. If you want to reinstall them, consider using `--force`.
+2025-09-18T18:12:55.6662763Z Starting galaxy role install process
+2025-09-18T18:12:55.6663602Z - extracting geerlingguy.certbot to /home/runner/.ansible/roles/geerlingguy.certbot
+2025-09-18T18:12:55.6664519Z - geerlingguy.certbot (5.4.1) was installed successfully
+2025-09-18T18:12:55.7044442Z ##[group]Run echo "🔐 Setting up Ansible Vault password file..."
+2025-09-18T18:12:55.7044934Z [36;1mecho "🔐 Setting up Ansible Vault password file..."[0m
+2025-09-18T18:12:55.7045244Z [36;1m[0m
+2025-09-18T18:12:55.7045527Z [36;1m# SECURITY: Validate vault password format before creating file[0m
+2025-09-18T18:12:55.7046073Z [36;1mVAULT_PASS="***"[0m
+2025-09-18T18:12:55.7046317Z [36;1mif [ -z "$VAULT_PASS" ]; then[0m
+2025-09-18T18:12:55.7046638Z [36;1m  echo "::error::ANSIBLE_VAULT_PASSWORD secret is empty"[0m
+2025-09-18T18:12:55.7046949Z [36;1m  exit 1[0m
+2025-09-18T18:12:55.7047141Z [36;1mfi[0m
+2025-09-18T18:12:55.7047320Z [36;1m[0m
+2025-09-18T18:12:55.7047521Z [36;1mif [ ${#VAULT_PASS} -lt 8 ]; then[0m
+2025-09-18T18:12:55.7047914Z [36;1m  echo "::error::ANSIBLE_VAULT_PASSWORD is too short (minimum 8 characters)"[0m
+2025-09-18T18:12:55.7048273Z [36;1m  exit 1[0m
+2025-09-18T18:12:55.7048458Z [36;1mfi[0m
+2025-09-18T18:12:55.7048634Z [36;1m[0m
+2025-09-18T18:12:55.7048932Z [36;1m# Create the vault password file from GitHub secret (securely)[0m
+2025-09-18T18:12:55.7049635Z [36;1mprintf '%s\n' "$VAULT_PASS" > ~/.ansible_vault_pass[0m
+2025-09-18T18:12:55.7049935Z [36;1m[0m
+2025-09-18T18:12:55.7050205Z [36;1m# Set proper permissions (only owner can read/write)[0m
+2025-09-18T18:12:55.7050523Z [36;1mchmod 600 ~/.ansible_vault_pass[0m
+2025-09-18T18:12:55.7050763Z [36;1m[0m
+2025-09-18T18:12:55.7051018Z [36;1mecho "✅ Ansible Vault password file created and secured"[0m
+2025-09-18T18:12:55.7051330Z [36;1mecho ""[0m
+2025-09-18T18:12:55.7051648Z [36;1mecho "📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!"[0m
+2025-09-18T18:12:55.7052113Z [36;1mecho "   To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml"[0m
+2025-09-18T18:12:55.7052750Z [36;1mecho "   To edit:    ansible-vault edit ansible/vars/vault-vars.yml"[0m
+2025-09-18T18:12:55.7053185Z [36;1mecho "   Password should match the ANSIBLE_VAULT_PASSWORD secret"[0m
+2025-09-18T18:12:55.7084346Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:12:55.7084595Z env:
+2025-09-18T18:12:55.7084798Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:12:55.7085062Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:12:55.7085308Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:12:55.7085526Z ##[endgroup]
+2025-09-18T18:12:55.7133247Z 🔐 Setting up Ansible Vault password file...
+2025-09-18T18:12:55.7144840Z ✅ Ansible Vault password file created and secured
+2025-09-18T18:12:55.7145231Z 
+2025-09-18T18:12:55.7145610Z 📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!
+2025-09-18T18:12:55.7146299Z    To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml
+2025-09-18T18:12:55.7147112Z    To edit:    ansible-vault edit ansible/vars/vault-vars.yml
+2025-09-18T18:12:55.7147763Z    Password should match the ANSIBLE_VAULT_PASSWORD secret
+2025-09-18T18:12:55.7170659Z ##[group]Run echo "🔍 Validating Ansible Vault encryption..."
+2025-09-18T18:12:55.7171107Z [36;1mecho "🔍 Validating Ansible Vault encryption..."[0m
+2025-09-18T18:12:55.7171410Z [36;1m[0m
+2025-09-18T18:12:55.7171617Z [36;1m# Check if vault-vars.yml exists[0m
+2025-09-18T18:12:55.7171936Z [36;1mif [ ! -f "ansible/vars/vault-vars.yml" ]; then[0m
+2025-09-18T18:12:55.7172312Z [36;1m  echo "::error::ansible/vars/vault-vars.yml file not found!"[0m
+2025-09-18T18:12:55.7172636Z [36;1m  exit 1[0m
+2025-09-18T18:12:55.7172830Z [36;1mfi[0m
+2025-09-18T18:12:55.7173008Z [36;1m[0m
+2025-09-18T18:12:55.7173322Z [36;1m# Check if the file is encrypted (Ansible Vault files start with $ANSIBLE_VAULT)[0m
+2025-09-18T18:12:55.7173830Z [36;1mif ! head -1 ansible/vars/vault-vars.yml | grep -q "^\$ANSIBLE_VAULT"; then[0m
+2025-09-18T18:12:55.7174351Z [36;1m  echo "::error::ansible/vars/vault-vars.yml is not encrypted with Ansible Vault!"[0m
+2025-09-18T18:12:55.7174779Z [36;1m  echo ""[0m
+2025-09-18T18:12:55.7175013Z [36;1m  echo "🚨 SECURITY ISSUE DETECTED!"[0m
+2025-09-18T18:12:55.7175413Z [36;1m  echo "Your vault-vars.yml file contains sensitive data but is not encrypted."[0m
+2025-09-18T18:12:55.7175798Z [36;1m  echo ""[0m
+2025-09-18T18:12:55.7176005Z [36;1m  echo "To fix this issue:"[0m
+2025-09-18T18:12:55.7176376Z [36;1m  echo "1. Encrypt the file: ansible-vault encrypt ansible/vars/vault-vars.yml"[0m
+2025-09-18T18:12:55.7176848Z [36;1m  echo "2. When editing:    ansible-vault edit ansible/vars/vault-vars.yml"[0m
+2025-09-18T18:12:55.7177320Z [36;1m  echo "3. Use the same password as your ANSIBLE_VAULT_PASSWORD secret"[0m
+2025-09-18T18:12:55.7177666Z [36;1m  echo ""[0m
+2025-09-18T18:12:55.7177979Z [36;1m  echo "This deployment will fail until the file is properly encrypted."[0m
+2025-09-18T18:12:55.7178335Z [36;1m  exit 1[0m
+2025-09-18T18:12:55.7178540Z [36;1mfi[0m
+2025-09-18T18:12:55.7178769Z [36;1m[0m
+2025-09-18T18:12:55.7179015Z [36;1m# Test if we can decrypt the file with our password[0m
+2025-09-18T18:12:55.7179797Z [36;1mif ! ansible-vault view ansible/vars/vault-vars.yml --vault-password-file ~/.ansible_vault_pass >/dev/null 2>&1; then[0m
+2025-09-18T18:12:55.7180495Z [36;1m  echo "::error::Cannot decrypt ansible/vars/vault-vars.yml with the provided vault password!"[0m
+2025-09-18T18:12:55.7180914Z [36;1m  echo ""[0m
+2025-09-18T18:12:55.7181143Z [36;1m  echo "Possible issues:"[0m
+2025-09-18T18:12:55.7181522Z [36;1m  echo "1. ANSIBLE_VAULT_PASSWORD secret doesn't match the encryption password"[0m
+2025-09-18T18:12:55.7182020Z [36;1m  echo "2. The vault-vars.yml file was encrypted with a different password"[0m
+2025-09-18T18:12:55.7182410Z [36;1m  echo "3. The file may be corrupted"[0m
+2025-09-18T18:12:55.7182672Z [36;1m  echo ""[0m
+2025-09-18T18:12:55.7182873Z [36;1m  echo "To fix:"[0m
+2025-09-18T18:12:55.7183240Z [36;1m  echo "1. Update the ANSIBLE_VAULT_PASSWORD secret to match the encryption password"[0m
+2025-09-18T18:12:55.7183946Z [36;1m  echo "2. Or re-encrypt the file with: ansible-vault encrypt ansible/vars/vault-vars.yml"[0m
+2025-09-18T18:12:55.7184340Z [36;1m  exit 1[0m
+2025-09-18T18:12:55.7184541Z [36;1mfi[0m
+2025-09-18T18:12:55.7184717Z [36;1m[0m
+2025-09-18T18:12:55.7184971Z [36;1mecho "✅ Ansible Vault encryption validation passed"[0m
+2025-09-18T18:12:55.7212471Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:12:55.7212717Z env:
+2025-09-18T18:12:55.7212916Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:12:55.7213179Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:12:55.7213416Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:12:55.7213626Z ##[endgroup]
+2025-09-18T18:12:55.7257515Z 🔍 Validating Ansible Vault encryption...
+2025-09-18T18:12:55.9871602Z ✅ Ansible Vault encryption validation passed
+2025-09-18T18:12:55.9900701Z ##[group]Run mkdir -p ~/.ssh
+2025-09-18T18:12:55.9901015Z [36;1mmkdir -p ~/.ssh[0m
+2025-09-18T18:12:55.9901390Z [36;1mecho "***[0m
+2025-09-18T18:12:55.9901819Z [36;1m***[0m
+2025-09-18T18:12:55.9902214Z [36;1m***[0m
+2025-09-18T18:12:55.9902575Z [36;1m***[0m
+2025-09-18T18:12:55.9902934Z [36;1m***[0m
+2025-09-18T18:12:55.9903168Z [36;1m***[0m
+2025-09-18T18:12:55.9903393Z [36;1m***[0m
+2025-09-18T18:12:55.9903585Z [36;1m" > ~/.ssh/id_rsa[0m
+2025-09-18T18:12:55.9903819Z [36;1mchmod 600 ~/.ssh/id_rsa[0m
+2025-09-18T18:12:55.9904051Z [36;1m[0m
+2025-09-18T18:12:55.9904292Z [36;1m# Validate SSH key (without exposing key details)[0m
+2025-09-18T18:12:55.9904673Z [36;1mif ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then[0m
+2025-09-18T18:12:55.9905049Z [36;1m  echo "::error::Invalid SSH private key format"[0m
+2025-09-18T18:12:55.9905341Z [36;1m  exit 1[0m
+2025-09-18T18:12:55.9905531Z [36;1mfi[0m
+2025-09-18T18:12:55.9905775Z [36;1mecho "🔑 SSH key validated"[0m
+2025-09-18T18:12:55.9936077Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:12:55.9936324Z env:
+2025-09-18T18:12:55.9936533Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:12:55.9936803Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:12:55.9937049Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:12:55.9937266Z ##[endgroup]
+2025-09-18T18:12:56.0041698Z 🔑 SSH key validated
+2025-09-18T18:12:56.0068748Z ##[group]Run # Validate IP address
+2025-09-18T18:12:56.0069098Z [36;1m# Validate IP address[0m
+2025-09-18T18:12:56.0069731Z [36;1mif [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then[0m
+2025-09-18T18:12:56.0070202Z [36;1m  echo "::error::Invalid or missing server IP address: '$DROPLET_IP'"[0m
+2025-09-18T18:12:56.0070546Z [36;1m  exit 1[0m
+2025-09-18T18:12:56.0070748Z [36;1mfi[0m
+2025-09-18T18:12:56.0070986Z [36;1mecho "🌐 Connecting to server: $DROPLET_IP"[0m
+2025-09-18T18:12:56.0071269Z [36;1m[0m
+2025-09-18T18:12:56.0071496Z [36;1m# Extended wait for new or updated resources[0m
+2025-09-18T18:12:56.0071887Z [36;1mif [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then[0m
+2025-09-18T18:12:56.0072378Z [36;1m  echo "⏳ Waiting for droplet to be fully ready (new/updated resources)..."[0m
+2025-09-18T18:12:56.0072733Z [36;1m  [0m
+2025-09-18T18:12:56.0072941Z [36;1m  # Network connectivity check[0m
+2025-09-18T18:12:56.0073289Z [36;1m  echo "🔍 Testing network connectivity..."[0m
+2025-09-18T18:12:56.0073578Z [36;1m  PING_TIMEOUT=180[0m
+2025-09-18T18:12:56.0073811Z [36;1m  PING_INTERVAL=10[0m
+2025-09-18T18:12:56.0074040Z [36;1m  PING_ELAPSED=0[0m
+2025-09-18T18:12:56.0074259Z [36;1m  [0m
+2025-09-18T18:12:56.0074491Z [36;1m  while [ $PING_ELAPSED -lt $PING_TIMEOUT ]; do[0m
+2025-09-18T18:12:56.0074839Z [36;1m    if ping -c 1 -W 5 $DROPLET_IP >/dev/null 2>&1; then[0m
+2025-09-18T18:12:56.0075225Z [36;1m      echo "✅ Network connectivity established to $DROPLET_IP"[0m
+2025-09-18T18:12:56.0075551Z [36;1m      break[0m
+2025-09-18T18:12:56.0075748Z [36;1m    fi[0m
+2025-09-18T18:12:56.0076047Z [36;1m    echo "⏳ Waiting for network connectivity... (${PING_ELAPSED}s elapsed)"[0m
+2025-09-18T18:12:56.0076581Z [36;1m    sleep $PING_INTERVAL[0m
+2025-09-18T18:12:56.0076873Z [36;1m    PING_ELAPSED=$((PING_ELAPSED + PING_INTERVAL))[0m
+2025-09-18T18:12:56.0077166Z [36;1m  done[0m
+2025-09-18T18:12:56.0077359Z [36;1m  [0m
+2025-09-18T18:12:56.0077591Z [36;1m  if [ $PING_ELAPSED -ge $PING_TIMEOUT ]; then[0m
+2025-09-18T18:12:56.0078003Z [36;1m    echo "::warning::Network connectivity check timed out after ${PING_TIMEOUT}s"[0m
+2025-09-18T18:12:56.0078380Z [36;1m  fi[0m
+2025-09-18T18:12:56.0078584Z [36;1m  [0m
+2025-09-18T18:12:56.0078815Z [36;1m  # Additional wait for system initialization[0m
+2025-09-18T18:12:56.0079364Z [36;1m  echo "⏳ Waiting for system services to initialize..."[0m
+2025-09-18T18:12:56.0079843Z [36;1m  sleep 60[0m
+2025-09-18T18:12:56.0080065Z [36;1mfi[0m
+2025-09-18T18:12:56.0080337Z [36;1m[0m
+2025-09-18T18:12:56.0080538Z [36;1m# SSH connectivity check[0m
+2025-09-18T18:12:56.0080819Z [36;1mecho "🔍 Testing SSH connectivity..."[0m
+2025-09-18T18:12:56.0081106Z [36;1mSSH_TIMEOUT=240[0m
+2025-09-18T18:12:56.0081328Z [36;1mSSH_INTERVAL=5[0m
+2025-09-18T18:12:56.0081571Z [36;1mSSH_ELAPSED=0[0m
+2025-09-18T18:12:56.0082023Z [36;1mwhile [ $SSH_ELAPSED -lt $SSH_TIMEOUT ]; do[0m
+2025-09-18T18:12:56.0082546Z [36;1m  if nc -z -w5 $DROPLET_IP 22 2>/dev/null; then[0m
+2025-09-18T18:12:56.0082908Z [36;1m    echo "✅ SSH port 22 is accessible on $DROPLET_IP"[0m
+2025-09-18T18:12:56.0083215Z [36;1m    break[0m
+2025-09-18T18:12:56.0083421Z [36;1m  fi[0m
+2025-09-18T18:12:56.0083709Z [36;1m  echo "⏳ Waiting for SSH service... (${SSH_ELAPSED}s elapsed)"[0m
+2025-09-18T18:12:56.0084053Z [36;1m  sleep $SSH_INTERVAL[0m
+2025-09-18T18:12:56.0084323Z [36;1m  SSH_ELAPSED=$((SSH_ELAPSED + SSH_INTERVAL))[0m
+2025-09-18T18:12:56.0084598Z [36;1mdone[0m
+2025-09-18T18:12:56.0084831Z [36;1mif [ $SSH_ELAPSED -ge $SSH_TIMEOUT ]; then[0m
+2025-09-18T18:12:56.0085201Z [36;1m  echo "::error::SSH service not accessible after ${SSH_TIMEOUT}s"[0m
+2025-09-18T18:12:56.0085530Z [36;1m  exit 1[0m
+2025-09-18T18:12:56.0085735Z [36;1mfi[0m
+2025-09-18T18:12:56.0085914Z [36;1m[0m
+2025-09-18T18:12:56.0086110Z [36;1m# Wait for SSH to be fully ready[0m
+2025-09-18T18:12:56.0086619Z [36;1mecho "⏳ Waiting for SSH service to fully initialize..."[0m
+2025-09-18T18:12:56.0086947Z [36;1msleep 30[0m
+2025-09-18T18:12:56.0087138Z [36;1m[0m
+2025-09-18T18:12:56.0087327Z [36;1m# Test actual SSH connection[0m
+2025-09-18T18:12:56.0087614Z [36;1mecho "🔍 Testing SSH authentication..."[0m
+2025-09-18T18:12:56.0087902Z [36;1mSSH_TEST_ATTEMPTS=5[0m
+2025-09-18T18:12:56.0088161Z [36;1mfor i in $(seq 1 $SSH_TEST_ATTEMPTS); do[0m
+2025-09-18T18:12:56.0088885Z [36;1m  if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o UserKnownHostsFile=/dev/null -o BatchMode=yes -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH test successful'" >/dev/null 2>&1; then[0m
+2025-09-18T18:12:56.0089819Z [36;1m    echo "✅ SSH authentication successful (attempt $i)"[0m
+2025-09-18T18:12:56.0090121Z [36;1m    break[0m
+2025-09-18T18:12:56.0090325Z [36;1m  else[0m
+2025-09-18T18:12:56.0090559Z [36;1m    if [ $i -eq $SSH_TEST_ATTEMPTS ]; then[0m
+2025-09-18T18:12:56.0090972Z [36;1m      echo "::error::SSH authentication failed after $SSH_TEST_ATTEMPTS attempts"[0m
+2025-09-18T18:12:56.0091505Z [36;1m      echo "Please check that the SSH key is correctly configured and the server is accessible"[0m
+2025-09-18T18:12:56.0091908Z [36;1m      exit 1[0m
+2025-09-18T18:12:56.0092115Z [36;1m    else[0m
+2025-09-18T18:12:56.0092453Z [36;1m      echo "⏳ SSH authentication failed, retrying... (attempt $i/$SSH_TEST_ATTEMPTS)"[0m
+2025-09-18T18:12:56.0092841Z [36;1m      sleep 15[0m
+2025-09-18T18:12:56.0093049Z [36;1m    fi[0m
+2025-09-18T18:12:56.0093243Z [36;1m  fi[0m
+2025-09-18T18:12:56.0093441Z [36;1mdone[0m
+2025-09-18T18:12:56.0120997Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:12:56.0121245Z env:
+2025-09-18T18:12:56.0121457Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:12:56.0121724Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:12:56.0122110Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:12:56.0122332Z   DROPLET_IP: 159.203.9.47
+2025-09-18T18:12:56.0122559Z   RESOURCES_EXIST: true
+2025-09-18T18:12:56.0122772Z   TERRAFORM_CHANGES: 
+2025-09-18T18:12:56.0122981Z ##[endgroup]
+2025-09-18T18:12:56.0169714Z 🌐 Connecting to server: 159.203.9.47
+2025-09-18T18:12:56.0170287Z 🔍 Testing SSH connectivity...
+2025-09-18T18:12:56.0833128Z ✅ SSH port 22 is accessible on 159.203.9.47
+2025-09-18T18:12:56.0833941Z ⏳ Waiting for SSH service to fully initialize...
+2025-09-18T18:13:26.0856432Z 🔍 Testing SSH authentication...
+2025-09-18T18:13:27.6059004Z ✅ SSH authentication successful (attempt 1)
+2025-09-18T18:13:27.6108156Z ##[group]Run echo "🔍 Validating DNS configuration for staging.boximity.ca..."
+2025-09-18T18:13:27.6108726Z [36;1mecho "🔍 Validating DNS configuration for staging.boximity.ca..."[0m
+2025-09-18T18:13:27.6109090Z [36;1m[0m
+2025-09-18T18:13:27.6109551Z [36;1m# Check if DNS resolves to our droplet IP[0m
+2025-09-18T18:13:27.6109877Z [36;1mecho "Expected IP: $DROPLET_IP"[0m
+2025-09-18T18:13:27.6110202Z [36;1mecho "DNS resolution for staging.boximity.ca:"[0m
+2025-09-18T18:13:27.6110497Z [36;1m[0m
+2025-09-18T18:13:27.6110704Z [36;1m# Try multiple DNS lookup methods[0m
+2025-09-18T18:13:27.6111227Z [36;1mDNS_IP=$(nslookup staging.boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")[0m
+2025-09-18T18:13:27.6111737Z [36;1mif [ -z "$DNS_IP" ]; then[0m
+2025-09-18T18:13:27.6112067Z [36;1m  DNS_IP=$(dig +short staging.boximity.ca | head -1 || echo "")[0m
+2025-09-18T18:13:27.6112387Z [36;1mfi[0m
+2025-09-18T18:13:27.6112595Z [36;1m[0m
+2025-09-18T18:13:27.6112790Z [36;1mecho "Resolved IP: $DNS_IP"[0m
+2025-09-18T18:13:27.6113033Z [36;1m[0m
+2025-09-18T18:13:27.6113242Z [36;1mif [ "$DNS_IP" = "$DROPLET_IP" ]; then[0m
+2025-09-18T18:13:27.6113675Z [36;1m  echo "✅ DNS configuration is correct - staging.boximity.ca resolves to $DROPLET_IP"[0m
+2025-09-18T18:13:27.6114067Z [36;1melse[0m
+2025-09-18T18:13:27.6114309Z [36;1m  echo "⚠️ DNS configuration issue detected:"[0m
+2025-09-18T18:13:27.6114624Z [36;1m  echo "  - Expected: $DROPLET_IP"[0m
+2025-09-18T18:13:27.6114898Z [36;1m  echo "  - Actual: $DNS_IP"[0m
+2025-09-18T18:13:27.6115196Z [36;1m  echo "  - This may cause SSL certificate issues"[0m
+2025-09-18T18:13:27.6115650Z [36;1m  echo "  - Please ensure staging.boximity.ca points to $DROPLET_IP in your DNS settings"[0m
+2025-09-18T18:13:27.6116053Z [36;1mfi[0m
+2025-09-18T18:13:27.6145631Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:13:27.6145874Z env:
+2025-09-18T18:13:27.6146068Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:13:27.6146341Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:13:27.6146578Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:13:27.6146797Z   DROPLET_IP: 159.203.9.47
+2025-09-18T18:13:27.6147009Z ##[endgroup]
+2025-09-18T18:13:27.6192966Z 🔍 Validating DNS configuration for staging.boximity.ca...
+2025-09-18T18:13:27.6193516Z Expected IP: 159.203.9.47
+2025-09-18T18:13:27.6193793Z DNS resolution for staging.boximity.ca:
+2025-09-18T18:13:27.7896448Z Resolved IP: 172.67.175.174
+2025-09-18T18:13:27.7897164Z ⚠️ DNS configuration issue detected:
+2025-09-18T18:13:27.7897579Z   - Expected: 159.203.9.47
+2025-09-18T18:13:27.7897979Z   - Actual: 172.67.175.174
+2025-09-18T18:13:27.7898369Z   - This may cause SSL certificate issues
+2025-09-18T18:13:27.7899389Z   - Please ensure staging.boximity.ca points to 159.203.9.47 in your DNS settings
+2025-09-18T18:13:27.7924204Z ##[group]Run echo "📝 Creating Ansible inventory..."
+2025-09-18T18:13:27.7924619Z [36;1mecho "📝 Creating Ansible inventory..."[0m
+2025-09-18T18:13:27.7924896Z [36;1m[0m
+2025-09-18T18:13:27.7925132Z [36;1m# Create ansible directory if it doesn't exist[0m
+2025-09-18T18:13:27.7925431Z [36;1mmkdir -p ansible[0m
+2025-09-18T18:13:27.7925650Z [36;1m[0m
+2025-09-18T18:13:27.7925845Z [36;1m# Create dynamic inventory[0m
+2025-09-18T18:13:27.7926124Z [36;1mcat > ansible/inventory.yml << EOF[0m
+2025-09-18T18:13:27.7926549Z [36;1mall:[0m
+2025-09-18T18:13:27.7926738Z [36;1m  children:[0m
+2025-09-18T18:13:27.7926949Z [36;1m    digitalocean:[0m
+2025-09-18T18:13:27.7927174Z [36;1m      hosts:[0m
+2025-09-18T18:13:27.7927385Z [36;1m        staging_server:[0m
+2025-09-18T18:13:27.7927641Z [36;1m          ansible_host: $DROPLET_IP[0m
+2025-09-18T18:13:27.7927910Z [36;1m          ansible_user: root[0m
+2025-09-18T18:13:27.7928240Z [36;1m          ansible_ssh_private_key_file: ~/.ssh/id_rsa[0m
+2025-09-18T18:13:27.7928556Z [36;1m          ansible_connection: ssh[0m
+2025-09-18T18:13:27.7929048Z [36;1m          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60'[0m
+2025-09-18T18:13:27.7930142Z [36;1m          ansible_ssh_timeout: 60[0m
+2025-09-18T18:13:27.7930429Z [36;1m          ansible_ssh_retries: 3[0m
+2025-09-18T18:13:27.7930680Z [36;1m      vars:[0m
+2025-09-18T18:13:27.7930914Z [36;1m        staging_server_ip: $DROPLET_IP[0m
+2025-09-18T18:13:27.7931257Z [36;1m        ansible_python_interpreter: /usr/bin/python3[0m
+2025-09-18T18:13:27.7931550Z [36;1mEOF[0m
+2025-09-18T18:13:27.7931764Z [36;1mecho "✅ Ansible inventory created:"[0m
+2025-09-18T18:13:27.7932041Z [36;1mcat ansible/inventory.yml[0m
+2025-09-18T18:13:27.7960837Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:13:27.7961080Z env:
+2025-09-18T18:13:27.7961282Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:13:27.7961538Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:13:27.7961804Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:13:27.7962028Z   DROPLET_IP: 159.203.9.47
+2025-09-18T18:13:27.7962244Z ##[endgroup]
+2025-09-18T18:13:27.8006651Z 📝 Creating Ansible inventory...
+2025-09-18T18:13:27.8030568Z ✅ Ansible inventory created:
+2025-09-18T18:13:27.8038400Z all:
+2025-09-18T18:13:27.8038697Z   children:
+2025-09-18T18:13:27.8039009Z     digitalocean:
+2025-09-18T18:13:27.8039484Z       hosts:
+2025-09-18T18:13:27.8039765Z         staging_server:
+2025-09-18T18:13:27.8040000Z           ansible_host: 159.203.9.47
+2025-09-18T18:13:27.8040264Z           ansible_user: root
+2025-09-18T18:13:27.8040527Z           ansible_ssh_private_key_file: ~/.ssh/id_rsa
+2025-09-18T18:13:27.8040820Z           ansible_connection: ssh
+2025-09-18T18:13:27.8041287Z           ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60'
+2025-09-18T18:13:27.8042198Z           ansible_ssh_timeout: 60
+2025-09-18T18:13:27.8042670Z           ansible_ssh_retries: 3
+2025-09-18T18:13:27.8043045Z       vars:
+2025-09-18T18:13:27.8043282Z         staging_server_ip: 159.203.9.47
+2025-09-18T18:13:27.8043589Z         ansible_python_interpreter: /usr/bin/python3
+2025-09-18T18:13:27.8062999Z ##[group]Run echo "🔍 Testing Ansible connectivity..."
+2025-09-18T18:13:27.8063392Z [36;1mecho "🔍 Testing Ansible connectivity..."[0m
+2025-09-18T18:13:27.8063673Z [36;1m[0m
+2025-09-18T18:13:27.8063871Z [36;1m# Test with a simple ping[0m
+2025-09-18T18:13:27.8064242Z [36;1mif ansible all -i ansible/inventory.yml -m ping --timeout=60; then[0m
+2025-09-18T18:13:27.8064781Z [36;1m  echo "✅ Ansible connectivity test passed"[0m
+2025-09-18T18:13:27.8065059Z [36;1melse[0m
+2025-09-18T18:13:27.8065303Z [36;1m  echo "::error::Ansible connectivity test failed"[0m
+2025-09-18T18:13:27.8065649Z [36;1m  echo "Debug: Checking inventory setup..."[0m
+2025-09-18T18:13:27.8065945Z [36;1m  cat ansible/inventory.yml[0m
+2025-09-18T18:13:27.8066404Z [36;1m  echo "SSH key validation: $(ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1 && echo 'valid' || echo 'invalid')"[0m
+2025-09-18T18:13:27.8066842Z [36;1m  exit 1[0m
+2025-09-18T18:13:27.8067032Z [36;1mfi[0m
+2025-09-18T18:13:27.8093353Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:13:27.8093593Z env:
+2025-09-18T18:13:27.8093793Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:13:27.8094066Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:13:27.8094308Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:13:27.8094519Z ##[endgroup]
+2025-09-18T18:13:27.8137065Z 🔍 Testing Ansible connectivity...
+2025-09-18T18:13:31.7163116Z [0;32mstaging_server | SUCCESS => {[0m
+2025-09-18T18:13:31.7163684Z [0;32m    "changed": false,[0m
+2025-09-18T18:13:31.7164154Z [0;32m    "ping": "pong"[0m
+2025-09-18T18:13:31.7164558Z [0;32m}[0m
+2025-09-18T18:13:31.7537694Z ✅ Ansible connectivity test passed
+2025-09-18T18:13:31.7567302Z ##[group]Run echo "🚀 Starting Ansible deployment..."
+2025-09-18T18:13:31.7567746Z [36;1mecho "🚀 Starting Ansible deployment..."[0m
+2025-09-18T18:13:31.7568036Z [36;1m[0m
+2025-09-18T18:13:31.7568399Z [36;1m# Note: Ansible will read sensitive variables from the encrypted vault-vars.yml file[0m
+2025-09-18T18:13:31.7568955Z [36;1m# No need to validate environment variables here as they're handled by Ansible Vault[0m
+2025-09-18T18:13:31.7569541Z [36;1m[0m
+2025-09-18T18:13:31.7569791Z [36;1mecho "✅ Ansible Vault authentication configured:"[0m
+2025-09-18T18:13:31.7570196Z [36;1mecho "   - Vault file: ansible/vars/vault-vars.yml (encrypted)"[0m
+2025-09-18T18:13:31.7570603Z [36;1mecho "   - Password file: ~/.ansible_vault_pass"[0m
+2025-09-18T18:13:31.7570916Z [36;1m[0m
+2025-09-18T18:13:31.7571133Z [36;1m# Run Ansible playbook with retry logic[0m
+2025-09-18T18:13:31.7571424Z [36;1mDEPLOY_SUCCESS=false[0m
+2025-09-18T18:13:31.7571661Z [36;1mMAX_ATTEMPTS=2[0m
+2025-09-18T18:13:31.7571951Z [36;1mfor attempt in $(seq 1 $MAX_ATTEMPTS); do[0m
+2025-09-18T18:13:31.7572310Z [36;1m  echo "📋 Deployment attempt $attempt of $MAX_ATTEMPTS..."[0m
+2025-09-18T18:13:31.7572624Z [36;1m  [0m
+2025-09-18T18:13:31.7572831Z [36;1m  if ansible-playbook \[0m
+2025-09-18T18:13:31.7573092Z [36;1m    -i ansible/inventory.yml \[0m
+2025-09-18T18:13:31.7573377Z [36;1m    ansible/staging-deploy.yml \[0m
+2025-09-18T18:13:31.7573642Z [36;1m    --timeout=60 \[0m
+2025-09-18T18:13:31.7573912Z [36;1m    --extra-vars "ansible_ssh_timeout=60" \[0m
+2025-09-18T18:13:31.7574264Z [36;1m    --vault-password-file ~/.ansible_vault_pass; then[0m
+2025-09-18T18:13:31.7574646Z [36;1m    echo "✅ Deployment successful on attempt $attempt"[0m
+2025-09-18T18:13:31.7574969Z [36;1m    DEPLOY_SUCCESS=true[0m
+2025-09-18T18:13:31.7575210Z [36;1m    break[0m
+2025-09-18T18:13:31.7575402Z [36;1m  else[0m
+2025-09-18T18:13:31.7575639Z [36;1m    echo "❌ Deployment attempt $attempt failed"[0m
+2025-09-18T18:13:31.7575963Z [36;1m    if [ $attempt -lt $MAX_ATTEMPTS ]; then[0m
+2025-09-18T18:13:31.7576283Z [36;1m      echo "⏳ Waiting 60 seconds before retry..."[0m
+2025-09-18T18:13:31.7576569Z [36;1m      sleep 60[0m
+2025-09-18T18:13:31.7576781Z [36;1m      [0m
+2025-09-18T18:13:31.7577004Z [36;1m      # Test connectivity before retry[0m
+2025-09-18T18:13:31.7577326Z [36;1m      echo "🔍 Testing connectivity before retry..."[0m
+2025-09-18T18:13:31.7577733Z [36;1m      if ! ansible all -i ansible/inventory.yml -m ping --timeout=30; then[0m
+2025-09-18T18:13:31.7578192Z [36;1m        echo "::error::Lost connectivity to server, aborting retries"[0m
+2025-09-18T18:13:31.7578533Z [36;1m        break[0m
+2025-09-18T18:13:31.7578747Z [36;1m      fi[0m
+2025-09-18T18:13:31.7578934Z [36;1m    fi[0m
+2025-09-18T18:13:31.7579119Z [36;1m  fi[0m
+2025-09-18T18:13:31.7579472Z [36;1mdone[0m
+2025-09-18T18:13:31.7579703Z [36;1mif [ "$DEPLOY_SUCCESS" != "true" ]; then[0m
+2025-09-18T18:13:31.7580039Z [36;1m  echo "::error::All deployment attempts failed"[0m
+2025-09-18T18:13:31.7580329Z [36;1m  exit 1[0m
+2025-09-18T18:13:31.7580524Z [36;1mfi[0m
+2025-09-18T18:13:31.7580781Z [36;1mecho "🎉 Ansible deployment completed successfully!"[0m
+2025-09-18T18:13:31.7610078Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:13:31.7610326Z env:
+2025-09-18T18:13:31.7610526Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:13:31.7610784Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:13:31.7611019Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:13:31.7611290Z   GIT_REPO_URL: https://github.com/bxmty/dotca.git
+2025-09-18T18:13:31.7611591Z   GITHUB_ACTIONS: true
+2025-09-18T18:13:31.7611805Z   DROPLET_IP: 159.203.9.47
+2025-09-18T18:13:31.7612026Z ##[endgroup]
+2025-09-18T18:13:31.7657913Z 🚀 Starting Ansible deployment...
+2025-09-18T18:13:31.7658574Z ✅ Ansible Vault authentication configured:
+2025-09-18T18:13:31.7659347Z    - Vault file: ansible/vars/vault-vars.yml (encrypted)
+2025-09-18T18:13:31.7659918Z    - Password file: ~/.ansible_vault_pass
+2025-09-18T18:13:31.7671721Z 📋 Deployment attempt 1 of 2...
+2025-09-18T18:13:32.2790668Z [0;35m[DEPRECATION WARNING]: community.general.yaml has been deprecated. The plugin [0m
+2025-09-18T18:13:32.2791515Z [0;35mhas been superseded by the the option `result_format=yaml` in callback plugin [0m
+2025-09-18T18:13:32.2792255Z [0;35mansible.builtin.default from ansible-core 2.13 onwards. This feature will be [0m
+2025-09-18T18:13:32.2793019Z [0;35mremoved from community.general in version 12.0.0. Deprecation warnings can be [0m
+2025-09-18T18:13:32.2793711Z [0;35mdisabled by setting deprecation_warnings=False in ansible.cfg.[0m
+2025-09-18T18:13:32.3311791Z 
+2025-09-18T18:13:32.3312198Z PLAY [Fix temporary directory issues] ******************************************
+2025-09-18T18:13:32.3312578Z 
+2025-09-18T18:13:32.3312800Z TASK [Ensure /tmp directory exists with proper permissions] ********************
+2025-09-18T18:13:32.4964625Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:13:32.4964970Z 
+2025-09-18T18:13:32.4965347Z PLAY [Setup Staging environment for dotca] *************************************
+2025-09-18T18:13:32.4965825Z 
+2025-09-18T18:13:32.4966097Z TASK [Gathering Facts] *********************************************************
+2025-09-18T18:13:35.5949332Z [0;32mok: [staging_server][0m
+2025-09-18T18:13:35.5949688Z 
+2025-09-18T18:13:35.5949976Z TASK [Update apt cache] ********************************************************
+2025-09-18T18:13:39.8689426Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:13:39.8689800Z 
+2025-09-18T18:13:39.8690106Z TASK [Upgrade all packages] ****************************************************
+2025-09-18T18:13:47.3241425Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:13:47.3241773Z 
+2025-09-18T18:13:47.3242051Z TASK [Install required packages] ***********************************************
+2025-09-18T18:13:51.8529567Z [0;32mok: [staging_server][0m
+2025-09-18T18:13:51.8529851Z 
+2025-09-18T18:13:51.8530136Z TASK [Remove old Docker Compose version] ***************************************
+2025-09-18T18:13:54.2198843Z [0;32mok: [staging_server][0m
+2025-09-18T18:13:54.2199357Z 
+2025-09-18T18:13:54.2199677Z TASK [Install Docker Compose v2] ***********************************************
+2025-09-18T18:13:56.4330048Z [0;32mok: [staging_server][0m
+2025-09-18T18:13:56.4330313Z 
+2025-09-18T18:13:56.4330549Z TASK [Add Docker's official GPG key] *******************************************
+2025-09-18T18:13:58.5663824Z [0;32mok: [staging_server][0m
+2025-09-18T18:13:58.5664162Z 
+2025-09-18T18:13:58.5664410Z TASK [Add Docker repository] ***************************************************
+2025-09-18T18:14:00.6059885Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:00.6060262Z 
+2025-09-18T18:14:00.6060617Z TASK [Install Docker Engine] ***************************************************
+2025-09-18T18:14:05.4423784Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:05.4424137Z 
+2025-09-18T18:14:05.4424520Z TASK [Install NTP for time synchronization] ************************************
+2025-09-18T18:14:09.9765343Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:09.9765682Z 
+2025-09-18T18:14:09.9765931Z TASK [Configure NTP to use time.nist.gov] **************************************
+2025-09-18T18:14:11.8045089Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:11.8045431Z 
+2025-09-18T18:14:11.8045648Z TASK [Restart NTP service] *****************************************************
+2025-09-18T18:14:13.9614095Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:14:13.9614550Z 
+2025-09-18T18:14:13.9614942Z TASK [Set timezone to Eastern Time] ********************************************
+2025-09-18T18:14:15.7072031Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:15.7072365Z 
+2025-09-18T18:14:15.7072911Z TASK [Start and enable Docker service] *****************************************
+2025-09-18T18:14:17.6594357Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:17.6594692Z 
+2025-09-18T18:14:17.6595047Z TASK [Verify Docker Compose installation] **************************************
+2025-09-18T18:14:19.2865145Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:19.2865404Z 
+2025-09-18T18:14:19.2865625Z TASK [Create application directory] ********************************************
+2025-09-18T18:14:21.0468561Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:21.0468880Z 
+2025-09-18T18:14:21.0469367Z TASK [Debug GHCR variables] ****************************************************
+2025-09-18T18:14:21.1066432Z [0;32mok: [staging_server] => [0m
+2025-09-18T18:14:21.1066914Z [0;32m  msg:[0m
+2025-09-18T18:14:21.1068187Z [0;32m  - 'GITHUB_TOKEN (first 10 chars): ***...'[0m
+2025-09-18T18:14:21.1068724Z [0;32m  - 'GITHUB_USERNAME: bxmty'[0m
+2025-09-18T18:14:21.1069522Z [0;32m  - 'GITHUB_REPO: bxmty/dotca'[0m
+2025-09-18T18:14:21.1070168Z [0;32m  - 'DOCKER_IMAGE env var override: ghcr.io/bxmty/dotca:staging'[0m
+2025-09-18T18:14:21.1070836Z [0;32m  - 'Final docker_image: ghcr.io/bxmty/dotca:staging'[0m
+2025-09-18T18:14:21.1071182Z 
+2025-09-18T18:14:21.1071496Z TASK [Generate docker-compose.yml from template] *******************************
+2025-09-18T18:14:24.0633813Z [0;32mok: [staging_server][0m
+2025-09-18T18:14:24.0634133Z 
+2025-09-18T18:14:24.0634493Z TASK [Validate docker-compose.yml generation] **********************************
+2025-09-18T18:14:25.6709552Z [0;31mfatal: [staging_server]: FAILED! => changed=false [0m
+2025-09-18T18:14:25.6710062Z [0;31m  cmd:[0m
+2025-09-18T18:14:25.6710333Z [0;31m  - test[0m
+2025-09-18T18:14:25.6710606Z [0;31m  - -f[0m
+2025-09-18T18:14:25.6710914Z [0;31m  - /app/docker-compose.yml[0m
+2025-09-18T18:14:25.6711250Z [0;31m  - '&&'[0m
+2025-09-18T18:14:25.6711503Z [0;31m  - echo[0m
+2025-09-18T18:14:25.6711877Z [0;31m  - ✅ docker-compose.yml generated successfully[0m
+2025-09-18T18:14:25.6712321Z [0;31m  delta: '0:00:00.004053'[0m
+2025-09-18T18:14:25.6712678Z [0;31m  end: '2025-09-18 14:14:25.471114'[0m
+2025-09-18T18:14:25.6713033Z [0;31m  failed_when_result: true[0m
+2025-09-18T18:14:25.6713382Z [0;31m  msg: non-zero return code[0m
+2025-09-18T18:14:25.6713705Z [0;31m  rc: 2[0m
+2025-09-18T18:14:25.6714008Z [0;31m  start: '2025-09-18 14:14:25.467061'[0m
+2025-09-18T18:14:25.6714398Z [0;31m  stderr: 'test: extra argument ‘&&’'[0m
+2025-09-18T18:14:25.6714772Z [0;31m  stderr_lines: <omitted>[0m
+2025-09-18T18:14:25.6715098Z [0;31m  stdout: ''[0m
+2025-09-18T18:14:25.6715374Z [0;31m  stdout_lines: <omitted>[0m
+2025-09-18T18:14:25.6715538Z 
+2025-09-18T18:14:25.6715677Z PLAY RECAP *********************************************************************
+2025-09-18T18:14:25.6716365Z [0;31mstaging_server[0m             : [0;32mok=19  [0m [0;33mchanged=4   [0m unreachable=0    [0;31mfailed=1   [0m skipped=0    rescued=0    ignored=0   
+2025-09-18T18:14:25.6716784Z 
+2025-09-18T18:14:25.7177592Z ❌ Deployment attempt 1 failed
+2025-09-18T18:14:25.7178276Z ⏳ Waiting 60 seconds before retry...
+2025-09-18T18:15:25.7193571Z 🔍 Testing connectivity before retry...
+2025-09-18T18:15:29.4336101Z [0;32mstaging_server | SUCCESS => {[0m
+2025-09-18T18:15:29.4336576Z [0;32m    "changed": false,[0m
+2025-09-18T18:15:29.4336875Z [0;32m    "ping": "pong"[0m
+2025-09-18T18:15:29.4337126Z [0;32m}[0m
+2025-09-18T18:15:29.4720100Z 📋 Deployment attempt 2 of 2...
+2025-09-18T18:15:29.8805422Z [0;35m[DEPRECATION WARNING]: community.general.yaml has been deprecated. The plugin [0m
+2025-09-18T18:15:29.8806303Z [0;35mhas been superseded by the the option `result_format=yaml` in callback plugin [0m
+2025-09-18T18:15:29.8807102Z [0;35mansible.builtin.default from ansible-core 2.13 onwards. This feature will be [0m
+2025-09-18T18:15:29.8807919Z [0;35mremoved from community.general in version 12.0.0. Deprecation warnings can be [0m
+2025-09-18T18:15:29.8808651Z [0;35mdisabled by setting deprecation_warnings=False in ansible.cfg.[0m
+2025-09-18T18:15:29.9033796Z 
+2025-09-18T18:15:29.9034239Z PLAY [Fix temporary directory issues] ******************************************
+2025-09-18T18:15:29.9034794Z 
+2025-09-18T18:15:29.9035442Z TASK [Ensure /tmp directory exists with proper permissions] ********************
+2025-09-18T18:15:30.0819681Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:15:30.0819994Z 
+2025-09-18T18:15:30.0820256Z PLAY [Setup Staging environment for dotca] *************************************
+2025-09-18T18:15:30.0820627Z 
+2025-09-18T18:15:30.0820814Z TASK [Gathering Facts] *********************************************************
+2025-09-18T18:15:33.1155385Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:33.1155725Z 
+2025-09-18T18:15:33.1156009Z TASK [Update apt cache] ********************************************************
+2025-09-18T18:15:37.6883817Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:15:37.6884080Z 
+2025-09-18T18:15:37.6884276Z TASK [Upgrade all packages] ****************************************************
+2025-09-18T18:15:41.1016859Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:41.1017157Z 
+2025-09-18T18:15:41.1017398Z TASK [Install required packages] ***********************************************
+2025-09-18T18:15:45.8154566Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:45.8154884Z 
+2025-09-18T18:15:45.8155152Z TASK [Remove old Docker Compose version] ***************************************
+2025-09-18T18:15:48.3607284Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:48.3607592Z 
+2025-09-18T18:15:48.3607852Z TASK [Install Docker Compose v2] ***********************************************
+2025-09-18T18:15:50.5428583Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:50.5428888Z 
+2025-09-18T18:15:50.5429301Z TASK [Add Docker's official GPG key] *******************************************
+2025-09-18T18:15:52.7785305Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:52.7785648Z 
+2025-09-18T18:15:52.7785964Z TASK [Add Docker repository] ***************************************************
+2025-09-18T18:15:54.8837125Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:54.8837443Z 
+2025-09-18T18:15:54.8837736Z TASK [Install Docker Engine] ***************************************************
+2025-09-18T18:15:59.6477419Z [0;32mok: [staging_server][0m
+2025-09-18T18:15:59.6477751Z 
+2025-09-18T18:15:59.6478085Z TASK [Install NTP for time synchronization] ************************************
+2025-09-18T18:16:04.7767431Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:04.7767742Z 
+2025-09-18T18:16:04.7768006Z TASK [Configure NTP to use time.nist.gov] **************************************
+2025-09-18T18:16:06.7524420Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:06.7524764Z 
+2025-09-18T18:16:06.7525064Z TASK [Restart NTP service] *****************************************************
+2025-09-18T18:16:09.0599308Z [0;33mchanged: [staging_server][0m
+2025-09-18T18:16:09.0599632Z 
+2025-09-18T18:16:09.0599862Z TASK [Set timezone to Eastern Time] ********************************************
+2025-09-18T18:16:11.0470298Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:11.0470548Z 
+2025-09-18T18:16:11.0470768Z TASK [Start and enable Docker service] *****************************************
+2025-09-18T18:16:13.1601932Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:13.1602265Z 
+2025-09-18T18:16:13.1602487Z TASK [Verify Docker Compose installation] **************************************
+2025-09-18T18:16:14.9892985Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:14.9893298Z 
+2025-09-18T18:16:14.9893569Z TASK [Create application directory] ********************************************
+2025-09-18T18:16:17.0106029Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:17.0106900Z 
+2025-09-18T18:16:17.0107322Z TASK [Debug GHCR variables] ****************************************************
+2025-09-18T18:16:17.0385436Z [0;32mok: [staging_server] => [0m
+2025-09-18T18:16:17.0385945Z [0;32m  msg:[0m
+2025-09-18T18:16:17.0387084Z [0;32m  - 'GITHUB_TOKEN (first 10 chars): ***...'[0m
+2025-09-18T18:16:17.0388194Z [0;32m  - 'GITHUB_USERNAME: bxmty'[0m
+2025-09-18T18:16:17.0389024Z [0;32m  - 'GITHUB_REPO: bxmty/dotca'[0m
+2025-09-18T18:16:17.0390079Z [0;32m  - 'DOCKER_IMAGE env var override: ghcr.io/bxmty/dotca:staging'[0m
+2025-09-18T18:16:17.0391221Z [0;32m  - 'Final docker_image: ghcr.io/bxmty/dotca:staging'[0m
+2025-09-18T18:16:17.0391838Z 
+2025-09-18T18:16:17.0392333Z TASK [Generate docker-compose.yml from template] *******************************
+2025-09-18T18:16:20.2844738Z [0;32mok: [staging_server][0m
+2025-09-18T18:16:20.2845190Z 
+2025-09-18T18:16:20.2845638Z TASK [Validate docker-compose.yml generation] **********************************
+2025-09-18T18:16:22.0613695Z [0;31mfatal: [staging_server]: FAILED! => changed=false [0m
+2025-09-18T18:16:22.0666770Z [0;31m  cmd:[0m
+2025-09-18T18:16:22.0667100Z [0;31m  - test[0m
+2025-09-18T18:16:22.0667400Z [0;31m  - -f[0m
+2025-09-18T18:16:22.0667846Z [0;31m  - /app/docker-compose.yml[0m
+2025-09-18T18:16:22.0668291Z [0;31m  - '&&'[0m
+2025-09-18T18:16:22.0668601Z [0;31m  - echo[0m
+2025-09-18T18:16:22.0669115Z [0;31m  - ✅ docker-compose.yml generated successfully[0m
+2025-09-18T18:16:22.0669821Z [0;31m  delta: '0:00:00.005306'[0m
+2025-09-18T18:16:22.0670138Z [0;31m  end: '2025-09-18 14:16:21.839645'[0m
+2025-09-18T18:16:22.0670472Z [0;31m  failed_when_result: true[0m
+2025-09-18T18:16:22.0670774Z [0;31m  msg: non-zero return code[0m
+2025-09-18T18:16:22.0671048Z [0;31m  rc: 2[0m
+2025-09-18T18:16:22.0671315Z [0;31m  start: '2025-09-18 14:16:21.834339'[0m
+2025-09-18T18:16:22.0671654Z [0;31m  stderr: 'test: extra argument ‘&&’'[0m
+2025-09-18T18:16:22.0671962Z [0;31m  stderr_lines: <omitted>[0m
+2025-09-18T18:16:22.0672236Z [0;31m  stdout: ''[0m
+2025-09-18T18:16:22.0672485Z [0;31m  stdout_lines: <omitted>[0m
+2025-09-18T18:16:22.0672652Z 
+2025-09-18T18:16:22.0672789Z PLAY RECAP *********************************************************************
+2025-09-18T18:16:22.0673475Z [0;31mstaging_server[0m             : [0;32mok=19  [0m [0;33mchanged=3   [0m unreachable=0    [0;31mfailed=1   [0m skipped=0    rescued=0    ignored=0   
+2025-09-18T18:16:22.0673899Z 
+2025-09-18T18:16:22.1085910Z ❌ Deployment attempt 2 failed
+2025-09-18T18:16:22.1106358Z ##[error]All deployment attempts failed
+2025-09-18T18:16:22.1115205Z ##[error]Process completed with exit code 1.
+2025-09-18T18:16:22.1152978Z ##[group]Run echo "🧹 Cleaning up sensitive files..."
+2025-09-18T18:16:22.1153389Z [36;1mecho "🧹 Cleaning up sensitive files..."[0m
+2025-09-18T18:16:22.1153714Z [36;1mrm -f ~/.ansible_vault_pass[0m
+2025-09-18T18:16:22.1153965Z [36;1m[0m
+2025-09-18T18:16:22.1154282Z [36;1m# SECURITY: Clean up any Ansible log files that might contain sensitive data[0m
+2025-09-18T18:16:22.1154686Z [36;1mrm -f ansible/ansible.log[0m
+2025-09-18T18:16:22.1154944Z [36;1mrm -f ansible.log[0m
+2025-09-18T18:16:22.1155167Z [36;1m[0m
+2025-09-18T18:16:22.1155427Z [36;1mecho "✅ Vault password file and logs securely removed"[0m
+2025-09-18T18:16:22.1185010Z shell: /usr/bin/bash -e {0}
+2025-09-18T18:16:22.1185263Z env:
+2025-09-18T18:16:22.1185479Z   ANSIBLE_HOST_KEY_CHECKING: False
+2025-09-18T18:16:22.1185751Z   ANSIBLE_STDOUT_CALLBACK: yaml
+2025-09-18T18:16:22.1185988Z   ANSIBLE_FORCE_COLOR: 1
+2025-09-18T18:16:22.1186209Z ##[endgroup]
+2025-09-18T18:16:22.1232417Z 🧹 Cleaning up sensitive files...
+2025-09-18T18:16:22.1263273Z ✅ Vault password file and logs securely removed
+2025-09-18T18:16:22.1326084Z Post job cleanup.
+2025-09-18T18:16:22.2114026Z [command]/usr/bin/git version
+2025-09-18T18:16:22.2151829Z git version 2.51.0
+2025-09-18T18:16:22.2187576Z Temporarily overriding HOME='/home/runner/work/_temp/8861c6cb-8e63-4bf4-963c-b1df063469f3' before making global git config changes
+2025-09-18T18:16:22.2189654Z Adding repository directory to the temporary git global config as a safe directory
+2025-09-18T18:16:22.2192481Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dotca/dotca
+2025-09-18T18:16:22.2226523Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-09-18T18:16:22.2260031Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-09-18T18:16:22.2482268Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-09-18T18:16:22.2502655Z http.https://github.com/.extraheader
+2025-09-18T18:16:22.2511939Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-09-18T18:16:22.2541373Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-09-18T18:16:22.2896290Z Cleaning up orphan processes

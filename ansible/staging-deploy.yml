@@ -268,7 +268,14 @@
         next_public_environment: staging
 
     - name: Validate docker-compose.yml generation
-      ansible.builtin.command: test -f "{{ app_dir }}/docker-compose.yml" && echo "✅ docker-compose.yml generated successfully"
+      ansible.builtin.shell: |
+        if [ -f "{{ app_dir }}/docker-compose.yml" ]; then
+          echo "✅ docker-compose.yml generated successfully"
+          exit 0
+        else
+          echo "❌ docker-compose.yml not found"
+          exit 1
+        fi
       register: docker_compose_validation
       changed_when: false
       failed_when: docker_compose_validation.rc != 0
