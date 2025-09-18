@@ -491,38 +491,16 @@ jobs:
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           GITHUB_ACTIONS: 'true'
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          GA_STAGING_ID: ${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
-          # GitHub Container Registry authentication
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USERNAME: ${{ github.actor }}
+          # Note: Sensitive variables are read from Ansible Vault, not environment variables
         run: |
           echo "🚀 Starting Ansible deployment..."
 
-          # SECURITY: Validate required environment variables without exposing values
-          MISSING_VARS=""
-          [ -z "$BREVO_API_KEY" ] && MISSING_VARS="$MISSING_VARS BREVO_API_KEY"
-          [ -z "$STRIPE_SECRET_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_SECRET_KEY"
-          [ -z "$STRIPE_PUBLISHABLE_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_PUBLISHABLE_KEY"
-          [ -z "$GITHUB_TOKEN" ] && MISSING_VARS="$MISSING_VARS GITHUB_TOKEN"
-          [ -z "$GITHUB_USERNAME" ] && MISSING_VARS="$MISSING_VARS GITHUB_USERNAME"
-          if [ -n "$MISSING_VARS" ]; then
-            echo "::error::Missing required environment variables:$MISSING_VARS"
-            exit 1
-          fi
+          # Note: Ansible will read sensitive variables from the encrypted vault-vars.yml file
+          # No need to validate environment variables here as they're handled by Ansible Vault
 
-          # SECURITY: Verify secrets are not empty and have expected format (without logging values)
-          echo "🔐 Validating secret formats..."
-          [[ ${#BREVO_API_KEY} -gt 10 ]] || { echo "::error::BREVO_API_KEY appears to be invalid"; exit 1; }
-          [[ ${#STRIPE_SECRET_KEY} -gt 20 ]] || { echo "::error::STRIPE_SECRET_KEY appears to be invalid"; exit 1; }
-          [[ ${#GITHUB_TOKEN} -gt 10 ]] || { echo "::error::GITHUB_TOKEN appears to be invalid"; exit 1; }
-          echo "✅ Secret validation passed"
-          
-          echo "✅ GitHub Container Registry authentication configured:"
-          echo "   - Username: $GITHUB_USERNAME"
-          echo "   - Token: ***masked***"
+          echo "✅ Ansible Vault authentication configured:"
+          echo "   - Vault file: ansible/vars/vault-vars.yml (encrypted)"
+          echo "   - Password file: ~/.ansible_vault_pass"
 
           # Run Ansible playbook with retry logic
           DEPLOY_SUCCESS=false
