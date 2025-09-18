@@ -41,20 +41,18 @@ jobs:
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
-          doctl account get  # Verify authentication
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          # Validate SSH key format
+          # Validate SSH key format (without exposing key details)
           if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
             echo "::error::Invalid SSH private key format"
             exit 1
           fi
-          echo "SSH key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_rsa
+          echo "✅ SSH key format validated"
       - name: Initialize Terraform
         working-directory: ./terraform
         run: |
@@ -267,8 +265,8 @@ jobs:
             exit 1
           fi
 
-          # Create the vault password file from GitHub secret
-          echo "$VAULT_PASS" > ~/.ansible_vault_pass
+          # Create the vault password file from GitHub secret (securely)
+          printf '%s\n' "$VAULT_PASS" > ~/.ansible_vault_pass
 
           # Set proper permissions (only owner can read/write)
           chmod 600 ~/.ansible_vault_pass
@@ -328,13 +326,12 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          # Validate SSH key
+          # Validate SSH key (without exposing key details)
           if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
             echo "::error::Invalid SSH private key format"
             exit 1
           fi
-          echo "🔑 SSH key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_rsa | awk '{print $2}'
+          echo "🔑 SSH key validated"
       - name: Wait for server readiness
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
@@ -410,8 +407,7 @@ jobs:
             else
               if [ $i -eq $SSH_TEST_ATTEMPTS ]; then
                 echo "::error::SSH authentication failed after $SSH_TEST_ATTEMPTS attempts"
-                echo "Debug: Testing SSH with verbose output..."
-                ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o UserKnownHostsFile=/dev/null -v -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH test'" || true
+                echo "Please check that the SSH key is correctly configured and the server is accessible"
                 exit 1
               else
                 echo "⏳ SSH authentication failed, retrying... (attempt $i/$SSH_TEST_ATTEMPTS)"
@@ -485,9 +481,9 @@ jobs:
             echo "✅ Ansible connectivity test passed"
           else
             echo "::error::Ansible connectivity test failed"
-            echo "Debug: Checking inventory and SSH setup..."
+            echo "Debug: Checking inventory setup..."
             cat ansible/inventory.yml
-            ssh-keygen -lf ~/.ssh/id_rsa
+            echo "SSH key validation: $(ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1 && echo 'valid' || echo 'invalid')"
             exit 1
           fi
       - name: Run Ansible playbook with enhanced error handling
