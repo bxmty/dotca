@@ -491,6 +491,9 @@ jobs:
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           GITHUB_ACTIONS: 'true'
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
+          GITHUB_REPO: ${{ github.repository }}
           # Note: Sensitive variables are read from Ansible Vault, not environment variables
         run: |
           echo "🚀 Starting Ansible deployment..."

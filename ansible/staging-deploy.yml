@@ -355,14 +355,16 @@
       changed_when: false
 
     - name: Login to GitHub Container Registry
-      ansible.builtin.command: bash -c 'set -o pipefail && echo "***masked***" | docker login ghcr.io -u {{ github_username }} --password-stdin'
-      when: github_token is defined and github_username is defined
+      ansible.builtin.command: bash -c 'set -o pipefail && echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin'
+      when: github_token is defined and github_username is defined and github_token != ""
       register: docker_login
       retries: 3
       delay: 5
       until: docker_login is success
       changed_when: false
       no_log: true
+      failed_when: docker_login.rc != 0
+      ignore_errors: false
 
     - name: Check if Docker image exists in GHCR
       ansible.builtin.command: |
