@@ -21,20 +21,31 @@ declare global {
 }
 
 // Environment-specific GA4 Measurement IDs
-export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production' 
+export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production'
   ? process.env.NEXT_PUBLIC_PRODUCTION_GA_ID  // Production GA4 property
   : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
     ? process.env.NEXT_PUBLIC_STAGING_GA_ID  // Staging GA4 property
-    : process.env.NEXT_PUBLIC_DEV_GA_ID || '';     // Development GA4 property (optional)
+    : process.env.NEXT_PUBLIC_DEV_GA_ID;     // Development GA4 property (optional)
 
 // Determine environment - simplified to just use NEXT_PUBLIC_ENVIRONMENT
 const isProduction = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production';
 const isStaging = process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging';
 const isDevelopment = !isProduction && !isStaging;
 
-// Add debugging for environment config
+// Add debugging for environment config (security-conscious logging)
 console.log(`GA Environment: ${process.env.NEXT_PUBLIC_ENVIRONMENT}`);
-console.log(`GA Measurement ID: ${GA_MEASUREMENT_ID}`);
+console.log(`GA Measurement ID: ${GA_MEASUREMENT_ID ? 'SET (masked)' : 'NOT SET'}`);
+
+// Helper function to mask sensitive values
+const maskValue = (value: string | undefined): string => {
+  if (!value) return 'NOT SET';
+  if (isDevelopment) return value; // Show full value in development
+  if (value.length <= 8) return 'SET (too short to mask)';
+  return `${value.substring(0, 4)}****${value.substring(value.length - 4)}`;
+};
+
+console.log(`NEXT_PUBLIC_STAGING_GA_ID: ${maskValue(process.env.NEXT_PUBLIC_STAGING_GA_ID)}`);
+console.log(`NEXT_PUBLIC_PRODUCTION_GA_ID: ${maskValue(process.env.NEXT_PUBLIC_PRODUCTION_GA_ID)}`);
 console.log(`isProduction: ${isProduction}, isStaging: ${isStaging}, isDevelopment: ${isDevelopment}`);
 
 // Initialize Google Analytics if the measurement ID is available

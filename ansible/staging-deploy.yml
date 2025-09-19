@@ -41,6 +41,7 @@
     # Additional production GA ID for future use
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
 
+    # ============================================================================
     # Umami Analytics Configuration for Next.js Application
     umami_website_id: "{{ UMAMI_WEBSITE_ID | default('') }}"
     umami_host_url: "{{ UMAMI_HOST_URL | default('https://umami.staging.boximity.ca') }}"
@@ -135,6 +136,12 @@
     # ============================================================================
 
   tasks:
+    - name: Debug GA variables
+      debug:
+        msg: |
+          GA_STAGING_ID={{ 'SET' if GA_STAGING_ID else 'NOT_SET' }},
+          GA_PRODUCTION_ID={{ 'SET' if GA_PRODUCTION_ID else 'NOT_SET' }}
+
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
