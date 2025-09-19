@@ -265,6 +265,16 @@
           - "DOCKER_IMAGE env var override: {{ docker_image_override | default('NOT SET') }}"
           - "Final docker_image: {{ docker_image | default('NOT SET') }}"
 
+    - name: Check if SSL certificate exists for domain
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ staging_domain }}/cert.pem
+      register: ssl_cert_check
+
+    - name: Determine API URL protocol and host
+      ansible.builtin.set_fact:
+        api_protocol: "{{ 'https' if ssl_cert_check.stat.exists else 'http' }}"
+        api_host: "{{ staging_domain if ssl_cert_check.stat.exists else public_ip }}"
+
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
         src: docker-compose.yml.j2
@@ -273,7 +283,7 @@
         backup: true
       vars:
         node_env: production
-        next_public_api_url: "http://{{ public_ip }}/api"
+        next_public_api_url: "{{ api_protocol }}://{{ api_host }}/api"
         next_public_environment: staging
 
     - name: Validate docker-compose.yml generation

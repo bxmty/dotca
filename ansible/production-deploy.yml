@@ -322,6 +322,15 @@
           - Production deployment: This workflow (requires promoted image)
       when: not (any_production_image_found | default(false))
 
+    - name: Check if SSL certificate exists for production domain
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: ssl_cert_check
+
+    - name: Determine API URL for production (always HTTPS)
+      ansible.builtin.set_fact:
+        next_public_api_url: "https://boximity.ca/api"
+
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
         src: docker-compose.yml.j2
@@ -330,7 +339,7 @@
         backup: true
       vars:
         node_env: production
-        next_public_api_url: "http://{{ public_ip }}/api"
+        next_public_api_url: "{{ next_public_api_url }}"
         next_public_environment: production
 
     - name: Display generated docker-compose.yml for debugging
