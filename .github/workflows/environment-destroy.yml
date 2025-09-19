@@ -67,6 +67,7 @@ jobs:
           terraform plan -destroy \
             -var="do_token=${{ secrets.DO_TOKEN }}" \
             -var="ssh_key_fingerprint=${{ secrets.SSH_KEY_FINGERPRINT }}" \
+            -var="ssh_key_name=dotCA-ansible" \
             -var="git_repo_url=${{ github.server_url }}/${{ github.repository }}.git" \
             -var="git_branch=${{ steps.set_branch.outputs.git_branch }}" \
             -var="environment=${{ github.event.inputs.environment }}" \
