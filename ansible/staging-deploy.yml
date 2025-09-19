@@ -471,8 +471,8 @@
     - name: Clean up Docker environment before starting services
       ansible.builtin.command: |
         docker-compose down --volumes --remove-orphans || true
-        docker system prune --force || true
-        docker volume prune --force || true
+        docker system prune -f || true
+        docker volume prune -f || true
       args:
         chdir: "{{ app_dir }}"
       changed_when: false
@@ -612,20 +612,71 @@
       delay: 5
       until: nginx_restart is success
 
-    - name: Setup firewall (UFW)
+    - name: Setup firewall (UFW) - Allow required ports
       ansible.builtin.command: ufw allow {{ item }}/tcp
       loop:
-        - '22'
-        - '80'
-        - '443'
-        - '6080'
-        - '8080'
-        - '3001'  # Umami Analytics dashboard
+        - '22'     # SSH
+        - '80'     # HTTP
+        - '443'    # HTTPS
+        - '6080'   # Additional app port (if needed)
+        - '8080'   # Next.js main application
+        - '3001'   # Umami Analytics dashboard
       changed_when: false
 
-    - name: Enable UFW
-      ansible.builtin.command: bash -c "ufw --force enable && ufw default deny incoming"
+    - name: Enable UFW with secure defaults
+      ansible.builtin.command: bash -c "ufw --force enable && ufw default deny incoming && ufw default allow outgoing"
       changed_when: false
+
+    - name: Verify firewall rules are applied
+      ansible.builtin.command: ufw status verbose
+      register: firewall_status
+      changed_when: false
+
+    - name: Display firewall status
+      ansible.builtin.debug:
+        msg:
+          - "🔥 Firewall Status:"
+          - "{{ firewall_status.stdout_lines }}"
+          - ""
+          - "✅ Required ports should be open:"
+          - "  - Port 22 (SSH): ALLOWED"
+          - "  - Port 80 (HTTP): ALLOWED"
+          - "  - Port 443 (HTTPS): ALLOWED"
+          - "  - Port 8080 (Next.js App): ALLOWED"
+          - "  - Port 3001 (Umami): ALLOWED"
+          - ""
+          - "⚠️  Note: If services are still inaccessible, check:"
+          - "     1. DigitalOcean Cloud Firewall (Control Panel → Networking)"
+          - "     2. DNS resolution for staging.boximity.ca and umami.staging.boximity.ca"
+          - "     3. Nginx configuration is serving the correct ports"
+          - "     4. Docker containers are actually running and listening"
+
+    - name: Test port accessibility from server
+      ansible.builtin.command: |
+        bash -c "
+        echo '=== Port Accessibility Test ==='
+        for port in 8080 3001; do
+          echo -n \"Port \$port: \"
+          if nc -z localhost \$port 2>/dev/null; then
+            echo '✅ OPEN (service listening)'
+          else
+            echo '❌ CLOSED (no service listening)'
+          fi
+        done
+        echo ''
+        echo '=== Nginx Status ==='
+        systemctl is-active nginx || echo 'Nginx not running'
+        echo ''
+        echo '=== Docker Services ==='
+        cd {{ app_dir }} && docker-compose ps | grep -E '(web|umami)' || echo 'No web/umami services found'
+        "
+      register: port_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display port test results
+      ansible.builtin.debug:
+        msg: "{{ port_test.stdout_lines }}"
 
     - name: Create enhanced monitoring script
       ansible.builtin.template:
