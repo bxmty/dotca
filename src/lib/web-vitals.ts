@@ -1,10 +1,10 @@
-import { CLSMetric, FCPMetric, FIDMetric, LCPMetric, TTFBMetric, onCLS, onFCP, onFID, onLCP, onTTFB } from 'web-vitals';
+import { CLSMetric, FCPMetric, INPMetric, LCPMetric, TTFBMetric, onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
 import * as gtag from './gtag';
 
 /**
  * Interface for web vitals metric reporting
  */
-export type WebVitalsMetric = CLSMetric | FCPMetric | FIDMetric | LCPMetric | TTFBMetric;
+export type WebVitalsMetric = CLSMetric | FCPMetric | INPMetric | LCPMetric | TTFBMetric;
 
 /**
  * Report web vitals metrics to an analytics endpoint
@@ -61,7 +61,7 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
  */
 export function initWebVitals() {
   onCLS(reportWebVitals);
-  onFID(reportWebVitals);
+  onINP(reportWebVitals);
   onLCP(reportWebVitals);
   onFCP(reportWebVitals);
   onTTFB(reportWebVitals);
