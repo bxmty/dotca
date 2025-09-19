@@ -111,4 +111,6 @@ jobs:
         build-args: |
           NODE_ENV=production
           NEXT_PUBLIC_ENVIRONMENT=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+          NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.GA_STAGING_ID }}
+          NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.GA_PRODUCTION_ID }}
         platforms: linux/amd64
