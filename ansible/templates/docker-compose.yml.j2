@@ -98,7 +98,7 @@ services:
       retries: 3
       start_period: 5s
     volumes:
-      - next_cache:/app/.next/cache
+      - {{ app_dir }}/.next/cache:/app/.next/cache
     logging:
       driver: "json-file"
       options:
@@ -111,7 +111,6 @@ services:
 
 # Define volumes for persistent data
 volumes:
-  next_cache:
   umami_db_data:
   umami_data:
 

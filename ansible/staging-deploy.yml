@@ -243,6 +243,15 @@
         state: directory
         mode: '0755'
 
+    - name: Create Next.js cache directory with proper permissions
+      ansible.builtin.file:
+        path: "{{ app_dir }}/.next/cache"
+        state: directory
+        mode: '0755'
+        owner: '1001'  # nextjs user UID
+        group: '1001'  # nodejs group GID
+        recurse: true
+
     # Repository cloning removed - using container image from GHCR instead
     # This optimization eliminates the need to clone the repository since we're using
     # a pre-built container image from GitHub Container Registry (ghcr.io)
