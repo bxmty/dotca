@@ -13,7 +13,7 @@ variable "ssh_key_fingerprint" {
 variable "ssh_key_name" {
   description = "Name of the SSH key in DigitalOcean for Droplet access"
   type        = string
-  default     = "GitHub Actions Key"
+  default     = "dotCA-ansible"
 }
 
 variable "project_name" {
