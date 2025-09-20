@@ -3,15 +3,26 @@ upstream nextjs_backend {
     server localhost:8080 max_fails=3 fail_timeout=30s;
 }
 
+# Shared rate limiting zone (if not defined in nginx.conf)
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+
 server {
     listen 80;
     server_name {{ server_name | default('_') }};
-    
+
+    # Let's Encrypt challenge location - CRITICAL for SSL certificate generation
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files $uri =404;
+        access_log /var/log/nginx/acme_access.log;
+        error_log /var/log/nginx/acme_error.log;
+    }
+
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
-    
+
     # Health check endpoint (no rate limiting)
     location /health {
         access_log off;
