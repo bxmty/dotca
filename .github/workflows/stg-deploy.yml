@@ -522,6 +522,13 @@ jobs:
               echo "::add-mask::${{ secrets.UMAMI_WEBSITE_ID }}"
             fi
 
+            # Debug what values are being passed to Ansible
+            echo "🔍 GitHub Actions Secret Values:"
+            echo "GA_STAGING_ID exists: ${{ secrets.GA_STAGING_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "UMAMI_WEBSITE_ID exists: ${{ secrets.UMAMI_WEBSITE_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "UMAMI_HOST_URL exists: ${{ secrets.UMAMI_HOST_URL != '' && 'YES' || 'NO/EMPTY' }}"
+
             if ansible-playbook \
               -i ansible/inventory.yml \
               ansible/staging-deploy.yml \

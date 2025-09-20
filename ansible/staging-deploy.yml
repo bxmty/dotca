@@ -141,11 +141,13 @@
         msg: |
           GA_STAGING_ID={{ 'SET (masked)' if GA_STAGING_ID else 'NOT_SET' }},
           GA_PRODUCTION_ID={{ 'SET (masked)' if GA_PRODUCTION_ID else 'NOT_SET' }}
+          GA_STAGING_ID length: {{ GA_STAGING_ID | length if GA_STAGING_ID else '0' }}
+          GA_PRODUCTION_ID length: {{ GA_PRODUCTION_ID | length if GA_PRODUCTION_ID else '0' }}
           {% if GA_STAGING_ID %}
-          GA_STAGING_ID masked: {{ GA_STAGING_ID | regex_replace('^(G-)(.{4}).*(.{4})$', '\\1\\2****\\3') }}
+          GA_STAGING_ID masked: {{ GA_STAGING_ID | regex_replace('^(G-)(.{4})(.*)(.{4})$', '\\1\\2****\\4') }}
           {% endif %}
           {% if GA_PRODUCTION_ID %}
-          GA_PRODUCTION_ID masked: {{ GA_PRODUCTION_ID | regex_replace('^(G-)(.{4}).*(.{4})$', '\\1\\2****\\3') }}
+          GA_PRODUCTION_ID masked: {{ GA_PRODUCTION_ID | regex_replace('^(G-)(.{4})(.*)(.{4})$', '\\1\\2****\\4') }}
           {% endif %}
 
     - name: Update apt cache
@@ -288,6 +290,19 @@
         api_protocol: "{{ 'https' if ssl_cert_check.stat.exists else 'http' }}"
         api_host: "{{ staging_domain if ssl_cert_check.stat.exists else public_ip }}"
 
+    - name: Debug variables before docker-compose generation
+      debug:
+        msg: |
+          Final variable values before docker-compose generation:
+          ga_staging_id: "{{ ga_staging_id | default('EMPTY') }}"
+          ga_production_id: "{{ ga_production_id | default('EMPTY') }}"
+          umami_website_id: "{{ umami_website_id | default('EMPTY') }}"
+          umami_host_url: "{{ umami_host_url | default('EMPTY') }}"
+          GA_STAGING_ID: "{{ GA_STAGING_ID | default('EMPTY') }}"
+          GA_PRODUCTION_ID: "{{ GA_PRODUCTION_ID | default('EMPTY') }}"
+          UMAMI_WEBSITE_ID: "{{ UMAMI_WEBSITE_ID | default('EMPTY') }}"
+          UMAMI_HOST_URL: "{{ UMAMI_HOST_URL | default('EMPTY') }}"
+
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
         src: docker-compose.yml.j2
@@ -303,6 +318,8 @@
       ansible.builtin.shell: |
         if [ -f "{{ app_dir }}/docker-compose.yml" ]; then
           echo "✅ docker-compose.yml generated successfully"
+          echo "📄 Generated docker-compose.yml content:"
+          cat "{{ app_dir }}/docker-compose.yml"
           exit 0
         else
           echo "❌ docker-compose.yml not found"
@@ -519,6 +536,21 @@
       delay: 15
       until: docker_up is success
       changed_when: false
+
+    - name: Verify web container environment variables
+      ansible.builtin.command: docker-compose exec -T web env | grep -E "(GA_|UMAMI_)"
+      args:
+        chdir: "{{ app_dir }}"
+      register: container_env
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display container environment variables
+      ansible.builtin.debug:
+        msg: |
+          🔍 Container Environment Variables:
+          {{ container_env.stdout_lines | default(['No environment variables found']) | join('\n') }}
+      when: container_env is defined
       
     - name: Check if Docker Compose services started successfully
       ansible.builtin.command: docker-compose ps
