@@ -76,6 +76,17 @@ services:
     image: "{{ docker_image }}"
     pull_policy: always
     restart: always
+    build:
+      context: .
+      args:
+        - NODE_ENV={{ node_env | default('production') }}
+        - NEXT_PUBLIC_API_URL={{ next_public_api_url }}
+        - NEXT_PUBLIC_ENVIRONMENT={{ next_public_environment | default('production') }}
+        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+        - NEXT_PUBLIC_STAGING_GA_ID={{ ga_staging_id | default('') }}
+        - NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id | default('') }}
+        - NEXT_PUBLIC_UMAMI_WEBSITE_ID={{ umami_website_id | default('') }}
+        - NEXT_PUBLIC_UMAMI_HOST_URL={{ umami_host_url | default('') }}
     ports:
       - "8080:3000"
     environment:
