@@ -139,8 +139,14 @@
     - name: Debug GA variables
       debug:
         msg: |
-          GA_STAGING_ID={{ 'SET' if GA_STAGING_ID else 'NOT_SET' }},
-          GA_PRODUCTION_ID={{ 'SET' if GA_PRODUCTION_ID else 'NOT_SET' }}
+          GA_STAGING_ID={{ 'SET (masked)' if GA_STAGING_ID else 'NOT_SET' }},
+          GA_PRODUCTION_ID={{ 'SET (masked)' if GA_PRODUCTION_ID else 'NOT_SET' }}
+          {% if GA_STAGING_ID %}
+          GA_STAGING_ID masked: {{ GA_STAGING_ID | regex_replace('^(G-)(.{4}).*(.{4})$', '\\1\\2****\\3') }}
+          {% endif %}
+          {% if GA_PRODUCTION_ID %}
+          GA_PRODUCTION_ID masked: {{ GA_PRODUCTION_ID | regex_replace('^(G-)(.{4}).*(.{4})$', '\\1\\2****\\3') }}
+          {% endif %}
 
     - name: Update apt cache
       ansible.builtin.apt:
@@ -391,6 +397,8 @@
       no_log: true
       failed_when: docker_login.rc != 0
       ignore_errors: false
+      vars:
+        ansible.builtin.command_no_log: true
 
     - name: Check if Docker image exists in GHCR
       ansible.builtin.command: |
