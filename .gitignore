@@ -82,3 +82,5 @@ continuous-monitoring/
 
 # GitHub Actions workspace files
 .github/workflows/*.log
+
+logs/
