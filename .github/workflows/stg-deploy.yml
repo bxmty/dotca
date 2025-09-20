@@ -511,10 +511,16 @@ jobs:
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
             echo "📋 Deployment attempt $attempt of $MAX_ATTEMPTS..."
 
-            # Mask sensitive values in GitHub Actions logs
-            echo "::add-mask::${{ secrets.GA_STAGING_ID }}"
-            echo "::add-mask::${{ secrets.GA_PRODUCTION_ID }}"
-            echo "::add-mask::${{ secrets.UMAMI_WEBSITE_ID }}"
+            # Mask sensitive values in GitHub Actions logs (only if they exist)
+            if [ -n "${{ secrets.GA_STAGING_ID }}" ]; then
+              echo "::add-mask::${{ secrets.GA_STAGING_ID }}"
+            fi
+            if [ -n "${{ secrets.GA_PRODUCTION_ID }}" ]; then
+              echo "::add-mask::${{ secrets.GA_PRODUCTION_ID }}"
+            fi
+            if [ -n "${{ secrets.UMAMI_WEBSITE_ID }}" ]; then
+              echo "::add-mask::${{ secrets.UMAMI_WEBSITE_ID }}"
+            fi
 
             if ansible-playbook \
               -i ansible/inventory.yml \

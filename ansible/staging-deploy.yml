@@ -397,8 +397,6 @@
       no_log: true
       failed_when: docker_login.rc != 0
       ignore_errors: false
-      vars:
-        ansible.builtin.command_no_log: true
 
     - name: Check if Docker image exists in GHCR
       ansible.builtin.command: |
