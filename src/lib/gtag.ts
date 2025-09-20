@@ -54,19 +54,43 @@ export const initGA = () => {
     console.error('GA Measurement ID is missing. Google Analytics will not be initialized.');
     return;
   }
-  
+
   console.log('Initializing Google Analytics with ID:', GA_MEASUREMENT_ID);
-  
+
+  // Check if gtag is already available (script might be loaded)
+  if (typeof window !== 'undefined' && window.gtag) {
+    console.log('GA script already loaded, configuring directly...');
+    configureGA();
+    return;
+  }
+
   // Add Google Analytics script to the document
   window.dataLayer = window.dataLayer || [];
-  
+
   // Define gtag function using the standard implementation
   window.gtag = function(command, target, ...rest) {
     window.dataLayer.push([command, target, ...rest]);
   };
-  
+
+  // Configure GA after a short delay to ensure script is ready
+  setTimeout(() => {
+    if (window.gtag) {
+      configureGA();
+    } else {
+      console.warn('GA script not ready, will configure on next attempt');
+    }
+  }, 1000);
+};
+
+// Separate configuration function for reusability
+const configureGA = () => {
+  if (!window.gtag || !GA_MEASUREMENT_ID) {
+    console.error('Cannot configure GA: gtag function or measurement ID missing');
+    return;
+  }
+
   window.gtag('js', new Date());
-  
+
   // Configure with environment-specific settings
   if (isProduction) {
     console.log('Configuring GA for production');
@@ -99,12 +123,18 @@ export const pageview = (url: string) => {
   if (isDevelopment) {
     console.log(`[DEV] Tracking pageview: ${url}`);
   }
-  
+
+  // Check if gtag is available
+  if (!window.gtag) {
+    console.warn('GA not ready, skipping pageview tracking:', url);
+    return;
+  }
+
   try {
     window.gtag('config', GA_MEASUREMENT_ID, {
       page_path: url,
     });
-    
+
     if (isProduction) {
       console.log(`Tracked pageview in production: ${url}`);
     }
@@ -125,11 +155,17 @@ export const event = ({ action, category, label, value }: {
     return;
   }
 
+  // Check if gtag is available
+  if (!window.gtag) {
+    console.warn('GA not ready, skipping event tracking:', action);
+    return;
+  }
+
   // Allow tracking in any environment, just debug in development
   if (isDevelopment) {
     console.log(`[DEV] Tracking event: ${action} in category ${category}`);
   }
-  
+
   try {
     const eventParams: GtagEventParams = {
       event_category: category,
@@ -137,9 +173,9 @@ export const event = ({ action, category, label, value }: {
       value: value,
       environment: isProduction ? 'production' : isStaging ? 'staging' : 'development',
     };
-    
+
     window.gtag('event', action, eventParams);
-    
+
     if (isProduction) {
       console.log(`Tracked event in production: ${action}`);
     }
