@@ -41,99 +41,6 @@
     # Additional production GA ID for future use
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
 
-    # ============================================================================
-    # Umami Analytics Configuration for Next.js Application
-    umami_website_id: "{{ UMAMI_WEBSITE_ID | default('') }}"
-    umami_host_url: "{{ UMAMI_HOST_URL | default('https://umami.staging.boximity.ca') }}"
-
-    # ============================================================================
-    # Umami Analytics Configuration Variables
-    # ============================================================================
-    # Database Configuration
-    umami_db_password: "{{ UMAMI_DB_PASSWORD | default('umami_password') }}"
-
-    # Security & Authentication
-    umami_app_secret: "{{ UMAMI_APP_SECRET | default('your-secret-key-change-this-in-production') }}"
-
-    # User Management
-    umami_disable_login: "{{ UMAMI_DISABLE_LOGIN | default('false') }}"
-    umami_disable_signup: "{{ UMAMI_DISABLE_SIGNUP | default('false') }}"
-
-    # Feature Flags
-    umami_allow_report: "{{ UMAMI_ALLOW_REPORT | default('true') }}"
-    umami_disable_telemetry: "{{ UMAMI_DISABLE_TELEMETRY | default('false') }}"
-
-    # Logging & Performance
-    umami_log_level: "{{ UMAMI_LOG_LEVEL | default('info') }}"
-
-    # Rate Limiting
-    umami_rate_limit: "{{ UMAMI_RATE_LIMIT | default('1000') }}"
-    umami_rate_limit_window: "{{ UMAMI_RATE_LIMIT_WINDOW | default('3600000') }}"
-
-    # Session Management
-    umami_session_timeout: "{{ UMAMI_SESSION_TIMEOUT | default('2592000000') }}"
-
-    # Admin Configuration
-    umami_admin_username: "{{ UMAMI_ADMIN_USERNAME | default('admin') }}"
-    umami_admin_password: "{{ UMAMI_ADMIN_PASSWORD | default('umami') }}"
-    umami_admin_email: "{{ UMAMI_ADMIN_EMAIL | default('admin@staging.boximity.ca') }}"
-
-    # ============================================================================
-    # Next.js Application Environment Variables (Umami Integration)
-    # ============================================================================
-    #
-    # Analytics Configuration:
-    # - UMAMI_WEBSITE_ID: Unique identifier for your Umami website (required for tracking)
-    # - UMAMI_HOST_URL: URL of your Umami instance (e.g., https://umami.staging.boximity.ca)
-
-    # Additional Umami configuration variables
-    umami_website_url: "{{ UMAMI_WEBSITE_URL | default('https://umami.staging.boximity.ca') }}"
-    umami_force_https: "{{ UMAMI_FORCE_HTTPS | default('true') }}"
-    umami_disable_update_check: "{{ UMAMI_DISABLE_UPDATE_CHECK | default('false') }}"
-    umami_tracker_timeout: "{{ UMAMI_TRACKER_TIMEOUT | default('5000') }}"
-    umami_collector_timeout: "{{ UMAMI_COLLECTOR_TIMEOUT | default('30000') }}"
-
-    # ============================================================================
-    # Umami Environment Variables Documentation
-    # ============================================================================
-    #
-    # Database Configuration:
-    # - UMAMI_DB_PASSWORD: PostgreSQL database password for Umami
-    #
-    # Security & Authentication:
-    # - UMAMI_APP_SECRET: Secret key for JWT tokens and encryption
-    #
-    # User Management:
-    # - UMAMI_DISABLE_LOGIN: Disable user login (true/false)
-    # - UMAMI_DISABLE_SIGNUP: Disable user registration (true/false)
-    #
-    # Feature Flags:
-    # - UMAMI_ALLOW_REPORT: Allow report generation (true/false)
-    # - UMAMI_DISABLE_TELEMETRY: Disable telemetry to Umami team (true/false)
-    #
-    # Logging & Performance:
-    # - UMAMI_LOG_LEVEL: Log level (error/warn/info/debug)
-    #
-    # Rate Limiting:
-    # - UMAMI_RATE_LIMIT: Requests per window (default: 1000)
-    # - UMAMI_RATE_LIMIT_WINDOW: Window in milliseconds (default: 3600000 = 1 hour)
-    #
-    # Session Management:
-    # - UMAMI_SESSION_TIMEOUT: Session timeout in milliseconds (default: 30 days)
-    #
-    # Admin Configuration:
-    # - UMAMI_ADMIN_USERNAME: Default admin username
-    # - UMAMI_ADMIN_PASSWORD: Default admin password
-    # - UMAMI_ADMIN_EMAIL: Default admin email
-    #
-    # Additional Configuration:
-    # - UMAMI_WEBSITE_URL: Full URL of the Umami dashboard
-    # - UMAMI_FORCE_HTTPS: Force HTTPS connections (true/false)
-    # - UMAMI_DISABLE_UPDATE_CHECK: Disable update notifications (true/false)
-    # - UMAMI_TRACKER_TIMEOUT: Tracker request timeout in ms (default: 5000)
-    # - UMAMI_COLLECTOR_TIMEOUT: Collector request timeout in ms (default: 30000)
-    #
-    # ============================================================================
 
   tasks:
     - name: Debug GA variables
@@ -487,8 +394,8 @@
           - ghcr.io/{{ github_username }}/dotca:staging (if username available)
       when: not any_image_found
 
-    - name: Pull latest Docker images from GHCR (including Umami)
-      ansible.builtin.command: bash -c "cd {{ app_dir }} && docker-compose pull db umami web"
+    - name: Pull latest Docker images from GHCR
+      ansible.builtin.command: bash -c "cd {{ app_dir }} && docker-compose pull web"
       args:
         chdir: "{{ app_dir }}"
       register: docker_pull
@@ -528,7 +435,7 @@
       ignore_errors: true
 
     - name: Start Docker Compose services
-      ansible.builtin.command: docker-compose up -d db umami web
+      ansible.builtin.command: docker-compose up -d web
       args:
         chdir: "{{ app_dir }}"
       register: docker_up
@@ -538,7 +445,7 @@
       changed_when: false
 
     - name: Verify web container environment variables
-      ansible.builtin.command: docker-compose exec -T web env | grep -E "(GA_|UMAMI_)"
+      ansible.builtin.command: docker-compose exec -T web env | grep -E "(GA_|NEXT_PUBLIC_UMAMI_)"
       args:
         chdir: "{{ app_dir }}"
       register: container_env
@@ -684,7 +591,6 @@
         - '443'    # HTTPS
         - '6080'   # Additional app port (if needed)
         - '8080'   # Next.js main application
-        - '3001'   # Umami Analytics dashboard
       changed_when: false
 
     - name: Enable UFW with secure defaults
@@ -707,11 +613,10 @@
           - "  - Port 80 (HTTP): ALLOWED"
           - "  - Port 443 (HTTPS): ALLOWED"
           - "  - Port 8080 (Next.js App): ALLOWED"
-          - "  - Port 3001 (Umami): ALLOWED"
           - ""
           - "⚠️  Note: If services are still inaccessible, check:"
           - "     1. DigitalOcean Cloud Firewall (Control Panel → Networking)"
-          - "     2. DNS resolution for staging.boximity.ca and umami.staging.boximity.ca"
+          - "     2. DNS resolution for staging.boximity.ca"
           - "     3. Nginx configuration is serving the correct ports"
           - "     4. Docker containers are actually running and listening"
 
@@ -719,7 +624,7 @@
       ansible.builtin.command: |
         bash -c "
         echo '=== Port Accessibility Test ==='
-        for port in 8080 3001; do
+        for port in 8080; do
           echo -n \"Port \$port: \"
           if nc -z localhost \$port 2>/dev/null; then
             echo '✅ OPEN (service listening)'
@@ -732,7 +637,7 @@
         systemctl is-active nginx || echo 'Nginx not running'
         echo ''
         echo '=== Docker Services ==='
-        cd {{ app_dir }} && docker-compose ps | grep -E '(web|umami)' || echo 'No web/umami services found'
+        cd {{ app_dir }} && docker-compose ps | grep -E '(web)' || echo 'No web services found'
         "
       register: port_test
       changed_when: false
@@ -748,11 +653,6 @@
         dest: "{{ app_dir }}/monitor.sh"
         mode: '0755'
 
-    - name: Create Umami database backup script
-      ansible.builtin.template:
-        src: umami-backup.sh.j2
-        dest: "{{ app_dir }}/umami-backup.sh"
-        mode: '0755'
 
     - name: Set up monitoring cron job
       ansible.builtin.cron:
@@ -1071,146 +971,4 @@
               
               Promotion trigger file created at: {{ app_dir }}/promotion-trigger.txt
 
-# Configure Nginx for Umami Dashboard
-- name: Setup Nginx Configuration for Umami Dashboard
-  hosts: digitalocean
-  become: yes
-  vars:
-    app_dir: /app
 
-  tasks:
-    - name: Remove existing umami nginx config to force recreation
-      ansible.builtin.file:
-        path: /etc/nginx/sites-available/umami-dashboard
-        state: absent
-
-    - name: Create Umami nginx site configuration
-      ansible.builtin.template:
-        src: nginx-umami-site.conf.j2
-        dest: /etc/nginx/sites-available/umami-dashboard
-        mode: '0644'
-        backup: true
-
-    - name: Enable Umami nginx site
-      ansible.builtin.file:
-        src: /etc/nginx/sites-available/umami-dashboard
-        dest: /etc/nginx/sites-enabled/umami-dashboard
-        state: link
-
-    - name: Test Umami nginx configuration
-      ansible.builtin.command: nginx -t
-      register: nginx_umami_test
-      changed_when: false
-      ignore_errors: true
-
-    - name: Display Umami nginx test results
-      ansible.builtin.debug:
-        msg: "{{ nginx_umami_test.stderr_lines }}"
-      when: nginx_umami_test.rc != 0
-
-    - name: Reload nginx with Umami configuration
-      ansible.builtin.systemd:
-        name: nginx
-        state: reloaded
-      when: nginx_umami_test.rc == 0
-
-    - name: Log Umami nginx setup completion
-      ansible.builtin.debug:
-        msg: |
-          ✅ Umami Nginx Configuration Complete
-
-          Umami dashboard will be available at:
-          🔗 https://umami.staging.boximity.ca
-
-          Configuration details:
-          - SSL enabled with Let's Encrypt certificate
-          - Reverse proxy to Umami service on port 3001
-          - Security headers enabled
-          - Optimized for analytics dashboard performance
-
-# SSL Certificate Setup for Umami Dashboard using geerlingguy certbot role
-- name: Setup Let's Encrypt SSL Certificate for Umami Dashboard
-  hosts: digitalocean
-  become: yes
-  vars:
-    # Certbot configuration
-    certbot_install_method: package
-    certbot_auto_renew: true
-    certbot_auto_renew_user: "{{ ansible_user | default('root') }}"
-    certbot_auto_renew_hour: "3"
-    certbot_auto_renew_minute: "30"
-    certbot_auto_renew_options: "--quiet"
-
-    # Certificate generation settings - only create if needed
-    certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
-    certbot_create_method: standalone
-    certbot_testmode: false
-    certbot_hsts: true
-    certbot_admin_email: "matticem@boximity.ca"
-
-    # Domain configuration for Umami dashboard
-    certbot_certs:
-      - domains:
-          - umami.staging.boximity.ca
-        email: "matticem@boximity.ca"
-
-    # Services to stop during standalone certificate generation
-    certbot_create_standalone_stop_services:
-      - nginx
-
-  pre_tasks:
-    - name: Check if Umami certificate already exists
-      ansible.builtin.stat:
-        path: /etc/letsencrypt/live/umami.staging.boximity.ca/cert.pem
-      register: cert_file_exists
-
-    - name: Check certificate expiration (if it exists)
-      ansible.builtin.command: |
-        bash -c "
-        if [ -f /etc/letsencrypt/live/umami.staging.boximity.ca/cert.pem ]; then
-          # Calculate days until expiration
-          openssl x509 -enddate -noout -in /etc/letsencrypt/live/umami.staging.boximity.ca/cert.pem | cut -d= -f2 | xargs -I {} date -d {} +%s | awk '{print int(($1 - systime()) / 86400)}'
-        else
-          echo 'certificate_missing'
-        fi
-        "
-      register: cert_expiry_check
-      changed_when: false
-      ignore_errors: true
-
-    - name: Determine if certificate action is needed
-      ansible.builtin.set_fact:
-        cert_needs_action: "{{ not cert_file_exists.stat.exists or (cert_expiry_check.stdout | default('certificate_missing') != 'certificate_missing' and (cert_expiry_check.stdout | int) < 30) }}"
-
-    - name: Log certificate check results
-      ansible.builtin.debug:
-        msg:
-          - "Certificate exists: {{ cert_file_exists.stat.exists }}"
-          - "Days until expiry: {{ cert_expiry_check.stdout | default('certificate_missing') }}"
-          - "Certificate action needed: {{ cert_needs_action }}"
-
-  roles:
-    - geerlingguy.certbot
-
-  post_tasks:
-    - name: Display certificate action taken
-      ansible.builtin.debug:
-        msg: |
-          🔍 Umami SSL Certificate Action Summary:
-
-          Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
-          {% if cert_needs_action %}
-          - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon (' ~ cert_expiry_check.stdout ~ ' days left)' }}
-          - New certificate generated for: umami.staging.boximity.ca
-          {% else %}
-          - Certificate is valid ({{ cert_expiry_check.stdout | default('unknown') }} days remaining)
-          {% endif %}
-
-          📋 Next Steps:
-          - Ensure DNS points umami.staging.boximity.ca to {{ ansible_host }}
-          - Umami dashboard will be available at: https://umami.staging.boximity.ca
-
-    - name: Log certificate generation completion
-      ansible.builtin.debug:
-        msg: "🎉 Umami SSL certificate setup completed successfully!"
-      when: cert_needs_action

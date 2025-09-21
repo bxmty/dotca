@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Enhanced monitoring script with reliable docker-compose usage and Umami analytics support
+# Enhanced monitoring script for Next.js application
 LOG_FILE="{{ app_dir }}/monitoring.log"
 
 # Function to log messages
@@ -8,49 +8,8 @@ log_message() {
   echo "[$(date)] $1" | tee -a $LOG_FILE
 }
 
-# Function to backup Umami database (calls separate backup script)
-backup_umami_database() {
-  log_message "Starting Umami database backup..."
-  # Call the dedicated backup script
-  "{{ app_dir }}/umami-backup.sh"
-  return $?
-}
-
-# Function to check Umami service health
-check_umami_health() {
-  log_message "Checking Umami service health..."
-
-  # Check if Umami container is running
-  if ! docker ps | grep -q "umami-app"; then
-    log_message "ERROR: Umami application container is not running"
-    return 1
-  fi
-
-  # Check Umami database connectivity
-  if ! docker ps | grep -q "$DB_CONTAINER"; then
-    log_message "ERROR: Umami database container is not running"
-    return 1
-  fi
-
-  # Test database connectivity via container
-  if ! docker exec "$DB_CONTAINER" pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then
-    log_message "ERROR: Cannot connect to Umami database"
-    return 1
-  fi
-
-  # Check Umami application health endpoint
-  if ! curl -s -f -m 10 "$UMAMI_HEALTH_URL" >/dev/null 2>&1; then
-    log_message "ERROR: Umami application health check failed"
-    return 1
-  fi
-
-  log_message "SUCCESS: Umami service is healthy"
-  return 0
-}
-
 # Application health check
 HEALTH_CHECK_URL="http://localhost/health"
-UMAMI_HEALTH_URL="http://localhost:3001/api/health"
 
 # Check if manual backup is requested
 FORCE_BACKUP=false
@@ -79,63 +38,22 @@ cd {{ app_dir }}/repo
 if ! docker ps | grep -q "{{ project_name }}.*web"; then
   log_message "Web container not running properly! Attempting to restart..."
   docker-compose down web
-  docker-compose up -d db umami web
+  docker-compose up -d web
   sleep 15
-fi
-
-# Check Umami service health
-if ! check_umami_health; then
-  log_message "Umami service unhealthy. Attempting to restart Umami services..."
-  cd {{ app_dir }}/repo
-  # Restart only Umami services to avoid disrupting main application
-  docker-compose restart db umami
-  sleep 10
-
-  # Re-check Umami health after restart
-  if ! check_umami_health; then
-    log_message "WARNING: Umami service still unhealthy after restart"
-  fi
 fi
 
 # Restart application services if needed
 if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
   log_message "Application not responding. Restarting services..."
   cd {{ app_dir }}/repo
-  docker-compose down --remove-orphans && docker-compose up -d db umami web
+  docker-compose down --remove-orphans && docker-compose up -d web
   sleep 5
   systemctl restart nginx
 fi
 
-# Perform Umami database backup (daily at midnight, or if forced)
-CURRENT_HOUR=$(date +"%H")
-CURRENT_MIN=$(date +"%M")
-if [ "$FORCE_BACKUP" = "true" ] || ([ "$CURRENT_HOUR" = "00" ] && [ "$CURRENT_MIN" -lt "15" ]); then
-  if [ "$FORCE_BACKUP" = "true" ]; then
-    log_message "Running manual Umami database backup..."
-  else
-    log_message "Running scheduled daily Umami database backup..."
-  fi
-  backup_umami_database
-fi
-
 # Final health status summary
-MAIN_APP_HEALTHY=false
-UMAMI_HEALTHY=false
-
 if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
-  MAIN_APP_HEALTHY=true
-fi
-
-if check_umami_health >/dev/null 2>&1; then
-  UMAMI_HEALTHY=true
-fi
-
-if [ "$MAIN_APP_HEALTHY" = "true" ] && [ "$UMAMI_HEALTHY" = "true" ]; then
-  log_message "SUCCESS: All services healthy (Main application + Umami analytics)"
-elif [ "$MAIN_APP_HEALTHY" = "true" ] && [ "$UMAMI_HEALTHY" = "false" ]; then
-  log_message "WARNING: Main application healthy, but Umami analytics service unhealthy"
-elif [ "$MAIN_APP_HEALTHY" = "false" ] && [ "$UMAMI_HEALTHY" = "true" ]; then
-  log_message "WARNING: Umami analytics healthy, but main application unhealthy"
+  log_message "SUCCESS: Application is healthy"
 else
-  log_message "CRITICAL: Both main application and Umami analytics services unhealthy. Manual intervention required!"
+  log_message "CRITICAL: Application is unhealthy. Manual intervention required!"
 fi
