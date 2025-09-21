@@ -86,9 +86,9 @@ export default function RootLayout({
           />
         )}
         <BootstrapClient />
+        <GoogleAnalytics />
         <WebVitalsReporter />
         <Suspense fallback={null}>
-          <GoogleAnalytics />
           <UmamiAnalytics />
         </Suspense>
         <div className="min-vh-100 d-flex flex-column">
