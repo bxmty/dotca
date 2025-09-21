@@ -86,7 +86,9 @@ export default function RootLayout({
           />
         )}
         <BootstrapClient />
-        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
         <WebVitalsReporter />
         <Suspense fallback={null}>
           <UmamiAnalytics />
