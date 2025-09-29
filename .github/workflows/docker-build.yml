@@ -122,6 +122,4 @@ jobs:
           NEXT_PUBLIC_ENVIRONMENT=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
           NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.GA_STAGING_ID }}
           NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.GA_PRODUCTION_ID }}
-          NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}
-          NEXT_PUBLIC_UMAMI_HOST_URL=${{ secrets.UMAMI_HOST_URL }}
         platforms: linux/amd64
