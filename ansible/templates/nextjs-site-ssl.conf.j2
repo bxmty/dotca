@@ -60,9 +60,9 @@ server {
         return 200 'OK';
     }
     
-    # Rate limiting for general requests
+    # Rate limiting for general requests (temporarily disabled for debugging)
     location / {
-        limit_req zone=general burst=20 nodelay;
+        # limit_req zone=general burst=20 nodelay;
         
         proxy_pass http://nextjs_backend;
         proxy_http_version 1.1;
