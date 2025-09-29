@@ -78,7 +78,23 @@ export default function RootLayout({
   return (
     <html lang="en" data-bs-theme="auto">
       <body>
-        {/* Google Analytics script - only load the script, initialization happens in GoogleAnalytics component */}
+        {/* Google Analytics inline initialization script - must run immediately */}
+        {GA_MEASUREMENT_ID && (
+          <Script
+            id="gtag-init"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}');
+              `,
+            }}
+          />
+        )}
+
+        {/* Google Analytics script - only load the script, additional config happens in GoogleAnalytics component */}
         {GA_MEASUREMENT_ID && (
           <Script
             strategy="afterInteractive"
