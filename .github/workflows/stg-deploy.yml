@@ -41,20 +41,18 @@ jobs:
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
-          doctl account get  # Verify authentication
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          # Validate SSH key format
+          # Validate SSH key format (without exposing key details)
           if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
             echo "::error::Invalid SSH private key format"
             exit 1
           fi
-          echo "SSH key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_rsa
+          echo "✅ SSH key format validated"
       - name: Initialize Terraform
         working-directory: ./terraform
         run: |
@@ -247,19 +245,93 @@ jobs:
 
           # Install additional Ansible collections if needed
           ansible-galaxy collection install community.general ansible.posix
+
+          # Install required Ansible roles
+          ansible-galaxy install -r ansible/requirements.yml
+
+      - name: Setup Ansible Vault password file
+        run: |
+          echo "🔐 Setting up Ansible Vault password file..."
+
+          # SECURITY: Validate vault password format before creating file
+          VAULT_PASS="${{ secrets.ANSIBLE_VAULT_PASSWORD }}"
+          if [ -z "$VAULT_PASS" ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD secret is empty"
+            exit 1
+          fi
+
+          if [ ${#VAULT_PASS} -lt 8 ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD is too short (minimum 8 characters)"
+            exit 1
+          fi
+
+          # Create the vault password file from GitHub secret (securely)
+          printf '%s\n' "$VAULT_PASS" > ~/.ansible_vault_pass
+
+          # Set proper permissions (only owner can read/write)
+          chmod 600 ~/.ansible_vault_pass
+
+          echo "✅ Ansible Vault password file created and secured"
+          echo ""
+          echo "📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!"
+          echo "   To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml"
+          echo "   To edit:    ansible-vault edit ansible/vars/vault-vars.yml"
+          echo "   Password should match the ANSIBLE_VAULT_PASSWORD secret"
+
+      - name: Validate Ansible Vault encryption
+        run: |
+          echo "🔍 Validating Ansible Vault encryption..."
+
+          # Check if vault-vars.yml exists
+          if [ ! -f "ansible/vars/vault-vars.yml" ]; then
+            echo "::error::ansible/vars/vault-vars.yml file not found!"
+            exit 1
+          fi
+
+          # Check if the file is encrypted (Ansible Vault files start with $ANSIBLE_VAULT)
+          if ! head -1 ansible/vars/vault-vars.yml | grep -q "^\$ANSIBLE_VAULT"; then
+            echo "::error::ansible/vars/vault-vars.yml is not encrypted with Ansible Vault!"
+            echo ""
+            echo "🚨 SECURITY ISSUE DETECTED!"
+            echo "Your vault-vars.yml file contains sensitive data but is not encrypted."
+            echo ""
+            echo "To fix this issue:"
+            echo "1. Encrypt the file: ansible-vault encrypt ansible/vars/vault-vars.yml"
+            echo "2. When editing:    ansible-vault edit ansible/vars/vault-vars.yml"
+            echo "3. Use the same password as your ANSIBLE_VAULT_PASSWORD secret"
+            echo ""
+            echo "This deployment will fail until the file is properly encrypted."
+            exit 1
+          fi
+
+          # Test if we can decrypt the file with our password
+          if ! ansible-vault view ansible/vars/vault-vars.yml --vault-password-file ~/.ansible_vault_pass >/dev/null 2>&1; then
+            echo "::error::Cannot decrypt ansible/vars/vault-vars.yml with the provided vault password!"
+            echo ""
+            echo "Possible issues:"
+            echo "1. ANSIBLE_VAULT_PASSWORD secret doesn't match the encryption password"
+            echo "2. The vault-vars.yml file was encrypted with a different password"
+            echo "3. The file may be corrupted"
+            echo ""
+            echo "To fix:"
+            echo "1. Update the ANSIBLE_VAULT_PASSWORD secret to match the encryption password"
+            echo "2. Or re-encrypt the file with: ansible-vault encrypt ansible/vars/vault-vars.yml"
+            exit 1
+          fi
+
+          echo "✅ Ansible Vault encryption validation passed"
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          # Validate SSH key
+          # Validate SSH key (without exposing key details)
           if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
             echo "::error::Invalid SSH private key format"
             exit 1
           fi
-          echo "🔑 SSH key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_rsa | awk '{print $2}'
+          echo "🔑 SSH key validated"
       - name: Wait for server readiness
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
@@ -335,8 +407,7 @@ jobs:
             else
               if [ $i -eq $SSH_TEST_ATTEMPTS ]; then
                 echo "::error::SSH authentication failed after $SSH_TEST_ATTEMPTS attempts"
-                echo "Debug: Testing SSH with verbose output..."
-                ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o UserKnownHostsFile=/dev/null -v -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH test'" || true
+                echo "Please check that the SSH key is correctly configured and the server is accessible"
                 exit 1
               else
                 echo "⏳ SSH authentication failed, retrying... (attempt $i/$SSH_TEST_ATTEMPTS)"
@@ -410,9 +481,9 @@ jobs:
             echo "✅ Ansible connectivity test passed"
           else
             echo "::error::Ansible connectivity test failed"
-            echo "Debug: Checking inventory and SSH setup..."
+            echo "Debug: Checking inventory setup..."
             cat ansible/inventory.yml
-            ssh-keygen -lf ~/.ssh/id_rsa
+            echo "SSH key validation: $(ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1 && echo 'valid' || echo 'invalid')"
             exit 1
           fi
       - name: Run Ansible playbook with enhanced error handling
@@ -420,44 +491,54 @@ jobs:
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           GITHUB_ACTIONS: 'true'
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          GA_STAGING_ID: ${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
-          # GitHub Container Registry authentication
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
+          GITHUB_REPO: ${{ github.repository }}
+          # Note: Sensitive variables are read from Ansible Vault, not environment variables
         run: |
           echo "🚀 Starting Ansible deployment..."
 
-          # Validate required environment variables
-          MISSING_VARS=""
-          [ -z "$BREVO_API_KEY" ] && MISSING_VARS="$MISSING_VARS BREVO_API_KEY"
-          [ -z "$STRIPE_SECRET_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_SECRET_KEY"
-          [ -z "$STRIPE_PUBLISHABLE_KEY" ] && MISSING_VARS="$MISSING_VARS STRIPE_PUBLISHABLE_KEY"
-          [ -z "$GITHUB_TOKEN" ] && MISSING_VARS="$MISSING_VARS GITHUB_TOKEN"
-          [ -z "$GITHUB_USERNAME" ] && MISSING_VARS="$MISSING_VARS GITHUB_USERNAME"
-          if [ -n "$MISSING_VARS" ]; then
-            echo "::error::Missing required environment variables:$MISSING_VARS"
-            exit 1
-          fi
-          
-          echo "✅ GitHub Container Registry authentication configured:"
-          echo "   - Username: $GITHUB_USERNAME"
-          echo "   - Token: ${GITHUB_TOKEN:0:10}... (truncated)"
+          # Note: Ansible will read sensitive variables from the encrypted vault-vars.yml file
+          # No need to validate environment variables here as they're handled by Ansible Vault
+
+          echo "✅ Ansible Vault authentication configured:"
+          echo "   - Vault file: ansible/vars/vault-vars.yml (encrypted)"
+          echo "   - Password file: ~/.ansible_vault_pass"
 
           # Run Ansible playbook with retry logic
           DEPLOY_SUCCESS=false
           MAX_ATTEMPTS=2
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
             echo "📋 Deployment attempt $attempt of $MAX_ATTEMPTS..."
-            
+
+            # Mask sensitive values in GitHub Actions logs (only if they exist)
+            if [ -n "${{ secrets.GA_STAGING_ID }}" ]; then
+              echo "::add-mask::${{ secrets.GA_STAGING_ID }}"
+            fi
+            if [ -n "${{ secrets.GA_PRODUCTION_ID }}" ]; then
+              echo "::add-mask::${{ secrets.GA_PRODUCTION_ID }}"
+            fi
+            if [ -n "${{ secrets.UMAMI_WEBSITE_ID }}" ]; then
+              echo "::add-mask::${{ secrets.UMAMI_WEBSITE_ID }}"
+            fi
+
+            # Debug what values are being passed to Ansible
+            echo "🔍 GitHub Actions Secret Values:"
+            echo "GA_STAGING_ID exists: ${{ secrets.GA_STAGING_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "UMAMI_WEBSITE_ID exists: ${{ secrets.UMAMI_WEBSITE_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "UMAMI_HOST_URL exists: ${{ secrets.UMAMI_HOST_URL != '' && 'YES' || 'NO/EMPTY' }}"
+
             if ansible-playbook \
               -i ansible/inventory.yml \
               ansible/staging-deploy.yml \
               --timeout=60 \
               --extra-vars "ansible_ssh_timeout=60" \
-              -v; then
+              --extra-vars "GA_STAGING_ID=${{ secrets.GA_STAGING_ID }}" \
+              --extra-vars "GA_PRODUCTION_ID=${{ secrets.GA_PRODUCTION_ID }}" \
+              --extra-vars "UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" \
+              --extra-vars "UMAMI_HOST_URL=${{ secrets.UMAMI_HOST_URL }}" \
+              --vault-password-file ~/.ansible_vault_pass; then
               echo "✅ Deployment successful on attempt $attempt"
               DEPLOY_SUCCESS=true
               break
@@ -481,6 +562,19 @@ jobs:
             exit 1
           fi
           echo "🎉 Ansible deployment completed successfully!"
+
+      - name: Cleanup vault password file
+        if: always()
+        run: |
+          echo "🧹 Cleaning up sensitive files..."
+          rm -f ~/.ansible_vault_pass
+
+          # SECURITY: Clean up any Ansible log files that might contain sensitive data
+          rm -f ansible/ansible.log
+          rm -f ansible.log
+
+          echo "✅ Vault password file and logs securely removed"
+
   deployment-verification:
     name: Verify Deployment
     runs-on: ubuntu-latest

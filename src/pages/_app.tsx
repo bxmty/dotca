@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import Script from 'next/script';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../app/globals.css';
-import { onCLS, onFID, onLCP, onFCP, onTTFB } from 'web-vitals';
+import { onCLS, onINP, onLCP, onFCP, onTTFB } from 'web-vitals';
 import * as gtag from '../lib/gtag'; // Import your existing gtag.ts file
 
 // Add gtag to the Window interface
@@ -49,7 +49,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
     // Register web-vitals reporting
     onCLS(reportWebVitals);
-    onFID(reportWebVitals);
+    onINP(reportWebVitals);
     onLCP(reportWebVitals);
     onFCP(reportWebVitals);
     onTTFB(reportWebVitals);
