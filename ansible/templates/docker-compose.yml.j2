@@ -32,8 +32,9 @@ services:
       - NEXT_PUBLIC_UMAMI_HOST_URL={{ umami_host_url | default('') }}
       - HOST=0.0.0.0
       - HOSTNAME=0.0.0.0
+      - PORT=3000
     healthcheck:
-      test: ["CMD", "sh", "-c", "curl -f http://$(hostname -i):3000/api/health"]
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
