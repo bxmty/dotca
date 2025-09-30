@@ -7,6 +7,7 @@
   hosts: digitalocean
   become: true
   gather_facts: false
+  vars_files: vars/vault-vars.yml
   tasks:
     - name: Ensure /tmp directory exists with proper permissions
       ansible.builtin.raw: |
@@ -17,25 +18,26 @@
 - name: Setup Production environment for dotca
   hosts: digitalocean
   become: true
+  vars_files: vars/vault-vars.yml
   vars:
     project_name: dotca-nextjs
-    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
+    git_repo_url: "https://github.com/{{ GITHUB_REPO | default('bxmty/dotca') }}.git"
     git_branch: main
     app_dir: /app
     public_ip: "{{ ansible_host }}"
-    brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
-    stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
-    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
-    ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
+    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
+    stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
+    stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
     # GitHub Container Registry settings for promoted images
-    github_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
-    github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
+    github_token: "{{ GITHUB_TOKEN | default('') }}"
+    github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
     # Production image configuration - uses promoted images from GHCR
-    docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
-    github_repo_from_url: "{{ git_repo_url | default('') }}"
+    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:main') }}"
+    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     # Default to main tag (promoted production image)
-    docker_image: "{{ docker_image_override if docker_image_override else 'ghcr.io/bxtech/dotca:main' }}"
+    docker_image: "{{ docker_image_override }}"
 
   tasks:
     - name: Update apt cache
@@ -369,6 +371,7 @@
         owner: '1001'  # nextjs user UID
         group: '1001'  # nodejs group GID
         recurse: true
+      register: volume_permission_fix
 
     # STREAMLINED IMAGE VERIFICATION - Essential checks only
     - name: Verify image pull was successful
@@ -427,7 +430,7 @@
         "
       register: image_pull_verification
       changed_when: false
-      when: docker_pull is success and volume_permission_fix is success
+      when: docker_pull.rc == 0
 
     # STREAMLINED ENVIRONMENT VARIABLE VALIDATION - Essential checks only
     - name: Validate critical environment variables
@@ -636,12 +639,6 @@
         mode: '0755'
         backup: true
 
-    - name: Create Umami database backup script
-      ansible.builtin.template:
-        src: umami-backup.sh.j2
-        dest: "{{ app_dir }}/umami-backup.sh"
-        mode: '0755'
-
     - name: Set up monitoring cron job
       cron:
         name: "Monitor dotca-nextjs"
@@ -675,6 +672,7 @@
 - name: Setup Let's Encrypt SSL Certificates
   hosts: digitalocean
   become: yes
+  vars_files: vars/vault-vars.yml
   vars:
     # Certbot configuration
     certbot_install_method: package
@@ -840,7 +838,7 @@
           ============================================
           
           Domain: boximity.ca
-          Status: {{ '✅ SUCCESS' if ssl_certificate_verification.rc == 0 else '❌ FAILED' }}
+          Status: {{ '✅ SUCCESS' if final_ssl_cert_check.stat.exists else '❌ FAILED' }}
           Action Taken: {{ 'Certificate created/renewed' if cert_needs_action else 'No action needed - existing certificate is valid' }}
           
           Certificate Details:
@@ -865,6 +863,7 @@
 - name: Setup Let's Encrypt SSL Certificate for Umami Dashboard (Production)
   hosts: digitalocean
   become: yes
+  vars_files: vars/vault-vars.yml
   vars:
     # Certbot configuration
     certbot_install_method: package
