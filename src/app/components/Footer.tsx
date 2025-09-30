@@ -1,4 +1,6 @@
 export default function Footer() {
+  const commitHash = process.env.NEXT_PUBLIC_COMMIT_HASH;
+
   return (
     <footer className="py-4 py-md-5 border-top mt-auto">
       <div className="container">
@@ -6,6 +8,9 @@ export default function Footer() {
           <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
             <div className="fs-4 fw-semibold mb-2">boximity msp</div>
             <p className="small text-secondary mb-0">© 2025 boximity msp. All rights reserved.</p>
+            {commitHash && (
+              <p className="small text-muted mb-0 mt-1">Build: {commitHash}</p>
+            )}
           </div>
           <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
             <div className="d-flex gap-4 align-items-center">
