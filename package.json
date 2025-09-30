@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": false,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0",
-    "build": "next build",
+    "dev": "NEXT_PUBLIC_COMMIT_HASH=$(git rev-parse --short HEAD) next dev -H 0.0.0.0",
+    "build": "NEXT_PUBLIC_COMMIT_HASH=$(git rev-parse --short HEAD) next build",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint --no-cache",
     "typecheck": "tsc --noEmit",
@@ -26,12 +26,12 @@
     "web-vitals": "5.1.0"
   },
   "devDependencies": {
+    "@types/react": "19.1.13",
     "@eslint/eslintrc": "3.3.1",
     "@testing-library/jest-dom": "6.8.0",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",
     "@types/bootstrap": "5.2.10",
-    "@types/react": "19.1.12",
     "@types/react-dom": "19.1.9",
     "@types/node": "22.18.1",
     "eslint": "9.35.0",

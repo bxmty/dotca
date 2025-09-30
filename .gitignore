@@ -84,3 +84,5 @@ continuous-monitoring/
 .github/workflows/*.log
 
 logs/
+
+.vault-pass
