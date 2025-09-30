@@ -34,4 +34,11 @@ const nextConfig = {
   }
 };
 
+// For standalone server configuration, ensure proper binding
+if (process.env.NODE_ENV === 'production') {
+  // This ensures the server binds to 0.0.0.0 in production containers
+  process.env.HOST = process.env.HOST || '0.0.0.0';
+  process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0';
+}
+
 module.exports = nextConfig;
