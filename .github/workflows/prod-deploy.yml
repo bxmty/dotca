@@ -375,6 +375,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
+
+      - name: Install Ansible Galaxy roles
+        run: |
+          cd ansible
+          ansible-galaxy install -r requirements.yml --force
       
       - name: Setup SSH key
         run: |
