@@ -453,6 +453,8 @@ jobs:
           DOCKER_IMAGE: ${{ needs.verify-promoted-image.outputs.full_image_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
+          # Ansible vault password for decrypting encrypted variables
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then
