@@ -37,7 +37,7 @@ jobs:
       recommendations: ${{ steps.validate.outputs.recommendations }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Validate workflow sequence
         id: validate
@@ -97,7 +97,7 @@ jobs:
       blocking_issues: ${{ steps.check.outputs.issues }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Check staging readiness
         id: check
@@ -150,7 +150,7 @@ jobs:
       staging_image_available: ${{ steps.check.outputs.image_available }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -216,7 +216,7 @@ jobs:
       promoted_image_available: ${{ steps.check.outputs.image_available }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Log in to Container Registry
         uses: docker/login-action@v3

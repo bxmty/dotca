@@ -7,6 +7,7 @@
   hosts: digitalocean
   become: true
   gather_facts: false
+  vars_files: vars/vault-vars.yml
   tasks:
     - name: Ensure /tmp directory exists with proper permissions
       ansible.builtin.raw: |
@@ -17,25 +18,26 @@
 - name: Setup Production environment for dotca
   hosts: digitalocean
   become: true
+  vars_files: vars/vault-vars.yml
   vars:
     project_name: dotca-nextjs
-    git_repo_url: "{{ lookup('env', 'GIT_REPO_URL') }}"
+    git_repo_url: "https://github.com/{{ GITHUB_REPO | default('bxmty/dotca') }}.git"
     git_branch: main
     app_dir: /app
     public_ip: "{{ ansible_host }}"
-    brevo_api_key: "{{ lookup('env', 'BREVO_API_KEY') }}"
-    stripe_secret_key: "{{ lookup('env', 'STRIPE_SECRET_KEY') }}"
-    stripe_publishable_key: "{{ lookup('env', 'STRIPE_PUBLISHABLE_KEY') }}"
-    ga_production_id: "{{ lookup('env', 'GA_PRODUCTION_ID') }}"
+    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
+    stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
+    stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
     # GitHub Container Registry settings for promoted images
-    github_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
-    github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
+    github_token: "{{ GITHUB_TOKEN | default('') }}"
+    github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
     # Production image configuration - uses promoted images from GHCR
-    docker_image_override: "{{ lookup('env', 'DOCKER_IMAGE') }}"
-    github_repo_from_url: "{{ git_repo_url | default('') }}"
+    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:main') }}"
+    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     # Default to main tag (promoted production image)
-    docker_image: "{{ docker_image_override if docker_image_override else 'ghcr.io/bxtech/dotca:main' }}"
+    docker_image: "{{ docker_image_override }}"
 
   tasks:
     - name: Update apt cache
@@ -322,6 +324,15 @@
           - Production deployment: This workflow (requires promoted image)
       when: not (any_production_image_found | default(false))
 
+    - name: Check if SSL certificate exists for production domain
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/boximity.ca/cert.pem
+      register: ssl_cert_check
+
+    - name: Determine API URL for production (always HTTPS)
+      ansible.builtin.set_fact:
+        next_public_api_url: "https://boximity.ca/api"
+
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
         src: docker-compose.yml.j2
@@ -330,7 +341,7 @@
         backup: true
       vars:
         node_env: production
-        next_public_api_url: "http://{{ public_ip }}/api"
+        next_public_api_url: "{{ next_public_api_url }}"
         next_public_environment: production
 
     - name: Display generated docker-compose.yml for debugging
@@ -352,21 +363,15 @@
       until: docker_pull is success
       changed_when: false
 
-    - name: Fix Docker volume permissions for Next.js cache
-      ansible.builtin.shell: |
-        # Create the volume explicitly with correct name
-        docker volume create next_cache 2>/dev/null || true
-        
-        # Fix permissions using a temporary container
-        docker run --rm -v next_cache:/app/.next/cache alpine:latest sh -c '
-          mkdir -p /app/.next/cache/images
-          chown -R 1001:1001 /app/.next/cache
-          chmod -R 755 /app/.next/cache
-          echo "Permissions set successfully"
-          ls -la /app/.next/cache
-        '
+    - name: Create Next.js cache directory with proper permissions
+      ansible.builtin.file:
+        path: "{{ app_dir }}/.next/cache"
+        state: directory
+        mode: '0755'
+        owner: '1001'  # nextjs user UID
+        group: '1001'  # nodejs group GID
+        recurse: true
       register: volume_permission_fix
-      changed_when: true
 
     # STREAMLINED IMAGE VERIFICATION - Essential checks only
     - name: Verify image pull was successful
@@ -425,7 +430,7 @@
         "
       register: image_pull_verification
       changed_when: false
-      when: docker_pull is success and volume_permission_fix is success
+      when: docker_pull.rc == 0
 
     # STREAMLINED ENVIRONMENT VARIABLE VALIDATION - Essential checks only
     - name: Validate critical environment variables
@@ -633,7 +638,7 @@
         dest: "{{ app_dir }}/monitor.sh"
         mode: '0755'
         backup: true
-          
+
     - name: Set up monitoring cron job
       cron:
         name: "Monitor dotca-nextjs"
@@ -667,6 +672,7 @@
 - name: Setup Let's Encrypt SSL Certificates
   hosts: digitalocean
   become: yes
+  vars_files: vars/vault-vars.yml
   vars:
     # Certbot configuration
     certbot_install_method: package
@@ -832,7 +838,7 @@
           ============================================
           
           Domain: boximity.ca
-          Status: {{ '✅ SUCCESS' if ssl_certificate_verification.rc == 0 else '❌ FAILED' }}
+          Status: {{ '✅ SUCCESS' if final_ssl_cert_check.stat.exists else '❌ FAILED' }}
           Action Taken: {{ 'Certificate created/renewed' if cert_needs_action else 'No action needed - existing certificate is valid' }}
           
           Certificate Details:
@@ -850,5 +856,93 @@
           1. Test HTTPS access: https://boximity.ca
           2. Monitor certificate expiration (automated)
           3. Verify auto-renewal is working (runs daily at 3:30 AM)
-          
+
           ============================================
+
+# SSL Certificate Setup for Umami Dashboard using geerlingguy certbot role
+- name: Setup Let's Encrypt SSL Certificate for Umami Dashboard (Production)
+  hosts: digitalocean
+  become: yes
+  vars_files: vars/vault-vars.yml
+  vars:
+    # Certbot configuration
+    certbot_install_method: package
+    certbot_auto_renew: true
+    certbot_auto_renew_user: "{{ ansible_user | default('root') }}"
+    certbot_auto_renew_hour: "3"
+    certbot_auto_renew_minute: "30"
+    certbot_auto_renew_options: "--quiet"
+
+    # Certificate generation settings - only create if needed
+    certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
+    certbot_create_method: standalone
+    certbot_testmode: false
+    certbot_hsts: true
+    certbot_admin_email: "matticem@boximity.ca"
+
+    # Domain configuration for Umami dashboard (production)
+    certbot_certs:
+      - domains:
+          - umami.boximity.ca
+        email: "matticem@boximity.ca"
+
+    # Services to stop during standalone certificate generation
+    certbot_create_standalone_stop_services:
+      - nginx
+
+  pre_tasks:
+    - name: Check if Umami certificate already exists
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/umami.boximity.ca/cert.pem
+      register: cert_file_exists
+
+    - name: Check certificate expiration (if it exists)
+      ansible.builtin.command: |
+        bash -c "
+        if [ -f /etc/letsencrypt/live/umami.boximity.ca/cert.pem ]; then
+          # Calculate days until expiration
+          openssl x509 -enddate -noout -in /etc/letsencrypt/live/umami.boximity.ca/cert.pem | cut -d= -f2 | xargs -I {} date -d {} +%s | awk '{print int(($1 - systime()) / 86400)}'
+        else
+          echo 'certificate_missing'
+        fi
+        "
+      register: cert_expiry_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Determine if certificate action is needed
+      ansible.builtin.set_fact:
+        cert_needs_action: "{{ not cert_file_exists.stat.exists or (cert_expiry_check.stdout | default('certificate_missing') != 'certificate_missing' and (cert_expiry_check.stdout | int) < 30) }}"
+
+    - name: Log certificate check results
+      ansible.builtin.debug:
+        msg:
+          - "Certificate exists: {{ cert_file_exists.stat.exists }}"
+          - "Days until expiry: {{ cert_expiry_check.stdout | default('certificate_missing') }}"
+          - "Certificate action needed: {{ cert_needs_action }}"
+
+  roles:
+    - geerlingguy.certbot
+
+  post_tasks:
+    - name: Display certificate action taken
+      ansible.builtin.debug:
+        msg: |
+          🔍 Umami SSL Certificate Action Summary (Production):
+
+          Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
+          {% if cert_needs_action %}
+          - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon (' ~ cert_expiry_check.stdout ~ ' days left)' }}
+          - New certificate generated for: umami.boximity.ca
+          {% else %}
+          - Certificate is valid ({{ cert_expiry_check.stdout | default('unknown') }} days remaining)
+          {% endif %}
+
+          📋 Next Steps:
+          - Ensure DNS points umami.boximity.ca to {{ ansible_host }}
+          - Umami dashboard will be available at: https://umami.boximity.ca
+
+    - name: Log certificate generation completion
+      ansible.builtin.debug:
+        msg: "🎉 Umami SSL certificate setup completed successfully for production!"
+      when: cert_needs_action

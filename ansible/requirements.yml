@@ -4,5 +4,5 @@
 
 # Certbot role for Let's Encrypt SSL certificates
 - name: geerlingguy.certbot
-  version: 4.0.0
+  version: 5.4.1
   src: https://github.com/geerlingguy/ansible-role-certbot.git
