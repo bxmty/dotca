@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": false,
   "scripts": {
-    "dev": "NEXT_PUBLIC_COMMIT_HASH=$(git rev-parse --short HEAD) next dev -H 0.0.0.0",
-    "build": "NEXT_PUBLIC_COMMIT_HASH=$(git rev-parse --short HEAD) next build",
+    "dev": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next dev -H 0.0.0.0",
+    "build": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next build",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint --no-cache",
     "typecheck": "tsc --noEmit",

@@ -101,7 +101,6 @@ jobs:
         echo "Environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}"
         echo "GA_STAGING_ID exists: ${{ secrets.GA_STAGING_ID != '' && 'YES' || 'NO/EMPTY' }}"
         echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
-        echo "UMAMI_WEBSITE_ID exists: ${{ secrets.UMAMI_WEBSITE_ID != '' && 'YES' || 'NO/EMPTY' }}"
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
