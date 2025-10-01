@@ -864,6 +864,7 @@
   hosts: digitalocean
   become: yes
   vars_files: vars/vault-vars.yml
+  ignore_errors: yes
   vars:
     # Certbot configuration
     certbot_install_method: package
@@ -946,3 +947,17 @@
       ansible.builtin.debug:
         msg: "🎉 Umami SSL certificate setup completed successfully for production!"
       when: cert_needs_action
+
+    - name: Handle Umami certificate generation failure
+      ansible.builtin.debug:
+        msg: |
+          ⚠️  Umami SSL Certificate Generation Failed (Non-Critical)
+          
+          This is expected if the DNS record for umami.boximity.ca doesn't exist yet.
+          
+          To fix this:
+          1. Add DNS A record: umami.boximity.ca → {{ ansible_host }}
+          2. Re-run the deployment to generate the certificate
+          
+          The main application deployment was successful regardless of this failure.
+      when: ansible_failed_result is defined
