@@ -492,6 +492,74 @@ jobs:
             fi
           done
       
+      - name: Setup Ansible Vault password file
+        run: |
+          echo "🔐 Setting up Ansible Vault password file..."
+          
+          # SECURITY: Validate vault password format before creating file
+          VAULT_PASS="${{ secrets.ANSIBLE_VAULT_PASSWORD }}"
+          if [ -z "$VAULT_PASS" ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD secret is empty"
+            exit 1
+          fi
+          
+          if [ ${#VAULT_PASS} -lt 8 ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD is too short (minimum 8 characters)"
+            exit 1
+          fi
+          
+          # Create the vault password file from GitHub secret (securely)
+          printf '%s\n' "$VAULT_PASS" > ~/.ansible_vault_pass
+          
+          # Secure the file
+          chmod 600 ~/.ansible_vault_pass
+          
+          echo "✅ Ansible Vault password file created and secured"
+          echo "📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!"
+          echo "   To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml"
+          echo "   To edit:    ansible-vault edit ansible/vars/vault-vars.yml"
+          echo "   Password should match the ANSIBLE_VAULT_PASSWORD secret"
+
+      - name: Validate Ansible Vault encryption
+        run: |
+          echo "🔍 Validating Ansible Vault encryption..."
+          
+          # Check if vault-vars.yml exists
+          if [ ! -f "ansible/vars/vault-vars.yml" ]; then
+            echo "::error::ansible/vars/vault-vars.yml file not found!"
+            exit 1
+          fi
+          
+          # Check if the file is encrypted (Ansible Vault files start with $ANSIBLE_VAULT)
+          if ! head -1 ansible/vars/vault-vars.yml | grep -q "^\$ANSIBLE_VAULT"; then
+            echo "::error::ansible/vars/vault-vars.yml is not encrypted with Ansible Vault!"
+            echo ""
+            echo "Your vault-vars.yml file contains sensitive data but is not encrypted."
+            echo "This is a security risk and will cause deployment failures."
+            echo ""
+            echo "To fix this:"
+            echo "1. Encrypt the file: ansible-vault encrypt ansible/vars/vault-vars.yml"
+            echo "2. When editing:    ansible-vault edit ansible/vars/vault-vars.yml"
+            echo "3. Use the same password as your ANSIBLE_VAULT_PASSWORD secret"
+            exit 1
+          fi
+          
+          # Test decryption with the provided password
+          if ! ansible-vault view ansible/vars/vault-vars.yml --vault-password-file ~/.ansible_vault_pass >/dev/null 2>&1; then
+            echo "::error::Cannot decrypt ansible/vars/vault-vars.yml with the provided vault password!"
+            echo ""
+            echo "This usually means:"
+            echo "1. ANSIBLE_VAULT_PASSWORD secret doesn't match the encryption password"
+            echo "2. The vault-vars.yml file was encrypted with a different password"
+            echo ""
+            echo "To fix this:"
+            echo "1. Update the ANSIBLE_VAULT_PASSWORD secret to match the encryption password"
+            echo "2. Or re-encrypt the file with: ansible-vault encrypt ansible/vars/vault-vars.yml"
+            exit 1
+          fi
+          
+          echo "✅ Ansible Vault encryption validation passed"
+
       - name: Deploy using Ansible
         env:
           GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
@@ -541,7 +609,7 @@ jobs:
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
           
           # Run production deployment playbook
-          if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml; then
+          if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml --vault-password-file ~/.ansible_vault_pass; then
             echo "Deployment successful"
             echo "deployment_success=true" >> $GITHUB_OUTPUT
           else
@@ -549,6 +617,11 @@ jobs:
             echo "deployment_success=false" >> $GITHUB_OUTPUT
             exit 1
           fi
+          
+          # Cleanup vault password file
+          echo "🧹 Cleaning up sensitive files..."
+          rm -f ~/.ansible_vault_pass
+          echo "✅ Vault password file securely removed"
   
   deployment-verification:
     name: Comprehensive Deployment Verification
