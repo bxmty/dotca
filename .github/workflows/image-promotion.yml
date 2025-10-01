@@ -1830,6 +1830,7 @@ jobs:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+      ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
   promotion-failed:
     name: Handle Promotion Failure
