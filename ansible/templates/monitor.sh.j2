@@ -1,120 +1,59 @@
 #!/bin/bash
 
-# Enhanced monitoring script with better error handling and recovery
+# Enhanced monitoring script for Next.js application
 LOG_FILE="{{ app_dir }}/monitoring.log"
-MAX_LOG_SIZE=10485760  # 10MB
 
-# Rotate log if it gets too large
-if [ -f "$LOG_FILE" ] && [ $(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0) -gt $MAX_LOG_SIZE ]; then
-  mv "$LOG_FILE" "${LOG_FILE}.old"
-fi
-
-# Function to log messages with timestamps
+# Function to log messages
 log_message() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+  echo "[$(date)] $1" | tee -a $LOG_FILE
 }
 
-# Function to send alert (placeholder for future notification integration)
-send_alert() {
-  log_message "ALERT: $1"
-  # Future: integrate with monitoring service or send email
-}
+# Application health check
+HEALTH_CHECK_URL="http://localhost/health"
 
-log_message "=== Starting health check ==="
-
-# Check system resources
-MEMORY_USAGE=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100.0}')
-DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
-LOAD_AVG=$(uptime | awk -F'load average:' '{ print $2 }' | cut -d, -f1 | xargs)
-
-log_message "System status - Memory: ${MEMORY_USAGE}%, Disk: ${DISK_USAGE}%, Load: ${LOAD_AVG}"
-
-# Alert on high resource usage
-if [ "$MEMORY_USAGE" -gt 90 ]; then
-  send_alert "High memory usage: ${MEMORY_USAGE}%"
+# Check if manual backup is requested
+FORCE_BACKUP=false
+if [ "$1" = "backup" ]; then
+  FORCE_BACKUP=true
 fi
 
-if [ "$DISK_USAGE" -gt 90 ]; then
-  send_alert "High disk usage: ${DISK_USAGE}%"
-  log_message "Attempting to clean up Docker resources..."
-  docker system prune -af --volumes 2>&1 | tee -a "$LOG_FILE"
-fi
+log_message "Starting health check..."
 
-# Check if Docker service is running
+# Check if Docker is running
 if ! systemctl is-active --quiet docker; then
   log_message "Docker service is not running! Attempting to restart..."
   systemctl restart docker
-  sleep 15
-  if ! systemctl is-active --quiet docker; then
-    send_alert "Failed to restart Docker service!"
-    exit 1
-  fi
-fi
-
-# Function to get docker-compose command
-get_docker_compose_cmd() {
-  if docker compose version &> /dev/null; then
-    echo "docker compose"
-  elif command -v docker-compose &> /dev/null; then
-    echo "docker-compose"
-  else
-    echo "none"
-  fi
-}
-
-DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
-
-if [ "$DOCKER_COMPOSE_CMD" = "none" ]; then
-  send_alert "No Docker Compose command available!"
-  exit 1
-fi
-
-# Check if containers are running
-cd {{ app_dir }}/repo || exit 1
-
-if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
-  log_message "No containers running! Attempting to start services..."
-  $DOCKER_COMPOSE_CMD up -d 2>&1 | tee -a "$LOG_FILE"
-  sleep 20
-fi
-
-# Health check with retries
-HEALTH_URL="http://localhost:8080/health"
-MAX_RETRIES=5
-RETRY_COUNT=0
-
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
-    log_message "Application health check passed"
-    
-    # Check Nginx status
-    if systemctl is-active --quiet nginx; then
-      log_message "All services healthy"
-      exit 0
-    else
-      log_message "Nginx not running, restarting..."
-      systemctl restart nginx
-      exit 0
-    fi
-  fi
-  
-  RETRY_COUNT=$((RETRY_COUNT + 1))
-  log_message "Health check failed (attempt $RETRY_COUNT/$MAX_RETRIES)"
   sleep 10
-done
+fi
 
-# If we get here, health checks failed
-send_alert "Application health check failed after $MAX_RETRIES attempts"
+# Check available disk space
+DISK_SPACE=$(df -h /tmp | awk 'NR==2 {print $5}' | sed 's/%//')
+if [ "$DISK_SPACE" -gt 90 ]; then
+  log_message "Disk space low ($DISK_SPACE%). Cleaning up Docker..."
+  docker system prune -af --volumes
+fi
 
-# Attempt recovery
-log_message "Attempting service recovery..."
-$DOCKER_COMPOSE_CMD restart 2>&1 | tee -a "$LOG_FILE"
-sleep 30
+# Check Docker container status
+cd {{ app_dir }}/repo
+if ! docker ps | grep -q "{{ project_name }}.*web"; then
+  log_message "Web container not running properly! Attempting to restart..."
+  docker-compose down web
+  docker-compose up -d web
+  sleep 15
+fi
 
-# Final health check
-if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
-  log_message "Recovery successful"
+# Restart application services if needed
+if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+  log_message "Application not responding. Restarting services..."
+  cd {{ app_dir }}/repo
+  docker-compose down --remove-orphans && docker-compose up -d web
+  sleep 5
+  systemctl restart nginx
+fi
+
+# Final health status summary
+if curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
+  log_message "SUCCESS: Application is healthy"
 else
-  send_alert "Recovery failed - manual intervention required!"
-  exit 1
+  log_message "CRITICAL: Application is unhealthy. Manual intervention required!"
 fi

@@ -448,10 +448,10 @@ jobs:
       promotion_reason: ${{ steps.validation.outputs.promotion_reason }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -568,7 +568,7 @@ jobs:
       promotion_duration: ${{ steps.status_tracking.outputs.duration }}
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -1598,7 +1598,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -1685,7 +1685,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
@@ -1830,6 +1830,7 @@ jobs:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+      ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
   promotion-failed:
     name: Handle Promotion Failure
@@ -1838,7 +1839,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Error Handling Utilities
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}

@@ -1,10 +1,10 @@
-import { CLSMetric, FCPMetric, FIDMetric, LCPMetric, TTFBMetric, onCLS, onFCP, onFID, onLCP, onTTFB } from 'web-vitals';
+import { CLSMetric, FCPMetric, INPMetric, LCPMetric, TTFBMetric, onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
 import * as gtag from './gtag';
 
 /**
  * Interface for web vitals metric reporting
  */
-export type WebVitalsMetric = CLSMetric | FCPMetric | FIDMetric | LCPMetric | TTFBMetric;
+export type WebVitalsMetric = CLSMetric | FCPMetric | INPMetric | LCPMetric | TTFBMetric;
 
 /**
  * Report web vitals metrics to an analytics endpoint
@@ -20,8 +20,8 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
 
   // Example of sending to a custom analytics endpoint
   try {
-    // Send to Google Analytics if available
-    if (gtag.GA_MEASUREMENT_ID) {
+    // Send to Google Analytics if available and ready
+    if (gtag.GA_MEASUREMENT_ID && typeof window !== 'undefined' && window.gtag) {
       gtag.event({
         action: 'web_vitals',
         category: 'Web Vitals',
@@ -31,6 +31,8 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
         rating: metric.rating,
         non_interaction: 1,
       });
+    } else if (gtag.GA_MEASUREMENT_ID && process.env.NODE_ENV !== 'production') {
+      console.log('GA not ready for web vitals tracking, skipping:', metric.name);
     }
     
     // Also send metrics to the API endpoint
@@ -61,7 +63,7 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
  */
 export function initWebVitals() {
   onCLS(reportWebVitals);
-  onFID(reportWebVitals);
+  onINP(reportWebVitals);
   onLCP(reportWebVitals);
   onFCP(reportWebVitals);
   onTTFB(reportWebVitals);
