@@ -8,7 +8,6 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
-import UmamiAnalytics from "./components/UmamiAnalytics";
 import { GA_MEASUREMENT_ID } from "../lib/gtag";
 
 export const viewport: Viewport = {
@@ -106,9 +105,6 @@ export default function RootLayout({
           <GoogleAnalytics />
         </Suspense>
         <WebVitalsReporter />
-        <Suspense fallback={null}>
-          <UmamiAnalytics />
-        </Suspense>
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
           <main className="flex-grow-1">
