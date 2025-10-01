@@ -51,6 +51,8 @@ on:
         required: true
       NEXT_PUBLIC_PRODUCTION_GA_ID:
         required: true
+      ANSIBLE_VAULT_PASSWORD:
+        required: true
 
 env:
   REGISTRY: ghcr.io
