@@ -146,26 +146,35 @@ export async function POST(request: Request) {
       try {
         const errorData = await response.json();
         console.error('Brevo API error:', errorData);
-        
+
+        // Handle authentication errors
+        if (response.status === 401 || errorData.code === 'unauthorized') {
+          console.error('Brevo API key is not valid or not enabled');
+          return NextResponse.json(
+            { error: 'Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.' },
+            { status: 503 }
+          );
+        }
+
         // Handle common error cases
         if (errorData.code === 'duplicate_parameter') {
           return NextResponse.json(
-            { 
-              success: true, 
-              message: 'Your information has already been submitted. We will contact you soon.' 
+            {
+              success: true,
+              message: 'Your information has already been submitted. We will contact you soon.'
             }
           );
         }
-        
+
         // Handle phone number specific errors
-        if (errorData.code === 'invalid_parameter' && 
+        if (errorData.code === 'invalid_parameter' &&
             errorData.message?.toLowerCase().includes('phone')) {
           return NextResponse.json(
             { error: 'The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.' },
             { status: 400 }
           );
         }
-        
+
         throw new Error(`Brevo API error: ${errorData.message || JSON.stringify(errorData)}`);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (parseError) {
