@@ -13,7 +13,7 @@
 
 // Import both analytics providers
 import { pageview as gaPageview, event as gaEvent, initGA, GA_MEASUREMENT_ID } from './gtag';
-import { trackPageView, trackCustomEvent, trackFormSubmission, trackButtonClick, trackEngagement, isUmamiConfigured } from './umami';
+import { trackPageView as umamiTrackPageView, trackCustomEvent, trackFormSubmission, trackButtonClick as umamiTrackButtonClick, trackEngagement as umamiTrackEngagement, isUmamiConfigured } from './umami';
 
 // Types for unified analytics interface
 export interface UnifiedEventData {
@@ -100,7 +100,7 @@ export const trackPageView = async (url: string, title?: string): Promise<void> 
   // Track with Umami (server-side)
   if (config.enableUmami) {
     promises.push(
-      trackPageView(url, undefined, title).catch(error => {
+      umamiTrackPageView(url, undefined, title).catch(error => {
         console.error('❌ Umami pageview error:', error);
       })
     );
@@ -201,7 +201,7 @@ export const trackButtonClick = async (
 
   // Track with Umami (includes GA-compatible event)
   if (config.enableUmami) {
-    await trackButtonClick(buttonName, buttonContext).catch(error => {
+    await umamiTrackButtonClick(buttonName, buttonContext).catch(error => {
       console.error('❌ Button tracking error:', error);
     });
   }
@@ -231,7 +231,7 @@ export const trackEngagement = async (
 
   // Track with Umami (includes GA-compatible event)
   if (config.enableUmami) {
-    await trackEngagement(action, details).catch(error => {
+    await umamiTrackEngagement(action, details).catch(error => {
       console.error('❌ Engagement tracking error:', error);
     });
   }
