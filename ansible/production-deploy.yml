@@ -241,7 +241,7 @@
     - name: Verify promoted production image exists in GHCR
       ansible.builtin.command: |
         bash -c "
-        if [ -z '{{ docker_image | default('') }}' ]; then 
+        if [ -z '{{ docker_image | default('') }}' ]; then
           echo 'ERROR: docker_image variable is empty or undefined'
           exit 1
         fi
@@ -268,7 +268,7 @@
       register: alt_production_image_exists
       ignore_errors: true
       changed_when: false
-      when: 
+      when:
         - (production_image_exists.rc | default(1)) != 0
         - github_username is defined
         - github_username != ""
@@ -281,7 +281,7 @@
 
     - name: Display production image availability
       ansible.builtin.debug:
-        msg: 
+        msg:
           - "Production image {{ docker_image | default('undefined') }} exists: {{ primary_production_image_status }}"
           - "Alternative production image exists: {{ alt_production_image_status }}"
           - ""
@@ -296,7 +296,7 @@
     - name: Use alternative production image if primary failed
       ansible.builtin.set_fact:
         docker_image: "ghcr.io/{{ github_username }}/dotca:main"
-      when: 
+      when:
         - (production_image_exists.rc | default(1)) != 0
         - alt_production_image_exists is defined
         - (alt_production_image_exists.rc | default(1)) == 0
@@ -304,20 +304,20 @@
     - name: Fail if no promoted production images found
       ansible.builtin.fail:
         msg: |
-          No promoted production images found in GHCR! 
-          
+          No promoted production images found in GHCR!
+
           This means the image promotion workflow hasn't completed yet or failed.
-          
+
           Steps to fix:
           1. Check image promotion workflow: https://github.com/{{ github_repo_from_url }}/actions/workflows/image-promotion.yml
           2. Ensure staging deployment completed successfully
           3. Trigger and approve the image promotion workflow
           4. Verify the promoted image exists in GHCR
-          
+
           Expected image locations:
           - {{ docker_image | default('undefined') }}
           - ghcr.io/{{ github_username }}/dotca:main (if username available)
-          
+
           Current workflow status:
           - Staging deployment: Check staging-deploy.yml workflow
           - Image promotion: Check image-promotion.yml workflow
@@ -378,41 +378,41 @@
       ansible.builtin.command: |
         bash -c "
         echo '🔍 Verifying image pull was successful...'
-        
+
         # Check that image exists locally using multiple methods
         echo 'Checking for image: {{ docker_image }}'
-        
+
         # Extract repository and tag for flexible matching
         REPO_NAME=$(echo '{{ docker_image }}' | cut -d':' -f1)
         TAG_NAME=$(echo '{{ docker_image }}' | cut -d':' -f2)
-        
+
         echo 'Looking for repository: \$REPO_NAME with tag: \$TAG_NAME'
-        
+
         # Method 1: Check using docker images with custom format
         if docker images --format '{% raw %}{{.Repository}}:{{.Tag}}{% endraw %}' | grep -q '{{ docker_image }}'; then
           echo '✅ Image {{ docker_image }} found (exact format match)'
           exit 0
         fi
-        
+
         # Method 2: Check repository and tag separately (more reliable)
         if docker images --format '{% raw %}{{.Repository}} {{.Tag}}{% endraw %}' | grep -q \"\$REPO_NAME \$TAG_NAME\"; then
           echo '✅ Image found (repository and tag match): \$REPO_NAME:\$TAG_NAME'
           exit 0
         fi
-        
+
         # Method 3: Check just the repository name using simple docker images
         if docker images | grep -q \"\$REPO_NAME.*\$TAG_NAME\"; then
           echo '✅ Image repository found: \$REPO_NAME with tag \$TAG_NAME'
           docker images \"\$REPO_NAME\"
           exit 0
         fi
-        
+
         # Method 4: Use docker inspect to verify image exists
         if docker inspect '{{ docker_image }}' >/dev/null 2>&1; then
           echo '✅ Image {{ docker_image }} verified via docker inspect'
           exit 0
         fi
-        
+
         # If all methods fail, show debug info
         echo '❌ Image verification failed. Debug information:'
         echo 'Expected image: {{ docker_image }}'
@@ -437,7 +437,7 @@
       ansible.builtin.debug:
         msg: |
           🔍 Validating critical environment variables for production deployment
-          
+
           Required Variables Status:
           - BREVO_API_KEY: {{ '✅ SET' if brevo_api_key else '❌ MISSING' }}
           - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
@@ -476,7 +476,7 @@
           GITHUB_TOKEN={{ github_token }}
           GITHUB_USERNAME={{ github_username }}
           DOCKER_IMAGE={{ docker_image }}
-          
+
     # Docker services startup section
     - name: Start Docker Compose services
       command: docker-compose up -d --force-recreate --remove-orphans web
@@ -486,14 +486,14 @@
       retries: 3
       delay: 15
       until: docker_up is success
-      
+
     - name: Check if Docker Compose services started successfully
       command: docker-compose ps
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_ps
       changed_when: false
-      
+
     - name: Display Docker Compose status
       debug:
         var: docker_ps.stdout_lines
@@ -503,10 +503,10 @@
       ansible.builtin.command: |
         bash -c "
         echo '🏥 Performing basic health check...'
-        
+
         # Wait for service to be ready
         sleep 20
-        
+
         # Test basic connectivity
         if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
           echo '✅ Application is responding'
@@ -525,26 +525,26 @@
           ============================================
           PRODUCTION DEPLOYMENT COMPLETED SUCCESSFULLY
           ============================================
-          
+
           Application is now available at http://{{ public_ip }}
-          
+
           Deployment Details:
           - Environment: Production
           - Image Source: Image Promotion Workflow
           - Production Image: {{ docker_image }}
           - Status: Deployed and Running
-          
+
           Image Promotion Workflow:
           - Staging → Image Promotion → Production
           - Manual approval required for promotion
           - Promoted images stored in GHCR
-          
+
           Next Steps:
           1. Monitor application health
           2. SSL certificate setup will run next (separate play)
           3. Test production functionality
           4. For updates: Repeat staging → promotion → production cycle
-          
+
           ============================================
 
     - name: Configure Nginx worker processes from template
@@ -605,7 +605,7 @@
       ansible.builtin.debug:
         msg: |
           🔒 Initial SSL Certificate Status:
-          
+
           Certificate exists: {{ '✅ YES' if initial_ssl_cert_check.stat.exists else '❌ NO' }}
           {% if initial_ssl_cert_check.stat.exists %}
           Certificate will be validated in SSL setup play.
@@ -681,25 +681,25 @@
     certbot_auto_renew_hour: "3"
     certbot_auto_renew_minute: "30"
     certbot_auto_renew_options: "--quiet"
-    
+
     # Certificate generation settings - only create if needed
     certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
     certbot_create_method: standalone
     certbot_testmode: false
     certbot_hsts: true
     certbot_admin_email: "matticem@boximity.ca"
-    
+
     # Domain configuration
     certbot_certs:
       - domains:
           - boximity.ca
           - www.boximity.ca
         email: "matticem@boximity.ca"
-    
+
     # Services to stop during standalone certificate generation
     certbot_create_standalone_stop_services:
       - nginx
-  
+
   pre_tasks:
     - name: Ensure domain is configured in Nginx before certificate generation
       ansible.builtin.replace:
@@ -773,7 +773,7 @@
       ansible.builtin.debug:
         msg: |
           🔍 SSL Certificate Action Summary:
-          
+
           Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
           {% if cert_needs_action %}
           - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon' }}
@@ -809,13 +809,13 @@
       ansible.builtin.debug:
         msg: |
           🔒 Final SSL Certificate Verification:
-          
+
           Certificate exists: {{ '✅ YES' if final_ssl_cert_check.stat.exists else '❌ NO' }}
           {% if final_ssl_cert_check.stat.exists %}
           Certificate expires: {{ final_cert_expiry.stdout | default('Could not determine') }}
           HTTPS connectivity: {{ '✅ Working' if https_test.status is defined and https_test.status == 200 else '⚠️  May need Nginx restart' }}
           {% endif %}
-          
+
           Status: {{ '✅ SSL setup completed successfully' if final_ssl_cert_check.stat.exists else '❌ SSL setup failed' }}
 
     - name: Fail if SSL certificate verification failed
@@ -836,22 +836,22 @@
           ============================================
           INTELLIGENT SSL CERTIFICATE SETUP COMPLETED
           ============================================
-          
+
           Domain: boximity.ca
           Status: {{ '✅ SUCCESS' if final_ssl_cert_check.stat.exists else '❌ FAILED' }}
           Action Taken: {{ 'Certificate created/renewed' if cert_needs_action else 'No action needed - existing certificate is valid' }}
-          
+
           Certificate Details:
           - Location: /etc/letsencrypt/live/boximity.ca/
           - Auto-renewal: Enabled (daily at 3:30 AM)
           - Renewal threshold: 30 days before expiration
-          
+
           Smart Features:
           ✅ Only creates certificates when needed (missing or expiring < 30 days)
           ✅ Checks existing certificate validity before taking action
           ✅ Provides detailed expiration information
           ✅ Automatic renewal with cron job
-          
+
           Next Steps:
           1. Test HTTPS access: https://boximity.ca
           2. Monitor certificate expiration (automated)

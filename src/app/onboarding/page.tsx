@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -42,11 +42,15 @@ export default function OnboardingPage() {
     goals: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -85,11 +89,11 @@ export default function OnboardingPage() {
       <header className="bg-white shadow-sm py-3">
         <div className="container d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center">
-            <Image 
-              src="/vercel.svg" 
-              alt="Company Logo" 
-              width={100} 
-              height={24} 
+            <Image
+              src="/vercel.svg"
+              alt="Company Logo"
+              width={100}
+              height={24}
               className="dark-invert"
             />
           </div>
@@ -101,12 +105,15 @@ export default function OnboardingPage() {
 
       {/* Main Content */}
       <div className="container py-5">
-        <div className="card mx-auto shadow rounded" style={{maxWidth: "800px"}}>
+        <div
+          className="card mx-auto shadow rounded"
+          style={{ maxWidth: '800px' }}
+        >
           <div className="card-body p-4 p-md-5">
             <h1 className="fs-3 fw-bold mb-4">
-              {step === 1 && "Company Information"}
-              {step === 2 && "Contact Details"}
-              {step === 3 && "IT Environment"}
+              {step === 1 && 'Company Information'}
+              {step === 2 && 'Contact Details'}
+              {step === 3 && 'IT Environment'}
             </h1>
 
             <form onSubmit={handleSubmit}>

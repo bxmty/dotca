@@ -18,6 +18,7 @@ The primary goal is to generate qualified leads by offering value through person
 ## User Stories
 
 ### Primary User Flow
+
 **As a** IT decision-maker or business leader  
 **I want to** take a quick assessment of my company's M365 adoption  
 **So that** I can understand areas for improvement and receive personalized recommendations
@@ -27,6 +28,7 @@ The primary goal is to generate qualified leads by offering value through person
 **So that** I can nurture prospects with relevant M365 solutions
 
 ### Secondary Flows
+
 **As a** user completing the quiz  
 **I want to** receive my personalized results via email  
 **So that** I can review them at my convenience and share with colleagues
@@ -69,6 +71,7 @@ The primary goal is to generate qualified leads by offering value through person
 ## Design Considerations
 
 ### UI/UX Requirements
+
 - Clean, professional design that reflects Microsoft 365 branding colors
 - Single-column layout optimized for mobile devices
 - Clear typography with readable fonts (minimum 16px on mobile)
@@ -79,6 +82,7 @@ The primary goal is to generate qualified leads by offering value through person
 - Touch-friendly buttons and form elements
 
 ### Visual Elements
+
 - Microsoft 365 themed color scheme (blues, grays, whites)
 - Professional imagery related to productivity and collaboration
 - Clear icons for different question types
@@ -88,12 +92,14 @@ The primary goal is to generate qualified leads by offering value through person
 ## Technical Considerations
 
 ### Existing Integration
+
 - Use existing Brevo API integration patterns and configuration
 - Follow current error handling and logging practices
 - Maintain consistency with existing email capture forms
 - Use same email validation and sanitization logic
 
 ### Frontend Requirements
+
 - Responsive design using existing CSS framework
 - Form validation using existing validation library
 - API calls using existing HTTP client configuration
@@ -101,6 +107,7 @@ The primary goal is to generate qualified leads by offering value through person
 - Local storage for quiz state (in case of page refresh)
 
 ### Backend Requirements
+
 - Quiz questions stored in configuration/database
 - Scoring algorithm for maturity calculation
 - Result generation logic
@@ -108,6 +115,7 @@ The primary goal is to generate qualified leads by offering value through person
 - API endpoint for email submission to Brevo
 
 ### Performance Considerations
+
 - Fast loading times (<2 seconds initial load)
 - Efficient question transitions
 - Minimal bundle size impact

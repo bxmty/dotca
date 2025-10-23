@@ -1,0 +1,59 @@
+repos:
+  # Pre-commit hooks for general file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.(md|txt)$
+      - id: end-of-file-fixer
+        exclude: \.(md|txt)$
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  # Prettier for code formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: \.(js|jsx|ts|tsx|json|yaml|yml|md)$
+        exclude: |
+          (?x)(
+            package-lock\.json$
+            | \.tsbuildinfo$
+            | next-env\.d\.ts$
+            | CLAUDE\.md$
+          )
+
+  # ESLint for linting (using local installation to avoid version conflicts)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: npx eslint
+        language: system
+        files: \.(js|ts|jsx|tsx)$
+        pass_filenames: true
+
+  # TypeScript type checking (disabled for now due to configuration issues)
+  # - repo: local
+  #   hooks:
+  #     - id: typescript-check
+  #       name: TypeScript type check
+  #       entry: npx tsc --noEmit
+  #       language: system
+  #       files: \.(ts|tsx)$
+  #       pass_filenames: false
+
+  # Jest tests (disabled for now due to configuration issues)
+  # - repo: local
+  #   hooks:
+  #     - id: run-tests
+  #       name: Run tests
+  #       entry: npm test
+  #       language: system
+  #       files: \.(js|ts|jsx|tsx)$
+  #       pass_filenames: false
+  #       stages: [push]
