@@ -5,6 +5,7 @@ A modern web application that provides small businesses with enterprise-grade IT
 ## 🚀 Features
 
 ### Core Services
+
 - **Secure Password Management** - Enterprise-grade credential protection
 - **Professional Web Hosting** - Reliable hosting solutions
 - **Business Email Solutions** - Professional email communication
@@ -12,6 +13,7 @@ A modern web application that provides small businesses with enterprise-grade IT
 - **Quarterly IT Assessments** - Regular technology health checks
 
 ### Technology Stack
+
 - **Framework**: Next.js 15 with React 19
 - **Styling**: Bootstrap 5.3 for responsive design
 - **Payments**: Stripe integration for secure transactions
@@ -20,6 +22,7 @@ A modern web application that provides small businesses with enterprise-grade IT
 - **Testing**: Jest with React Testing Library (91.8% coverage)
 
 ### Business Features
+
 - **Pricing Tiers**: Free, Basic ($99/user/month), Standard ($249/user/month), Premium ($449/user/month)
 - **Onboarding Flow**: Multi-step company information collection
 - **Contact Forms**: Lead generation and customer support
@@ -28,6 +31,7 @@ A modern web application that provides small businesses with enterprise-grade IT
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 - Git
@@ -35,12 +39,14 @@ A modern web application that provides small businesses with enterprise-grade IT
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd dotca
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
@@ -48,6 +54,7 @@ npm install
 3. Set up environment variables (see Environment Setup below)
 
 4. Run the development server:
+
 ```bash
 npm run dev
 ```
@@ -112,6 +119,7 @@ terraform/                 # Infrastructure provisioning
 This project uses a sophisticated CI/CD pipeline with image promotion for safe deployments:
 
 ### Local Development
+
 ```bash
 docker-compose -f docker-compose.dev.yml up
 ```
@@ -152,7 +160,9 @@ npm run test:watch
 ## Analytics & Monitoring
 
 ### Web Vitals
+
 The application automatically tracks Core Web Vitals metrics:
+
 - **CLS (Cumulative Layout Shift)**: Visual stability
 - **FID (First Input Delay)**: Interactivity
 - **LCP (Largest Contentful Paint)**: Loading performance
@@ -160,6 +170,7 @@ The application automatically tracks Core Web Vitals metrics:
 - **TTFB (Time to First Byte)**: Server response time
 
 ### Analytics Integration
+
 - **Google Analytics**: External analytics tracking
 - **Umami**: Self-hosted privacy-focused analytics (in development)
 
@@ -174,6 +185,7 @@ The application automatically tracks Core Web Vitals metrics:
 ## Security
 
 This application implements several security measures:
+
 - Environment variable validation
 - Secure payment processing via Stripe
 - Input sanitization and validation
@@ -187,6 +199,7 @@ This project is proprietary software owned by dotca.
 ## Support
 
 For support and questions:
+
 - Email: hi@boximity.ca
 - Phone: (289) 539-0098
 - Location: Toronto, Ontario, Canada

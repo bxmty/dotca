@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Coverage reports
+coverage/
+
+# Generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env*
+
+# Terraform files (let terraform fmt handle these)
+*.tf
+*.tfvars
+
+# Ansible files (let ansible-lint handle these)
+ansible/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Documentation that shouldn't be formatted
+CHANGELOG.md
+CLAUDE.md

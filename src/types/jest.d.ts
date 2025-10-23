@@ -24,13 +24,18 @@ declare global {
 
   // Extend Jest namespace with missing functions
   namespace jest {
-    function fn<T extends MockableFunction>(implementation?: T): 
-      jest.Mock<ReturnType<T>, Parameters<T>>;
-    
+    function fn<T extends MockableFunction>(
+      implementation?: T
+    ): jest.Mock<ReturnType<T>, Parameters<T>>;
+
     function clearAllMocks(): void;
-    function mock(moduleName: string, factory?: unknown, options?: unknown): typeof jest;
+    function mock(
+      moduleName: string,
+      factory?: unknown,
+      options?: unknown
+    ): typeof jest;
     function requireMock(moduleName: string): unknown;
-    
+
     // Define the Mock interface with all needed methods
     interface Mock<TReturn = unknown, TArgs extends unknown[] = unknown[]> {
       (...args: TArgs): TReturn;
@@ -46,14 +51,14 @@ declare global {
       mockClear(): this;
       mock: {
         calls: TArgs[];
-        results: Array<{value: TReturn, type: 'return' | 'throw'}>;
+        results: Array<{ value: TReturn; type: 'return' | 'throw' }>;
         instances: unknown[];
         contexts: unknown[];
         lastCall: TArgs;
       };
       getMockName(): string;
     }
-    
+
     // Extend matchers - R represents the return type
     interface Matchers<R> {
       toBeNull(): R;
@@ -78,7 +83,7 @@ declare global {
       toContainEqual(item: unknown): R;
       toHaveLength(length: number): R;
     }
-    
+
     interface Expect {
       any(constructor: ConstructorFunction): unknown;
       anything(): unknown;

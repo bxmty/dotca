@@ -21,23 +21,25 @@ ghcr.io/bxtech/dotca/
 
 ### Registry Access Control
 
-| Environment | Read Access | Write Access | Purpose |
-|-------------|-------------|--------------|---------|
-| Staging     | All users   | Staging pipeline | Development and testing |
-| Production  | Production pipeline | Image promotion only | Production deployments |
-| Versioned   | All users   | Release pipeline | Stable releases |
+| Environment | Read Access         | Write Access         | Purpose                 |
+| ----------- | ------------------- | -------------------- | ----------------------- |
+| Staging     | All users           | Staging pipeline     | Development and testing |
+| Production  | Production pipeline | Image promotion only | Production deployments  |
+| Versioned   | All users           | Release pipeline     | Stable releases         |
 
 ## Image Tagging Conventions
 
 ### 1. Environment-Based Tags
 
 #### Staging Environment
+
 - **Primary Tag**: `:staging`
 - **Commit Tags**: `:staging-{short-sha}` (e.g., `:staging-a1b2c3d`)
 - **Branch Tags**: `:staging-{branch-name}` (e.g., `:staging-feature-auth`)
 - **Build Tags**: `:staging-build-{build-number}` (e.g., `:staging-build-123`)
 
 #### Production Environment
+
 - **Primary Tag**: `:main`
 - **Commit Tags**: `:main-{short-sha}` (e.g., `:main-a1b2c3d`)
 - **Release Tags**: `:v{major}.{minor}.{patch}` (e.g., `:v1.2.3`)
@@ -47,7 +49,7 @@ ghcr.io/bxtech/dotca/
 
 ```
 :v1.0.0     # Major release
-:v1.1.0     # Minor release  
+:v1.1.0     # Minor release
 :v1.1.1     # Patch release
 :v1.2.0-beta.1  # Pre-release
 :v1.2.0-rc.1    # Release candidate
@@ -69,7 +71,7 @@ graph LR
     B --> C[Copy to Production Registry]
     C --> D[:main]
     D --> E[:latest]
-    
+
     style A fill:#ffcc99
     style D fill:#ccffcc
     style E fill:#ccffcc
@@ -99,22 +101,22 @@ docker push ghcr.io/bxtech/dotca:v1.2.3
 
 ### Staging Images
 
-| Tag Type | Retention Policy | Cleanup Schedule |
-|----------|------------------|------------------|
-| `:staging` | Keep latest 5 | Daily |
-| `:staging-{sha}` | Keep latest 20 | Weekly |
-| `:staging-{branch}` | Keep latest 3 per branch | Weekly |
-| `:staging-build-{n}` | Keep latest 10 | Daily |
+| Tag Type             | Retention Policy         | Cleanup Schedule |
+| -------------------- | ------------------------ | ---------------- |
+| `:staging`           | Keep latest 5            | Daily            |
+| `:staging-{sha}`     | Keep latest 20           | Weekly           |
+| `:staging-{branch}`  | Keep latest 3 per branch | Weekly           |
+| `:staging-build-{n}` | Keep latest 10           | Daily            |
 
 ### Production Images
 
-| Tag Type | Retention Policy | Cleanup Schedule |
-|----------|------------------|------------------|
-| `:main` | Keep latest 3 | Weekly |
-| `:main-{sha}` | Keep latest 10 | Monthly |
-| `:v{major}.{minor}.{patch}` | Keep all | Never (immutable) |
-| `:rollback-{timestamp}` | Keep latest 5 | Weekly |
-| `:latest` | Keep latest 2 | Weekly |
+| Tag Type                    | Retention Policy | Cleanup Schedule  |
+| --------------------------- | ---------------- | ----------------- |
+| `:main`                     | Keep latest 3    | Weekly            |
+| `:main-{sha}`               | Keep latest 10   | Monthly           |
+| `:v{major}.{minor}.{patch}` | Keep all         | Never (immutable) |
+| `:rollback-{timestamp}`     | Keep latest 5    | Weekly            |
+| `:latest`                   | Keep latest 2    | Weekly            |
 
 ### Cleanup Scripts
 
@@ -149,9 +151,9 @@ docker images ghcr.io/bxtech/dotca:rollback-* --format "table {{.Repository}}:{{
 validation_rules:
   max_image_size_mb: 1024
   required_labels:
-    - "org.opencontainers.image.source"
-    - "org.opencontainers.image.version"
-    - "org.opencontainers.image.created"
+    - 'org.opencontainers.image.source'
+    - 'org.opencontainers.image.version'
+    - 'org.opencontainers.image.created'
   security_scan:
     required: true
     max_critical_vulns: 0
@@ -199,7 +201,7 @@ env:
   run: |
     echo "staging=ghcr.io/${{ env.IMAGE_NAME }}:${{ env.STAGING_TAG }}" >> $GITHUB_OUTPUT
     echo "production=ghcr.io/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}" >> $GITHUB_OUTPUT
-    
+
     if [ "${{ github.ref_name }}" = "main" ]; then
       echo "version=ghcr.io/${{ env.IMAGE_NAME }}:${{ env.VERSION_TAG }}" >> $GITHUB_OUTPUT
     fi
@@ -212,13 +214,13 @@ env:
   run: |
     # Pull staging image
     docker pull ${{ steps.tags.outputs.staging }}
-    
+
     # Tag for production
     docker tag ${{ steps.tags.outputs.staging }} ${{ steps.tags.outputs.production }}
-    
+
     # Push to production registry
     docker push ${{ steps.tags.outputs.production }}
-    
+
     # Update latest tag if this is a stable release
     if [ -n "${{ steps.tags.outputs.version }}" ]; then
       docker tag ${{ steps.tags.outputs.production }} ghcr.io/${{ env.IMAGE_NAME }}:latest
@@ -246,6 +248,7 @@ env:
 ## Best Practices
 
 ### Do's
+
 - ✅ Use semantic versioning for production releases
 - ✅ Implement immutable tags for versioned releases
 - ✅ Maintain clear separation between staging and production tags
@@ -253,6 +256,7 @@ env:
 - ✅ Regular cleanup of old images to manage storage
 
 ### Don'ts
+
 - ❌ Never overwrite versioned tags
 - ❌ Don't use `:latest` for critical production deployments
 - ❌ Avoid complex tag naming that's hard to parse
