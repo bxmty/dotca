@@ -17,7 +17,7 @@
     "@stripe/stripe-js": "7.9.0",
     "@umami/node": "^0.4.0",
     "bootstrap": "5.3.8",
-    "libphonenumber-js": "1.12.15",
+    "libphonenumber-js": "1.12.17",
     "next": "15.5.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
