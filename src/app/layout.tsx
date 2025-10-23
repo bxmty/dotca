@@ -8,7 +8,6 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
-import UmamiAnalytics from "./components/UmamiAnalytics";
 import { GA_MEASUREMENT_ID } from "../lib/gtag";
 
 export const viewport: Viewport = {
@@ -78,7 +77,23 @@ export default function RootLayout({
   return (
     <html lang="en" data-bs-theme="auto">
       <body>
-        {/* Google Analytics script - only load the script, initialization happens in GoogleAnalytics component */}
+        {/* Google Analytics inline initialization script - must run immediately */}
+        {GA_MEASUREMENT_ID && (
+          <Script
+            id="gtag-init"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}');
+              `,
+            }}
+          />
+        )}
+
+        {/* Google Analytics script - only load the script, additional config happens in GoogleAnalytics component */}
         {GA_MEASUREMENT_ID && (
           <Script
             strategy="afterInteractive"
@@ -86,11 +101,10 @@ export default function RootLayout({
           />
         )}
         <BootstrapClient />
-        <WebVitalsReporter />
         <Suspense fallback={null}>
           <GoogleAnalytics />
-          <UmamiAnalytics />
         </Suspense>
+        <WebVitalsReporter />
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
           <main className="flex-grow-1">

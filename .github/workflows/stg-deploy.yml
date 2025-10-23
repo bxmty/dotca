@@ -510,12 +510,34 @@ jobs:
           MAX_ATTEMPTS=2
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
             echo "📋 Deployment attempt $attempt of $MAX_ATTEMPTS..."
-            
+
+            # Mask sensitive values in GitHub Actions logs (only if they exist)
+            if [ -n "${{ secrets.GA_STAGING_ID }}" ]; then
+              echo "::add-mask::${{ secrets.GA_STAGING_ID }}"
+            fi
+            if [ -n "${{ secrets.GA_PRODUCTION_ID }}" ]; then
+              echo "::add-mask::${{ secrets.GA_PRODUCTION_ID }}"
+            fi
+            if [ -n "${{ secrets.UMAMI_WEBSITE_ID }}" ]; then
+              echo "::add-mask::${{ secrets.UMAMI_WEBSITE_ID }}"
+            fi
+
+            # Debug what values are being passed to Ansible
+            echo "🔍 GitHub Actions Secret Values:"
+            echo "GA_STAGING_ID exists: ${{ secrets.GA_STAGING_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "UMAMI_WEBSITE_ID exists: ${{ secrets.UMAMI_WEBSITE_ID != '' && 'YES' || 'NO/EMPTY' }}"
+            echo "UMAMI_HOST_URL exists: ${{ secrets.UMAMI_HOST_URL != '' && 'YES' || 'NO/EMPTY' }}"
+
             if ansible-playbook \
               -i ansible/inventory.yml \
               ansible/staging-deploy.yml \
               --timeout=60 \
               --extra-vars "ansible_ssh_timeout=60" \
+              --extra-vars "GA_STAGING_ID=${{ secrets.GA_STAGING_ID }}" \
+              --extra-vars "GA_PRODUCTION_ID=${{ secrets.GA_PRODUCTION_ID }}" \
+              --extra-vars "UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" \
+              --extra-vars "UMAMI_HOST_URL=${{ secrets.UMAMI_HOST_URL }}" \
               --vault-password-file ~/.ansible_vault_pass; then
               echo "✅ Deployment successful on attempt $attempt"
               DEPLOY_SUCCESS=true

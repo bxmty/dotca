@@ -375,6 +375,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
+
+      - name: Install Ansible Galaxy roles
+        run: |
+          cd ansible
+          ansible-galaxy install -r requirements.yml --force
       
       - name: Setup SSH key
         run: |
@@ -499,6 +504,8 @@ jobs:
           DOCKER_IMAGE: ${{ needs.verify-promoted-image.outputs.full_image_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
+          # Ansible vault password for decrypting encrypted variables
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
         run: |
           # Verify IP address is set in the environment
           if [ -z "$DROPLET_IP" ]; then

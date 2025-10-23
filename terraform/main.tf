@@ -6,7 +6,7 @@ terraform {
       version = "2.67.0"
     }
   }
-  required_version = "1.13.2"
+  required_version = ">= 1.5.0"
   
   backend "s3" {
     endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
@@ -54,9 +54,20 @@ resource "digitalocean_project_resources" "project_resources" {
   depends_on = [digitalocean_droplet.app_droplet]
 }
 
-# Get SSH key data
+# Get SSH key data - try multiple lookup methods
 data "digitalocean_ssh_key" "ssh_key" {
-  name = var.ssh_key_name
+  count = var.ssh_key_name != "" ? 1 : 0
+  name  = var.ssh_key_name
+}
+
+# Fallback: get all SSH keys and use the first one (typically the default)
+data "digitalocean_ssh_keys" "all_keys" {
+  count = var.ssh_key_name == "" ? 1 : 0
+}
+
+# Use the appropriate SSH key
+locals {
+  ssh_key_id = var.ssh_key_name != "" ? data.digitalocean_ssh_key.ssh_key[0].id : data.digitalocean_ssh_keys.all_keys[0].ssh_keys[0].id
 }
 
 # Create a new Droplet for the environment
@@ -65,7 +76,7 @@ resource "digitalocean_droplet" "app_droplet" {
   name     = "${var.project_name}-${var.environment}"
   region   = var.region
   size     = "s-1vcpu-2gb"   # Small droplet with 1 CPU, 2GB RAM
-  ssh_keys = [data.digitalocean_ssh_key.ssh_key.id]
+  ssh_keys = [local.ssh_key_id]
   tags     = [var.environment, "nextjs", var.project_name]
 
   # Minimal setup script for Ansible compatibility
