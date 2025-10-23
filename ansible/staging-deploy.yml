@@ -197,6 +197,16 @@
         api_protocol: "{{ 'https' if ssl_cert_check.stat.exists else 'http' }}"
         api_host: "{{ staging_domain if ssl_cert_check.stat.exists else public_ip }}"
 
+    - name: Extract commit hash from Docker image
+      ansible.builtin.shell: |
+        docker inspect {{ docker_image }} | jq -r '.[0].Config.Labels["org.opencontainers.image.revision"] // "unknown"'
+      register: image_commit_hash
+      changed_when: false
+
+    - name: Set commit hash variable
+      ansible.builtin.set_fact:
+        commit_hash: "{{ image_commit_hash.stdout | default('unknown') }}"
+
     - name: Debug variables before docker-compose generation
       debug:
         msg: |
@@ -209,6 +219,7 @@
           GA_PRODUCTION_ID: "{{ GA_PRODUCTION_ID | default('EMPTY') }}"
           UMAMI_WEBSITE_ID: "{{ UMAMI_WEBSITE_ID | default('EMPTY') }}"
           UMAMI_HOST_URL: "{{ UMAMI_HOST_URL | default('EMPTY') }}"
+          commit_hash: "{{ commit_hash | default('EMPTY') }}"
 
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
@@ -425,7 +436,7 @@
       changed_when: false
 
     - name: Clean up Docker environment before starting services
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         docker-compose down --volumes --remove-orphans || true
         docker system prune -f || true
         docker volume prune -f || true
@@ -445,7 +456,7 @@
       changed_when: false
 
     - name: Verify web container environment variables
-      ansible.builtin.command: docker-compose exec -T web env | grep -E "(GA_|NEXT_PUBLIC_UMAMI_)"
+      ansible.builtin.shell: docker-compose exec -T web env | grep -E "(GA_|NEXT_PUBLIC_UMAMI_)"
       args:
         chdir: "{{ app_dir }}"
       register: container_env
