@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Config options here
-  output: 'standalone',
+  // Only use standalone output in production
+  ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
   // Enable CSS import in server components
   transpilePackages: ['bootstrap'],
   // Image optimization configuration
@@ -28,10 +29,17 @@ const nextConfig = {
     return [
       {
         source: '/.well-known/acme-challenge/:path*',
-        destination: '/.well-known/acme-challenge/:path*'
-      }
-    ]
-  }
+        destination: '/.well-known/acme-challenge/:path*',
+      },
+    ];
+  },
 };
+
+// For standalone server configuration, ensure proper binding
+if (process.env.NODE_ENV === 'production') {
+  // This ensures the server binds to 0.0.0.0 in production containers
+  process.env.HOST = process.env.HOST || '0.0.0.0';
+  process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0';
+}
 
 module.exports = nextConfig;

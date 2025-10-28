@@ -10,7 +10,11 @@ interface StripeWrapperProps {
   metadata?: Record<string, string>;
 }
 
-export default function StripeWrapper({ children, amount, metadata }: StripeWrapperProps) {
+export default function StripeWrapper({
+  children,
+  amount,
+  metadata,
+}: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,35 +25,39 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await fetch('/api/stripe/create-payment-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             amount: amount,
             metadata: metadata || {},
           }),
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok) {
           throw new Error(data.error || 'Failed to initialize payment');
         }
-        
+
         if (data.error) {
           throw new Error(data.error);
         }
-        
+
         setClientSecret(data.clientSecret);
       } catch (err) {
         console.error('Payment initialization error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to initialize payment. Please try again.'
+        );
       } finally {
         setLoading(false);
       }
     };
-    
+
     createPaymentIntent();
   }, [amount, metadata]);
 
@@ -76,9 +84,9 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
         <p className="mb-0">{error}</p>
         {process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging' && (
           <p className="mt-2 small text-muted">
-            Environment: {process.env.NEXT_PUBLIC_ENVIRONMENT}, 
-            API URL: {process.env.NEXT_PUBLIC_API_URL}, 
-            Stripe Key Set: {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Yes' : 'No'}
+            Environment: {process.env.NEXT_PUBLIC_ENVIRONMENT}, API URL:{' '}
+            {process.env.NEXT_PUBLIC_API_URL}, Stripe Key Set:{' '}
+            {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Yes' : 'No'}
           </p>
         )}
       </div>
@@ -88,7 +96,10 @@ export default function StripeWrapper({ children, amount, metadata }: StripeWrap
   if (!clientSecret) {
     return (
       <div className="alert alert-danger">
-        <p className="mb-0">Failed to initialize payment. Please refresh the page or try again later.</p>
+        <p className="mb-0">
+          Failed to initialize payment. Please refresh the page or try again
+          later.
+        </p>
       </div>
     );
   }

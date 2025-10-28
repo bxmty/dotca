@@ -61,12 +61,12 @@ jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children, href }) => {
     return React.createElement('a', { href }, children);
-  }
+  },
 }));
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props) => {
+  default: props => {
     return React.createElement('img', {
       src: props.src,
       alt: props.alt || '',

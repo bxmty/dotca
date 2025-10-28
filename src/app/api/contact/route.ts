@@ -3,48 +3,44 @@ import { isPossiblePhoneNumber, parsePhoneNumber } from 'libphonenumber-js';
 
 export async function POST(request: Request) {
   try {
-    const { 
-      name, 
+    const {
+      name,
       firstName,
       lastName,
-      email, 
-      phone, 
-      company, 
-      address, 
-      city, 
-      state, 
-      zip, 
+      email,
+      phone,
+      company,
+      address,
+      city,
+      state,
+      zip,
       plan,
       billingCycle,
       employeeCount,
-      isWaitlist
+      isWaitlist,
     } = await request.json();
 
     // Determine full name based on input
-    const fullName = name || (firstName && lastName ? `${firstName} ${lastName}` : firstName || '');
+    const fullName =
+      name ||
+      (firstName && lastName ? `${firstName} ${lastName}` : firstName || '');
 
     // Validate required fields
     if (!email) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
-    
+
     if (!fullName) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
-    
+
     if (!phone) {
       return NextResponse.json(
         { error: 'Phone number is required' },
         { status: 400 }
       );
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -53,13 +49,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    
+
     // More robust phone validation and formatting
     let formattedPhone = '';
     try {
       // Default to US if no country code is provided
-      const phoneInput = phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`;
-      
+      const phoneInput = phone.startsWith('+')
+        ? phone
+        : `+1${phone.replace(/\D/g, '')}`;
+
       // Check if it's a valid phone number
       if (!isPossiblePhoneNumber(phoneInput)) {
         return NextResponse.json(
@@ -67,7 +65,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      
+
       // Format according to E.164 standard which Brevo expects
       const parsedPhone = parsePhoneNumber(phoneInput);
       formattedPhone = parsedPhone.format('E.164');
@@ -82,11 +80,11 @@ export async function POST(request: Request) {
     const apiKey = process.env.BREVO_API_KEY;
     const publicApiKey = process.env.NEXT_PUBLIC_BREVO_API_KEY;
     const isProd = process.env.NODE_ENV === 'production';
-    
+
     // In production, we must use the server-side API key
     // In development, we can fall back to the public key if needed
-    const activeKey = isProd ? apiKey : (apiKey || publicApiKey);
-    
+    const activeKey = isProd ? apiKey : apiKey || publicApiKey;
+
     if (!activeKey) {
       // API key is missing
       console.error('Missing BREVO_API_KEY environment variable');
@@ -95,10 +93,12 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-    
+
     // For debugging in development
     if (!isProd && !apiKey && publicApiKey) {
-      console.warn('Using fallback NEXT_PUBLIC_BREVO_API_KEY - set BREVO_API_KEY for production');
+      console.warn(
+        'Using fallback NEXT_PUBLIC_BREVO_API_KEY - set BREVO_API_KEY for production'
+      );
     }
 
     // Use direct API endpoint for Brevo
@@ -106,16 +106,20 @@ export async function POST(request: Request) {
     const options = {
       method: 'POST',
       headers: {
-        'accept': 'application/json',
+        accept: 'application/json',
         'content-type': 'application/json',
-        'api-key': activeKey
+        'api-key': activeKey,
       },
       body: JSON.stringify({
         email: email,
         attributes: {
           FULLNAME: fullName,
           FIRSTNAME: firstName || fullName.split(' ')[0] || '',
-          LASTNAME: lastName || (fullName.split(' ').length > 1 ? fullName.split(' ').slice(1).join(' ') : ''),
+          LASTNAME:
+            lastName ||
+            (fullName.split(' ').length > 1
+              ? fullName.split(' ').slice(1).join(' ')
+              : ''),
           PHONE: phone,
           COMPANY: company || '',
           ADDRESS: address || '',
@@ -126,51 +130,71 @@ export async function POST(request: Request) {
           BILLING_CYCLE: billingCycle || '',
           EMPLOYEE_COUNT: employeeCount ? employeeCount.toString() : '',
           IS_WAITLIST: isWaitlist ? 'Yes' : 'No',
-          SMS: formattedPhone // Add SMS attribute in attributes as well
+          SMS: formattedPhone, // Add SMS attribute in attributes as well
         },
         // Use list ID 9 for contact form and list ID 10 for waitlist form
         listIds: [isWaitlist ? 10 : 9],
         // Add SMS field for brevo to send text messages
         smtpBlacklistSender: undefined, // Needed for SMS to work properly
         sms: {
-          SMS: formattedPhone
+          SMS: formattedPhone,
         },
-        updateEnabled: true // Allow updating existing contacts
-      })
+        updateEnabled: true, // Allow updating existing contacts
+      }),
     };
 
     const response = await fetch(url, options);
-    
+
     if (!response.ok) {
       // Try to get error details from API response
       try {
         const errorData = await response.json();
         console.error('Brevo API error:', errorData);
-        
-        // Handle common error cases
-        if (errorData.code === 'duplicate_parameter') {
+
+        // Handle authentication errors
+        if (response.status === 401 || errorData.code === 'unauthorized') {
+          console.error('Brevo API key is not valid or not enabled');
           return NextResponse.json(
-            { 
-              success: true, 
-              message: 'Your information has already been submitted. We will contact you soon.' 
-            }
+            {
+              error:
+                'Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.',
+            },
+            { status: 503 }
           );
         }
-        
+
+        // Handle common error cases
+        if (errorData.code === 'duplicate_parameter') {
+          return NextResponse.json({
+            success: true,
+            message:
+              'Your information has already been submitted. We will contact you soon.',
+          });
+        }
+
         // Handle phone number specific errors
-        if (errorData.code === 'invalid_parameter' && 
-            errorData.message?.toLowerCase().includes('phone')) {
+        if (
+          errorData.code === 'invalid_parameter' &&
+          errorData.message?.toLowerCase().includes('phone')
+        ) {
           return NextResponse.json(
-            { error: 'The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.' },
+            {
+              error:
+                'The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.',
+            },
             { status: 400 }
           );
         }
-        
-        throw new Error(`Brevo API error: ${errorData.message || JSON.stringify(errorData)}`);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+        throw new Error(
+          `Brevo API error: ${errorData.message || JSON.stringify(errorData)}`
+        );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (parseError) {
         // If we can't parse the error JSON, use a generic error message
-        throw new Error(`Failed to add contact to Brevo (Status: ${response.status})`);
+        throw new Error(
+          `Failed to add contact to Brevo (Status: ${response.status})`
+        );
       }
     }
 

@@ -9,6 +9,7 @@ This document defines the rollback strategy and image retention policy for the C
 ### Rollback Triggers
 
 #### Automatic Rollback
+
 The system will automatically trigger rollbacks when:
 
 1. **Health Check Failures**
@@ -27,6 +28,7 @@ The system will automatically trigger rollbacks when:
    - Memory usage exceeds 90% for 5+ minutes
 
 #### Manual Rollback
+
 Manual rollbacks can be triggered by:
 
 1. **User Reports**: Critical user-reported issues
@@ -36,13 +38,13 @@ Manual rollbacks can be triggered by:
 
 ### Rollback Decision Matrix
 
-| Issue Type | Severity | Auto-Rollback | Manual Approval | Rollback Speed |
-|------------|----------|---------------|-----------------|----------------|
-| Service Crash | Critical | ✅ Yes | ❌ No | < 2 minutes |
-| Health Check Fail | High | ✅ Yes | ❌ No | < 3 minutes |
-| Performance Degradation | Medium | ❌ No | ✅ Yes | < 5 minutes |
-| User Reports | Medium | ❌ No | ✅ Yes | < 10 minutes |
-| Feature Issues | Low | ❌ No | ✅ Yes | < 15 minutes |
+| Issue Type              | Severity | Auto-Rollback | Manual Approval | Rollback Speed |
+| ----------------------- | -------- | ------------- | --------------- | -------------- |
+| Service Crash           | Critical | ✅ Yes        | ❌ No           | < 2 minutes    |
+| Health Check Fail       | High     | ✅ Yes        | ❌ No           | < 3 minutes    |
+| Performance Degradation | Medium   | ❌ No         | ✅ Yes          | < 5 minutes    |
+| User Reports            | Medium   | ❌ No         | ✅ Yes          | < 10 minutes   |
+| Feature Issues          | Low      | ❌ No         | ✅ Yes          | < 15 minutes   |
 
 ### Rollback Process
 
@@ -51,26 +53,26 @@ flowchart TD
     A[Rollback Triggered] --> B{Automatic or Manual?}
     B -->|Automatic| C[Immediate Rollback]
     B -->|Manual| D[Wait for Approval]
-    
+
     C --> E[Stop Current Services]
     D --> F{Approved?}
     F -->|Yes| E
     F -->|No| G[Cancel Rollback]
-    
+
     E --> H[Identify Rollback Target]
     H --> I{Target Available?}
     I -->|No| J[Fail Rollback]
     I -->|Yes| K[Deploy Previous Image]
-    
+
     K --> L[Start Services]
     L --> M{Run Health Checks}
     M -->|Fail| N[Try Next Target]
     M -->|Pass| O[Rollback Complete]
-    
+
     N --> P{More Targets?}
     P -->|Yes| H
     P -->|No| Q[Rollback Failed]
-    
+
     style C fill:#ffcc99
     style O fill:#ccffcc
     style Q fill:#ff9999
@@ -105,16 +107,16 @@ flowchart TD
 ```yaml
 # Rollback validation rules
 rollback_validation:
-  health_check_timeout: 300  # 5 minutes
+  health_check_timeout: 300 # 5 minutes
   max_rollback_attempts: 3
   required_checks:
     - service_startup
     - health_endpoints
     - database_connectivity
     - basic_functionality
-  
+
   target_selection:
-    max_age_hours: 168  # 1 week
+    max_age_hours: 168 # 1 week
     min_uptime_hours: 2
     required_tests_passed: true
 ```
@@ -125,30 +127,30 @@ rollback_validation:
 
 #### 1. Production Images (Keep Longer)
 
-| Tag Pattern | Retention Period | Cleanup Schedule | Reason |
-|-------------|------------------|------------------|---------|
-| `:v{major}.{minor}.{patch}` | **Indefinite** | Never | Immutable releases |
-| `:main` | 30 days | Weekly | Current production |
-| `:main-{sha}` | 90 days | Monthly | Production history |
-| `:latest` | 60 days | Weekly | Latest stable |
-| `:rollback-{timestamp}` | 30 days | Weekly | Rollback targets |
+| Tag Pattern                 | Retention Period | Cleanup Schedule | Reason             |
+| --------------------------- | ---------------- | ---------------- | ------------------ |
+| `:v{major}.{minor}.{patch}` | **Indefinite**   | Never            | Immutable releases |
+| `:main`                     | 30 days          | Weekly           | Current production |
+| `:main-{sha}`               | 90 days          | Monthly          | Production history |
+| `:latest`                   | 60 days          | Weekly           | Latest stable      |
+| `:rollback-{timestamp}`     | 30 days          | Weekly           | Rollback targets   |
 
 #### 2. Staging Images (Shorter Retention)
 
-| Tag Pattern | Retention Period | Cleanup Schedule | Reason |
-|-------------|------------------|------------------|---------|
-| `:staging` | 7 days | Daily | Current staging |
-| `:staging-{sha}` | 14 days | Weekly | Staging history |
-| `:staging-{branch}` | 7 days | Weekly | Feature branches |
-| `:staging-build-{n}` | 3 days | Daily | Build artifacts |
+| Tag Pattern          | Retention Period | Cleanup Schedule | Reason           |
+| -------------------- | ---------------- | ---------------- | ---------------- |
+| `:staging`           | 7 days           | Daily            | Current staging  |
+| `:staging-{sha}`     | 14 days          | Weekly           | Staging history  |
+| `:staging-{branch}`  | 7 days           | Weekly           | Feature branches |
+| `:staging-build-{n}` | 3 days           | Daily            | Build artifacts  |
 
 #### 3. Development Images (Shortest Retention)
 
-| Tag Pattern | Retention Period | Cleanup Schedule | Reason |
-|-------------|------------------|------------------|---------|
-| `:dev-{branch}` | 3 days | Daily | Development work |
-| `:test-{feature}` | 1 day | Daily | Feature testing |
-| `:experimental` | 1 day | Daily | Experimental builds |
+| Tag Pattern       | Retention Period | Cleanup Schedule | Reason              |
+| ----------------- | ---------------- | ---------------- | ------------------- |
+| `:dev-{branch}`   | 3 days           | Daily            | Development work    |
+| `:test-{feature}` | 1 day            | Daily            | Feature testing     |
+| `:experimental`   | 1 day            | Daily            | Experimental builds |
 
 ### Storage Management
 
@@ -160,7 +162,7 @@ storage_limits:
   staging_images_gb: 20
   production_images_gb: 60
   development_images_gb: 20
-  
+
   cleanup_thresholds:
     warning_at_percent: 80
     critical_at_percent: 90
@@ -170,6 +172,7 @@ storage_limits:
 #### Cleanup Strategies
 
 ##### 1. Time-Based Cleanup
+
 ```bash
 #!/bin/bash
 # cleanup-by-age.sh
@@ -185,6 +188,7 @@ find_rollback_images_older_than 30d | cleanup_images
 ```
 
 ##### 2. Size-Based Cleanup
+
 ```bash
 #!/bin/bash
 # cleanup-by-size.sh
@@ -201,6 +205,7 @@ fi
 ```
 
 ##### 3. Priority-Based Cleanup
+
 ```bash
 #!/bin/bash
 # cleanup-by-priority.sh
@@ -233,8 +238,8 @@ done
 name: Image Cleanup
 on:
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM
-  workflow_dispatch:     # Manual trigger
+    - cron: '0 2 * * *' # Daily at 2 AM
+  workflow_dispatch: # Manual trigger
 
 jobs:
   cleanup:
@@ -245,14 +250,14 @@ jobs:
         run: |
           USAGE=$(gh api repos/${{ github.repository }}/packages/container/dotca --jq '.metadata.container.metadata.tags | length')
           echo "usage=$USAGE" >> $GITHUB_OUTPUT
-      
+
       - name: Cleanup Old Images
         if: steps.storage.outputs.usage > 50
         run: |
           # Run cleanup scripts
           ./scripts/cleanup-by-age.sh
           ./scripts/cleanup-by-size.sh
-      
+
       - name: Report Cleanup Results
         run: |
           echo "Cleanup completed at $(date)"
@@ -309,30 +314,30 @@ jobs:
             echo "::error::Rollback target not found"
             exit 1
           fi
-      
+
       - name: Create Rollback Tag
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           REASON="${{ github.event.inputs.rollback_reason }}"
-          
+
           docker tag ghcr.io/bxtech/dotca:${{ github.event.inputs.rollback_target }} \
             ghcr.io/bxtech/dotca:rollback-$TIMESTAMP-$REASON
-          
+
           docker push ghcr.io/bxtech/dotca:rollback-$TIMESTAMP-$REASON
-      
+
       - name: Deploy Rollback Image
         run: |
           # Update production to use rollback image
           ./scripts/deploy-production.sh rollback-$TIMESTAMP-$REASON
-      
+
       - name: Verify Rollback
         run: |
           # Wait for services to start
           sleep 60
-          
+
           # Run health checks
           ./scripts/health-check.sh
-          
+
           # Verify endpoints
           ./scripts/endpoint-verification.sh
 ```
@@ -347,12 +352,12 @@ metrics_to_track:
     - daily_rollbacks
     - weekly_rollbacks
     - monthly_rollbacks
-  
+
   rollback_success_rate:
     - successful_rollbacks
     - failed_rollbacks
     - partial_rollbacks
-  
+
   rollback_performance:
     - time_to_rollback
     - time_to_healthy
@@ -364,16 +369,16 @@ metrics_to_track:
 ```yaml
 alerts:
   rollback_triggered:
-    - channel: "#devops-alerts"
-    - message: "🚨 Production rollback triggered: ${{ github.event.inputs.rollback_reason }}"
-  
+    - channel: '#devops-alerts'
+    - message: '🚨 Production rollback triggered: ${{ github.event.inputs.rollback_reason }}'
+
   rollback_complete:
-    - channel: "#devops-alerts"
-    - message: "✅ Production rollback completed successfully"
-  
+    - channel: '#devops-alerts'
+    - message: '✅ Production rollback completed successfully'
+
   rollback_failed:
-    - channel: "#devops-alerts"
-    - message: "❌ Production rollback failed - manual intervention required"
+    - channel: '#devops-alerts'
+    - message: '❌ Production rollback failed - manual intervention required'
 ```
 
 ## DevOps Engineer Instructions
@@ -584,12 +589,12 @@ rollback_alerts:
     curl -X POST -H 'Content-type: application/json' \
     --data '{"text":"🚨 ROLLBACK STARTED: Production rollback initiated by $USER"}' \
     $SLACK_WEBHOOK_URL
-  
+
   rollback_success: |
     curl -X POST -H 'Content-type: application/json' \
     --data '{"text":"✅ ROLLBACK COMPLETE: Production successfully rolled back"}' \
     $SLACK_WEBHOOK_URL
-  
+
   rollback_failed: |
     curl -X POST -H 'Content-type: application/json' \
     --data '{"text":"❌ ROLLBACK FAILED: Manual intervention required in production"}' \
@@ -642,16 +647,19 @@ kubectl logs -n production deployment/dotca-app --since=2h > rollback-analysis.l
 ### DevOps Escalation Procedures
 
 #### Level 1: DevOps Engineer
+
 - Execute standard rollback procedures
 - Verify application health
 - Monitor for 30 minutes post-rollback
 
 #### Level 2: Senior DevOps/Platform Team
+
 - Complex rollback scenarios
 - Database migration conflicts
 - Infrastructure-level issues
 
 #### Level 3: Engineering Leadership
+
 - Business-critical failures
 - Security incidents requiring rollback
 - Multi-service rollback coordination
@@ -660,15 +668,15 @@ kubectl logs -n production deployment/dotca-app --since=2h > rollback-analysis.l
 
 ```yaml
 emergency_contacts:
-  primary_oncall: "+1-XXX-XXX-XXXX"
-  secondary_oncall: "+1-XXX-XXX-XXXX"
-  platform_team_lead: "+1-XXX-XXX-XXXX"
-  engineering_manager: "+1-XXX-XXX-XXXX"
+  primary_oncall: '+1-XXX-XXX-XXXX'
+  secondary_oncall: '+1-XXX-XXX-XXXX'
+  platform_team_lead: '+1-XXX-XXX-XXXX'
+  engineering_manager: '+1-XXX-XXX-XXXX'
 
 communication_channels:
-  primary: "#devops-alerts"
-  secondary: "#engineering-incidents"
-  executive: "#exec-incidents"
+  primary: '#devops-alerts'
+  secondary: '#engineering-incidents'
+  executive: '#exec-incidents'
 ```
 
 ## Best Practices

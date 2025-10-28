@@ -197,6 +197,16 @@
         api_protocol: "{{ 'https' if ssl_cert_check.stat.exists else 'http' }}"
         api_host: "{{ staging_domain if ssl_cert_check.stat.exists else public_ip }}"
 
+    - name: Extract commit hash from Docker image
+      ansible.builtin.shell: |
+        docker inspect {{ docker_image }} | jq -r '.[0].Config.Labels["org.opencontainers.image.revision"] // "unknown"'
+      register: image_commit_hash
+      changed_when: false
+
+    - name: Set commit hash variable
+      ansible.builtin.set_fact:
+        commit_hash: "{{ image_commit_hash.stdout | default('unknown') }}"
+
     - name: Debug variables before docker-compose generation
       debug:
         msg: |
@@ -209,6 +219,7 @@
           GA_PRODUCTION_ID: "{{ GA_PRODUCTION_ID | default('EMPTY') }}"
           UMAMI_WEBSITE_ID: "{{ UMAMI_WEBSITE_ID | default('EMPTY') }}"
           UMAMI_HOST_URL: "{{ UMAMI_HOST_URL | default('EMPTY') }}"
+          commit_hash: "{{ commit_hash | default('EMPTY') }}"
 
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
@@ -325,7 +336,7 @@
     - name: Check if Docker image exists in GHCR
       ansible.builtin.command: |
         bash -c "
-        if [ -z '{{ docker_image | default('') }}' ]; then 
+        if [ -z '{{ docker_image | default('') }}' ]; then
           echo 'ERROR: docker_image variable is empty or undefined'
           exit 1
         fi
@@ -361,7 +372,7 @@
 
     - name: Display image availability
       ansible.builtin.debug:
-        msg: 
+        msg:
           - "Primary image {{ docker_image }} exists: {{ primary_image_status }}"
           - "Alternative image exists: {{ alt_image_status }}"
           - ""
@@ -380,15 +391,15 @@
     - name: Fail if no images found
       ansible.builtin.fail:
         msg: |
-          No Docker images found in GHCR! 
-          
+          No Docker images found in GHCR!
+
           This means the GitHub Actions image promotion workflow hasn't run yet or failed.
-          
+
           Steps to fix:
           1. Check GitHub Actions: https://github.com/{{ github_repo_from_url }}/actions
           2. Make sure image-promotion.yml workflow completed successfully
           3. Verify the image was pushed to GHCR
-          
+
           Expected image locations:
           - {{ docker_image }}
           - ghcr.io/{{ github_username }}/dotca:staging (if username available)
@@ -425,7 +436,7 @@
       changed_when: false
 
     - name: Clean up Docker environment before starting services
-      ansible.builtin.command: |
+      ansible.builtin.shell: |
         docker-compose down --volumes --remove-orphans || true
         docker system prune -f || true
         docker volume prune -f || true
@@ -445,7 +456,7 @@
       changed_when: false
 
     - name: Verify web container environment variables
-      ansible.builtin.command: docker-compose exec -T web env | grep -E "(GA_|NEXT_PUBLIC_UMAMI_)"
+      ansible.builtin.shell: docker-compose exec -T web env | grep -E "(GA_|NEXT_PUBLIC_UMAMI_)"
       args:
         chdir: "{{ app_dir }}"
       register: container_env
@@ -458,18 +469,18 @@
           🔍 Container Environment Variables:
           {{ container_env.stdout_lines | default(['No environment variables found']) | join('\n') }}
       when: container_env is defined
-      
+
     - name: Check if Docker Compose services started successfully
       ansible.builtin.command: docker-compose ps
       args:
         chdir: "{{ app_dir }}"
       register: docker_ps
       changed_when: false
-      
+
     - name: Display Docker Compose status
       ansible.builtin.debug:
         var: docker_ps.stdout_lines
-      
+
     - name: Display deployment completion message
       ansible.builtin.debug:
         msg: "Deployment completed successfully! Application is now available at http://{{ public_ip }}"
@@ -496,14 +507,14 @@
             keepalive_timeout 65;
             types_hash_max_size 2048;
             server_tokens off;
-            
+
             # Shared memory zones
             limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
             limit_conn_zone $binary_remote_addr zone=addr:10m;
-            
+
             # SSL session cache zone
             ssl_session_cache shared:SSL:50m;
-            
+
             include /etc/nginx/mime.types;
             default_type application/octet-stream;
 
@@ -512,22 +523,22 @@
             client_header_buffer_size 1k;
             client_max_body_size 8m;
             large_client_header_buffers 2 1k;
-            
+
             # Timeouts
             client_body_timeout 12;
             client_header_timeout 12;
             send_timeout 10;
-            
+
             # Enable gzip
             gzip on;
             gzip_comp_level 2;
             gzip_min_length 1000;
             gzip_proxied expired no-cache no-store private auth;
             gzip_types text/plain application/x-javascript text/xml text/css application/xml application/json;
-            
+
             ssl_protocols TLSv1.2 TLSv1.3;
             ssl_prefer_server_ciphers on;
-            
+
             access_log /var/log/nginx/access.log;
             error_log /var/log/nginx/error.log;
 
@@ -673,7 +684,7 @@
     github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
     docker_image: "{{ docker_image_override }}"
-  
+
   tasks:
     - name: Install DNS utilities and Certbot
       ansible.builtin.package:
@@ -801,7 +812,7 @@
     - name: Perform Let's Encrypt dry run to test domain validation
       ansible.builtin.command: >
         certbot certonly --webroot -w /var/www/html -d {{ ssl_domain_name }}
-        --non-interactive --agree-tos 
+        --non-interactive --agree-tos
         --email {{ email_address }}
         --dry-run
       register: certbot_dryrun
@@ -820,10 +831,10 @@
     - name: Obtain SSL certificate (only if dry run succeeded)
       ansible.builtin.command: >
         certbot certonly --webroot -w /var/www/html -d {{ ssl_domain_name }}
-        --non-interactive --agree-tos 
+        --non-interactive --agree-tos
         --email {{ email_address }}
       when: |
-        not cert_file.stat.exists and 
+        not cert_file.stat.exists and
         (certbot_dryrun is defined and certbot_dryrun.rc | default(1) == 0) and
         (local_domain_check.status | default(0) == 200 or localhost_check.status | default(0) == 200)
       register: certbot_result
@@ -875,7 +886,7 @@
           - "Status: {{ nginx_status_debug.stdout | default('No status available') }}"
           - "Check nginx configuration: nginx -t"
       when: nginx_reload_result.failed
-      
+
     - name: Log certificate generation results
       ansible.builtin.debug:
         msg: "Certbot output: {{ certbot_result.stdout_lines | default(['No output']) }}"
@@ -915,9 +926,9 @@
               ============================================
               STAGING DEPLOYMENT COMPLETED SUCCESSFULLY
               ============================================
-              
+
               The staging environment is now ready for testing.
-              
+
               To promote this image to production:
               1. Test the staging deployment thoroughly
               2. Go to GitHub Actions → Image Promotion Workflow
@@ -928,16 +939,16 @@
                  - target_environment: production
                  - force_promotion: false
               5. Click "Run workflow"
-              
+
               The promotion workflow will:
               - Validate the staging image
               - Perform integrity checks
               - Create production tags
               - Enable manual approval
               - Promote the image to production registry
-              
+
               ============================================
-              
+
         - name: Create promotion trigger file
           ansible.builtin.copy:
             dest: "{{ app_dir }}/promotion-trigger.txt"
@@ -950,25 +961,23 @@
               Staging Image: {{ docker_image_override | default('ghcr.io/bxmty/dotca:staging') }}
               Environment: staging
               Status: READY_FOR_PROMOTION
-              
+
               Next Steps:
               1. Test staging deployment
               2. Trigger image promotion workflow
               3. Approve promotion in GitHub
               4. Deploy to production
-              
+
               Promotion Workflow:
               https://github.com/{{ github_repo_from_url }}/actions/workflows/image-promotion.yml
-              
+
         - name: Log promotion readiness
           ansible.builtin.debug:
             msg: |
               🚀 STAGING READY FOR PROMOTION
-              
+
               Image: {{ docker_image }}
               Status: Deployed and ready for testing
               Next: Manual testing + Image promotion workflow
-              
+
               Promotion trigger file created at: {{ app_dir }}/promotion-trigger.txt
-
-
