@@ -12,7 +12,9 @@ export const getStripe = () => {
   if (!stripePromise) {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     if (!key) {
-      console.error('Stripe publishable key is not set in environment variables');
+      console.error(
+        'Stripe publishable key is not set in environment variables'
+      );
       // Fallback to a safer error that doesn't crash the UI
       throw new Error('Payment processing is temporarily unavailable');
     }
@@ -30,7 +32,7 @@ export const getServerStripe = async () => {
   if (!secretKey) {
     throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
   }
-  
+
   // Dynamic import to avoid type errors
   const { default: Stripe } = await import('stripe');
   return new Stripe(secretKey, {

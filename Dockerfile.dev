@@ -3,6 +3,12 @@ FROM node:22.20.0-alpine
 
 WORKDIR /app
 
+# Install git (needed for commit hash injection)
+RUN apk add --no-cache git
+
+# Configure git to trust the /app directory (needed for volume-mounted repositories)
+RUN git config --global --add safe.directory /app
+
 # Install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
