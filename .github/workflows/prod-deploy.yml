@@ -53,6 +53,10 @@ on:
         required: true
       ANSIBLE_VAULT_PASSWORD:
         required: true
+      GITHUB_TOKEN:
+        required: true
+      GITHUB_USERNAME:
+        required: true
 
 env:
   REGISTRY: ghcr.io
