@@ -32,6 +32,10 @@ on:
         required: false
         type: string
         default: 'Automatic deployment after image promotion'
+      github_username:
+        description: 'GitHub username for authentication'
+        required: true
+        type: string
     secrets:
       DO_TOKEN:
         required: true
@@ -52,10 +56,6 @@ on:
       NEXT_PUBLIC_PRODUCTION_GA_ID:
         required: true
       ANSIBLE_VAULT_PASSWORD:
-        required: true
-      GITHUB_TOKEN:
-        required: true
-      GITHUB_USERNAME:
         required: true
 
 env:
@@ -612,8 +612,8 @@ jobs:
           echo "[digitalocean]" > inventory.ini
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
           
-          # Run production deployment playbook
-          if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml --vault-password-file ~/.ansible_vault_pass; then
+          # Run production deployment playbook with GitHub token and username
+          if GITHUB_TOKEN="${{ github.token }}" GITHUB_USERNAME="${{ inputs.github_username }}" ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml --vault-password-file ~/.ansible_vault_pass; then
             echo "Deployment successful"
             echo "deployment_success=true" >> $GITHUB_OUTPUT
           else
