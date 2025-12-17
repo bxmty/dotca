@@ -160,13 +160,21 @@
       debug:
         msg: "Docker Compose location: {{ compose_location.stdout }}"
 
-    - name: Verify Docker Compose v2 compatibility
+    - name: Verify Docker Compose v2+ compatibility
       fail:
         msg: |
           Docker Compose version {{ compose_version.stdout }} is not compatible.
           Expected Docker Compose v2+ for production deployment.
           Please ensure the latest version is installed.
-      when: "'v2' not in compose_version.stdout and '2.' not in compose_version.stdout"
+      when: >
+        ('v2' not in compose_version.stdout and
+         '2.' not in compose_version.stdout and
+         'v3' not in compose_version.stdout and
+         '3.' not in compose_version.stdout and
+         'v4' not in compose_version.stdout and
+         '4.' not in compose_version.stdout and
+         'v5' not in compose_version.stdout and
+         '5.' not in compose_version.stdout)
 
     - name: Create application directory
       file:
