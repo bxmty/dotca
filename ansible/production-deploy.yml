@@ -266,11 +266,17 @@
           exit 1
         fi
         echo "Attempting to login to ghcr.io as {{ github_username }}..."
-        echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin 2>&1 | grep -v "{{ github_token }}"
-        if [ $? -eq 0 ]; then
+        echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin > /tmp/docker-login.log 2>&1
+        LOGIN_RESULT=$?
+        if [ $LOGIN_RESULT -eq 0 ]; then
           echo "Successfully logged in to GitHub Container Registry"
+          rm -f /tmp/docker-login.log
+          exit 0
         else
           echo "ERROR: Failed to login to GitHub Container Registry"
+          # Show error without exposing token
+          grep -i "error\|denied\|unauthorized\|failed" /tmp/docker-login.log || cat /tmp/docker-login.log
+          rm -f /tmp/docker-login.log
           exit 1
         fi
       args:
@@ -281,7 +287,7 @@
       delay: 5
       until: docker_login.rc == 0
       changed_when: false
-      no_log: false
+      no_log: true
       failed_when: docker_login.rc != 0
 
     - name: Verify promoted production image exists in GHCR
@@ -640,6 +646,42 @@
       retries: 2
       delay: 5
       until: nginx_restart is success
+      ignore_errors: true
+
+    - name: Diagnose Nginx restart failure
+      ansible.builtin.shell: |
+        echo "=== Nginx Status ==="
+        systemctl status nginx.service --no-pager || true
+        echo ""
+        echo "=== Nginx Error Log ==="
+        tail -50 /var/log/nginx/error.log 2>/dev/null || echo "No error log found"
+        echo ""
+        echo "=== Check Port Conflicts ==="
+        netstat -tlnp | grep ':80\|:443' || echo "No processes on ports 80/443"
+        echo ""
+        echo "=== Nginx Config Test ==="
+        nginx -t 2>&1 || true
+      args:
+        executable: /bin/bash
+      register: nginx_diagnostic
+      when: nginx_restart is failed
+      changed_when: false
+
+    - name: Display Nginx diagnostic info
+      ansible.builtin.debug:
+        msg: "{{ nginx_diagnostic.stdout_lines }}"
+      when: nginx_restart is failed
+
+    - name: Fail deployment if Nginx won't start
+      ansible.builtin.fail:
+        msg: |
+          Nginx failed to restart! See diagnostic output above.
+          Common causes:
+          1. Configuration syntax error (check nginx -t output)
+          2. Port 80/443 already in use (check netstat output)
+          3. SSL certificate issues
+          4. Permission problems
+      when: nginx_restart is failed
 
     # Basic SSL certificate status check (moved from SSL play)
     - name: Check if SSL certificate exists
