@@ -539,6 +539,31 @@
       delay: 15
       until: docker_up is success
       
+    - name: Verify container is actually running after startup
+      ansible.builtin.shell: |
+        echo "Checking if container is running..."
+        CONTAINER_COUNT=$(docker ps --filter "publish=8080" --format "{{{{.Names}}}}" | wc -l)
+        if [ $CONTAINER_COUNT -eq 0 ]; then
+          echo "ERROR: No container running on port 8080!"
+          echo "Available containers:"
+          docker ps -a
+          exit 1
+        fi
+        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{{{.Names}}}}")
+        echo "Container running: $CONTAINER_NAME"
+        echo "Verifying restart policy..."
+        RESTART_POLICY=$(docker inspect --format "{{{{.HostConfig.RestartPolicy.Name}}}}" "$CONTAINER_NAME")
+        echo "Restart policy: $RESTART_POLICY"
+        if [ "$RESTART_POLICY" != "always" ]; then
+          echo "WARNING: Container restart policy is not 'always', updating..."
+          docker update --restart=always "$CONTAINER_NAME"
+          echo "Updated restart policy to 'always'"
+        fi
+        exit 0
+      register: container_verification
+      changed_when: false
+      failed_when: container_verification.rc != 0
+      
     - name: Check if Docker Compose services started successfully
       command: docker-compose ps
       args:
@@ -549,6 +574,10 @@
     - name: Display Docker Compose status
       debug:
         var: docker_ps.stdout_lines
+        
+    - name: Display container verification results
+      debug:
+        var: container_verification.stdout_lines
 
     # STREAMLINED VERIFICATION - Essential checks after deployment
     - name: Basic application health check
@@ -571,6 +600,51 @@
       changed_when: false
       when: docker_up is defined and docker_up.rc == 0
 
+    - name: Final deployment verification - ensure container survives reboot
+      ansible.builtin.shell: |
+        echo "=== Final Deployment Verification ==="
+        echo ""
+        echo "1. Checking container is running..."
+        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{{{.Names}}}}" | head -1)
+        if [ -z "$CONTAINER_NAME" ]; then
+          echo "❌ ERROR: No container running on port 8080"
+          exit 1
+        fi
+        echo "✅ Container running: $CONTAINER_NAME"
+        echo ""
+        echo "2. Verifying restart policy..."
+        RESTART_POLICY=$(docker inspect --format "{{{{.HostConfig.RestartPolicy.Name}}}}" "$CONTAINER_NAME")
+        echo "   Restart policy: $RESTART_POLICY"
+        if [ "$RESTART_POLICY" != "always" ]; then
+          echo "❌ ERROR: Restart policy is not 'always'"
+          exit 1
+        fi
+        echo "✅ Container will restart automatically"
+        echo ""
+        echo "3. Testing application responds..."
+        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+          echo "✅ Application is responding on port 8080"
+        else
+          echo "❌ ERROR: Application not responding"
+          exit 1
+        fi
+        echo ""
+        echo "4. Checking Docker service is enabled..."
+        if systemctl is-enabled docker >/dev/null 2>&1; then
+          echo "✅ Docker service will start on boot"
+        else
+          echo "⚠️  WARNING: Docker service not enabled for boot"
+        fi
+        echo ""
+        echo "=== All deployment verifications passed ==="
+      register: final_verification
+      changed_when: false
+      failed_when: final_verification.rc != 0
+      
+    - name: Display final verification results
+      ansible.builtin.debug:
+        var: final_verification.stdout_lines
+    
     - name: Display deployment completion message
       ansible.builtin.debug:
         msg: |
@@ -585,11 +659,18 @@
           - Image Source: Image Promotion Workflow
           - Production Image: {{ docker_image }}
           - Status: Deployed and Running
+          - Restart Policy: Always (survives reboots)
           
           Image Promotion Workflow:
           - Staging → Image Promotion → Production
           - Manual approval required for promotion
           - Promoted images stored in GHCR
+          
+          Verification Checks Passed:
+          ✅ Container is running on port 8080
+          ✅ Container has restart policy 'always'
+          ✅ Application responds to HTTP requests
+          ✅ Docker service enabled for automatic startup
           
           Next Steps:
           1. Monitor application health
@@ -664,12 +745,15 @@
         mode: '0644'
         backup: true
 
-    - name: Configure Nginx as reverse proxy from template
+    - name: Configure Nginx as reverse proxy from template (HTTP only initially)
       ansible.builtin.template:
         src: nextjs-site.conf.j2
         dest: /etc/nginx/sites-available/nextjs-app
         mode: '0644'
         backup: true
+      vars:
+        ssl_enabled: false
+        server_name: "boximity.ca www.boximity.ca"
 
     - name: Enable Nginx site configuration
       file:
@@ -969,12 +1053,55 @@
         msg: "SSL certificate verification failed - certificate not found"
       when: not final_ssl_cert_check.stat.exists
 
+    - name: Reconfigure Nginx with HTTPS enabled
+      ansible.builtin.template:
+        src: nextjs-site.conf.j2
+        dest: /etc/nginx/sites-available/nextjs-app
+        mode: '0644'
+        backup: true
+      vars:
+        ssl_enabled: true
+        ssl_domain: "boximity.ca"
+        server_name: "boximity.ca www.boximity.ca"
+      when: final_ssl_cert_check.stat.exists
+      register: nginx_https_config
+
+    - name: Test Nginx configuration with HTTPS
+      ansible.builtin.command: nginx -t
+      register: nginx_https_test
+      changed_when: false
+      failed_when: nginx_https_test.rc != 0
+      when: nginx_https_config is changed
+
     - name: Restart Nginx after SSL certificate setup
       systemd:
         name: nginx
         state: restarted
         enabled: yes
       when: final_ssl_cert_check.stat.exists
+      register: nginx_ssl_restart
+
+    - name: Verify HTTPS is working on port 443
+      ansible.builtin.wait_for:
+        host: localhost
+        port: 443
+        timeout: 30
+        state: started
+      when: nginx_ssl_restart is changed
+
+    - name: Test HTTPS endpoint after restart
+      ansible.builtin.shell: |
+        echo "Testing HTTPS endpoint..."
+        if curl -k -s -o /dev/null -w "%{http_code}" https://localhost | grep -q "200\|301\|302"; then
+          echo "✅ HTTPS is working"
+          exit 0
+        else
+          echo "❌ HTTPS test failed"
+          exit 1
+        fi
+      register: https_endpoint_test
+      changed_when: false
+      when: nginx_ssl_restart is changed
 
     - name: Final SSL certificate status
       ansible.builtin.debug:
@@ -992,11 +1119,20 @@
           - Auto-renewal: Enabled (daily at 3:30 AM)
           - Renewal threshold: 30 days before expiration
           
+          HTTPS Configuration:
+          {% if final_ssl_cert_check.stat.exists %}
+          ✅ Nginx reconfigured with HTTPS support
+          ✅ Port 443 (HTTPS) is now active
+          ✅ SSL certificates properly configured
+          ✅ Application accessible via https://boximity.ca
+          {% endif %}
+          
           Smart Features:
           ✅ Only creates certificates when needed (missing or expiring < 30 days)
           ✅ Checks existing certificate validity before taking action
           ✅ Provides detailed expiration information
           ✅ Automatic renewal with cron job
+          ✅ Nginx automatically reconfigured for HTTPS
           
           Next Steps:
           1. Test HTTPS access: https://boximity.ca

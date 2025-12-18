@@ -44,6 +44,7 @@ http {
   
   # Rate limiting
   limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+  limit_req_zone $binary_remote_addr zone=api:10m rate=5r/s;
   
   # Enable gzip
   gzip on;
