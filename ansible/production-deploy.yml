@@ -599,6 +599,16 @@
           
           ============================================
 
+    - name: Stop all Docker containers (just in case)
+      ansible.builtin.shell: |
+        echo "Stopping all Docker containers..."
+        docker stop $(docker ps -aq) 2>/dev/null || echo "No containers to stop"
+        sleep 2
+      args:
+        executable: /bin/bash
+      changed_when: false
+      ignore_errors: true
+
     - name: Check what's using port 80
       ansible.builtin.shell: |
         echo "=== Processes using port 80 ==="
