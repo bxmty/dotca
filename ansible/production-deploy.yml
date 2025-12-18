@@ -599,20 +599,52 @@
           
           ============================================
 
-    - name: Stop Nginx before reconfiguration
+    - name: Check what's using port 80
+      ansible.builtin.shell: |
+        echo "=== Processes using port 80 ==="
+        lsof -i :80 || netstat -tlnp | grep ':80' || echo "No processes found on port 80"
+      args:
+        executable: /bin/bash
+      register: port_80_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display port 80 usage
+      ansible.builtin.debug:
+        msg: "{{ port_80_check.stdout_lines }}"
+
+    - name: Stop Nginx service
       ansible.builtin.systemd:
         name: nginx
         state: stopped
       ignore_errors: true
       register: nginx_stop
 
-    - name: Kill any orphaned Nginx processes
+    - name: Force kill all Nginx processes
       ansible.builtin.shell: |
+        echo "Killing all nginx processes..."
         pkill -9 nginx || true
-        sleep 2
+        sleep 3
+        echo "Checking if any nginx processes remain..."
+        ps aux | grep nginx || echo "No nginx processes found"
       args:
         executable: /bin/bash
-      when: nginx_stop is failed
+      changed_when: false
+
+    - name: Kill any process using port 80
+      ansible.builtin.shell: |
+        echo "Finding and killing processes on port 80..."
+        fuser -k 80/tcp || true
+        sleep 2
+        echo "Verifying port 80 is free..."
+        if lsof -i :80 || netstat -tlnp | grep ':80'; then
+          echo "ERROR: Port 80 still in use!"
+          exit 1
+        else
+          echo "SUCCESS: Port 80 is now free"
+        fi
+      args:
+        executable: /bin/bash
       changed_when: false
 
     - name: Configure Nginx worker processes from template
