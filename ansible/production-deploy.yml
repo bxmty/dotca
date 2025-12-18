@@ -273,6 +273,8 @@
           echo "ERROR: Failed to login to GitHub Container Registry"
           exit 1
         fi
+      args:
+        executable: /bin/bash
       when: github_token is defined and github_username is defined and github_token != "" and github_username != ""
       register: docker_login
       retries: 3
