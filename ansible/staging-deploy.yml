@@ -330,11 +330,17 @@
           exit 1
         fi
         echo "Attempting to login to ghcr.io as {{ github_username }}..."
-        echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin 2>&1 | grep -v "{{ github_token }}"
-        if [ $? -eq 0 ]; then
+        echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin > /tmp/docker-login.log 2>&1
+        LOGIN_RESULT=$?
+        if [ $LOGIN_RESULT -eq 0 ]; then
           echo "Successfully logged in to GitHub Container Registry"
+          rm -f /tmp/docker-login.log
+          exit 0
         else
           echo "ERROR: Failed to login to GitHub Container Registry"
+          # Show error without exposing token
+          grep -i "error\|denied\|unauthorized\|failed" /tmp/docker-login.log || cat /tmp/docker-login.log
+          rm -f /tmp/docker-login.log
           exit 1
         fi
       args:
@@ -345,7 +351,7 @@
       delay: 5
       until: docker_login.rc == 0
       changed_when: false
-      no_log: false
+      no_log: true
       failed_when: docker_login.rc != 0
 
     - name: Check if Docker image exists in GHCR
