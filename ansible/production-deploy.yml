@@ -237,9 +237,18 @@
         fi
       ignore_errors: yes
 
+    - name: Debug GitHub token and username variables
+      debug:
+        msg:
+          - "GITHUB_TOKEN length: {{ GITHUB_TOKEN | length | default('undefined') }}"
+          - "GITHUB_USERNAME: {{ GITHUB_USERNAME | default('undefined') }}"
+          - "github_token length: {{ github_token | length | default('undefined') }}"
+          - "github_username: {{ github_username | default('undefined') }}"
+      when: GITHUB_TOKEN is defined or GITHUB_USERNAME is defined
+
     - name: Login to GitHub Container Registry
       ansible.builtin.command: bash -c 'set -o pipefail && echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin'
-      when: github_token is defined and github_username is defined
+      when: github_token is defined and github_username is defined and github_token != "" and github_username != ""
       register: docker_login
       retries: 3
       delay: 5
