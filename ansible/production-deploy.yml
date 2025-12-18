@@ -599,6 +599,22 @@
           
           ============================================
 
+    - name: Stop Nginx before reconfiguration
+      ansible.builtin.systemd:
+        name: nginx
+        state: stopped
+      ignore_errors: true
+      register: nginx_stop
+
+    - name: Kill any orphaned Nginx processes
+      ansible.builtin.shell: |
+        pkill -9 nginx || true
+        sleep 2
+      args:
+        executable: /bin/bash
+      when: nginx_stop is failed
+      changed_when: false
+
     - name: Configure Nginx worker processes from template
       ansible.builtin.template:
         src: nginx.conf.j2
