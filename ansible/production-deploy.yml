@@ -246,14 +246,41 @@
           - "github_username: {{ github_username | default('undefined') }}"
       when: GITHUB_TOKEN is defined or GITHUB_USERNAME is defined
 
+    - name: Validate GitHub credentials before Docker login
+      ansible.builtin.debug:
+        msg:
+          - "GitHub Token provided: {{ 'YES' if (github_token is defined and github_token != '') else 'NO' }}"
+          - "GitHub Username: {{ github_username | default('NOT SET') }}"
+          - "Will attempt Docker login: {{ 'YES' if (github_token is defined and github_username is defined and github_token != '' and github_username != '') else 'NO' }}"
+
     - name: Login to GitHub Container Registry
-      ansible.builtin.command: bash -c 'set -o pipefail && echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin'
+      ansible.builtin.shell: |
+        set -e
+        set -o pipefail
+        if [ -z "{{ github_token }}" ]; then
+          echo "ERROR: GitHub token is empty or not provided"
+          exit 1
+        fi
+        if [ -z "{{ github_username }}" ]; then
+          echo "ERROR: GitHub username is empty or not provided"
+          exit 1
+        fi
+        echo "Attempting to login to ghcr.io as {{ github_username }}..."
+        echo "{{ github_token }}" | docker login ghcr.io -u {{ github_username }} --password-stdin 2>&1 | grep -v "{{ github_token }}"
+        if [ $? -eq 0 ]; then
+          echo "Successfully logged in to GitHub Container Registry"
+        else
+          echo "ERROR: Failed to login to GitHub Container Registry"
+          exit 1
+        fi
       when: github_token is defined and github_username is defined and github_token != "" and github_username != ""
       register: docker_login
       retries: 3
       delay: 5
-      until: docker_login is success
+      until: docker_login.rc == 0
       changed_when: false
+      no_log: false
+      failed_when: docker_login.rc != 0
 
     - name: Verify promoted production image exists in GHCR
       ansible.builtin.command: |

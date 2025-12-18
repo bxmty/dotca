@@ -534,6 +534,9 @@ jobs:
               ansible/staging-deploy.yml \
               --timeout=60 \
               --extra-vars "ansible_ssh_timeout=60" \
+              --extra-vars "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" \
+              --extra-vars "GITHUB_USERNAME=${{ github.actor }}" \
+              --extra-vars "GITHUB_REPO=${{ github.repository }}" \
               --extra-vars "GA_STAGING_ID=${{ secrets.GA_STAGING_ID }}" \
               --extra-vars "GA_PRODUCTION_ID=${{ secrets.GA_PRODUCTION_ID }}" \
               --extra-vars "UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" \
