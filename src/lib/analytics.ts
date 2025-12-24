@@ -12,8 +12,20 @@
  */
 
 // Import both analytics providers
-import { pageview as gaPageview, event as gaEvent, initGA, GA_MEASUREMENT_ID } from './gtag';
-import { trackPageView as umamiTrackPageView, trackCustomEvent, trackFormSubmission, trackButtonClick as umamiTrackButtonClick, trackEngagement as umamiTrackEngagement, isUmamiConfigured } from './umami';
+import {
+  pageview as gaPageview,
+  event as gaEvent,
+  initGA,
+  GA_MEASUREMENT_ID,
+} from './gtag';
+import {
+  trackPageView as umamiTrackPageView,
+  trackCustomEvent,
+  trackFormSubmission,
+  trackButtonClick as umamiTrackButtonClick,
+  trackEngagement as umamiTrackEngagement,
+  isUmamiConfigured,
+} from './umami';
 
 // Types for unified analytics interface
 export interface UnifiedEventData {
@@ -75,7 +87,10 @@ export const initializeAnalytics = (): void => {
  * @param url - The page URL/path to track
  * @param title - Optional page title
  */
-export const trackPageView = async (url: string, title?: string): Promise<void> => {
+export const trackPageView = async (
+  url: string,
+  title?: string
+): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (!isInitialized) {
@@ -114,7 +129,9 @@ export const trackPageView = async (url: string, title?: string): Promise<void> 
  * Track a custom event across all enabled analytics providers
  * @param eventData - The event data to track
  */
-export const trackEvent = async (eventData: UnifiedEventData): Promise<void> => {
+export const trackEvent = async (
+  eventData: UnifiedEventData
+): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (!isInitialized) {
@@ -196,7 +213,10 @@ export const trackButtonClick = async (
   const config = getAnalyticsConfig();
 
   if (config.debug) {
-    console.log(`👆 Tracking button click: ${buttonName}`, buttonContext ? { context: buttonContext } : {});
+    console.log(
+      `👆 Tracking button click: ${buttonName}`,
+      buttonContext ? { context: buttonContext } : {}
+    );
   }
 
   // Track with Umami (includes GA-compatible event)
@@ -255,7 +275,9 @@ export const isAnalyticsConfigured = (): boolean => {
 /**
  * Get current analytics configuration (for debugging)
  */
-export const getAnalyticsStatus = (): AnalyticsConfig & { initialized: boolean } => ({
+export const getAnalyticsStatus = (): AnalyticsConfig & {
+  initialized: boolean;
+} => ({
   ...getAnalyticsConfig(),
   initialized: isInitialized,
 });

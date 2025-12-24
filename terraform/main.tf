@@ -3,11 +3,11 @@ terraform {
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
-      version = "2.67.0"
+      version = "2.72.0"
     }
   }
   required_version = ">= 1.5.0"
-  
+
   backend "s3" {
     endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
     region                      = "tor1"
@@ -87,23 +87,23 @@ resource "digitalocean_droplet" "app_droplet" {
     # Create a startup log file
     exec > >(tee /var/log/user-data.log) 2>&1
     echo "Starting minimal initialization for ${var.environment} environment: $(date)"
-    
+
     # Wait until apt is available
     echo "Waiting for apt to be available..."
     until apt-get update -q; do
       echo "Apt not ready yet, waiting..."
       sleep 5
     done
-    
+
     # Update system
     echo "Updating system packages..."
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-    
+
     # Install Python for Ansible
     echo "Installing Python for Ansible..."
     DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip
-    
+
     # Mark initialization as complete
     echo "Droplet initialized and ready for Ansible: $(date)" > /var/log/tf-init-complete
   EOF
@@ -113,7 +113,7 @@ resource "digitalocean_droplet" "app_droplet" {
 resource "digitalocean_firewall" "app_firewall" {
   count = var.use_existing_firewall ? 0 : 1
   name = "${var.project_name}-${var.environment}-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
-  
+
   # Allow SSH
   inbound_rule {
     protocol         = "tcp"

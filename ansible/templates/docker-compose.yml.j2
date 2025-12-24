@@ -32,6 +32,7 @@ services:
       - NEXT_PUBLIC_PRODUCTION_GA_ID={{ ga_production_id | default('') }}
       - NEXT_PUBLIC_UMAMI_WEBSITE_ID={{ umami_website_id | default('') }}
       - NEXT_PUBLIC_UMAMI_HOST_URL={{ umami_host_url | default('') }}
+      - NEXT_PUBLIC_COMMIT_HASH={{ commit_hash | default('unknown') }}
       - HOST=0.0.0.0
       - HOSTNAME=0.0.0.0
       - PORT=3000
@@ -48,8 +49,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-  
+
   # Create an alias for the web service to handle "app" references in production
   app:
     extends: web
-
