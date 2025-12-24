@@ -5,6 +5,7 @@ This document outlines the SSH key management strategy for the DotCA project, in
 ## Overview
 
 The project uses SSH keys for:
+
 - **CI/CD Deployments**: GitHub Actions connecting to DigitalOcean droplets
 - **Local Development**: Manual deployments and server management
 - **Infrastructure Provisioning**: Terraform managing server access
@@ -12,6 +13,7 @@ The project uses SSH keys for:
 ## Storage Strategy
 
 ### 1. GitHub Secrets (Production/CI/CD)
+
 - **Purpose**: Automated deployments in GitHub Actions
 - **Location**: Repository Settings > Secrets and variables > Actions
 - **Keys Stored**:
@@ -19,6 +21,7 @@ The project uses SSH keys for:
   - `SSH_KEY_FINGERPRINT`: Key fingerprint for Terraform validation
 
 ### 2. 1Password (Development/Management)
+
 - **Purpose**: Secure storage, local development, key rotation
 - **Location**: DevOps vault in 1Password
 - **Structure**:
@@ -102,17 +105,20 @@ source .env.local
 ## Security Best Practices
 
 ### Key Requirements
+
 - **Type**: RSA 4096-bit minimum (Ed25519 preferred for new keys)
 - **Rotation**: Every 90 days or after security incidents
 - **Access**: Limit to necessary personnel only
 - **Passphrase**: Use for local development keys (optional for CI/CD)
 
 ### Access Control
+
 - 1Password vault access restricted to DevOps team
 - GitHub repository secrets access limited to administrators
 - Regular audit of key usage and access logs
 
 ### Monitoring
+
 - Monitor failed SSH authentication attempts
 - Alert on unexpected key usage patterns
 - Regular review of active keys in DigitalOcean
@@ -120,16 +126,19 @@ source .env.local
 ## Environment-Specific Keys
 
 ### Production
+
 - **Usage**: Production deployments only
 - **Access**: Senior developers and DevOps lead
 - **Rotation**: Monthly or immediately after incidents
 
 ### Staging
+
 - **Usage**: Staging deployments and testing
 - **Access**: Development team
 - **Rotation**: Every 60 days
 
 ### QA
+
 - **Usage**: QA environment testing
 - **Access**: QA team and developers
 - **Rotation**: Every 90 days
@@ -139,6 +148,7 @@ source .env.local
 ### Common Issues
 
 1. **SSH Key Fingerprint Mismatch**:
+
    ```bash
    # Recalculate fingerprint
    ssh-keygen -lf ~/.ssh/id_rsa
@@ -146,6 +156,7 @@ source .env.local
    ```
 
 2. **Permission Denied**:
+
    ```bash
    # Check key permissions
    chmod 600 ~/.ssh/id_rsa
@@ -163,6 +174,7 @@ source .env.local
 ### Emergency Access
 
 If 1Password is unavailable:
+
 1. Use emergency SSH keys stored in secure offline location
 2. Generate temporary keys for immediate access
 3. Follow emergency key rotation procedure
