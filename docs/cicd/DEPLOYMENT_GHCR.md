@@ -7,13 +7,11 @@ This document explains how to use GitHub Container Registry (GHCR) with the new 
 The new image promotion workflow provides a robust, secure deployment pipeline:
 
 ### Three-Stage Pipeline:
-
 1. **Build Stage**: GitHub Actions builds and pushes staging images to GHCR on code changes
 2. **Promotion Stage**: Manual or automated promotion of validated staging images to production tags
 3. **Deployment Stage**: Ansible deployment pulls promoted production images from GHCR
 
 ### Key Benefits:
-
 - ✅ **Separation of Concerns**: Build once, deploy multiple times
 - ✅ **Manual Approval Gates**: Production deployments require explicit approval
 - ✅ **Image Validation**: Comprehensive integrity and security checks before promotion
@@ -62,13 +60,11 @@ GitHub Actions automatically provides `GITHUB_TOKEN` - **no setup needed**. The 
 **IMPORTANT:** Keep your packages private for security! Here are authentication options:
 
 #### Option A: Personal Access Token (Recommended)
-
 - ✅ Easy to set up
 - ✅ Works with any deployment method
 - ✅ Fine-grained permissions
 
 #### Option B: Deploy Keys
-
 - ✅ Repository-specific
 - ✅ More secure for production
 - ⚠️ Requires additional SSH setup
@@ -78,12 +74,10 @@ GitHub Actions automatically provides `GITHUB_TOKEN` - **no setup needed**. The 
 The promotion pipeline creates a comprehensive tagging strategy:
 
 #### Staging Images (Auto-built):
-
 - `ghcr.io/username/dotca:staging` - Latest staging build
 - `ghcr.io/username/dotca:staging-def5678` - Specific commit on staging
 
 #### Production Images (Promoted):
-
 - `ghcr.io/username/dotca:main` - Latest promoted production image
 - `ghcr.io/username/dotca:latest` - Alias for latest production image
 - `ghcr.io/username/dotca:main-staging-def5678` - Commit-specific production tag
@@ -103,7 +97,7 @@ main branch (production)
 └── Tagged releases
 
 staging branch (testing)
-├── Merge commits from feature branches
+├── Merge commits from feature branches  
 ├── Direct commits for staging-only testing
 └── Used for staging deployments only
 ```
@@ -111,7 +105,6 @@ staging branch (testing)
 ### Git Workflow Steps
 
 1. **Feature Development**:
-
    ```bash
    git checkout -b feature/new-feature
    # Make your changes
@@ -120,7 +113,6 @@ staging branch (testing)
    ```
 
 2. **Testing in Staging**:
-
    ```bash
    # Merge feature to staging for testing
    git checkout staging
@@ -144,7 +136,6 @@ staging branch (testing)
 ✅ **Do this instead**: Merge feature branches to both staging and main separately
 
 **Reasons:**
-
 - **Staging may contain experimental code** not ready for production
 - **Main branch stays clean** with only production-ready commits
 - **Image promotion provides the safety bridge** between staging and production environments
@@ -205,12 +196,11 @@ git push origin staging
 **Important**: The image promotion workflow promotes **Docker images**, not Git branches. This means:
 
 - ✅ You can test code in staging branch
-- ✅ Merge the same code to main branch separately
+- ✅ Merge the same code to main branch separately  
 - ✅ Promote the **tested staging image** to production tags
 - ✅ Deploy the promoted image (which contains the code now in main)
 
 This separation provides **double safety**:
-
 1. **Git workflow** ensures code quality and review
 2. **Image promotion** ensures deployment safety and validation
 
@@ -228,7 +218,6 @@ You should merge to the main branch **only when**:
 ### 🚨 **Key Decision Points**
 
 #### Scenario 1: Feature Ready for Production
-
 ```bash
 # 1. Feature tested and approved in staging
 git checkout staging
@@ -237,7 +226,7 @@ git push origin staging
 # → Deploy to staging, test thoroughly
 
 # 2. ALL tests pass ✅ → Ready for production
-git checkout main
+git checkout main  
 git merge feature/payment-integration  # NOW merge to main
 git push origin main
 
@@ -246,10 +235,9 @@ git push origin main
 ```
 
 #### Scenario 2: Feature Needs More Work
-
 ```bash
 # 1. Feature tested in staging
-git checkout staging
+git checkout staging  
 git merge feature/experimental-ui
 git push origin staging
 # → Deploy to staging, test reveals issues
@@ -260,14 +248,13 @@ git push origin staging
 ```
 
 #### Scenario 3: Multiple Features in Different States
-
 ```bash
 # Feature A: Ready for production
 git checkout main
 git merge feature/user-auth  # ✅ Tested and approved
 git push origin main
 
-# Feature B: Still testing in staging
+# Feature B: Still testing in staging  
 # Keep in staging branch only, don't merge to main yet
 
 # Feature C: Needs fixes
@@ -295,7 +282,7 @@ graph TD
 Before merging any feature to main, ensure:
 
 - [ ] **Staging deployment successful** - No deployment errors
-- [ ] **Functional tests pass** - All features work as expected
+- [ ] **Functional tests pass** - All features work as expected  
 - [ ] **Performance tests pass** - No performance regressions
 - [ ] **Security checks pass** - No new vulnerabilities introduced
 - [ ] **Code review approved** - Team has reviewed the changes
@@ -304,14 +291,12 @@ Before merging any feature to main, ensure:
 ### ⚠️ **What NOT to Do**
 
 ❌ **Don't merge to main if**:
-
 - Staging tests are still running
 - You found issues that need fixing
 - You're not ready to deploy to production
 - Feature is experimental and you're just testing
 
 ❌ **Don't leave main ahead of production**:
-
 - If you merge to main, promote the image soon after
 - Don't accumulate multiple unreleased features in main
 
@@ -326,7 +311,6 @@ Before merging any feature to main, ensure:
 ### 2. Image Promotion (Production Ready)
 
 4. **Manual promotion** → Trigger image promotion workflow:
-
    ```bash
    # Navigate to GitHub Actions → Image Promotion Workflow → Run workflow
    # Inputs:
@@ -356,49 +340,42 @@ docker push ghcr.io/your_username/dotca:staging
 ## Benefits
 
 ### Performance Benefits:
-
 ✅ **Faster Deployments**: No build time during deployment (60-90% faster)  
 ✅ **Reduced Server Load**: No CPU/memory usage for building on target servers
 ✅ **Concurrent Deployments**: Multiple environments can deploy simultaneously
 
 ### Security Benefits:
-
 ✅ **Image Validation**: Comprehensive security and integrity checks
 ✅ **Manual Approval Gates**: Human verification before production deployment
 ✅ **Audit Trail**: Complete history of who deployed what and when
 ✅ **Vulnerability Scanning**: Automated security scanning before promotion
 
 ### Reliability Benefits:
-
 ✅ **Tested Images**: Staging validation before production promotion
 ✅ **Multiple Rollback Points**: Timestamp and reason-based rollback tags
 ✅ **Consistent Builds**: Identical image across all environments
 ✅ **Deployment Verification**: Automated health checks and validation
 
 ### Operational Benefits:
-
 ✅ **Separation of Concerns**: Clear distinction between build and deploy phases
 ✅ **GitOps Workflow**: Full history and traceability in version control
-✅ **Environment Promotion**: Safe path from staging to production
+✅ **Environment Promotion**: Safe path from staging to production  
 
 ## Migration Checklist
 
 ### Initial Setup:
-
 - [ ] Set up image promotion workflow (`.github/workflows/image-promotion.yml`)
 - [ ] Configure GitHub environment protection rules for `production-promotion`
 - [ ] Set up image promotion workflow (`.github/workflows/image-promotion.yml`)
 - [ ] Configure environment variables (`GITHUB_TOKEN`, `GITHUB_USERNAME`)
 
 ### Deployment Updates:
-
 - [ ] Update docker-compose.yml to use GHCR images
 - [ ] Modify Ansible playbooks to pull promoted images
 - [ ] Configure production deployment workflow (`.github/workflows/prod-deploy.yml`)
 - [ ] Set up notification workflows (`.github/workflows/deployment-notifications.yml`)
 
 ### Testing and Validation:
-
 - [ ] Test staging deployment with new image workflow
 - [ ] Test image promotion workflow with staging images
 - [ ] Validate production deployment with promoted images
@@ -408,20 +385,17 @@ docker push ghcr.io/your_username/dotca:staging
 ## Troubleshooting
 
 ### Authentication Issues
-
 ```bash
 # Test GHCR authentication
 echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
 ```
 
 ### Image Not Found
-
 - Check if the GitHub Actions workflow completed successfully
 - Verify the image name and tag in your environment variables
 - Ensure the repository has public package visibility or proper authentication
 
 ### Permission Issues
-
 - Verify your GitHub token has `read:packages` permission
 - For private packages: ensure authentication is working
 - Test authentication: `echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin`
@@ -429,19 +403,16 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
 ### Image Promotion Issues
 
 #### Promotion Workflow Not Appearing
-
 - Verify the `.github/workflows/image-promotion.yml` file exists
 - Check that you have the correct permissions to run workflows
 - Ensure you're on the correct branch (usually `main`) when triggering
 
 #### Manual Approval Not Working
-
 - Verify the `production-promotion` environment is configured in Settings → Environments
 - Check that required reviewers are added to the environment
 - Ensure the approving user has the necessary repository permissions
 
 #### Image Validation Failures
-
 ```bash
 # Check if staging image exists and can be pulled
 docker pull ghcr.io/username/dotca:staging
@@ -454,16 +425,13 @@ docker images ghcr.io/username/dotca:staging
 ```
 
 #### Common Validation Failures and Solutions:
-
 - **Size validation fails**: Check if image is unusually large (>2GB) or small (<100MB)
 - **Layer validation fails**: Verify Dockerfile isn't creating excessive layers
 - **Security validation fails**: Use `force_promotion: true` for emergency deployments
 - **Metadata validation fails**: Ensure Dockerfile has proper CMD configuration
 
 #### Force Promotion for Emergency Deployments
-
 When you need to bypass validation (use sparingly):
-
 1. Set `force_promotion: true` in the workflow inputs
 2. Provide a clear reason in `promotion_reason`
 3. Monitor deployment extra carefully
@@ -472,13 +440,11 @@ When you need to bypass validation (use sparingly):
 ### Production Deployment Issues
 
 #### Promoted Image Not Found in Production Deployment
-
 - Wait 1-2 minutes after promotion for registry synchronization
 - Verify the production deployment is using the correct image tag
 - Check production deployment logs for specific error messages
 
 #### Health Check Failures After Promotion
-
 - Verify the promoted image has the same health check configuration as staging
 - Check that environment variables are correctly set for production
 - Ensure database connections and external services are accessible
@@ -486,7 +452,6 @@ When you need to bypass validation (use sparingly):
 ### Rollback to Previous Version
 
 #### Using Rollback Tags:
-
 ```bash
 # Find available rollback tags
 docker search ghcr.io/username/dotca | grep rollback
@@ -499,7 +464,6 @@ ansible-playbook ansible/production-deploy.yml
 ```
 
 #### Using Previous Production Tags:
-
 ```bash
 # Update .env file with previous production tag
 DOCKER_IMAGE=ghcr.io/username/dotca:main-staging-abc1234
@@ -509,7 +473,6 @@ ansible-playbook ansible/production-deploy.yml
 ```
 
 #### Emergency Rollback via GitHub Actions:
-
 1. Go to Actions → Production Pipeline → Run workflow
 2. Set `promoted_image_tag` to a previous production tag
 3. Set `deployment_reason` to describe the rollback reason
@@ -560,15 +523,13 @@ Before promotion, images undergo comprehensive validation:
 ## Environment-Specific Configurations
 
 ### Staging Environment
-
 - **Image Source**: Built automatically from staging branch
 - **Image Tag**: `ghcr.io/username/dotca:staging`
 - **Build Trigger**: Push to `staging` branch
 - **Environment**: `NEXT_PUBLIC_ENVIRONMENT=staging`
 - **Purpose**: Development testing and validation
 
-### Production Environment
-
+### Production Environment  
 - **Image Source**: Promoted from validated staging images
 - **Image Tag**: `ghcr.io/username/dotca:main`
 - **Build Trigger**: Manual promotion workflow
@@ -576,7 +537,6 @@ Before promotion, images undergo comprehensive validation:
 - **Purpose**: Live user-facing application
 
 ### Canary Environment (Optional)
-
 - **Image Source**: Promoted from staging for pre-production testing
 - **Image Tag**: `ghcr.io/username/dotca:canary`
 - **Build Trigger**: Manual promotion workflow with `canary` target
@@ -586,7 +546,6 @@ Before promotion, images undergo comprehensive validation:
 ## Working with Private Packages (Recommended)
 
 ### Why Keep Packages Private?
-
 - ✅ **Security**: Only authorized users can access your images
 - ✅ **Control**: Track who pulls your images
 - ✅ **Compliance**: Meet security requirements
@@ -611,9 +570,8 @@ Before promotion, images undergo comprehensive validation:
 ### Package Visibility Settings
 
 Your packages are private by default. If needed, you can:
-
 - **Keep private** (recommended): Requires authentication
-- **Make internal**: Visible to organization members only
+- **Make internal**: Visible to organization members only  
 - **Make public**: Anyone can pull (not recommended for production)
 
 To change visibility: GitHub → Repository → Packages → Package Settings → Change visibility
@@ -650,33 +608,33 @@ docker rmi ghcr.io/username/dotca:old-tag
 
 ### Image Tag Quick Reference
 
-| Tag Pattern                      | Purpose                      | Example                                                  |
-| -------------------------------- | ---------------------------- | -------------------------------------------------------- |
-| `:staging`                       | Latest staging build         | `ghcr.io/username/dotca:staging`                         |
-| `:staging-{hash}`                | Specific staging commit      | `ghcr.io/username/dotca:staging-abc123`                  |
-| `:main`                          | Latest production (promoted) | `ghcr.io/username/dotca:main`                            |
-| `:latest`                        | Alias for latest production  | `ghcr.io/username/dotca:latest`                          |
-| `:main-staging-{hash}`           | Promoted commit-specific     | `ghcr.io/username/dotca:main-staging-abc123`             |
-| `:rollback-{timestamp}-{reason}` | Rollback reference           | `ghcr.io/username/dotca:rollback-20240101-120000-hotfix` |
-| `:v{major}.{minor}.{patch}`      | Semantic version             | `ghcr.io/username/dotca:v1.2.3`                          |
+| Tag Pattern | Purpose | Example |
+|-------------|---------|---------|
+| `:staging` | Latest staging build | `ghcr.io/username/dotca:staging` |
+| `:staging-{hash}` | Specific staging commit | `ghcr.io/username/dotca:staging-abc123` |
+| `:main` | Latest production (promoted) | `ghcr.io/username/dotca:main` |
+| `:latest` | Alias for latest production | `ghcr.io/username/dotca:latest` |
+| `:main-staging-{hash}` | Promoted commit-specific | `ghcr.io/username/dotca:main-staging-abc123` |
+| `:rollback-{timestamp}-{reason}` | Rollback reference | `ghcr.io/username/dotca:rollback-20240101-120000-hotfix` |
+| `:v{major}.{minor}.{patch}` | Semantic version | `ghcr.io/username/dotca:v1.2.3` |
 
 ### Workflow Triggers
 
-| Action                | Location                           | Description                               |
-| --------------------- | ---------------------------------- | ----------------------------------------- |
-| **Build Staging**     | Push to `staging` branch           | Automatic staging image build             |
-| **Promote Image**     | Actions → Image Promotion Workflow | Manual promotion with approval            |
-| **Deploy Production** | Actions → Production Pipeline      | Manual or automatic production deployment |
-| **Deploy Staging**    | Actions → Staging Pipeline         | Manual staging deployment                 |
+| Action | Location | Description |
+|--------|----------|-------------|
+| **Build Staging** | Push to `staging` branch | Automatic staging image build |
+| **Promote Image** | Actions → Image Promotion Workflow | Manual promotion with approval |
+| **Deploy Production** | Actions → Production Pipeline | Manual or automatic production deployment |
+| **Deploy Staging** | Actions → Staging Pipeline | Manual staging deployment |
 
 ### Branch Strategy Quick Reference
 
-| Scenario               | Git Commands                                      | Image Action                      |
-| ---------------------- | ------------------------------------------------- | --------------------------------- |
-| **Feature Testing**    | `git checkout staging && git merge feature/x`     | Staging image built automatically |
-| **Production Release** | `git checkout main && git merge feature/x`        | Promote staging image manually    |
-| **Hotfix**             | `git merge hotfix/x` to both `main` and `staging` | Force promote if urgent           |
-| **Rollback**           | No git changes needed                             | Deploy previous promoted image    |
+| Scenario | Git Commands | Image Action |
+|----------|--------------|--------------|
+| **Feature Testing** | `git checkout staging && git merge feature/x` | Staging image built automatically |
+| **Production Release** | `git checkout main && git merge feature/x` | Promote staging image manually |
+| **Hotfix** | `git merge hotfix/x` to both `main` and `staging` | Force promote if urgent |
+| **Rollback** | No git changes needed | Deploy previous promoted image |
 
 ### Common Workflow Pattern
 
@@ -688,7 +646,7 @@ git checkout staging && git merge feature/new-feature && git push
 # 2. WAIT - Test thoroughly in staging environment
 # Run all tests, verify functionality, check performance
 
-# 3. ONLY after all tests pass - release to main
+# 3. ONLY after all tests pass - release to main  
 git checkout main && git merge feature/new-feature && git push
 # → No automatic deployment, but code is now "production ready"
 
@@ -697,7 +655,7 @@ git checkout main && git merge feature/new-feature && git push
 # → Promotes the staging image that was already tested
 
 # 5. Deploy to production (optional - may be automatic)
-# GitHub Actions → Production Pipeline → Run workflow
+# GitHub Actions → Production Pipeline → Run workflow  
 # → Deploys the promoted image
 ```
 
@@ -713,21 +671,18 @@ git checkout main && git merge feature/new-feature && git push
 ### Emergency Procedures
 
 #### Emergency Rollback
-
 1. Go to **Actions** → **Production Pipeline** → **Run workflow**
 2. Set `promoted_image_tag` to a previous working tag
 3. Set `deployment_reason` to describe the emergency
 4. Deploy immediately
 
 #### Emergency Promotion (Skip Validation)
-
 1. Go to **Actions** → **Image Promotion Workflow** → **Run workflow**
 2. Set `force_promotion: true`
 3. Provide detailed `promotion_reason`
 4. Approve and monitor closely
 
 #### Check System Status
-
 - **Production Health**: Check production deployment logs
 - **Registry Status**: Verify GHCR connectivity with `docker pull`
 - **Recent Deployments**: Review GitHub Actions history
