@@ -106,13 +106,13 @@ jobs:
         id: prepare
         run: |
           echo "🔔 Preparing notification content for ${{ env.EVENT_TYPE }}..."
-          
+
           # Parse deployment details
           DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
           if [ "$DETAILS" = "{}" ]; then
             DETAILS='{"image":"unknown","commit":"unknown","timestamp":"'"$(date -u +'%Y-%m-%d %H:%M:%S UTC')"'"}'
           fi
-          
+
           # Set notification properties based on event type and severity
           case "${{ env.EVENT_TYPE }}" in
             "deployment-started")
@@ -200,7 +200,7 @@ jobs:
               URGENCY="normal"
               ;;
           esac
-          
+
           # Override urgency based on severity
           case "${{ env.SEVERITY }}" in
             "critical")
@@ -216,12 +216,12 @@ jobs:
               COLOR="#ffc107"
               ;;
           esac
-          
+
           # Append additional context if provided
           if [ -n "${{ env.ADDITIONAL_CONTEXT }}" ]; then
             MESSAGE="$MESSAGE. ${{ env.ADDITIONAL_CONTEXT }}"
           fi
-          
+
           # Set outputs
           echo "title=$TITLE" >> $GITHUB_OUTPUT
           echo "message=$MESSAGE" >> $GITHUB_OUTPUT
@@ -229,7 +229,7 @@ jobs:
           echo "icon=$ICON" >> $GITHUB_OUTPUT
           echo "urgency=$URGENCY" >> $GITHUB_OUTPUT
           echo "channels=${{ env.NOTIFICATION_CHANNELS }}" >> $GITHUB_OUTPUT
-          
+
           echo "✅ Notification content prepared:"
           echo "  Title: $TITLE"
           echo "  Message: $MESSAGE"
@@ -249,35 +249,35 @@ jobs:
           script: |
             const title = `${{ needs.prepare-notifications.outputs.title }}`;
             const details = JSON.parse('${{ env.DEPLOYMENT_DETAILS }}');
-            
+
             const body = `## ${{ needs.prepare-notifications.outputs.icon }} Deployment Alert
-            
+
             **Event Type:** ${{ env.EVENT_TYPE }}
             **Environment:** ${{ env.ENVIRONMENT }}
             **Severity:** ${{ env.SEVERITY }}
             **Timestamp:** ${new Date().toISOString()}
-            
+
             ### Details
             ${{ needs.prepare-notifications.outputs.message }}
-            
+
             ### Deployment Information
             - **Image:** ${details.image || 'unknown'}
             - **Commit:** ${details.commit || 'unknown'}
             - **Triggered by:** ${{ github.actor }}
             - **Workflow:** ${{ github.workflow }}
             - **Run ID:** ${{ github.run_id }}
-            
+
             ### Actions Required
             ${{ needs.prepare-notifications.outputs.urgency == 'critical' && '🚨 **IMMEDIATE ACTION REQUIRED**' || '📋 Review and take appropriate action' }}
-            
+
             ### Links
             - [Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
             - [Repository](https://github.com/${{ github.repository }})
-            
+
             ---
             *This issue was automatically created by the deployment notification system*
             `;
-            
+
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -285,9 +285,9 @@ jobs:
               body: body,
               labels: ['deployment', 'automated', '${{ env.SEVERITY }}']
             });
-            
+
             console.log('GitHub issue created for critical deployment event');
-      
+
       - name: Add GitHub step summary
         run: |
           echo "## ${{ needs.prepare-notifications.outputs.icon }} ${{ needs.prepare-notifications.outputs.title }}" >> $GITHUB_STEP_SUMMARY
@@ -297,7 +297,7 @@ jobs:
           echo "**Severity:** ${{ env.SEVERITY }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Parse and display deployment details
           DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
           if [ "$DETAILS" != "{}" ]; then
@@ -306,7 +306,7 @@ jobs:
             echo '${{ env.DEPLOYMENT_DETAILS }}' | jq . >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Workflow Information:**" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
@@ -325,7 +325,7 @@ jobs:
         run: |
           # Create Slack-compatible payload
           DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
-          
+
           cat > slack-payload.json << EOF
           {
             "text": "${{ needs.prepare-notifications.outputs.title }}",
@@ -339,7 +339,7 @@ jobs:
                     "short": true
                   },
                   {
-                    "title": "Event Type", 
+                    "title": "Event Type",
                     "value": "${{ env.EVENT_TYPE }}",
                     "short": true
                   },
@@ -367,10 +367,10 @@ jobs:
             ]
           }
           EOF
-          
+
           echo "✅ Slack payload created"
           cat slack-payload.json
-      
+
       - name: Send Slack notification
         run: |
           echo "📢 Sending Slack notification..."
@@ -381,7 +381,7 @@ jobs:
           echo "curl -X POST -H 'Content-type: application/json' \\"
           echo "  --data @slack-payload.json \\"
           echo "  \$SLACK_WEBHOOK_URL"
-          
+
           # Uncomment and configure when Slack webhook is available
           # if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
           #   curl -X POST -H 'Content-type: application/json' \
@@ -404,7 +404,7 @@ jobs:
           # Create Teams-compatible payload
           ACTIVITY_TITLE="${{ needs.prepare-notifications.outputs.title }}"
           ACTIVITY_SUBTITLE="${{ needs.prepare-notifications.outputs.message }}"
-          
+
           cat > teams-payload.json << EOF
           {
             "@type": "MessageCard",
@@ -443,10 +443,10 @@ jobs:
             }]
           }
           EOF
-          
+
           echo "✅ Teams payload created"
           cat teams-payload.json
-      
+
       - name: Send Teams notification
         run: |
           echo "📢 Sending Microsoft Teams notification..."
@@ -457,7 +457,7 @@ jobs:
           echo "curl -H 'Content-Type: application/json' \\"
           echo "  -d @teams-payload.json \\"
           echo "  \$TEAMS_WEBHOOK_URL"
-          
+
           # Uncomment and configure when Teams webhook is available
           # if [ -n "${{ secrets.TEAMS_WEBHOOK_URL }}" ]; then
           #   curl -H "Content-Type: application/json" \
@@ -479,7 +479,7 @@ jobs:
         run: |
           # Create generic webhook payload
           DETAILS='${{ env.DEPLOYMENT_DETAILS }}'
-          
+
           cat > webhook-payload.json << EOF
           {
             "event_type": "${{ env.EVENT_TYPE }}",
@@ -503,10 +503,10 @@ jobs:
             }
           }
           EOF
-          
+
           echo "✅ Webhook payload created"
           cat webhook-payload.json | jq .
-      
+
       - name: Send webhook notification
         run: |
           echo "📢 Sending custom webhook notification..."
@@ -517,7 +517,7 @@ jobs:
           echo "curl -X POST -H 'Content-Type: application/json' \\"
           echo "  -d @webhook-payload.json \\"
           echo "  \$WEBHOOK_URL"
-          
+
           # Uncomment and configure when webhook URL is available
           # if [ -n "${{ secrets.WEBHOOK_URL }}" ]; then
           #   curl -X POST -H "Content-Type: application/json" \
@@ -531,7 +531,14 @@ jobs:
   notification-summary:
     name: Notification Summary
     runs-on: ubuntu-latest
-    needs: [prepare-notifications, github-notification, slack-notification, teams-notification, webhook-notification]
+    needs:
+      [
+        prepare-notifications,
+        github-notification,
+        slack-notification,
+        teams-notification,
+        webhook-notification,
+      ]
     if: always()
     steps:
       - name: Generate notification summary
@@ -542,7 +549,7 @@ jobs:
           echo "**Channels:** ${{ needs.prepare-notifications.outputs.channels }}" >> $GITHUB_STEP_SUMMARY
           echo "**Urgency:** ${{ needs.prepare-notifications.outputs.urgency }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "**Notification Status:**" >> $GITHUB_STEP_SUMMARY
           echo "- GitHub: ${{ contains(needs.prepare-notifications.outputs.channels, 'github') && '✅ Sent' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Slack: ${{ contains(needs.prepare-notifications.outputs.channels, 'slack') && '📋 Prepared' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY

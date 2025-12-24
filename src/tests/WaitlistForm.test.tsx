@@ -24,7 +24,7 @@ describe('WaitlistForm Component', () => {
     address: '123 Test St',
     city: 'Testville',
     state: 'TS',
-    zip: '12345'
+    zip: '12345',
   };
 
   beforeEach(() => {
@@ -51,8 +51,10 @@ describe('WaitlistForm Component', () => {
     expect(screen.getByText(/Basic/)).toBeInTheDocument();
     expect(screen.getByText(/Billing cycle:/)).toBeInTheDocument();
     expect(screen.getByText(/Team size:/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Join Waitlist/i })).toBeInTheDocument();
-    
+    expect(
+      screen.getByRole('button', { name: /Join Waitlist/i })
+    ).toBeInTheDocument();
+
     // Check for dark styling elements
     const bgDarkElement = document.querySelector('.bg-dark');
     expect(bgDarkElement).toBeInTheDocument();
@@ -90,14 +92,16 @@ describe('WaitlistForm Component', () => {
           planName: 'Basic',
           billingCycle: 'monthly',
           employeeCount: 5,
-          isWaitlist: true
+          isWaitlist: true,
         }),
       });
     });
 
     // Check for success message
     await waitFor(() => {
-      expect(screen.getByText(/Thank you! You have been added to our waitlist/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Thank you! You have been added to our waitlist/)
+      ).toBeInTheDocument();
     });
   });
 

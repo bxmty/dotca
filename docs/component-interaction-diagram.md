@@ -13,7 +13,7 @@ graph TB
         B[Staging Branch]
         C[Main Branch]
     end
-    
+
     subgraph "CI/CD Pipeline"
         D[GitHub Actions]
         E[Staging Workflow]
@@ -21,38 +21,38 @@ graph TB
         G[Production Workflow]
         H[Cleanup Workflow]
     end
-    
+
     subgraph "Container Registry"
         I[GHCR Staging]
         J[GHCR Production]
         K[Image Storage]
     end
-    
+
     subgraph "Infrastructure"
         L[Staging Environment]
         M[Production Environment]
         N[DigitalOcean Droplets]
     end
-    
+
     subgraph "Deployment Automation"
         O[Ansible Staging Playbook]
         P[Ansible Production Playbook]
         Q[Terraform Infrastructure]
     end
-    
+
     subgraph "Monitoring & Alerting"
         R[Health Checks]
         S[Prometheus Metrics]
         T[Alert Manager]
         U[Slack Notifications]
     end
-    
+
     subgraph "Rollback System"
         V[Rollback Trigger]
         W[Rollback Workflow]
         X[Rollback Validation]
     end
-    
+
     A --> B
     A --> C
     B --> E
@@ -92,19 +92,19 @@ sequenceDiagram
     participant Prod as Production Environment
     participant Ansible as Ansible Playbooks
     participant Monitor as Monitoring System
-    
+
     Dev->>GH: Push to staging branch
     GH->>GA: Trigger staging workflow
     GA->>GHCR: Build and push :staging image
     GA->>Staging: Deploy staging image
     GA->>Monitor: Run health checks and tests
-    
+
     alt Tests Pass
         GA->>GHCR: Copy :staging → :main
         GA->>Prod: Deploy promoted image
         GA->>Monitor: Verify production health
         Monitor->>GA: Health check results
-        
+
         alt Production Healthy
             GA->>GHCR: Update :latest tag
             Monitor->>GA: Deployment successful
@@ -128,14 +128,14 @@ sequenceDiagram
     participant Prod as Production Environment
     participant Ansible as Ansible Playbooks
     participant Alert as Alert Manager
-    
+
     Monitor->>Rollback: Health check failure detected
     Rollback->>GHCR: Identify rollback target
     Rollback->>Prod: Stop current services
     Rollback->>GHCR: Pull rollback image
     Rollback->>Prod: Deploy rollback image
     Rollback->>Prod: Start services
-    
+
     alt Rollback Successful
         Rollback->>Monitor: Verify health
         Monitor->>Alert: Rollback completed
@@ -156,23 +156,23 @@ sequenceDiagram
     participant GHCR as GHCR Registry
     participant Storage as Storage Monitor
     participant Alert as Alert Manager
-    
+
     Scheduler->>Cleanup: Daily cleanup trigger
     Cleanup->>Storage: Check storage usage
     Storage->>Cleanup: Current usage percentage
-    
+
     alt Usage > 80%
         Cleanup->>GHCR: Remove old staging images
         Cleanup->>GHCR: Remove old dev images
         Cleanup->>Storage: Recheck usage
     end
-    
+
     alt Usage > 90%
         Cleanup->>GHCR: Remove old production images
         Cleanup->>GHCR: Remove old rollback images
         Cleanup->>Alert: Critical storage warning
     end
-    
+
     Cleanup->>Storage: Final usage report
     Storage->>Alert: Cleanup completion status
 ```
@@ -181,29 +181,29 @@ sequenceDiagram
 
 ### GitHub Actions Workflows
 
-| Workflow | Responsibility | Triggers | Outputs |
-|----------|----------------|----------|---------|
-| **Staging** | Build and deploy to staging | Push to staging branch | Staging deployment status |
-| **Image Promotion** | Promote tested images | Staging success | Production image ready |
-| **Production** | Deploy to production | Image promotion success | Production deployment status |
-| **Cleanup** | Manage image retention | Daily schedule | Storage usage report |
-| **Rollback** | Handle production rollbacks | Health check failures | Rollback status |
+| Workflow            | Responsibility              | Triggers                | Outputs                      |
+| ------------------- | --------------------------- | ----------------------- | ---------------------------- |
+| **Staging**         | Build and deploy to staging | Push to staging branch  | Staging deployment status    |
+| **Image Promotion** | Promote tested images       | Staging success         | Production image ready       |
+| **Production**      | Deploy to production        | Image promotion success | Production deployment status |
+| **Cleanup**         | Manage image retention      | Daily schedule          | Storage usage report         |
+| **Rollback**        | Handle production rollbacks | Health check failures   | Rollback status              |
 
 ### Ansible Playbooks
 
-| Playbook | Environment | Purpose | Key Tasks |
-|----------|-------------|---------|-----------|
-| **Staging** | Staging | Deploy and test | Pull image, deploy, run tests |
-| **Production** | Production | Deploy promoted images | Pull promoted image, deploy, verify |
-| **Rollback** | Production | Handle rollbacks | Stop services, deploy rollback, verify |
+| Playbook       | Environment | Purpose                | Key Tasks                              |
+| -------------- | ----------- | ---------------------- | -------------------------------------- |
+| **Staging**    | Staging     | Deploy and test        | Pull image, deploy, run tests          |
+| **Production** | Production  | Deploy promoted images | Pull promoted image, deploy, verify    |
+| **Rollback**   | Production  | Handle rollbacks       | Stop services, deploy rollback, verify |
 
 ### Monitoring Components
 
-| Component | Purpose | Metrics | Alerts |
-|-----------|---------|---------|--------|
-| **Health Checks** | Service availability | Uptime, response time | Service down, slow response |
-| **Prometheus** | Performance metrics | CPU, memory, errors | Resource limits, error rates |
-| **Alert Manager** | Alert routing | Alert frequency, resolution time | Critical alerts, alert storms |
+| Component         | Purpose              | Metrics                          | Alerts                        |
+| ----------------- | -------------------- | -------------------------------- | ----------------------------- |
+| **Health Checks** | Service availability | Uptime, response time            | Service down, slow response   |
+| **Prometheus**    | Performance metrics  | CPU, memory, errors              | Resource limits, error rates  |
+| **Alert Manager** | Alert routing        | Alert frequency, resolution time | Critical alerts, alert storms |
 
 ## Data Flow Patterns
 
@@ -216,7 +216,7 @@ flowchart LR
     C --> D[Production Deployment]
     D --> E[Health Verification]
     E --> F[Success/Failure Response]
-    
+
     style A fill:#ccffcc
     style F fill:#ffcc99
 ```
@@ -230,7 +230,7 @@ flowchart LR
     C --> D[Image Retrieval]
     D --> E[Service Rollback]
     E --> F[Verification]
-    
+
     style A fill:#ff9999
     style F fill:#ccffcc
 ```
@@ -244,7 +244,7 @@ flowchart LR
     C --> D[Image Removal]
     D --> E[Storage Update]
     E --> F[Report Generation]
-    
+
     style A fill:#ccffcc
     style F fill:#ffcc99
 ```
@@ -253,21 +253,21 @@ flowchart LR
 
 ### External Systems
 
-| System | Integration Method | Purpose | Data Exchanged |
-|---------|-------------------|---------|----------------|
-| **GitHub** | Webhooks, API | Source control, CI/CD | Code changes, workflow status |
-| **GHCR** | Docker API | Image storage | Image push/pull, metadata |
-| **DigitalOcean** | API, SSH | Infrastructure | Droplet management, deployment |
-| **Slack** | Webhooks | Notifications | Deployment status, alerts |
+| System           | Integration Method | Purpose               | Data Exchanged                 |
+| ---------------- | ------------------ | --------------------- | ------------------------------ |
+| **GitHub**       | Webhooks, API      | Source control, CI/CD | Code changes, workflow status  |
+| **GHCR**         | Docker API         | Image storage         | Image push/pull, metadata      |
+| **DigitalOcean** | API, SSH           | Infrastructure        | Droplet management, deployment |
+| **Slack**        | Webhooks           | Notifications         | Deployment status, alerts      |
 
 ### Internal Dependencies
 
-| Component | Depends On | Purpose | Critical Path |
-|-----------|------------|---------|---------------|
-| **Image Promotion** | Staging Success | Trigger promotion | Yes |
-| **Production Deploy** | Image Promotion | Use promoted image | Yes |
-| **Rollback System** | Health Monitoring | Detect failures | Yes |
-| **Cleanup Workflow** | Storage Monitoring | Manage retention | No |
+| Component             | Depends On         | Purpose            | Critical Path |
+| --------------------- | ------------------ | ------------------ | ------------- |
+| **Image Promotion**   | Staging Success    | Trigger promotion  | Yes           |
+| **Production Deploy** | Image Promotion    | Use promoted image | Yes           |
+| **Rollback System**   | Health Monitoring  | Detect failures    | Yes           |
+| **Cleanup Workflow**  | Storage Monitoring | Manage retention   | No            |
 
 ## Error Handling and Recovery
 
@@ -276,20 +276,20 @@ flowchart LR
 ```mermaid
 flowchart TD
     A[Component Failure] --> B{Recovery Strategy}
-    
+
     B -->|Retry| C[Automatic Retry]
     B -->|Rollback| D[Rollback to Previous]
     B -->|Failover| E[Use Backup Component]
     B -->|Manual| F[Manual Intervention]
-    
+
     C --> G{Retry Success?}
     G -->|Yes| H[Continue Normal Flow]
     G -->|No| D
-    
+
     D --> I{Rollback Success?}
     I -->|Yes| J[System Stable]
     I -->|No| F
-    
+
     style A fill:#ff9999
     style J fill:#ccffcc
     style F fill:#ffcc99
@@ -306,13 +306,13 @@ flowchart TD
 
 ### Latency Expectations
 
-| Operation | Expected Time | Timeout | Recovery Time |
-|-----------|---------------|---------|---------------|
-| Image Build | 5-8 minutes | 15 minutes | 2-3 minutes |
-| Image Promotion | 2-3 minutes | 10 minutes | 1-2 minutes |
-| Production Deploy | 3-5 minutes | 10 minutes | 2-3 minutes |
-| Rollback | 2-4 minutes | 8 minutes | 1-2 minutes |
-| Health Check | 30 seconds | 2 minutes | Immediate |
+| Operation         | Expected Time | Timeout    | Recovery Time |
+| ----------------- | ------------- | ---------- | ------------- |
+| Image Build       | 5-8 minutes   | 15 minutes | 2-3 minutes   |
+| Image Promotion   | 2-3 minutes   | 10 minutes | 1-2 minutes   |
+| Production Deploy | 3-5 minutes   | 10 minutes | 2-3 minutes   |
+| Rollback          | 2-4 minutes   | 8 minutes  | 1-2 minutes   |
+| Health Check      | 30 seconds    | 2 minutes  | Immediate     |
 
 ### Throughput Considerations
 
@@ -325,12 +325,12 @@ flowchart TD
 
 ### Access Control
 
-| Component | Access Level | Authentication | Authorization |
-|-----------|--------------|----------------|---------------|
-| **GitHub Actions** | Repository | GitHub Token | Workflow permissions |
-| **GHCR Registry** | Package | Personal Access Token | Package permissions |
-| **Infrastructure** | Server | SSH Keys | User/role-based |
-| **Monitoring** | Read-only | API Keys | Metric access |
+| Component          | Access Level | Authentication        | Authorization        |
+| ------------------ | ------------ | --------------------- | -------------------- |
+| **GitHub Actions** | Repository   | GitHub Token          | Workflow permissions |
+| **GHCR Registry**  | Package      | Personal Access Token | Package permissions  |
+| **Infrastructure** | Server       | SSH Keys              | User/role-based      |
+| **Monitoring**     | Read-only    | API Keys              | Metric access        |
 
 ### Data Protection
 
@@ -345,24 +345,24 @@ flowchart TD
 
 ```yaml
 critical_metrics:
-  deployment_success_rate: "> 95%"
-  rollback_frequency: "< 5 per day"
-  image_promotion_time: "< 5 minutes"
-  production_uptime: "> 99.9%"
-  storage_usage: "< 80%"
+  deployment_success_rate: '> 95%'
+  rollback_frequency: '< 5 per day'
+  image_promotion_time: '< 5 minutes'
+  production_uptime: '> 99.9%'
+  storage_usage: '< 80%'
 
 alerting_rules:
-  - name: "High Rollback Rate"
-    condition: "rollback_frequency > 5 per day"
-    severity: "warning"
-  
-  - name: "Promotion Failure"
-    condition: "deployment_success_rate < 90%"
-    severity: "critical"
-  
-  - name: "Storage Critical"
-    condition: "storage_usage > 90%"
-    severity: "critical"
+  - name: 'High Rollback Rate'
+    condition: 'rollback_frequency > 5 per day'
+    severity: 'warning'
+
+  - name: 'Promotion Failure'
+    condition: 'deployment_success_rate < 90%'
+    severity: 'critical'
+
+  - name: 'Storage Critical'
+    condition: 'storage_usage > 90%'
+    severity: 'critical'
 ```
 
 ### Logging Strategy
