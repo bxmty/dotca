@@ -63,16 +63,16 @@ jobs:
           # Create error handling utilities in workspace directory for sharing
           cat > "$GITHUB_WORKSPACE/error-utils.sh" << 'EOF'
           #!/bin/bash
-
+          
           # Error handling utilities for image promotion workflow
-
+          
           # Error severity levels
           readonly ERROR_CRITICAL="CRITICAL"
           readonly ERROR_HIGH="HIGH"
           readonly ERROR_MEDIUM="MEDIUM"
           readonly ERROR_LOW="LOW"
           readonly ERROR_INFO="INFO"
-
+          
           # Error categories
           readonly ERROR_CATEGORY_VALIDATION="VALIDATION"
           readonly ERROR_CATEGORY_NETWORK="NETWORK"
@@ -82,7 +82,7 @@ jobs:
           readonly ERROR_CATEGORY_PERMISSION="PERMISSION"
           readonly ERROR_CATEGORY_TIMEOUT="TIMEOUT"
           readonly ERROR_CATEGORY_UNKNOWN="UNKNOWN"
-
+          
           # Global error tracking
           ERROR_COUNT=0
           CRITICAL_ERRORS=0
@@ -90,7 +90,7 @@ jobs:
           MEDIUM_ERRORS=0
           LOW_ERRORS=0
           ERROR_LOG_FILE="${ERROR_LOG_FILE:-$GITHUB_WORKSPACE/promotion-errors.log}"
-
+          
           # Initialize error log
           init_error_log() {
             echo "=== Image Promotion Error Log ===" > "$ERROR_LOG_FILE"
@@ -101,7 +101,7 @@ jobs:
             echo "Actor: ${{ github.actor }}" >> "$ERROR_LOG_FILE"
             echo "=================================" >> "$ERROR_LOG_FILE"
           }
-
+          
           # Log error with context
           log_error() {
             local severity="$1"
@@ -110,7 +110,7 @@ jobs:
             local context="$4"
             local step="$5"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             # Increment error counters
             ERROR_COUNT=$((ERROR_COUNT + 1))
             case "$severity" in
@@ -119,7 +119,7 @@ jobs:
               "$ERROR_MEDIUM") MEDIUM_ERRORS=$((MEDIUM_ERRORS + 1)) ;;
               "$ERROR_LOW") LOW_ERRORS=$((LOW_ERRORS + 1)) ;;
             esac
-
+            
             # Format error message
             local error_entry="[$timestamp] [$severity] [$category] $message"
             if [ -n "$context" ]; then
@@ -128,10 +128,10 @@ jobs:
             if [ -n "$step" ]; then
               error_entry="$error_entry | Step: $step"
             fi
-
+            
             # Log to file
             echo "$error_entry" >> "$ERROR_LOG_FILE"
-
+            
             # Log to console with appropriate emoji
             case "$severity" in
               "$ERROR_CRITICAL") echo "💥 $error_entry" ;;
@@ -140,7 +140,7 @@ jobs:
               "$ERROR_LOW") echo "ℹ️  $error_entry" ;;
               "$ERROR_INFO") echo "ℹ️  $error_entry" ;;
             esac
-
+            
             # Update GitHub step summary
             echo "**Error [$severity]:** $message" >> $GITHUB_STEP_SUMMARY
             if [ -n "$context" ]; then
@@ -151,7 +151,7 @@ jobs:
             fi
             echo "" >> $GITHUB_STEP_SUMMARY
           }
-
+          
           # Retry function with exponential backoff
           retry_with_backoff() {
             local max_attempts="$1"
@@ -159,27 +159,27 @@ jobs:
             local command="$3"
             local description="$4"
             local step="$5"
-
+            
             local attempt=1
             local current_delay="$delay"
-
+            
             while [ $attempt -le $max_attempts ]; do
               echo "🔄 Attempt $attempt/$max_attempts: $description"
-
+              
               if eval "$command"; then
                 echo "✅ $description succeeded on attempt $attempt"
                 return 0
               else
                 local exit_code=$?
                 echo "❌ $description failed on attempt $attempt (exit code: $exit_code)"
-
+                
                 if [ $attempt -eq $max_attempts ]; then
                   log_error "$ERROR_HIGH" "$ERROR_CATEGORY_UNKNOWN" \
                     "Failed after $max_attempts attempts: $description" \
                     "Exit code: $exit_code" "$step"
                   return $exit_code
                 fi
-
+                
                 echo "⏳ Waiting ${current_delay}s before retry..."
                 sleep "$current_delay"
                 attempt=$((attempt + 1))
@@ -187,7 +187,7 @@ jobs:
               fi
             done
           }
-
+          
           # Handle specific error types
           handle_validation_error() {
             local message="$1"
@@ -195,49 +195,49 @@ jobs:
             local step="$3"
             log_error "$ERROR_HIGH" "$ERROR_CATEGORY_VALIDATION" "$message" "$context" "$step"
           }
-
+          
           handle_network_error() {
             local message="$1"
             local context="$2"
             local step="$3"
             log_error "$ERROR_MEDIUM" "$ERROR_CATEGORY_NETWORK" "$message" "$context" "$step"
           }
-
+          
           handle_auth_error() {
             local message="$1"
             local context="$2"
             local step="$3"
             log_error "$ERROR_CRITICAL" "$ERROR_CATEGORY_AUTHENTICATION" "$message" "$context" "$step"
           }
-
+          
           handle_registry_error() {
             local message="$1"
             local context="$2"
             local step="$3"
             log_error "$ERROR_HIGH" "$ERROR_CATEGORY_REGISTRY" "$message" "$context" "$step"
           }
-
+          
           handle_docker_error() {
             local message="$1"
             local context="$2"
             local step="$3"
             log_error "$ERROR_MEDIUM" "$ERROR_CATEGORY_DOCKER" "$message" "$context" "$step"
           }
-
+          
           handle_permission_error() {
             local message="$1"
             local context="$2"
             local step="$3"
             log_error "$ERROR_CRITICAL" "$ERROR_CATEGORY_PERMISSION" "$message" "$context" "$step"
           }
-
+          
           handle_timeout_error() {
             local message="$1"
             local context="$2"
             local step="$3"
             log_error "$ERROR_MEDIUM" "$ERROR_CATEGORY_TIMEOUT" "$message" "$context" "$step"
           }
-
+          
           # Generate error summary
           generate_error_summary() {
             echo "## 📊 Error Summary" >> $GITHUB_STEP_SUMMARY
@@ -248,7 +248,7 @@ jobs:
             echo "**Medium:** $MEDIUM_ERRORS" >> $GITHUB_STEP_SUMMARY
             echo "**Low:** $LOW_ERRORS" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-
+            
             if [ $ERROR_COUNT -eq 0 ]; then
               echo "🎉 **No errors encountered!**" >> $GITHUB_STEP_SUMMARY
             elif [ $CRITICAL_ERRORS -gt 0 ] || [ $HIGH_ERRORS -gt 0 ]; then
@@ -259,9 +259,9 @@ jobs:
               echo "Review the error log for details: $ERROR_LOG_FILE" >> $GITHUB_STEP_SUMMARY
             fi
           }
-
+          
           # Comprehensive logging functions
-
+          
           # Initialize all log files
           init_logs() {
             # Main promotion log
@@ -274,7 +274,7 @@ jobs:
             echo "Branch: ${{ github.ref_name }}" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "Commit: ${{ github.sha }}" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "=================================" >> "$GITHUB_WORKSPACE/promotion.log"
-
+            
             # Audit log
             echo "=== Image Promotion Audit Log ===" > "$GITHUB_WORKSPACE/promotion-audit.log"
             echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_WORKSPACE/promotion-audit.log"
@@ -283,7 +283,7 @@ jobs:
             echo "Repository: ${{ github.repository }}" >> "$GITHUB_WORKSPACE/promotion-audit.log"
             echo "Actor: ${{ github.actor }}" >> "$GITHUB_WORKSPACE/promotion-audit.log"
             echo "=================================" >> "$GITHUB_WORKSPACE/promotion-audit.log"
-
+            
             # Performance log
             echo "=== Image Promotion Performance Log ===" > "$GITHUB_WORKSPACE/promotion-performance.log"
             echo "Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_WORKSPACE/promotion-performance.log"
@@ -291,7 +291,7 @@ jobs:
             echo "Run ID: ${{ github.run_id }}" >> "$GITHUB_WORKSPACE/promotion-performance.log"
             echo "=================================" >> "$GITHUB_WORKSPACE/promotion-performance.log"
           }
-
+          
           # Log function with different levels
           log_message() {
             local level="$1"
@@ -299,7 +299,7 @@ jobs:
             local context="$3"
             local step="$4"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             # Format log entry
             local log_entry="[$timestamp] [$level] $message"
             if [ -n "$context" ]; then
@@ -308,10 +308,10 @@ jobs:
             if [ -n "$step" ]; then
               log_entry="$log_entry | Step: $step"
             fi
-
+            
             # Log to main log file
             echo "$log_entry" >> "$GITHUB_WORKSPACE/promotion.log"
-
+            
             # Log to console with appropriate emoji
             case "$level" in
               "DEBUG") echo "🔍 $log_entry" ;;
@@ -323,18 +323,18 @@ jobs:
               *) echo "ℹ️  $log_entry" ;;
             esac
           }
-
+          
           # Performance logging
           log_performance() {
             local operation="$1"
             local duration="$2"
             local details="$3"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             echo "[$timestamp] $operation | Duration: ${duration}s | Details: $details" >> "$GITHUB_WORKSPACE/promotion-performance.log"
             echo "⚡ Performance: $operation completed in ${duration}s"
           }
-
+          
           # Audit logging for security and compliance
           log_audit() {
             local action="$1"
@@ -342,32 +342,32 @@ jobs:
             local details="$3"
             local user="$4"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             echo "[$timestamp] AUDIT | Action: $action | Resource: $resource | User: $user | Details: $details" >> "$GITHUB_WORKSPACE/promotion-audit.log"
             echo "📋 Audit: $action on $resource by $user"
           }
-
+          
           # Step execution logging
           log_step_start() {
             local step="$1"
             local description="$2"
             local start_time=$(date +%s)
-
+            
             echo "step_start_$step=$start_time" >> $GITHUB_OUTPUT
             log_message "INFO" "Step started: $step" "$description" "$step"
             echo "🚀 Starting step: $step - $description"
           }
-
+          
           log_step_end() {
             local step="$1"
             local status="$2"
             local start_time="$3"
             local end_time=$(date +%s)
             local duration=$((end_time - start_time))
-
+            
             echo "step_end_$step=$end_time" >> $GITHUB_OUTPUT
             echo "step_duration_$step=$duration" >> $GITHUB_OUTPUT
-
+            
             if [ "$status" = "success" ]; then
               log_message "SUCCESS" "Step completed: $step" "Duration: ${duration}s" "$step"
               log_performance "$step" "$duration" "Step execution"
@@ -377,7 +377,7 @@ jobs:
               echo "❌ Step failed: $step (${duration}s)"
             fi
           }
-
+          
           # Image operation logging
           log_image_operation() {
             local operation="$1"
@@ -385,11 +385,11 @@ jobs:
             local target="$3"
             local details="$4"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             echo "[$timestamp] IMAGE_OP | Operation: $operation | Source: $source | Target: $target | Details: $details" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "🖼️  Image Operation: $operation from $source to $target"
           }
-
+          
           # Registry operation logging
           log_registry_operation() {
             local operation="$1"
@@ -397,22 +397,22 @@ jobs:
             local image="$3"
             local result="$4"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             echo "[$timestamp] REGISTRY | Operation: $operation | Registry: $registry | Image: $image | Result: $result" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "📦 Registry: $operation on $image - $result"
           }
-
+          
           # Security scan logging
           log_security_scan() {
             local tool="$1"
             local image="$2"
             local vulnerabilities="$3"
             local timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+            
             echo "[$timestamp] SECURITY | Tool: $tool | Image: $image | Vulnerabilities: $vulnerabilities" >> "$GITHUB_WORKSPACE/promotion.log"
             echo "🔒 Security: $tool scan on $image - $vulnerabilities vulnerabilities found"
           }
-
+          
           # Export functions for use in other steps
           export -f log_error retry_with_backoff handle_validation_error handle_network_error
           export -f handle_auth_error handle_registry_error handle_docker_error
@@ -420,17 +420,17 @@ jobs:
           export -f init_error_log init_logs log_message log_performance log_audit
           export -f log_step_start log_step_end log_image_operation log_registry_operation log_security_scan
           EOF
-
+          
           chmod +x "$GITHUB_WORKSPACE/error-utils.sh"
-
+          
           # Initialize all logs
           source "$GITHUB_WORKSPACE/error-utils.sh"
           init_error_log
           init_logs
-
+          
           echo "error_utils=$GITHUB_WORKSPACE/error-utils.sh" >> $GITHUB_OUTPUT
           echo "✅ Error handling utilities setup complete"
-
+      
       - name: Upload Error Handling Utilities as Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -449,40 +449,40 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-
+      
       - name: Download Error Handling Utilities
         uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
-
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
-
+      
       - name: Validate promotion conditions
         id: validation
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "validation" "Validating promotion conditions and inputs"
-
+          
           # Get staging image details from manual input
           STAGING_IMAGE_TAG="${{ github.event.inputs.staging_image_tag }}"
           STAGING_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$STAGING_IMAGE_TAG"
-
+          
           # Log input parameters
           log_message "INFO" "Input parameters received" "Staging tag: $STAGING_IMAGE_TAG, Target: ${{ github.event.inputs.target_environment }}" "validation"
           log_audit "promotion-request" "staging-image" "Manual promotion requested for $STAGING_IMAGE" "${{ github.actor }}"
-
+          
           # Get promotion reason from manual input
           PROMOTION_REASON="${{ github.event.inputs.promotion_reason }}"
-
+          
           # Validate input parameters
           if [ -z "$STAGING_IMAGE_TAG" ]; then
             log_message "ERROR" "Staging image tag is required" "Input validation failed" "validation"
@@ -490,14 +490,14 @@ jobs:
             log_step_end "validation" "failure" "$(date +%s)"
             exit 1
           fi
-
+          
           if [ -z "$PROMOTION_REASON" ]; then
             log_message "ERROR" "Promotion reason is required" "Input validation failed" "validation"
             handle_validation_error "Promotion reason is required" "Input validation failed" "validation"
             log_step_end "validation" "failure" "$(date +%s)"
             exit 1
           fi
-
+          
           # Validate target environment
           TARGET_ENV="${{ github.event.inputs.target_environment }}"
           if [ "$TARGET_ENV" != "production" ] && [ "$TARGET_ENV" != "canary" ]; then
@@ -506,24 +506,24 @@ jobs:
             log_step_end "validation" "failure" "$(date +%s)"
             exit 1
           fi
-
+          
           # Always allow promotion for manual workflow dispatch
           CAN_PROMOTE=true
-
+          
           # Log successful validation
           log_message "SUCCESS" "Promotion validation passed" "All inputs validated successfully" "validation"
           log_audit "promotion-validated" "staging-image" "Promotion validated for $STAGING_IMAGE to $TARGET_ENV" "${{ github.actor }}"
-
+          
           echo "✅ Manual promotion requested"
           echo "Staging Image Tag: $STAGING_IMAGE_TAG"
           echo "Full Staging Image: $STAGING_IMAGE"
           echo "Promotion Reason: $PROMOTION_REASON"
           echo "Target Environment: $TARGET_ENV"
-
+          
           echo "can_promote=$CAN_PROMOTE" >> $GITHUB_OUTPUT
           echo "staging_image=$STAGING_IMAGE" >> $GITHUB_OUTPUT
           echo "promotion_reason=$PROMOTION_REASON" >> $GITHUB_OUTPUT
-
+          
           # Log step completion
           log_step_end "validation" "success" "$(date +%s)"
 
@@ -572,31 +572,31 @@ jobs:
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
-
+      
       - name: Start Promotion Status Tracking
         id: status_tracking
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "status_tracking" "Starting promotion status tracking and monitoring"
-
+          
           echo "📊 Starting promotion status tracking..."
           START_TIME=$(date +%s)
           TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
-
+          
           echo "start_time=$START_TIME" >> $GITHUB_OUTPUT
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
           echo "status=in_progress" >> $GITHUB_OUTPUT
-
+          
           # Log promotion start
           log_message "INFO" "Promotion workflow started" "Workflow ID: ${{ github.run_id }}" "status_tracking"
           log_audit "promotion-started" "workflow" "Image promotion workflow initiated" "${{ github.actor }}"
-
+          
           echo "🚀 Promotion started at: $TIMESTAMP"
           echo "⏱️  Status: IN PROGRESS"
-
+          
           # Create status tracking summary
           echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -613,7 +613,7 @@ jobs:
           echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
           echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
           echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
-
+      
       - name: Upload Log Files as Artifacts (Status Tracking Case)
         uses: actions/upload-artifact@v4
         with:
@@ -624,16 +624,16 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+          
       - name: Manual Approval Required
         id: approval
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "approval" "Waiting for manual approval of production image promotion"
-
+          
           echo "🔒 Manual approval required for production image promotion"
           echo ""
           echo "📋 Promotion Details:"
@@ -646,14 +646,14 @@ jobs:
           echo "Please review the promotion details above and approve in the environment protection rules"
           echo ""
           echo "✅ Approval status will be checked by environment protection rules"
-
+          
           # Log approval request
           log_message "INFO" "Manual approval requested" "Environment: production-promotion" "approval"
           log_audit "approval-requested" "production-promotion" "Manual approval required for image promotion" "${{ github.actor }}"
-
+          
           # This step will pause until manual approval is granted
           # The environment protection rules will control the approval process
-
+      
       - name: Upload Log Files as Artifacts (Approval Request Case)
         uses: actions/upload-artifact@v4
         with:
@@ -664,14 +664,14 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+          
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
-
+      
       - name: Log in to Container Registry
         id: docker_login
         uses: docker/login-action@v3
@@ -682,69 +682,69 @@ jobs:
         continue-on-error: true
         env:
           # Log Docker login attempt
-          LOG_MESSAGE: 'Attempting Docker login to ${{ env.REGISTRY }}'
-
+          LOG_MESSAGE: "Attempting Docker login to ${{ env.REGISTRY }}"
+      
       - name: Verify Docker Login
         id: verify_login
         if: steps.docker_login.outcome == 'failure'
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "verify_login" "Verifying Docker authentication after login failure"
-
+          
           # Check if login failed
           if ! docker info >/dev/null 2>&1; then
             log_message "ERROR" "Docker authentication failed" "Registry: ${{ env.REGISTRY }}" "verify_login"
             handle_auth_error "Failed to authenticate with container registry" \
               "Registry: ${{ env.REGISTRY }}, Username: ${{ github.actor }}" "docker-login"
-
+            
             # Try to diagnose the issue
             echo "🔍 Diagnosing authentication failure..."
             log_message "INFO" "Diagnosing authentication failure" "Starting diagnostic checks" "verify_login"
-
+            
             # Check if GITHUB_TOKEN is available
             if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
               log_message "ERROR" "GITHUB_TOKEN secret is not available" "Missing required secret" "verify_login"
               handle_auth_error "GITHUB_TOKEN secret is not available" "Missing required secret" "docker-login"
             fi
-
+            
             # Check if user has package permissions
             echo "Checking package permissions..."
             if ! gh auth status >/dev/null 2>&1; then
               log_message "ERROR" "GitHub CLI authentication failed" "Cannot verify package permissions" "verify_login"
               handle_auth_error "GitHub CLI authentication failed" "Cannot verify package permissions" "docker-login"
             fi
-
+            
             # Check package permissions
             if ! gh api repos/${{ github.repository }}/packages >/dev/null 2>&1; then
               log_message "ERROR" "Insufficient permissions to access packages" "Repository: ${{ github.repository }}" "verify_login"
               handle_permission_error "Insufficient permissions to access packages" \
                 "Repository: ${{ github.repository }}" "docker-login"
             fi
-
+            
             log_step_end "verify_login" "failure" "$(date +%s)"
             exit 1
           fi
-
+          
           # Log successful verification
           log_message "SUCCESS" "Docker authentication verified" "Registry: ${{ env.REGISTRY }}" "verify_login"
           log_audit "docker-authenticated" "registry" "Successfully authenticated with ${{ env.REGISTRY }}" "${{ github.actor }}"
-
+          
           echo "✅ Docker authentication verified"
-
+          
           # Log step completion
           log_step_end "verify_login" "success" "$(date +%s)"
-
+      
       - name: Pre-Promotion Summary
         id: pre_promotion_summary
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "pre_promotion_summary" "Creating pre-promotion summary and planning"
-
+          
           echo "## 🚀 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Ready to promote the following image:**" >> $GITHUB_STEP_SUMMARY
@@ -765,17 +765,17 @@ jobs:
           echo "2. 🔍 Image validation and integrity checks" >> $GITHUB_STEP_SUMMARY
           echo "3. 🏷️  Image promotion and tagging" >> $GITHUB_STEP_SUMMARY
           echo "4. 📋 Post-promotion verification" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log promotion plan
           log_message "INFO" "Pre-promotion summary created" "Ready to proceed with image validation" "pre_promotion_summary"
           log_audit "promotion-planned" "staging-image" "Promotion plan created for ${{ needs.validate-promotion.outputs.staging_image }}" "${{ github.actor }}"
-
+          
           echo "🚀 Pre-promotion summary created"
           echo "Ready to proceed with image validation and promotion"
-
+          
           # Log step completion
           log_step_end "pre_promotion_summary" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Pre-Promotion Case)
         uses: actions/upload-artifact@v4
         with:
@@ -786,16 +786,16 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+          
       - name: Verify Manual Approval
         id: verify_approval
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "verify_approval" "Verifying manual approval has been granted"
-
+          
           echo "🔒 Verifying manual approval status..."
           echo ""
           echo "This step confirms that manual approval has been granted"
@@ -810,14 +810,14 @@ jobs:
           echo "- Environment: production-promotion"
           echo "- Workflow: ${{ github.workflow }}"
           echo "- Run ID: ${{ github.run_id }}"
-
+          
           # Log approval verification
           log_message "SUCCESS" "Manual approval verified" "Environment: production-promotion" "verify_approval"
           log_audit "approval-verified" "production-promotion" "Manual approval confirmed for image promotion" "${{ github.actor }}"
-
+          
           # Log step completion
           log_step_end "verify_approval" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Verify Approval Case)
         uses: actions/upload-artifact@v4
         with:
@@ -828,18 +828,18 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+          
       - name: Update Approval Status
         id: update_approval_status
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "update_approval_status" "Updating approval status and progress tracking"
-
+          
           echo "✅ Manual approval completed - updating status..."
-
+          
           # Update status tracking summary
           echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -856,13 +856,13 @@ jobs:
           echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
           echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
           echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log status update
           log_message "INFO" "Approval status updated" "Manual approval completed, proceeding to validation" "update_approval_status"
-
+          
           # Log step completion
           log_step_end "update_approval_status" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Approval Case)
         uses: actions/upload-artifact@v4
         with:
@@ -873,84 +873,84 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+          
       - name: Validate staging image exists
         id: image_validation
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "image_validation" "Validating staging image exists and is accessible"
-
+          
           STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
-
+          
           # Log validation start
           log_message "INFO" "Starting image validation" "Staging image: $STAGING_IMAGE" "image_validation"
           log_audit "image-validation-started" "staging-image" "Starting validation of $STAGING_IMAGE" "${{ github.actor }}"
-
+          
           echo "🔍 Validating staging image: $STAGING_IMAGE"
-
+          
           # Check if image exists and can be pulled with retry logic
           if ! retry_with_backoff "${{ env.MAX_RETRIES }}" "${{ env.RETRY_DELAY }}" \
             "docker pull \"$STAGING_IMAGE\"" "Pull staging image" "image-validation"; then
-
+            
             # If retry failed, provide detailed error information
             echo "🔍 Diagnosing image pull failure..."
-
+            
             # Check if image exists in registry
             if ! docker manifest inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
               handle_registry_error "Staging image not found in registry" \
                 "Image: $STAGING_IMAGE" "image-validation"
             fi
-
+            
             # Check network connectivity
             if ! ping -c 1 ghcr.io >/dev/null 2>&1; then
               handle_network_error "Cannot reach container registry" \
                 "Registry: ${{ env.REGISTRY }}" "image-validation"
             fi
-
+            
             # Check Docker daemon status
             if ! docker info >/dev/null 2>&1; then
               handle_docker_error "Docker daemon is not accessible" \
                 "Docker service status check failed" "image-validation"
             fi
-
+            
             # Check available disk space
             AVAILABLE_SPACE=$(df /tmp | awk 'NR==2 {print $4}')
             if [ "$AVAILABLE_SPACE" -lt 1000000 ]; then  # Less than 1GB
               handle_docker_error "Insufficient disk space for image pull" \
                 "Available: ${AVAILABLE_SPACE}KB, Required: ~1GB" "image-validation"
             fi
-
+            
             exit 1
           fi
-
+          
           echo "✅ Staging image exists and is accessible"
-
+          
           # Get image details
           IMAGE_ID=$(docker images --format "{{.ID}}" "$STAGING_IMAGE" | head -1)
           IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
           IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)
-
+          
           # Validate image details
           if [ -z "$IMAGE_ID" ]; then
             handle_validation_error "Failed to get image ID" "Image inspection failed" "image-validation"
             exit 1
           fi
-
+          
           if [ -z "$IMAGE_SIZE" ]; then
             handle_validation_error "Failed to get image size" "Image inspection failed" "image-validation"
             exit 1
           fi
-
+          
           echo "Image ID: $IMAGE_ID"
           echo "Image Size: $IMAGE_SIZE"
           echo "Image Created: $IMAGE_CREATED"
-
+          
           echo "image_id=$IMAGE_ID" >> $GITHUB_OUTPUT
           echo "image_size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
           echo "image_created=$IMAGE_CREATED" >> $GITHUB_OUTPUT
-
+          
           # Update status tracking
           echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -966,14 +966,14 @@ jobs:
           echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
           echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
           echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log successful validation
           log_message "SUCCESS" "Image validation completed" "Image ID: $IMAGE_ID, Size: $IMAGE_SIZE" "image_validation"
           log_audit "image-validated" "staging-image" "Successfully validated $STAGING_IMAGE" "${{ github.actor }}"
-
+          
           # Log step completion
           log_step_end "image_validation" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Validation Case)
         uses: actions/upload-artifact@v4
         with:
@@ -984,33 +984,33 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+      
       - name: Comprehensive image validation and integrity checks
         id: image_integrity
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "image_integrity" "Performing comprehensive image validation and integrity checks"
-
+          
           STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
-
+          
           # Log validation start
           log_message "INFO" "Starting comprehensive image validation" "Image: $STAGING_IMAGE" "image_integrity"
           log_audit "integrity-validation-started" "staging-image" "Starting comprehensive validation of $STAGING_IMAGE" "${{ github.actor }}"
-
+          
           echo "🔍 Performing comprehensive image validation and integrity checks..."
-
+          
           # Set error handling for this step
           set -e  # Exit on any error
           trap 'echo "❌ Image validation step failed with exit code $?"' EXIT
-
+          
           # 1. Image size validation
           IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
           IMAGE_SIZE_MB=$(echo "$IMAGE_SIZE" | sed 's/[^0-9.]//g')
-
+          
           echo "📏 Image size: $IMAGE_SIZE"
-
+          
           # Check if image size is reasonable (between 100MB and 2GB)
           if (( $(echo "$IMAGE_SIZE_MB > 100" | bc -l) )) && (( $(echo "$IMAGE_SIZE_MB < 2000" | bc -l) )); then
             echo "✅ Image size is within acceptable range (100MB - 2GB)"
@@ -1025,13 +1025,13 @@ jobs:
               SIZE_VALID=false
             fi
           fi
-
+          
           # 2. Image layer validation
           echo "🔍 Validating image layers..."
           if docker inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
             LAYER_COUNT=$(docker inspect "$STAGING_IMAGE" | jq '.[0].RootFS.Layers | length')
             echo "✅ Image has $LAYER_COUNT layers"
-
+            
             if [ "$LAYER_COUNT" -gt 0 ] && [ "$LAYER_COUNT" -lt 100 ]; then
               echo "✅ Layer count is reasonable"
               LAYERS_VALID=true
@@ -1043,7 +1043,7 @@ jobs:
             echo "❌ Failed to inspect image layers"
             LAYERS_VALID=false
           fi
-
+          
           # 3. Image metadata validation
           echo "🔍 Validating image metadata..."
           if docker inspect "$STAGING_IMAGE" >/dev/null 2>&1; then
@@ -1051,12 +1051,12 @@ jobs:
             HAS_SOURCE=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.source" // empty')
             HAS_VERSION=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.version" // empty')
             HAS_CREATED=$(docker inspect "$STAGING_IMAGE" | jq -r '.[0].Config.Labels."org.opencontainers.image.created" // empty')
-
+            
             echo "📋 Image labels:"
             echo "  - Source: ${HAS_SOURCE:-'Not found'}"
             echo "  - Version: ${HAS_VERSION:-'Not found'}"
             echo "  - Created: ${HAS_CREATED:-'Not found'}"
-
+            
             # Basic metadata validation
             if docker inspect "$STAGING_IMAGE" | jq -e '.[0].Config.Cmd' >/dev/null 2>&1; then
               echo "✅ Image has valid CMD configuration"
@@ -1069,7 +1069,7 @@ jobs:
             echo "❌ Failed to inspect image metadata"
             METADATA_VALID=false
           fi
-
+          
           # 4. Image signature validation (if available)
           echo "🔍 Validating image signature..."
           if command -v cosign >/dev/null 2>&1; then
@@ -1084,23 +1084,23 @@ jobs:
             echo "ℹ️  cosign not available - skipping signature verification"
             SIGNATURE_VALID=true  # Don't fail on missing tool
           fi
-
+          
           # 4.5. Security vulnerability scanning (if available)
           echo "🔍 Scanning for security vulnerabilities..."
           if command -v trivy >/dev/null 2>&1; then
             echo "Running Trivy vulnerability scan..."
-
+            
             # Run Trivy scan with JSON output for parsing
             TRIVY_OUTPUT=$(trivy image --format json --severity HIGH,CRITICAL "$STAGING_IMAGE" 2>/dev/null || echo "{}")
-
+            
             # Parse vulnerability counts
             CRITICAL_COUNT=$(echo "$TRIVY_OUTPUT" | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "CRITICAL") | .VulnerabilityID' 2>/dev/null | wc -l)
             HIGH_COUNT=$(echo "$TRIVY_OUTPUT" | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "HIGH") | .VulnerabilityID' 2>/dev/null | wc -l)
-
+            
             echo "📊 Vulnerability Summary:"
             echo "  - Critical: $CRITICAL_COUNT"
             echo "  - High: $HIGH_COUNT"
-
+            
             # Determine if vulnerabilities are acceptable
             if [ "$CRITICAL_COUNT" -eq 0 ] && [ "$HIGH_COUNT" -le 5 ]; then
               echo "✅ Security scan passed - vulnerabilities within acceptable limits"
@@ -1119,7 +1119,7 @@ jobs:
             echo "ℹ️  Trivy not available - skipping vulnerability scan"
             SECURITY_VALID=true  # Don't fail on missing tool
           fi
-
+          
           # 5. Image health check validation
           echo "🔍 Validating image health check configuration..."
           if docker inspect "$STAGING_IMAGE" | jq -e '.[0].Config.Healthcheck' >/dev/null 2>&1; then
@@ -1129,7 +1129,7 @@ jobs:
             echo "⚠️  Image missing health check configuration"
             HEALTHCHECK_VALID=false
           fi
-
+          
           # 6. Overall validation summary
           echo ""
           echo "📊 Image Validation Summary:"
@@ -1139,7 +1139,7 @@ jobs:
           echo "  - Signature Validation: $([ "$SIGNATURE_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
           echo "  - Security Validation: $([ "$SECURITY_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
           echo "  - Health Check Validation: $([ "$HEALTHCHECK_VALID" = "true" ] && echo "✅ PASS" || echo "❌ FAIL")"
-
+          
           # Determine overall validation result
           if [ "$SIZE_VALID" = "true" ] && [ "$LAYERS_VALID" = "true" ] && [ "$METADATA_VALID" = "true" ] && [ "$SIGNATURE_VALID" = "true" ] && [ "$SECURITY_VALID" = "true" ]; then
             echo "🎉 All validation checks passed!"
@@ -1152,7 +1152,7 @@ jobs:
             VALIDATION_RESULT="failure"
             exit 1
           fi
-
+          
           # Store validation results for later use
           echo "validation_result=$VALIDATION_RESULT" >> $GITHUB_OUTPUT
           echo "size_valid=$SIZE_VALID" >> $GITHUB_OUTPUT
@@ -1161,7 +1161,7 @@ jobs:
           echo "signature_valid=$SIGNATURE_VALID" >> $GITHUB_OUTPUT
           echo "security_valid=$SECURITY_VALID" >> $GITHUB_OUTPUT
           echo "healthcheck_valid=$HEALTHCHECK_VALID" >> $GITHUB_OUTPUT
-
+          
           # Update status tracking after validation
           echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1178,14 +1178,14 @@ jobs:
           echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
           echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
           echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log validation completion
           log_message "SUCCESS" "Comprehensive image validation completed" "Result: $VALIDATION_RESULT" "image_integrity"
           log_audit "integrity-validation-completed" "staging-image" "Validation result: $VALIDATION_RESULT for $STAGING_IMAGE" "${{ github.actor }}"
-
+          
           # Log step completion
           log_step_end "image_integrity" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Integrity Case)
         uses: actions/upload-artifact@v4
         with:
@@ -1196,27 +1196,27 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+      
       - name: Promote image to production
         id: promotion
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "promotion" "Starting image promotion from staging to production"
-
+          
           STAGING_IMAGE="${{ needs.validate-promotion.outputs.staging_image }}"
           STAGING_TAG=$(echo "$STAGING_IMAGE" | cut -d: -f2)
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-
+          
           # Log promotion start
           log_message "INFO" "Starting image promotion" "From: $STAGING_IMAGE, To: production" "promotion"
           log_audit "promotion-started" "staging-image" "Starting promotion of $STAGING_IMAGE to production" "${{ github.actor }}"
-
+          
           # Set error handling for this step
           set -e  # Exit on any error
           trap 'echo "❌ Image promotion step failed with exit code $?"' EXIT
-
+          
           # Validate required variables
           if [ -z "$STAGING_IMAGE" ]; then
             log_message "ERROR" "Staging image is not defined" "Missing staging image variable" "promotion"
@@ -1224,91 +1224,91 @@ jobs:
             log_step_end "promotion" "failure" "$(date +%s)"
             exit 1
           fi
-
+          
           if [ -z "$STAGING_TAG" ]; then
             log_message "ERROR" "Staging tag is not defined" "Failed to extract tag from image" "promotion"
             handle_validation_error "Staging tag is not defined" "Failed to extract tag from image" "image-promotion"
             log_step_end "promotion" "failure" "$(date +%s)"
             exit 1
           fi
-
+          
           echo "🚀 Starting image promotion"
           echo "From: $STAGING_IMAGE"
           echo "Staging Tag: $STAGING_TAG"
           echo "Timestamp: $TIMESTAMP"
-
+          
           # Function to push image with retry logic
           push_image_with_retry() {
             local image_name=$1
             local max_retries="${{ env.MAX_RETRIES }}"
             local retry_count=0
-
+            
             while [ $retry_count -lt $max_retries ]; do
               echo "⬆️  Pushing $image_name (attempt $((retry_count + 1))/$max_retries)..."
-
+              
               if docker push "$image_name"; then
                 echo "✅ $image_name pushed successfully"
                 return 0
               else
                 local exit_code=$?
                 retry_count=$((retry_count + 1))
-
+                
                 # Log the error with context
                 handle_registry_error "Docker push failed (attempt $retry_count/$max_retries)" \
                   "Image: $image_name, Exit code: $exit_code" "image-promotion"
-
+                
                 if [ $retry_count -lt $max_retries ]; then
                   echo "⚠️  Push failed, retrying in ${{ env.RETRY_DELAY }} seconds... (attempt $retry_count/$max_retries)"
                   sleep "${{ env.RETRY_DELAY }}"
                 else
                   echo "❌ Failed to push $image_name after $max_retries attempts"
-
+                  
                   # Provide detailed error diagnosis
                   echo "🔍 Diagnosing push failure..."
-
+                  
                   # Check Docker daemon status
                   if ! docker info >/dev/null 2>&1; then
                     handle_docker_error "Docker daemon is not accessible" "Docker service check failed" "image-promotion"
                   fi
-
+                  
                   # Check registry connectivity
                   if ! ping -c 1 ghcr.io >/dev/null 2>&1; then
                     handle_network_error "Cannot reach container registry" "Network connectivity check failed" "image-promotion"
                   fi
-
+                  
                   # Check authentication
                   if ! docker info | grep -q "Username"; then
                     handle_auth_error "Docker not authenticated with registry" "Authentication check failed" "image-promotion"
                   fi
-
+                  
                   # Check disk space
                   AVAILABLE_SPACE=$(df /tmp | awk 'NR==2 {print $4}')
                   if [ "$AVAILABLE_SPACE" -lt 1000000 ]; then
                     handle_docker_error "Insufficient disk space for image operations" \
                       "Available: ${AVAILABLE_SPACE}KB, Required: ~1GB" "image-promotion"
                   fi
-
+                  
                   return 1
                 fi
               fi
             done
           }
-
+          
           # Function to create and push tag
           create_and_push_tag() {
             local source_image=$1
             local target_tag=$2
             local description=$3
-
+            
             echo "📝 Creating $description tag: $target_tag"
-
+            
             # Validate source image exists
             if ! docker images | grep -q "$(echo $source_image | cut -d: -f2)"; then
               handle_docker_error "Source image not found locally" \
                 "Image: $source_image" "create-and-push-tag"
               return 1
             fi
-
+            
             # Create tag with error handling
             if ! docker tag "$source_image" "$target_tag"; then
               handle_docker_error "Failed to create $description tag" \
@@ -1316,14 +1316,14 @@ jobs:
               return 1
             fi
             echo "✅ $description tag created"
-
+            
             # Verify tag was created
             if ! docker images | grep -q "$(echo $target_tag | cut -d: -f2)"; then
               handle_docker_error "Tag creation verification failed" \
                 "Target tag: $target_tag" "create-and-push-tag"
               return 1
             fi
-
+            
             echo "🚀 Pushing $description tag..."
             if ! push_image_with_retry "$target_tag"; then
               handle_registry_error "Failed to push $description tag" \
@@ -1331,31 +1331,31 @@ jobs:
               return 1
             fi
             echo "✅ $description tag pushed successfully"
-
+            
             return 0
           }
-
+          
           # 1. Create production tag (:main)
           PRODUCTION_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}"
           if ! create_and_push_tag "$STAGING_IMAGE" "$PRODUCTION_IMAGE" "production"; then
             echo "❌ Production tag creation/push failed"
             exit 1
           fi
-
+          
           # 2. Create latest tag (:latest)
           LATEST_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.LATEST_TAG }}"
           if ! create_and_push_tag "$STAGING_IMAGE" "$LATEST_IMAGE" "latest"; then
             echo "❌ Latest tag creation/push failed"
             exit 1
           fi
-
+          
           # 3. Create commit-specific production tag (:main-{staging-tag})
           COMMIT_PRODUCTION_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}-$STAGING_TAG"
           if ! create_and_push_tag "$STAGING_IMAGE" "$COMMIT_PRODUCTION_TAG" "commit-specific production"; then
             echo "❌ Commit-specific production tag creation/push failed"
             exit 1
           fi
-
+          
           # 4. Create timestamp-based rollback tag (:rollback-{timestamp}-{reason})
           ROLLBACK_REASON=$(echo "${{ needs.validate-promotion.outputs.promotion_reason }}" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
           ROLLBACK_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:rollback-$TIMESTAMP-$ROLLBACK_REASON"
@@ -1363,7 +1363,7 @@ jobs:
             echo "❌ Rollback tag creation/push failed"
             exit 1
           fi
-
+          
           # 5. Create semantic version tag if this is a release
           if [[ "$STAGING_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
             echo "🎯 Detected semantic version tag: $STAGING_TAG"
@@ -1376,12 +1376,12 @@ jobs:
           else
             echo "ℹ️  No semantic version detected, skipping version tag"
           fi
-
+          
           # Verify all tags were created locally
           echo "🔍 Verifying all tags were created locally..."
           REQUIRED_TAGS=("$PRODUCTION_IMAGE" "$LATEST_IMAGE" "$COMMIT_PRODUCTION_TAG" "$ROLLBACK_TAG")
           VERIFICATION_FAILED=false
-
+          
           for tag in "${REQUIRED_TAGS[@]}"; do
             if docker images | grep -q "$(echo $tag | cut -d: -f2)"; then
               echo "✅ Tag verified: $(echo $tag | cut -d: -f2)"
@@ -1391,22 +1391,22 @@ jobs:
               VERIFICATION_FAILED=true
             fi
           done
-
+          
           if [ "$VERIFICATION_FAILED" = "true" ]; then
             exit 1
           fi
-
+          
           # Verify images are accessible in registry
           echo "🔍 Verifying images are accessible in registry..."
           sleep 10  # Wait for registry to sync
-
+          
           REGISTRY_VERIFICATION_FAILED=false
           for tag in "${REQUIRED_TAGS[@]}"; do
             if docker pull "$tag" >/dev/null 2>&1; then
               echo "✅ Image verified in registry: $(echo $tag | cut -d: -f2)"
             else
               echo "⚠️  Image not immediately accessible: $(echo $tag | cut -d: -f2) (may need more time to sync)"
-
+              
               # Try one more time after a longer wait
               sleep 15
               if docker pull "$tag" >/dev/null 2>&1; then
@@ -1418,23 +1418,23 @@ jobs:
               fi
             fi
           done
-
+          
           if [ "$REGISTRY_VERIFICATION_FAILED" = "true" ]; then
             echo "⚠️  Some images are not immediately accessible in registry"
             echo "This may be due to registry sync delays. Consider waiting longer or checking registry status."
           fi
-
+          
           # Verify image integrity - ensure promoted images are identical to source
           echo "🔍 Verifying image integrity..."
           STAGING_DIGEST=$(docker images --digests --format "{{.Digest}}" "$STAGING_IMAGE" | head -1)
-
+          
           # Validate staging digest
           if [ -z "$STAGING_DIGEST" ]; then
             handle_validation_error "Failed to get staging image digest" \
               "Image: $STAGING_IMAGE" "integrity-verification"
             exit 1
           fi
-
+          
           INTEGRITY_VERIFICATION_FAILED=false
           for tag in "${REQUIRED_TAGS[@]}"; do
             TAG_DIGEST=$(docker images --digests --format "{{.Digest}}" "$tag" | head -1)
@@ -1444,25 +1444,25 @@ jobs:
               echo "⚠️  Image digest verification incomplete for $(echo $tag | cut -d: -f2)"
               echo "  Staging Digest: $STAGING_DIGEST"
               echo "  Tag Digest: $TAG_DIGEST"
-
+              
               # Log integrity warning
               handle_validation_error "Image digest mismatch detected" \
                 "Staging: $STAGING_DIGEST, Tag: $TAG_DIGEST" "integrity-verification"
               INTEGRITY_VERIFICATION_FAILED=true
             fi
           done
-
+          
           if [ "$INTEGRITY_VERIFICATION_FAILED" = "true" ]; then
             echo "⚠️  Image integrity verification failed for some tags"
             echo "This may indicate a problem with the promotion process"
           fi
-
+          
           echo "🎉 Image promotion completed successfully!"
           echo "production_image=$PRODUCTION_IMAGE" >> $GITHUB_OUTPUT
           echo "rollback_tag=$ROLLBACK_TAG" >> $GITHUB_OUTPUT
           echo "commit_tag=$COMMIT_PRODUCTION_TAG" >> $GITHUB_OUTPUT
           echo "success=true" >> $GITHUB_OUTPUT
-
+          
           # Log comprehensive promotion details
           echo "Promotion Details:"
           echo "- Staging Image: $STAGING_IMAGE"
@@ -1477,7 +1477,7 @@ jobs:
           echo "- Target Environment: ${{ github.event.inputs.target_environment }}"
           echo "- Triggered By: ${{ github.actor }}"
           echo "- Timestamp: $TIMESTAMP"
-
+          
           # Log image details for audit
           echo "Image Details:"
           echo "- Image ID: $(docker images --format "{{.ID}}" "$STAGING_IMAGE" | head -1)"
@@ -1486,27 +1486,27 @@ jobs:
           echo "- Registry: ${{ env.REGISTRY }}"
           echo "- Repository: ${{ env.IMAGE_NAME }}"
           echo "- Staging Tag: $STAGING_TAG"
-
+          
           # Calculate promotion duration and final status
           END_TIME=$(date +%s)
           DURATION=$((END_TIME - ${{ steps.status_tracking.outputs.start_time }}))
           DURATION_MINUTES=$((DURATION / 60))
           DURATION_SECONDS=$((DURATION % 60))
-
+          
           echo "duration=$DURATION" >> $GITHUB_OUTPUT
           echo "status=completed" >> $GITHUB_OUTPUT
-
+          
           echo "⏱️  Total promotion time: ${DURATION_MINUTES}m ${DURATION_SECONDS}s"
           echo "🎉 Promotion completed successfully!"
-
+          
           # Log successful promotion completion
           log_message "SUCCESS" "Image promotion completed successfully" "Duration: ${DURATION_MINUTES}m ${DURATION_SECONDS}s" "promotion"
           log_audit "promotion-completed" "staging-image" "Successfully promoted $STAGING_IMAGE to production" "${{ github.actor }}"
           log_performance "image-promotion" "$DURATION" "Complete promotion workflow"
-
+          
           # Generate error summary
           generate_error_summary
-
+          
           # Final status update
           echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1524,10 +1524,10 @@ jobs:
           echo "6. ✅ Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**All steps completed successfully!** 🎉" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log step completion
           log_step_end "promotion" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Promotion Case)
         uses: actions/upload-artifact@v4
         with:
@@ -1538,16 +1538,16 @@ jobs:
             ${{ github.workspace }}/promotion-performance.log
             ${{ github.workspace }}/promotion-errors.log
           retention-days: 30
-
+      
       - name: Create promotion summary
         if: success()
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "create_summary" "Creating final promotion summary and documentation"
-
+          
           echo "## 🚀 Image Promotion Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ✅ Successfully promoted" >> $GITHUB_STEP_SUMMARY
@@ -1573,13 +1573,13 @@ jobs:
           echo "- Overall Status: ${{ needs.promote-image.outputs.promotion_status }}" >> $GITHUB_STEP_SUMMARY
           echo "- Workflow Run: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
           echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log summary creation
           log_message "INFO" "Promotion summary created" "Final summary generated for workflow run" "create_summary"
-
+          
           # Log step completion
           log_step_end "create_summary" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Summary Case)
         uses: actions/upload-artifact@v4
         with:
@@ -1602,21 +1602,21 @@ jobs:
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
-
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
-
+      
       - name: Create completion summary
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "completion_summary" "Creating final completion summary for successful promotion"
-
+          
           echo "## 🎉 Image Promotion Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ✅ Image successfully promoted to production registry" >> $GITHUB_STEP_SUMMARY
@@ -1632,17 +1632,17 @@ jobs:
           echo "- Go to Actions → Production Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "- Click 'Run workflow' → 'Run workflow'" >> $GITHUB_STEP_SUMMARY
           echo "- The production workflow will use the newly promoted image" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log completion
           log_message "SUCCESS" "Promotion workflow completed successfully" "Image ready for production deployment" "completion_summary"
           log_audit "workflow-completed" "promotion-workflow" "Image promotion workflow completed successfully" "${{ github.actor }}"
-
+          
           # Generate final error summary
           generate_error_summary
-
+          
           # Log step completion
           log_step_end "completion_summary" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Success Case)
         uses: actions/upload-artifact@v4
         with:
@@ -1656,13 +1656,7 @@ jobs:
 
   send-promotion-notifications:
     name: Send Promotion Notifications
-    needs:
-      [
-        validate-promotion,
-        promote-image,
-        trigger-production-deployment,
-        error-handler,
-      ]
+    needs: [validate-promotion, promote-image, trigger-production-deployment, error-handler]
     if: always()
     uses: ./.github/workflows/deployment-notifications.yml
     with:
@@ -1686,14 +1680,7 @@ jobs:
 
   promotion-status-report:
     name: Generate Promotion Status Report
-    needs:
-      [
-        validate-promotion,
-        promote-image,
-        trigger-production-deployment,
-        send-promotion-notifications,
-        error-handler,
-      ]
+    needs: [validate-promotion, promote-image, trigger-production-deployment, send-promotion-notifications, error-handler]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1702,25 +1689,25 @@ jobs:
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
-
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
-
+      
       - name: Generate comprehensive status report
         id: status_report
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "status_report" "Generating comprehensive promotion status report"
-
+          
           echo "## 📊 Comprehensive Promotion Status Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
+          
           # Determine overall status
           if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
             echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
@@ -1731,7 +1718,7 @@ jobs:
             STATUS_ICON="🔴"
             STATUS_TEXT="FAILED"
           fi
-
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Promotion Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
@@ -1739,7 +1726,7 @@ jobs:
           echo "- Promotion Reason: ${{ needs.validate-promotion.outputs.promotion_reason }}" >> $GITHUB_STEP_SUMMARY
           echo "- Force Promotion: ${{ github.event.inputs.force_promotion }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
+          
           if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
             echo "**Created Tags:**" >> $GITHUB_STEP_SUMMARY
             echo "- Production: ${{ needs.promote-image.outputs.promoted_image }}" >> $GITHUB_STEP_SUMMARY
@@ -1747,13 +1734,13 @@ jobs:
             echo "- Commit-Specific: ${{ needs.promote-image.outputs.commit_tag }}" >> $GITHUB_STEP_SUMMARY
             echo "- Rollback: ${{ needs.promote-image.outputs.rollback_tag }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-
+            
             echo "**Timing Information:**" >> $GITHUB_STEP_SUMMARY
             echo "- Started: ${{ needs.promote-image.outputs.promotion_timestamp }}" >> $GITHUB_STEP_SUMMARY
             echo "- Duration: ${{ needs.promote-image.outputs.promotion_duration }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
-
+          
           echo "**Workflow Information:**" >> $GITHUB_STEP_SUMMARY
           echo "- Workflow: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
           echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
@@ -1762,7 +1749,7 @@ jobs:
           echo "- Triggered By: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- Event: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
+          
           echo "**Deployment Status:**" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event.inputs.target_environment }}" = "production" ]; then
             if [ "${{ needs.trigger-production-deployment.result }}" = "success" ]; then
@@ -1778,7 +1765,7 @@ jobs:
             echo "- Production Deployment: ⏭️ SKIPPED (target: ${{ github.event.inputs.target_environment }})" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-
+          
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
             echo "1. ✅ Image promotion completed successfully" >> $GITHUB_STEP_SUMMARY
@@ -1797,23 +1784,23 @@ jobs:
             echo "3. 🛠️  Fix any identified issues" >> $GITHUB_STEP_SUMMARY
             echo "4. 🔄 Retry promotion when ready" >> $GITHUB_STEP_SUMMARY
           fi
-
+          
           # Generate error summary
           generate_error_summary
-
+          
           # Store status for potential notifications
           echo "status=$STATUS_TEXT" >> $GITHUB_OUTPUT
           echo "status_icon=$STATUS_ICON" >> $GITHUB_OUTPUT
-
+          
           # Log status report completion
           log_message "INFO" "Comprehensive status report generated" "Status: $STATUS_TEXT" "status_report"
-
+          
           echo "📊 Comprehensive status report generated"
           echo "Status: $STATUS_TEXT"
-
+          
           # Log step completion
           log_step_end "status_report" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -1857,26 +1844,26 @@ jobs:
         with:
           name: error-handling-utilities
           path: ${{ github.workspace }}
-
+      
       - name: Setup Error Handling
         id: error_setup
         run: |
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
-
+      
       - name: Log promotion failure
         id: failure_log
         run: |
           source "${{ github.workspace }}/error-utils.sh"
-
+          
           # Log step start
           log_step_start "failure_log" "Logging promotion failure details and analysis"
-
+          
           echo "❌ Image promotion failed"
           echo "Staging Image: ${{ needs.validate-promotion.outputs.staging_image }}"
           echo "Failure occurred in job: ${{ needs.promote-image.outputs.promotion_success }}"
-
+          
           # Log failure details for debugging
           echo "## 🔍 Promotion Failure Details" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1884,14 +1871,14 @@ jobs:
           echo "**Staging Image:** ${{ needs.validate-promotion.outputs.staging_image }}" >> $GITHUB_STEP_SUMMARY
           echo "**Failure Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
+          
           # Log failure details
           log_message "ERROR" "Image promotion failed" "Staging image: ${{ needs.validate-promotion.outputs.staging_image }}" "failure_log"
           log_audit "promotion-failed" "staging-image" "Image promotion workflow failed" "${{ github.actor }}"
-
+          
           # Generate comprehensive error summary
           generate_error_summary
-
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Failure Analysis:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Check the logs above for error details" >> $GITHUB_STEP_SUMMARY
@@ -1899,33 +1886,33 @@ jobs:
           echo "3. Check registry permissions and authentication" >> $GITHUB_STEP_SUMMARY
           echo "4. Review error log file: ${{ env.ERROR_LOG_FILE }}" >> $GITHUB_STEP_SUMMARY
           echo "5. Retry promotion manually if needed" >> $GITHUB_STEP_SUMMARY
-
+          
           # Provide specific troubleshooting steps based on error types
           if [ -f "${{ env.ERROR_LOG_FILE }}" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Error Analysis:**" >> $GITHUB_STEP_SUMMARY
-
+            
             # Count error types
             CRITICAL_COUNT=$(grep -c "\[CRITICAL\]" "${{ env.ERROR_LOG_FILE }}" || echo "0")
             HIGH_COUNT=$(grep -c "\[HIGH\]" "${{ env.ERROR_LOG_FILE }}" || echo "0")
             MEDIUM_COUNT=$(grep -c "\[MEDIUM\]" "${{ env.ERROR_LOG_FILE }}" || echo "0")
-
+            
             if [ "$CRITICAL_COUNT" -gt 0 ]; then
               echo "- 🚨 **$CRITICAL_COUNT Critical errors** - Check authentication and permissions" >> $GITHUB_STEP_SUMMARY
             fi
-
+            
             if [ "$HIGH_COUNT" -gt 0 ]; then
               echo "- ⚠️  **$HIGH_COUNT High severity errors** - Review validation and registry issues" >> $GITHUB_STEP_SUMMARY
             fi
-
+            
             if [ "$MEDIUM_COUNT" -gt 0 ]; then
               echo "- ℹ️  **$MEDIUM_COUNT Medium severity errors** - Check network and Docker issues" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-
+          
           # Log step completion
           log_step_end "failure_log" "success" "$(date +%s)"
-
+      
       - name: Upload Log Files as Artifacts (Failure Case)
         uses: actions/upload-artifact@v4
         with:

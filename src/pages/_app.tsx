@@ -10,11 +10,7 @@ import * as gtag from '../lib/gtag'; // Import your existing gtag.ts file
 // Add gtag to the Window interface
 declare global {
   interface Window {
-    gtag: (
-      command: string,
-      action: string,
-      params?: Record<string, unknown>
-    ) => void;
+    gtag: (command: string, action: string, params?: Record<string, unknown>) => void;
     dataLayer: Array<Record<string, unknown>>;
   }
 }
@@ -32,17 +28,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   // Send web-vitals metrics to Google Analytics
   useEffect(() => {
-    const reportWebVitals = ({
-      name,
-      delta,
-      id,
-      value,
-    }: {
-      name: string;
-      delta: number;
-      id: string;
-      value: number;
-    }) => {
+    const reportWebVitals = ({ name, delta, id, value }: { name: string; delta: number; id: string; value: number }) => {
       // Log to console in development
       if (process.env.NODE_ENV === 'development') {
         console.log(`Web Vital: ${name}`, { id, delta, value });
