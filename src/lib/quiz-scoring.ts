@@ -178,7 +178,12 @@ export function generateRecommendations(
     .slice(0, 2); // Top 2 additional areas
 
   lowScoringAreas.forEach(area => {
-    if (area.area !== QUIZ_CONFIG.priorityMappings[primaryPriorityModule]) {
+    // Find the functional area that maps to the primary priority module
+    const primaryArea = Object.entries(QUIZ_CONFIG.priorityMappings).find(
+      ([_, module]) => module === primaryPriorityModule
+    )?.[0] as FunctionalArea;
+
+    if (area.area !== primaryArea) {
       const secondaryRec = getSecondaryRecommendation(area.area, contextData);
       if (secondaryRec) {
         recommendations.push(secondaryRec);
