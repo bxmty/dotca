@@ -15,17 +15,18 @@ declare global {
     gtag: (
       command: 'js' | 'config' | 'event' | string,
       target: Date | string,
-      ...args: Array<{[key: string]: unknown}>
+      ...args: Array<{ [key: string]: unknown }>
     ) => void;
   }
 }
 
 // Environment-specific GA4 Measurement IDs
-export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production'
-  ? process.env.NEXT_PUBLIC_PRODUCTION_GA_ID  // Production GA4 property
-  : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
-    ? process.env.NEXT_PUBLIC_STAGING_GA_ID  // Staging GA4 property
-    : process.env.NEXT_PUBLIC_DEV_GA_ID;     // Development GA4 property (optional)
+export const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_ENVIRONMENT === 'production'
+    ? process.env.NEXT_PUBLIC_PRODUCTION_GA_ID // Production GA4 property
+    : process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging'
+      ? process.env.NEXT_PUBLIC_STAGING_GA_ID // Staging GA4 property
+      : process.env.NEXT_PUBLIC_DEV_GA_ID; // Development GA4 property (optional)
 
 // Determine environment - simplified to just use NEXT_PUBLIC_ENVIRONMENT
 const isProduction = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production';
@@ -34,7 +35,9 @@ const isDevelopment = !isProduction && !isStaging;
 
 // Add debugging for environment config (security-conscious logging)
 console.log(`GA Environment: ${process.env.NEXT_PUBLIC_ENVIRONMENT}`);
-console.log(`GA Measurement ID: ${GA_MEASUREMENT_ID ? 'SET (masked)' : 'NOT SET'}`);
+console.log(
+  `GA Measurement ID: ${GA_MEASUREMENT_ID ? 'SET (masked)' : 'NOT SET'}`
+);
 
 // Helper function to mask sensitive values
 const maskValue = (value: string | undefined): string => {
@@ -44,14 +47,22 @@ const maskValue = (value: string | undefined): string => {
   return `${value.substring(0, 4)}****${value.substring(value.length - 4)}`;
 };
 
-console.log(`NEXT_PUBLIC_STAGING_GA_ID: ${maskValue(process.env.NEXT_PUBLIC_STAGING_GA_ID)}`);
-console.log(`NEXT_PUBLIC_PRODUCTION_GA_ID: ${maskValue(process.env.NEXT_PUBLIC_PRODUCTION_GA_ID)}`);
-console.log(`isProduction: ${isProduction}, isStaging: ${isStaging}, isDevelopment: ${isDevelopment}`);
+console.log(
+  `NEXT_PUBLIC_STAGING_GA_ID: ${maskValue(process.env.NEXT_PUBLIC_STAGING_GA_ID)}`
+);
+console.log(
+  `NEXT_PUBLIC_PRODUCTION_GA_ID: ${maskValue(process.env.NEXT_PUBLIC_PRODUCTION_GA_ID)}`
+);
+console.log(
+  `isProduction: ${isProduction}, isStaging: ${isStaging}, isDevelopment: ${isDevelopment}`
+);
 
 // Initialize Google Analytics if the measurement ID is available
 export const initGA = () => {
   if (!GA_MEASUREMENT_ID) {
-    console.error('GA Measurement ID is missing. Google Analytics will not be initialized.');
+    console.error(
+      'GA Measurement ID is missing. Google Analytics will not be initialized.'
+    );
     return;
   }
 
@@ -68,7 +79,7 @@ export const initGA = () => {
   window.dataLayer = window.dataLayer || [];
 
   // Define gtag function using the standard implementation
-  window.gtag = function(command, target, ...rest) {
+  window.gtag = function (command, target, ...rest) {
     window.dataLayer.push([command, target, ...rest]);
   };
 
@@ -85,7 +96,9 @@ export const initGA = () => {
 // Separate configuration function for reusability
 const configureGA = () => {
   if (!window.gtag || !GA_MEASUREMENT_ID) {
-    console.error('Cannot configure GA: gtag function or measurement ID missing');
+    console.error(
+      'Cannot configure GA: gtag function or measurement ID missing'
+    );
     return;
   }
 
@@ -144,7 +157,12 @@ export const pageview = (url: string) => {
 };
 
 // Track custom events
-export const event = ({ action, category, label, value }: {
+export const event = ({
+  action,
+  category,
+  label,
+  value,
+}: {
   action: string;
   category: string;
   label: string;
@@ -171,7 +189,11 @@ export const event = ({ action, category, label, value }: {
       event_category: category,
       event_label: label,
       value: value,
-      environment: isProduction ? 'production' : isStaging ? 'staging' : 'development',
+      environment: isProduction
+        ? 'production'
+        : isStaging
+          ? 'staging'
+          : 'development',
     };
 
     window.gtag('event', action, eventParams);

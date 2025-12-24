@@ -1,106 +1,205 @@
+# dotca - Enterprise IT Solutions for Small Businesses
 
+A modern web application that provides small businesses with enterprise-grade IT solutions without the complexity or cost. Built with Next.js, this platform offers secure password management, professional web hosting, business email solutions, and Microsoft collaboration tools tailored for 5-10 person teams.
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## 🚀 Features
+
+### Core Services
+
+- **Secure Password Management** - Enterprise-grade credential protection
+- **Professional Web Hosting** - Reliable hosting solutions
+- **Business Email Solutions** - Professional email communication
+- **Microsoft Collaboration Tools** - Teams, SharePoint, and Office integration
+- **Quarterly IT Assessments** - Regular technology health checks
+
+### Technology Stack
+
+- **Framework**: Next.js 15 with React 19
+- **Styling**: Bootstrap 5.3 for responsive design
+- **Payments**: Stripe integration for secure transactions
+- **Analytics**: Google Analytics + Umami self-hosted analytics
+- **Phone Validation**: libphonenumber-js for international phone support
+- **Testing**: Jest with React Testing Library (91.8% coverage)
+
+### Business Features
+
+- **Pricing Tiers**: Free, Basic ($99/user/month), Standard ($249/user/month), Premium ($449/user/month)
+- **Onboarding Flow**: Multi-step company information collection
+- **Contact Forms**: Lead generation and customer support
+- **Web Vitals Monitoring**: Performance tracking and optimization
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Git
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone <repository-url>
+cd dotca
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Set up environment variables (see Environment Setup below)
+
+4. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This application requires several environment variables to function properly. See the [Environment Configuration Guide](./docs/ENVIRONMENT_SETUP.md) for complete setup instructions.
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes
+│   │   ├── analytics/     # Web vitals analytics
+│   │   ├── contact/       # Contact form handling
+│   │   ├── onboarding/    # Company onboarding
+│   │   └── stripe/        # Payment processing
+│   ├── checkout/          # Payment checkout page
+│   ├── components/        # Reusable React components
+│   ├── onboarding/        # Multi-step onboarding flow
+│   ├── pricing/           # Pricing page with plans
+│   └── page.tsx           # Landing page
+├── lib/                   # Utility functions
+├── tests/                 # Test files
+└── types/                 # TypeScript type definitions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+docs/                      # Documentation
+├── DEPLOYMENT_GHCR.md    # GitHub Container Registry deployment
+├── image-promotion-workflow.md  # CI/CD workflow docs
+└── ...
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+ansible/                   # Infrastructure as code
+terraform/                 # Infrastructure provisioning
+```
 
-## Web Vitals Monitoring
+## Development
 
-This project includes Web Vitals monitoring to track Core Web Vitals metrics:
+### Available Scripts
 
-- **CLS (Cumulative Layout Shift)**: Measures visual stability
-- **FID (First Input Delay)**: Measures interactivity
-- **LCP (Largest Contentful Paint)**: Measures loading performance
-- **FCP (First Contentful Paint)**: Measures when the first content is painted
-- **TTFB (Time to First Byte)**: Measures time until first byte is received
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run typecheck` - Run TypeScript type checking
+- `npm run test` - Run Jest tests
+- `npm run test:coverage` - Run tests with coverage report
 
-Web Vitals are automatically collected on the client side and sent to the `/api/analytics/web-vitals` endpoint. In production, you can connect this endpoint to your analytics platform of choice.
+### Code Style Guidelines
+
+- **TypeScript**: Strict type checking enabled
+- **Components**: Functional components with TypeScript interfaces
+- **Styling**: Bootstrap CSS classes and utilities
+- **Imports**: Absolute imports with `@/*` alias for src directory
+- **Naming**: PascalCase for components, camelCase for variables
+- **Testing**: Jest with React Testing Library, 91.8% coverage target
 
 ## Deployment
 
-### Local Development
+This project uses a sophisticated CI/CD pipeline with image promotion for safe deployments:
 
-For local development, use the development Docker setup:
+### Local Development
 
 ```bash
 docker-compose -f docker-compose.dev.yml up
 ```
 
-### Remote Deployment (Staging, Production)
+### Production Deployment
 
-This project includes a multi-environment deployment setup for Digital Ocean:
+The project uses GitHub Container Registry (GHCR) with image promotion:
 
-1. Environment configuration files:
-   - `.env.staging` - Staging environment variables
-   - `.env.production` - Production environment variables
+1. **Staging**: Automatic builds on `staging` branch pushes
+2. **Image Promotion**: Manual promotion from staging to production images
+3. **Production**: Deploy promoted images to production environment
 
-2. Deploy to a specific environment:
+See [GHCR Deployment Guide](./docs/DEPLOYMENT_GHCR.md) for detailed instructions.
+
+### Infrastructure
+
+- **Cloud Provider**: DigitalOcean
+- **Container Registry**: GitHub Container Registry (GHCR)
+- **CI/CD**: GitHub Actions with image promotion workflow
+- **Infrastructure as Code**: Terraform + Ansible
+- **Monitoring**: Health checks and automated rollbacks
+
+## Testing
+
+The project maintains high test coverage (91.8%) with Jest and React Testing Library:
 
 ```bash
-# Deploy to Staging
-# Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
+# Run tests
+npm run test
 
-# Deploy to Production  
-# Use GitHub Actions: Go to Actions → prod-deploy → Run workflow
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
 ```
 
-### Manual Deployment
+## Analytics & Monitoring
 
-This project uses GitHub Actions for automated deployment. To deploy manually:
+### Web Vitals
 
-1. **Staging Deployment**:
-   - Go to GitHub Actions → stg-deploy
-   - Click "Run workflow"
-   - Select staging branch and run
+The application automatically tracks Core Web Vitals metrics:
 
-2. **Production Deployment**:
-   - First promote an image using image-promotion workflow
-   - Then use prod-deploy workflow with the promoted image
+- **CLS (Cumulative Layout Shift)**: Visual stability
+- **FID (First Input Delay)**: Interactivity
+- **LCP (Largest Contentful Paint)**: Loading performance
+- **FCP (First Contentful Paint)**: Initial content rendering
+- **TTFB (Time to First Byte)**: Server response time
 
-For local development only:
-```bash
-# Build the Docker image with environment-specific variables
-docker build \
-  --build-arg NODE_ENV=production \
-  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
-  --build-arg NEXT_PUBLIC_ENVIRONMENT=production \
-  -t dotca-app .
+### Analytics Integration
 
-# Run the container
-docker run -p 3000:3000 dotca-app
-```
+- **Google Analytics**: External analytics tracking
+- **Umami**: Self-hosted privacy-focused analytics (in development)
 
-The Dockerfile includes:
-- Multi-stage build for optimized image size
-- Environment variable configuration
-- Health checks for monitoring
-- Next.js standalone output mode
+## Contributing
 
-For more deployment options, check out [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Security
+
+This application implements several security measures:
+
+- Environment variable validation
+- Secure payment processing via Stripe
+- Input sanitization and validation
+- HTTPS enforcement in production
+- Regular security updates
+
+## License
+
+This project is proprietary software owned by dotca.
+
+## Support
+
+For support and questions:
+
+- Email: hi@boximity.ca
+- Phone: (289) 539-0098
+- Location: Toronto, Ontario, Canada
