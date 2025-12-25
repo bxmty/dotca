@@ -387,7 +387,7 @@ jobs:
           cd ansible
           ansible-galaxy install -r requirements.yml --force
 <<<<<<< HEAD
-      
+
 =======
 
 >>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
@@ -500,29 +500,29 @@ jobs:
             fi
           done
 <<<<<<< HEAD
-      
+
       - name: Setup Ansible Vault password file
         run: |
           echo "🔐 Setting up Ansible Vault password file..."
-          
+
           # SECURITY: Validate vault password format before creating file
           VAULT_PASS="${{ secrets.ANSIBLE_VAULT_PASSWORD }}"
           if [ -z "$VAULT_PASS" ]; then
             echo "::error::ANSIBLE_VAULT_PASSWORD secret is empty"
             exit 1
           fi
-          
+
           if [ ${#VAULT_PASS} -lt 8 ]; then
             echo "::error::ANSIBLE_VAULT_PASSWORD is too short (minimum 8 characters)"
             exit 1
           fi
-          
+
           # Create the vault password file from GitHub secret (securely)
           printf '%s\n' "$VAULT_PASS" > ~/.ansible_vault_pass
-          
+
           # Secure the file
           chmod 600 ~/.ansible_vault_pass
-          
+
           echo "✅ Ansible Vault password file created and secured"
           echo "📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!"
           echo "   To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml"
@@ -532,13 +532,13 @@ jobs:
       - name: Validate Ansible Vault encryption
         run: |
           echo "🔍 Validating Ansible Vault encryption..."
-          
+
           # Check if vault-vars.yml exists
           if [ ! -f "ansible/vars/vault-vars.yml" ]; then
             echo "::error::ansible/vars/vault-vars.yml file not found!"
             exit 1
           fi
-          
+
           # Check if the file is encrypted (Ansible Vault files start with $ANSIBLE_VAULT)
           if ! head -1 ansible/vars/vault-vars.yml | grep -q "^\$ANSIBLE_VAULT"; then
             echo "::error::ansible/vars/vault-vars.yml is not encrypted with Ansible Vault!"
@@ -552,7 +552,7 @@ jobs:
             echo "3. Use the same password as your ANSIBLE_VAULT_PASSWORD secret"
             exit 1
           fi
-          
+
           # Test decryption with the provided password
           if ! ansible-vault view ansible/vars/vault-vars.yml --vault-password-file ~/.ansible_vault_pass >/dev/null 2>&1; then
             echo "::error::Cannot decrypt ansible/vars/vault-vars.yml with the provided vault password!"
@@ -566,7 +566,7 @@ jobs:
             echo "2. Or re-encrypt the file with: ansible-vault encrypt ansible/vars/vault-vars.yml"
             exit 1
           fi
-          
+
           echo "✅ Ansible Vault encryption validation passed"
 =======
 >>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
@@ -619,7 +619,7 @@ jobs:
           echo "[digitalocean]" > inventory.ini
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
 <<<<<<< HEAD
-          
+
           # Run production deployment playbook with GitHub token and username
           if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml --vault-password-file ~/.ansible_vault_pass -e "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" -e "GITHUB_USERNAME=${{ github.actor }}" -e "GITHUB_REPO=${{ github.repository }}" -e "DOCKER_IMAGE=${{ needs.verify-promoted-image.outputs.full_image_name }}"; then
 =======
@@ -635,12 +635,12 @@ jobs:
             exit 1
           fi
 <<<<<<< HEAD
-          
+
           # Cleanup vault password file
           echo "🧹 Cleaning up sensitive files..."
           rm -f ~/.ansible_vault_pass
           echo "✅ Vault password file securely removed"
-  
+
 =======
 
 >>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
