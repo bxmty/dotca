@@ -54,10 +54,6 @@ on:
         description: 'Recommendations based on verification'
         value: ${{ jobs.verify-production.outputs.recommendation }}
 
-  schedule:
-    # Run verification every 6 hours
-    - cron: '0 */6 * * *'
-
 env:
   VERIFICATION_TYPE: ${{ inputs.verification_type || 'comprehensive' }}
   TARGET_URL: ${{ inputs.target_url || '' }}
