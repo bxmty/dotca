@@ -675,11 +675,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-<<<<<<< HEAD
           node-version: '22.21.0'
-=======
-          node-version: '22.20.0'
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           cache: npm
       - name: Install dependencies
         run: |
