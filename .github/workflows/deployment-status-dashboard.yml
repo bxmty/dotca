@@ -22,10 +22,6 @@ on:
         type: boolean
         default: false
 
-  schedule:
-    # Generate status report twice daily
-    - cron: '0 9,17 * * 1-5' # 9 AM and 5 PM on weekdays
-
 env:
   INCLUDE_HISTORY: ${{ inputs.include_history || 'true' }}
   DETAILED_REPORT: ${{ inputs.detailed_report || 'false' }}
