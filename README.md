@@ -40,6 +40,7 @@ A modern web application that provides small businesses with enterprise-grade IT
 
 1. Clone the repository:
 
+1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd dotca
@@ -114,12 +115,13 @@ terraform/                 # Infrastructure provisioning
 - **Naming**: PascalCase for components, camelCase for variables
 - **Testing**: Jest with React Testing Library, 91.8% coverage target
 
-## Deployment
+### Code Style Guidelines
 
 This project uses a sophisticated CI/CD pipeline with image promotion for safe deployments:
 
 ### Local Development
 
+### Local Development
 ```bash
 docker-compose -f docker-compose.dev.yml up
 ```
