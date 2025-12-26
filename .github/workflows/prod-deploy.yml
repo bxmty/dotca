@@ -386,11 +386,6 @@ jobs:
         run: |
           cd ansible
           ansible-galaxy install -r requirements.yml --force
-<<<<<<< HEAD
-
-=======
-
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -499,7 +494,6 @@ jobs:
               echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
             fi
           done
-<<<<<<< HEAD
 
       - name: Setup Ansible Vault password file
         run: |
@@ -568,8 +562,6 @@ jobs:
           fi
 
           echo "✅ Ansible Vault encryption validation passed"
-=======
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
 
       - name: Deploy using Ansible
         env:
@@ -618,15 +610,9 @@ jobs:
           # Create inventory file
           echo "[digitalocean]" > inventory.ini
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
-<<<<<<< HEAD
 
           # Run production deployment playbook with GitHub token and username
           if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml --vault-password-file ~/.ansible_vault_pass -e "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" -e "GITHUB_USERNAME=${{ github.actor }}" -e "GITHUB_REPO=${{ github.repository }}" -e "DOCKER_IMAGE=${{ needs.verify-promoted-image.outputs.full_image_name }}"; then
-=======
-
-          # Run production deployment playbook
-          if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml; then
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
             echo "Deployment successful"
             echo "deployment_success=true" >> $GITHUB_OUTPUT
           else
@@ -634,16 +620,10 @@ jobs:
             echo "deployment_success=false" >> $GITHUB_OUTPUT
             exit 1
           fi
-<<<<<<< HEAD
-
           # Cleanup vault password file
           echo "🧹 Cleaning up sensitive files..."
           rm -f ~/.ansible_vault_pass
           echo "✅ Vault password file securely removed"
-
-=======
-
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
   deployment-verification:
     name: Comprehensive Deployment Verification
     runs-on: ubuntu-latest
@@ -935,11 +915,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-<<<<<<< HEAD
           node-version: '22.21.0'
-=======
-          node-version: '22.20.0'
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           cache: 'npm'
 
       - name: Install dependencies
