@@ -20,7 +20,9 @@ const getUmamiConfig = (): UmamiConfig | null => {
   const hostUrl = process.env.NEXT_PUBLIC_UMAMI_HOST_URL;
 
   if (!websiteId || !hostUrl) {
-    console.warn('Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.');
+    console.warn(
+      'Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.'
+    );
     return null;
   }
 
@@ -51,17 +53,20 @@ export async function trackPageView(
   }
 
   try {
-    await trackPageview({
-      website: config.websiteId,
-      url: pathname,
-      referrer: referrer || '',
-      hostname: config.hostUrl,
-      language: 'en-US',
-      screen: '1920x1080',
-      title: title || document?.title || '',
-    }, {
-      hostUrl: config.hostUrl,
-    });
+    await trackPageview(
+      {
+        website: config.websiteId,
+        url: pathname,
+        referrer: referrer || '',
+        hostname: config.hostUrl,
+        language: 'en-US',
+        screen: '1920x1080',
+        title: title || document?.title || '',
+      },
+      {
+        hostUrl: config.hostUrl,
+      }
+    );
   } catch (error) {
     console.error('Failed to track pageview with Umami:', error);
   }
@@ -108,16 +113,25 @@ export async function trackFormSubmission(
   formData?: Record<string, unknown>
 ): Promise<void> {
   // Sanitize form data to avoid tracking sensitive information
-  const sanitizedData = formData ? Object.keys(formData).reduce((acc, key) => {
-    // Only include non-sensitive fields
-    if (!['password', 'email', 'phone', 'credit_card', 'ssn'].some(field =>
-      key.toLowerCase().includes(field))) {
-      acc[key] = typeof formData[key] === 'string' && formData[key].length > 100
-        ? `${formData[key].substring(0, 100)}...`
-        : formData[key];
-    }
-    return acc;
-  }, {} as Record<string, unknown>) : {};
+  const sanitizedData = formData
+    ? Object.keys(formData).reduce(
+        (acc, key) => {
+          // Only include non-sensitive fields
+          if (
+            !['password', 'email', 'phone', 'credit_card', 'ssn'].some(field =>
+              key.toLowerCase().includes(field)
+            )
+          ) {
+            acc[key] =
+              typeof formData[key] === 'string' && formData[key].length > 100
+                ? `${formData[key].substring(0, 100)}...`
+                : formData[key];
+          }
+          return acc;
+        },
+        {} as Record<string, unknown>
+      )
+    : {};
 
   await trackCustomEvent(`form_submission_${formName}`, {
     form_name: formName,
@@ -157,8 +171,10 @@ export async function trackEngagement(
  * Check if Umami tracking is properly configured
  */
 export function isUmamiConfigured(): boolean {
-  return !!(process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID &&
-           process.env.NEXT_PUBLIC_UMAMI_HOST_URL);
+  return !!(
+    process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID &&
+    process.env.NEXT_PUBLIC_UMAMI_HOST_URL
+  );
 }
 
 /**

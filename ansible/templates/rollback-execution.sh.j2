@@ -83,9 +83,9 @@ EOF
 # Function to list available rollback targets
 list_rollback_targets() {
     log_message "Listing available rollback targets..."
-    
+
     print_status $BLUE "🔍 Available Rollback Targets:"
-    
+
     # Check for rollback images
     ROLLBACK_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -10)
     if [ -n "$ROLLBACK_IMAGES" ]; then
@@ -96,7 +96,7 @@ list_rollback_targets() {
             echo "  - $img ($CREATED, $SIZE)"
         done
     fi
-    
+
     # Check for version images
     VERSION_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -5)
     if [ -n "$VERSION_IMAGES" ]; then
@@ -107,7 +107,7 @@ list_rollback_targets() {
             echo "  - $img ($CREATED, $SIZE)"
         done
     fi
-    
+
     # Check for previous main images
     MAIN_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':main-[a-f0-9]+' | head -5)
     if [ -n "$MAIN_IMAGES" ]; then
@@ -118,7 +118,7 @@ list_rollback_targets() {
             echo "  - $img ($CREATED, $SIZE)"
         done
     fi
-    
+
     if [ -z "$ROLLBACK_IMAGES$VERSION_IMAGES$MAIN_IMAGES" ]; then
         print_status $YELLOW "⚠️  No rollback targets found"
     fi
@@ -127,28 +127,28 @@ list_rollback_targets() {
 # Function to show current deployment status
 show_status() {
     log_message "Showing current deployment status..."
-    
+
     print_status $BLUE "📊 Current Deployment Status:"
-    
+
     # Current image info
     CURRENT_DIGEST=$(docker images --digests "$CURRENT_IMAGE" --format '{{.Digest}}' | head -1 | sed 's/sha256://')
     CURRENT_SIZE=$(docker images --format '{{.Size}}' "$CURRENT_IMAGE" | head -1)
     CURRENT_CREATED=$(docker images --format '{{.CreatedAt}}' "$CURRENT_IMAGE" | head -1)
-    
+
     echo "🖼️  Current Image: $CURRENT_IMAGE"
     echo "🔑 Digest: $CURRENT_DIGEST"
     echo "📏 Size: $CURRENT_SIZE"
     echo "📅 Created: $CURRENT_CREATED"
-    
+
     # Container status
     cd "$DOCKER_COMPOSE_DIR" || exit 1
     DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
-    
+
     if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
         print_status $BLUE "🐳 Container Status:"
         $DOCKER_COMPOSE_CMD ps
     fi
-    
+
     # Health check
     print_status $BLUE "❤️  Health Check:"
     if curl -f -s "$HEALTH_CHECK_URL" >/dev/null 2>&1; then
@@ -161,7 +161,7 @@ show_status() {
 # Function to validate rollback target
 validate_rollback_target() {
     local target=$1
-    
+
     # Handle special targets
     case "$target" in
         "latest")
@@ -183,20 +183,20 @@ validate_rollback_target() {
             print_status $YELLOW "🔄 Using previous rollback image: $target"
             ;;
     esac
-    
+
     # Check if target image exists locally
     if docker images "$target" --format '{{.Repository}}:{{.Tag}}' | grep -q "$target"; then
         print_status $GREEN "✅ Rollback target found locally: $target"
         return 0
     fi
-    
+
     # Check if target image exists in registry
     print_status $YELLOW "🔍 Checking if target image exists in registry..."
     if docker manifest inspect "$target" >/dev/null 2>&1; then
         print_status $GREEN "✅ Rollback target found in registry: $target"
         return 0
     fi
-    
+
     print_status $RED "❌ Rollback target not found: $target"
     return 1
 }
@@ -205,12 +205,12 @@ validate_rollback_target() {
 perform_rollback() {
     local target=$1
     local force=$2
-    
+
     log_message "Starting rollback to: $target"
-    
+
     print_status $BLUE "🚀 Starting Production Rollback..."
     print_status $YELLOW "⚠️  This will replace the current production deployment"
-    
+
     if [ "$force" != "true" ]; then
         read -p "Are you sure you want to continue? (y/N): " -n 1 -r
         echo
@@ -219,32 +219,32 @@ perform_rollback() {
             exit 0
         fi
     fi
-    
+
     # Create backup of current deployment
     print_status $BLUE "💾 Creating backup of current deployment..."
     CURRENT_BACKUP="$APP_DIR/backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$CURRENT_BACKUP"
-    
+
     # Save current docker-compose state
     cd "$DOCKER_COMPOSE_DIR" || exit 1
     DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
-    
+
     if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
         $DOCKER_COMPOSE_CMD ps > "$CURRENT_BACKUP/container-status.txt" 2>&1 || true
         $DOCKER_COMPOSE_CMD logs web > "$CURRENT_BACKUP/container-logs.txt" 2>&1 || true
     fi
-    
+
     # Save current image info
     docker images "$CURRENT_IMAGE" --format '{{.Repository}}:{{.Tag}} {{.Digest}} {{.Size}} {{.CreatedAt}}' > "$CURRENT_BACKUP/current-image.txt" 2>&1 || true
-    
+
     print_status $GREEN "✅ Backup created at: $CURRENT_BACKUP"
-    
+
     # Stop current production container
     print_status $BLUE "🛑 Stopping current production container..."
     if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
         $DOCKER_COMPOSE_CMD down web || true
     fi
-    
+
     # Pull rollback image if not local
     if ! docker images "$target" --format '{{.Repository}}:{{.Tag}}' | grep -q "$target"; then
         print_status $BLUE "📥 Pulling rollback image from registry..."
@@ -255,11 +255,11 @@ perform_rollback() {
             exit 1
         }
     fi
-    
+
     # Update docker-compose.yml with rollback image
     print_status $BLUE "📝 Updating docker-compose.yml with rollback image..."
     sed -i.bak "s|image:.*|image: $target|" "$DOCKER_COMPOSE_DIR/docker-compose.yml"
-    
+
     # Start rollback container
     print_status $BLUE "🚀 Starting rollback container..."
     if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
@@ -270,11 +270,11 @@ perform_rollback() {
             exit 1
         }
     fi
-    
+
     # Wait for container to be ready
     print_status $BLUE "⏳ Waiting for rollback container to be ready..."
     sleep 15
-    
+
     # Verify rollback deployment
     print_status $BLUE "🔍 Verifying rollback deployment..."
     if ! verify_rollback_deployment "$target"; then
@@ -283,83 +283,83 @@ perform_rollback() {
         restore_previous_deployment
         exit 1
     fi
-    
+
     # Update rollback status
     print_status $BLUE "📝 Updating rollback status..."
     update_rollback_status "$target" "success"
-    
+
     print_status $GREEN "✅ Rollback completed successfully!"
     print_status $BLUE "🖼️  Production now running: $target"
     print_status $YELLOW "📁 Backup available at: $CURRENT_BACKUP"
-    
+
     log_message "Rollback completed successfully to: $target"
 }
 
 # Function to verify rollback deployment
 verify_rollback_deployment() {
     local target=$1
-    
+
     # Check container is running
     cd "$DOCKER_COMPOSE_DIR" || return 1
     DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
-    
+
     if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
         if ! $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
             print_status $RED "❌ Rollback container is not running"
             return 1
         fi
     fi
-    
+
     # Health check
     local retries=0
     local max_retries=10
-    
+
     while [ $retries -lt $max_retries ]; do
         if curl -f -s "$HEALTH_CHECK_URL" >/dev/null 2>&1; then
             print_status $GREEN "✅ Health check passed"
             break
         fi
-        
+
         retries=$((retries + 1))
         print_status $YELLOW "⏳ Health check attempt $retries/$max_retries..."
         sleep 5
     done
-    
+
     if [ $retries -eq $max_retries ]; then
         print_status $RED "❌ Health check failed after $max_retries attempts"
         return 1
     fi
-    
+
     # Basic connectivity test
     if curl -f -s "http://localhost:8080" >/dev/null 2>&1; then
         print_status $GREEN "✅ Application responding on root endpoint"
     else
         print_status $YELLOW "⚠️  Application not responding on root endpoint (continuing...)"
     fi
-    
+
     return 0
 }
 
 # Function to restore previous deployment
 restore_previous_deployment() {
     print_status $YELLOW "🔄 Restoring previous deployment..."
-    
+
     # Restore docker-compose.yml
     if [ -f "$DOCKER_COMPOSE_DIR/docker-compose.yml.bak" ]; then
         mv "$DOCKER_COMPOSE_DIR/docker-compose.yml.bak" "$DOCKER_COMPOSE_DIR/docker-compose.yml"
     fi
-    
+
     # Start previous container
     cd "$DOCKER_COMPOSE_DIR" || exit 1
     DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
-    
+
     if [ "$DOCKER_COMPOSE_CMD" != "none" ]; then
         $DOCKER_COMPOSE_CMD up -d web || {
             print_status $RED "❌ Failed to restore previous deployment"
             exit 1
         }
     fi
-    
+
     print_status $GREEN "✅ Previous deployment restored"
 }
 
@@ -367,10 +367,10 @@ restore_previous_deployment() {
 update_rollback_status() {
     local target=$1
     local status=$2
-    
+
     local status_file="$APP_DIR/rollback-status.json"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    
+
     cat > "$status_file" << EOF
 {
   "last_rollback": {
@@ -389,7 +389,7 @@ update_rollback_status() {
   ]
 }
 EOF
-    
+
     print_status $GREEN "✅ Rollback status updated"
 }
 
@@ -400,7 +400,7 @@ main() {
     local target=""
     local list_targets=false
     local show_status_flag=false
-    
+
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -440,47 +440,47 @@ main() {
                 ;;
         esac
     done
-    
+
     # Enable verbose mode if requested
     if [ "$verbose" = true ]; then
         set -x
     fi
-    
+
     # Check if we're in the right directory
     if [ ! -d "$DOCKER_COMPOSE_DIR" ]; then
         print_status $RED "❌ Docker Compose directory not found: $DOCKER_COMPOSE_DIR"
         exit 1
     fi
-    
+
     # Check if docker-compose is available
     DOCKER_COMPOSE_CMD=$(get_docker_compose_cmd)
     if [ "$DOCKER_COMPOSE_CMD" = "none" ]; then
         print_status $RED "❌ Docker Compose not available"
         exit 1
     fi
-    
+
     # Handle different modes
     if [ "$list_targets" = true ]; then
         list_rollback_targets
         exit 0
     fi
-    
+
     if [ "$show_status_flag" = true ]; then
         show_status
         exit 0
     fi
-    
+
     if [ -z "$target" ]; then
         print_status $RED "❌ Rollback target not specified"
         show_usage
         exit 1
     fi
-    
+
     # Validate rollback target
     if ! validate_rollback_target "$target"; then
         exit 1
     fi
-    
+
     # Perform rollback
     perform_rollback "$target" "$force"
 }

@@ -24,17 +24,20 @@ describe('Web Vitals API', () => {
       value: 2500,
       rating: 'needs-improvement',
       delta: 2500,
-      navigationType: 'navigate'
+      navigationType: 'navigate',
     };
 
     // Create a mock request
-    const request = new NextRequest('https://example.com/api/analytics/web-vitals', {
-      method: 'POST',
-      body: JSON.stringify(mockWebVitalsData),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const request = new NextRequest(
+      'https://example.com/api/analytics/web-vitals',
+      {
+        method: 'POST',
+        body: JSON.stringify(mockWebVitalsData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     // Call the API route handler
     const response = await POST(request);
@@ -47,13 +50,16 @@ describe('Web Vitals API', () => {
 
   it('should handle invalid data properly', async () => {
     // Create a mock request with invalid JSON
-    const request = new NextRequest('https://example.com/api/analytics/web-vitals', {
-      method: 'POST',
-      body: '{invalid: json',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const request = new NextRequest(
+      'https://example.com/api/analytics/web-vitals',
+      {
+        method: 'POST',
+        body: '{invalid: json',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     // Call the API route handler
     const response = await POST(request);

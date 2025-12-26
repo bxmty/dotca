@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { execSync } = require('child_process');
 
 try {
   // Try to get the short commit hash
   const commitHash = execSync('git rev-parse --short HEAD', {
     encoding: 'utf8',
-    stdio: 'pipe'
+    stdio: 'pipe',
   }).trim();
 
   // Output just the hash (no newline)
