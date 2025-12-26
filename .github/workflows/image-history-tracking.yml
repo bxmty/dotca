@@ -34,10 +34,6 @@ on:
         type: boolean
         default: true
 
-  schedule:
-    # Run daily at 2 AM UTC to track image history
-    - cron: '0 2 * * *'
-
   workflow_run:
     # Trigger when image promotion workflow completes
     workflows: ['Image Promotion Workflow']
