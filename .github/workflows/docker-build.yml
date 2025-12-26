@@ -99,6 +99,9 @@ jobs:
           echo "🔍 Docker Build Arguments:"
           echo "Branch: ${{ github.ref }}"
           echo "Environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}"
+          echo "NEXT_PUBLIC_API_URL exists: ${{ secrets.NEXT_PUBLIC_API_URL != '' && 'YES' || 'NO/EMPTY' }}"
+          echo "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY exists: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY != '' && 'YES' || 'NO/EMPTY' }}"
+          echo "STRIPE_SECRET_KEY exists: ${{ secrets.STRIPE_SECRET_KEY != '' && 'YES' || 'NO/EMPTY' }}"
           echo "GA_STAGING_ID exists: ${{ secrets.GA_STAGING_ID != '' && 'YES' || 'NO/EMPTY' }}"
           echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
 
@@ -120,6 +123,9 @@ jobs:
             NODE_ENV=production
             NEXT_PUBLIC_ENVIRONMENT=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
             NEXT_PUBLIC_COMMIT_HASH=${{ github.sha }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
             NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.GA_STAGING_ID }}
             NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.GA_PRODUCTION_ID }}
           platforms: linux/amd64

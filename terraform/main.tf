@@ -6,7 +6,7 @@ terraform {
       version = "2.72.0"
     }
   }
-  required_version = "1.14.3"
+  required_version = ">= 1.5.0"
 
   backend "s3" {
     endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
