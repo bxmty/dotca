@@ -140,7 +140,7 @@ staging branch (testing)
 
 ### Why NOT Merge Staging → Main?
 
-❌ **Don't do this**: `git merge staging` into main  
+❌ **Don't do this**: `git merge staging` into main
 ✅ **Do this instead**: Merge feature branches to both staging and main separately
 
 **Reasons:**
@@ -220,9 +220,9 @@ This separation provides **double safety**:
 
 You should merge to the main branch **only when**:
 
-✅ **Staging deployment is successful**  
-✅ **All staging tests have passed**  
-✅ **Feature is ready for production release**  
+✅ **Staging deployment is successful**
+✅ **All staging tests have passed**
+✅ **Feature is ready for production release**
 ✅ **You're prepared to promote the image immediately**
 
 ### 🚨 **Key Decision Points**
@@ -357,7 +357,7 @@ docker push ghcr.io/your_username/dotca:staging
 
 ### Performance Benefits:
 
-✅ **Faster Deployments**: No build time during deployment (60-90% faster)  
+✅ **Faster Deployments**: No build time during deployment (60-90% faster)
 ✅ **Reduced Server Load**: No CPU/memory usage for building on target servers
 ✅ **Concurrent Deployments**: Multiple environments can deploy simultaneously
 
