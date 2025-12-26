@@ -23,6 +23,7 @@ repos:
             | \.tsbuildinfo$
             | next-env\.d\.ts$
             | CLAUDE\.md$
+            | ansible/
           )
 
   # ESLint
