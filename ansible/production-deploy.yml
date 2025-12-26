@@ -538,8 +538,7 @@
       retries: 3
       delay: 15
       until: docker_up is success
-<<<<<<< HEAD
-      
+
     - name: Verify container is actually running after startup
       ansible.builtin.shell: |
         echo "Checking if container is running..."
@@ -564,10 +563,7 @@
       register: container_verification
       changed_when: false
       failed_when: container_verification.rc != 0
-      
-=======
 
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
     - name: Check if Docker Compose services started successfully
       command: docker-compose ps
       args:
@@ -578,7 +574,7 @@
     - name: Display Docker Compose status
       debug:
         var: docker_ps.stdout_lines
-        
+
     - name: Display container verification results
       debug:
         var: container_verification.stdout_lines
@@ -644,11 +640,11 @@
       register: final_verification
       changed_when: false
       failed_when: final_verification.rc != 0
-      
+
     - name: Display final verification results
       ansible.builtin.debug:
         var: final_verification.stdout_lines
-    
+
     - name: Display deployment completion message
       ansible.builtin.debug:
         msg: |
@@ -663,27 +659,19 @@
           - Image Source: Image Promotion Workflow
           - Production Image: {{ docker_image }}
           - Status: Deployed and Running
-<<<<<<< HEAD
           - Restart Policy: Always (survives reboots)
-          
-=======
 
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           Image Promotion Workflow:
           - Staging → Image Promotion → Production
           - Manual approval required for promotion
           - Promoted images stored in GHCR
-<<<<<<< HEAD
-          
+
           Verification Checks Passed:
           ✅ Container is running on port 8080
           ✅ Container has restart policy 'always'
           ✅ Application responds to HTTP requests
           ✅ Docker service enabled for automatic startup
-          
-=======
 
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           Next Steps:
           1. Monitor application health
           2. SSL certificate setup will run next (separate play)
@@ -1130,8 +1118,7 @@
           - Location: /etc/letsencrypt/live/boximity.ca/
           - Auto-renewal: Enabled (daily at 3:30 AM)
           - Renewal threshold: 30 days before expiration
-<<<<<<< HEAD
-          
+
           HTTPS Configuration:
           {% if final_ssl_cert_check.stat.exists %}
           ✅ Nginx reconfigured with HTTPS support
@@ -1139,21 +1126,14 @@
           ✅ SSL certificates properly configured
           ✅ Application accessible via https://boximity.ca
           {% endif %}
-          
-=======
 
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           Smart Features:
           ✅ Only creates certificates when needed (missing or expiring < 30 days)
           ✅ Checks existing certificate validity before taking action
           ✅ Provides detailed expiration information
           ✅ Automatic renewal with cron job
-<<<<<<< HEAD
           ✅ Nginx automatically reconfigured for HTTPS
-          
-=======
 
->>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           Next Steps:
           1. Test HTTPS access: https://boximity.ca
           2. Monitor certificate expiration (automated)
@@ -1254,12 +1234,12 @@
       ansible.builtin.debug:
         msg: |
           ⚠️  Umami SSL Certificate Generation Failed (Non-Critical)
-          
+
           This is expected if the DNS record for umami.boximity.ca doesn't exist yet.
-          
+
           To fix this:
           1. Add DNS A record: umami.boximity.ca → {{ ansible_host }}
           2. Re-run the deployment to generate the certificate
-          
+
           The main application deployment was successful regardless of this failure.
       when: ansible_failed_result is defined
