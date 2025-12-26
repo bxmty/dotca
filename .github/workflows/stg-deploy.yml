@@ -3,7 +3,7 @@ name: Staging Pipeline
 on:
   push:
     branches: [staging]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch: # Allow manual triggering
     inputs:
       force_rebuild:
         description: Force rebuild infrastructure
@@ -35,7 +35,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
-          terraform_wrapper: false  # Important for output parsing
+          terraform_wrapper: false # Important for output parsing
       - name: Setup DigitalOcean CLI
         run: |
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
@@ -348,13 +348,13 @@ jobs:
           # Extended wait for new or updated resources
           if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
             echo "⏳ Waiting for droplet to be fully ready (new/updated resources)..."
-            
+
             # Network connectivity check
             echo "🔍 Testing network connectivity..."
             PING_TIMEOUT=180
             PING_INTERVAL=10
             PING_ELAPSED=0
-            
+
             while [ $PING_ELAPSED -lt $PING_TIMEOUT ]; do
               if ping -c 1 -W 5 $DROPLET_IP >/dev/null 2>&1; then
                 echo "✅ Network connectivity established to $DROPLET_IP"
@@ -364,11 +364,11 @@ jobs:
               sleep $PING_INTERVAL
               PING_ELAPSED=$((PING_ELAPSED + PING_INTERVAL))
             done
-            
+
             if [ $PING_ELAPSED -ge $PING_TIMEOUT ]; then
               echo "::warning::Network connectivity check timed out after ${PING_TIMEOUT}s"
             fi
-            
+
             # Additional wait for system initialization
             echo "⏳ Waiting for system services to initialize..."
             sleep 60
@@ -534,6 +534,9 @@ jobs:
               ansible/staging-deploy.yml \
               --timeout=60 \
               --extra-vars "ansible_ssh_timeout=60" \
+              --extra-vars "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" \
+              --extra-vars "GITHUB_USERNAME=${{ github.actor }}" \
+              --extra-vars "GITHUB_REPO=${{ github.repository }}" \
               --extra-vars "GA_STAGING_ID=${{ secrets.GA_STAGING_ID }}" \
               --extra-vars "GA_PRODUCTION_ID=${{ secrets.GA_PRODUCTION_ID }}" \
               --extra-vars "UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" \
@@ -547,7 +550,7 @@ jobs:
               if [ $attempt -lt $MAX_ATTEMPTS ]; then
                 echo "⏳ Waiting 60 seconds before retry..."
                 sleep 60
-                
+
                 # Test connectivity before retry
                 echo "🔍 Testing connectivity before retry..."
                 if ! ansible all -i ansible/inventory.yml -m ping --timeout=30; then
@@ -596,11 +599,11 @@ jobs:
           )
           for url in "${URLS[@]}"; do
             echo "Testing: $url"
-            
+
             # Try multiple times with increasing delays
             for i in {1..5}; do
               echo "  Attempt $i..."
-              
+
               if curl -s -f --max-time 10 --connect-timeout 5 "$url" >/dev/null; then
                 echo "  ✅ $url is responding"
                 break
@@ -672,7 +675,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.19.0'
+<<<<<<< HEAD
+          node-version: '22.21.0'
+=======
+          node-version: '22.20.0'
+>>>>>>> e25afe96076939e7684f17e5d8f1267537bb2746
           cache: npm
       - name: Install dependencies
         run: |
@@ -769,7 +776,7 @@ jobs:
         run: |
           echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Determine overall success
           if [ "${{ needs.deploy-app.result }}" = "success" ]; then
             echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
@@ -784,24 +791,24 @@ jobs:
             echo "staging_success=false" >> $GITHUB_OUTPUT
             echo "ready_for_promotion=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Determine staging image tag (usually 'staging' or staging-{sha})
           STAGING_IMAGE_TAG="staging"
           echo "staging_image_tag=$STAGING_IMAGE_TAG" >> $GITHUB_OUTPUT
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Staging URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
           echo "- Staging Image: ghcr.io/${{ github.repository }}:$STAGING_IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "- Ready for Promotion: $READY_FOR_PROMOTION" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "**Job Results:**" >> $GITHUB_STEP_SUMMARY
           echo "- Infrastructure Setup: ${{ needs.setup-infra.result == 'success' && '✅' || '❌' }} ${{ needs.setup-infra.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Application Deployment: ${{ needs.deploy-app.result == 'success' && '✅' || '❌' }} ${{ needs.deploy-app.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Selenium Tests: ${{ needs.selenium-tests.result == 'success' && '✅' || (needs.selenium-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.selenium-tests.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           if [ "$READY_FOR_PROMOTION" = "true" ]; then
             echo "1. ✅ Staging deployment completed successfully" >> $GITHUB_STEP_SUMMARY

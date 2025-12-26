@@ -7,25 +7,30 @@ This guide explains how to configure environment variables for the dotca applica
 The application uses the following categories of environment variables:
 
 ### Core Application Settings
+
 - `NODE_ENV`: Runtime environment (`development`, `production`)
 - `NEXT_PUBLIC_ENVIRONMENT`: Application environment (`development`, `staging`, `production`)
 - `NEXT_PUBLIC_API_URL`: API base URL for client-side requests
 - `NEXT_PUBLIC_COMMIT_HASH`: Git commit hash (automatically set)
 
 ### Payment Processing (Stripe)
+
 - `STRIPE_SECRET_KEY`: Stripe secret key for server-side operations
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`: Stripe publishable key for client-side operations
 
 ### Email Service (Brevo/Sendinblue)
+
 - `BREVO_API_KEY`: Brevo API key for transactional emails
 - `NEXT_PUBLIC_BREVO_API_KEY`: Public Brevo API key (fallback for client-side)
 
 ### Analytics (Google Analytics 4)
+
 - `NEXT_PUBLIC_STAGING_GA_ID`: Google Analytics ID for staging environment
 - `NEXT_PUBLIC_PRODUCTION_GA_ID`: Google Analytics ID for production environment
 - `NEXT_PUBLIC_DEV_GA_ID`: Google Analytics ID for development environment (optional)
 
 ### Analytics (Umami - Self-hosted)
+
 - `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: Umami website ID
 - `NEXT_PUBLIC_UMAMI_HOST_URL`: Umami host URL
 
@@ -114,6 +119,7 @@ NEXT_PUBLIC_UMAMI_HOST_URL=https://umami.yourdomain.com
 ### Local Development
 
 1. **Copy the development template**:
+
    ```bash
    cp .env.example .env.local
    ```
@@ -177,6 +183,7 @@ environment:
 ## Required vs Optional Variables
 
 ### Required for All Environments
+
 - `NODE_ENV`
 - `NEXT_PUBLIC_ENVIRONMENT`
 - `NEXT_PUBLIC_API_URL`
@@ -185,10 +192,12 @@ environment:
 - `BREVO_API_KEY`
 
 ### Required for Production
+
 - `NEXT_PUBLIC_PRODUCTION_GA_ID` (for Google Analytics tracking)
 - `NEXT_PUBLIC_UMAMI_WEBSITE_ID` and `NEXT_PUBLIC_UMAMI_HOST_URL` (for self-hosted analytics)
 
 ### Optional Variables
+
 - `NEXT_PUBLIC_DEV_GA_ID` (development analytics)
 - `NEXT_PUBLIC_STAGING_GA_ID` (staging analytics)
 - `NEXT_PUBLIC_BREVO_API_KEY` (client-side fallback)
@@ -197,11 +206,13 @@ environment:
 ## Security Considerations
 
 ### Never Commit Secrets
+
 - **DO NOT** commit `.env.local`, `.env.staging`, or `.env.production` files
 - **DO NOT** include actual API keys in repository
 - Use `.env.example` file with placeholder values for documentation
 
 ### Environment Variable Security
+
 - Use strong, unique API keys for each environment
 - Rotate keys regularly (recommended: every 90 days)
 - Use different Stripe accounts for test/production
@@ -222,19 +233,23 @@ environment:
 ### Common Issues
 
 **"STRIPE_SECRET_KEY is not set"**
+
 - Check that `STRIPE_SECRET_KEY` is properly set in your environment
 - Verify the key format (should start with `sk_test_` or `sk_live_`)
 
 **"Missing BREVO_API_KEY"**
+
 - Ensure `BREVO_API_KEY` is set in your deployment environment
 - Check that the API key has the correct permissions
 
 **Analytics not tracking**
+
 - Verify `NEXT_PUBLIC_ENVIRONMENT` is set correctly
 - Check that the appropriate GA_ID variables are set for your environment
 - Ensure GA_ID format is correct (`G-XXXXXXXXXX`)
 
 **Umami not loading**
+
 - Verify both `NEXT_PUBLIC_UMAMI_WEBSITE_ID` and `NEXT_PUBLIC_UMAMI_HOST_URL` are set
 - Check that the Umami server is accessible from your application
 

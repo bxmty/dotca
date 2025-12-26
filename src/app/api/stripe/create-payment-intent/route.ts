@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     // Parse request body
     const { amount, currency = 'usd', metadata = {} } = await request.json();
-    
+
     if (!amount || isNaN(amount)) {
       throw new Error('A valid amount is required');
     }
@@ -24,8 +24,8 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ 
-      clientSecret: paymentIntent.client_secret 
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
     });
   } catch (error) {
     console.error('Stripe error:', error);
