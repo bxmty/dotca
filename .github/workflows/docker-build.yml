@@ -106,7 +106,7 @@ jobs:
           echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
