@@ -1,10 +1,31 @@
-
-
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Git
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone <repository-url>
+cd dotca
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Set up environment variables (see Environment Setup below)
+
+4. Run the development server:
 
 ```bash
 npm run dev
@@ -43,11 +64,7 @@ This project includes Web Vitals monitoring to track Core Web Vitals metrics:
 
 Web Vitals are automatically collected on the client side and sent to the `/api/analytics/web-vitals` endpoint. In production, you can connect this endpoint to your analytics platform of choice.
 
-## Deployment
-
 ### Local Development
-
-For local development, use the development Docker setup:
 
 ```bash
 docker-compose -f docker-compose.dev.yml up
@@ -67,7 +84,7 @@ This project includes a multi-environment deployment setup for Digital Ocean:
 # Deploy to Staging
 # Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
 
-# Deploy to Production  
+# Deploy to Production
 # Use GitHub Actions: Go to Actions → prod-deploy → Run workflow
 ```
 
@@ -85,6 +102,7 @@ This project uses GitHub Actions for automated deployment. To deploy manually:
    - Then use prod-deploy workflow with the promoted image
 
 For local development only:
+
 ```bash
 # Build the Docker image with environment-specific variables
 docker build \
@@ -98,6 +116,7 @@ docker run -p 3000:3000 dotca-app
 ```
 
 The Dockerfile includes:
+
 - Multi-stage build for optimized image size
 - Environment variable configuration
 - Health checks for monitoring

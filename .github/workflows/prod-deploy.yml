@@ -5,35 +5,35 @@ on:
   workflow_dispatch:
     inputs:
       promoted_image_tag:
-        description: 'Promoted image tag to deploy (e.g., main, main-abc123)'
+        description: "Promoted image tag to deploy (e.g., main, main-abc123)"
         required: true
-        default: 'main'
+        default: "main"
         type: string
       deployment_reason:
-        description: 'Reason for production deployment'
+        description: "Reason for production deployment"
         required: false
-        default: 'Manual production deployment'
+        default: "Manual production deployment"
         type: string
       skip_tests:
-        description: 'Skip Selenium tests (use for emergency deployments)'
+        description: "Skip Playwright tests (use for emergency deployments)"
         required: false
         default: false
         type: boolean
-  
+
   # Automatic trigger after successful image promotion
   workflow_call:
     inputs:
       promoted_image_tag:
-        description: 'Promoted image tag to deploy'
+        description: "Promoted image tag to deploy"
         required: true
         type: string
       deployment_reason:
-        description: 'Reason for deployment'
+        description: "Reason for deployment"
         required: false
         type: string
-        default: 'Automatic deployment after image promotion'
+        default: "Automatic deployment after image promotion"
       github_username:
-        description: 'GitHub username for authentication'
+        description: "GitHub username for authentication"
         required: true
         type: string
     secrets:
@@ -69,8 +69,8 @@ jobs:
     name: Notify Deployment Start
     uses: ./.github/workflows/deployment-notifications.yml
     with:
-      event_type: 'deployment-started'
-      environment: 'production'
+      event_type: "deployment-started"
+      environment: "production"
       deployment_details: |
         {
           "promoted_image_tag": "${{ inputs.promoted_image_tag || github.event.inputs.promoted_image_tag || 'main' }}",
@@ -81,8 +81,8 @@ jobs:
           "ref": "${{ github.ref }}",
           "timestamp": "${{ github.event.head_commit.timestamp }}"
         }
-      notification_channels: 'github,slack'
-      severity: 'info'
+      notification_channels: "github,slack"
+      severity: "info"
 
   verify-promoted-image:
     name: Verify Promoted Image
@@ -99,34 +99,34 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Verify promoted image exists and is accessible
         id: verification
         run: |
           FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.PROMOTED_IMAGE_TAG }}"
-          
+
           echo "🔍 Verifying promoted image: $FULL_IMAGE_NAME"
           echo "📋 Deployment reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}"
-          
+
           # Pull and verify the promoted image
           if docker pull "$FULL_IMAGE_NAME"; then
             echo "✅ Successfully pulled promoted image"
-            
+
             # Get image details
             IMAGE_DIGEST=$(docker images --digests "$FULL_IMAGE_NAME" --format "{{.Digest}}" | head -1)
             IMAGE_SIZE=$(docker images --format "{{.Size}}" "$FULL_IMAGE_NAME" | head -1)
             IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$FULL_IMAGE_NAME" | head -1)
-            
+
             echo "📊 Image Details:"
             echo "- Digest: $IMAGE_DIGEST"
             echo "- Size: $IMAGE_SIZE"
             echo "- Created: $IMAGE_CREATED"
-            
+
             # Set outputs
             echo "verified=true" >> $GITHUB_OUTPUT
             echo "full_image_name=$FULL_IMAGE_NAME" >> $GITHUB_OUTPUT
             echo "image_digest=$IMAGE_DIGEST" >> $GITHUB_OUTPUT
-            
+
             echo "✅ Promoted image verification successful"
           else
             echo "❌ Failed to pull promoted image: $FULL_IMAGE_NAME"
@@ -139,7 +139,7 @@ jobs:
             echo "https://github.com/${{ github.repository }}/pkgs/container/dotca"
             exit 1
           fi
-    
+
   setup-infra:
     name: Setup Infrastructure
     runs-on: ubuntu-latest
@@ -148,28 +148,28 @@ jobs:
       droplet_ip: ${{ steps.resource_check.outputs.ip || steps.get_ip.outputs.ip }}
       resources_exist: ${{ steps.resource_check.outputs.resources_exist }}
       terraform_changes: ${{ steps.check_terraform_changes.outputs.has_changes }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-        
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
-          
+
       - name: Setup DigitalOcean CLI
         run: |
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
-      
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          
+
       - name: Initialize Terraform
         working-directory: ./terraform
         run: |
@@ -177,21 +177,21 @@ jobs:
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
             -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
             -backend-config="key=dotca/terraform-production.tfstate"
-          
+
       - name: Check if project exists
         id: check_project
         run: |
-            # Check if the project exists in Digital Ocean
-            PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs" || echo "")
-            
-            if [ -n "$PROJECT_EXISTS" ]; then
-              echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
-              echo "Project 'dotca-nextjs' already exists"
-            else
-              echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
-              echo "Project 'dotca-nextjs' does not exist"
-            fi
-        
+          # Check if the project exists in Digital Ocean
+          PROJECT_EXISTS=$(doctl projects list --format Name --no-header | grep -F "dotca-nextjs" || echo "")
+
+          if [ -n "$PROJECT_EXISTS" ]; then
+            echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
+            echo "Project 'dotca-nextjs' already exists"
+          else
+            echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
+            echo "Project 'dotca-nextjs' does not exist"
+          fi
+
       - name: Check if resources exist
         working-directory: ./terraform
         id: resource_check
@@ -204,13 +204,13 @@ jobs:
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
-          
+
           # Try to get current state - handle failure gracefully
           terraform refresh || echo "Terraform refresh failed, likely because resources don't exist yet"
-          
+
           # Check if resources exist by trying to get the IP
           DROPLET_IP=$(terraform output droplet_ip 2>/dev/null | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-          
+
           if [ -n "$DROPLET_IP" ]; then
             echo "RESOURCES_EXIST=true" >> $GITHUB_ENV
             echo "resources_exist=true" >> $GITHUB_OUTPUT
@@ -223,7 +223,7 @@ jobs:
             echo "Resources need to be created or updated"
           fi
         continue-on-error: true
-      
+
       # New step to check for Terraform changes in existing resources
       - name: Check for Terraform changes
         id: check_terraform_changes
@@ -238,16 +238,16 @@ jobs:
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
-          
+
           # Create a plan and check if there are any changes
           terraform plan -detailed-exitcode -out=tfplan > plan_output.txt 2>&1
           PLAN_EXIT_CODE=$?
-          
+
           # Terraform plan exit codes:
           # 0 = No changes
           # 1 = Error
           # 2 = Changes present
-          
+
           if [ $PLAN_EXIT_CODE -eq 2 ]; then
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -262,7 +262,7 @@ jobs:
             exit 1
           fi
         continue-on-error: true
-      
+
       # New step to apply Terraform changes if they exist
       - name: Apply Terraform changes
         if: env.RESOURCES_EXIST == 'true' && env.HAS_CHANGES == 'true'
@@ -276,11 +276,11 @@ jobs:
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
-          
+
           # Apply the changes
           echo "Applying changes to existing infrastructure..."
           terraform apply -auto-approve tfplan
-          
+
           # Update the droplet IP in case it changed
           UPDATED_IP=$(terraform output droplet_ip | tr -d '"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
           if [ -n "$UPDATED_IP" ]; then
@@ -300,10 +300,10 @@ jobs:
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
-          
+
           # Create plan
           terraform plan -out=tfplan
-        
+
       - name: Terraform Apply
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
@@ -316,10 +316,10 @@ jobs:
           export TF_VAR_use_existing_project="${{ env.PROJECT_EXISTS }}"
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
-          
+
           # Apply the plan
           terraform apply -auto-approve tfplan
-        
+
       - name: Capture Droplet IP
         if: env.RESOURCES_EXIST != 'true'
         working-directory: ./terraform
@@ -328,7 +328,7 @@ jobs:
           # Wait a bit for Terraform state to settle
           echo "Waiting for DigitalOcean resources to be fully provisioned..."
           sleep 30
-          
+
           # Force a refresh to ensure state is current
           export TF_VAR_do_token="${{ secrets.DO_TOKEN }}"
           export TF_VAR_ssh_key_fingerprint="${{ secrets.SSH_KEY_FINGERPRINT }}"
@@ -338,23 +338,23 @@ jobs:
           export TF_VAR_use_existing_firewall="false"
           export TF_VAR_environment="production"
           terraform refresh
-          
+
           # Try multiple methods to get the IP address
           echo "Attempting to get droplet IP address..."
-          
+
           # Method 1: Direct output to a file first to avoid pipe issues
           terraform output > terraform_output.txt
           cat terraform_output.txt
-          
+
           # Extract IP using grep directly on the file
           DROPLET_IP=$(grep -oE 'droplet_ip\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)"' terraform_output.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-          
+
           # If that didn't work, try a simpler approach
           if [ -z "$DROPLET_IP" ] || ! [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Trying alternative method..."
             DROPLET_IP=$(cat terraform_output.txt | grep droplet_ip | awk -F '"' '{print $2}' || echo "")
           fi
-          
+
           # Final validation and output
           if [[ $DROPLET_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Successfully extracted IP: $DROPLET_IP"
@@ -372,11 +372,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [verify-promoted-image, setup-infra]
     if: ${{ needs.verify-promoted-image.outputs.image_verified == 'true' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      
+
       - name: Install Ansible
         run: |
           sudo apt update
@@ -386,13 +386,12 @@ jobs:
         run: |
           cd ansible
           ansible-galaxy install -r requirements.yml --force
-      
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-      
+
       - name: Validate DNS configuration
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
@@ -495,29 +494,29 @@ jobs:
               echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
             fi
           done
-      
+
       - name: Setup Ansible Vault password file
         run: |
           echo "🔐 Setting up Ansible Vault password file..."
-          
+
           # SECURITY: Validate vault password format before creating file
           VAULT_PASS="${{ secrets.ANSIBLE_VAULT_PASSWORD }}"
           if [ -z "$VAULT_PASS" ]; then
             echo "::error::ANSIBLE_VAULT_PASSWORD secret is empty"
             exit 1
           fi
-          
+
           if [ ${#VAULT_PASS} -lt 8 ]; then
             echo "::error::ANSIBLE_VAULT_PASSWORD is too short (minimum 8 characters)"
             exit 1
           fi
-          
+
           # Create the vault password file from GitHub secret (securely)
           printf '%s\n' "$VAULT_PASS" > ~/.ansible_vault_pass
-          
+
           # Secure the file
           chmod 600 ~/.ansible_vault_pass
-          
+
           echo "✅ Ansible Vault password file created and secured"
           echo "📋 IMPORTANT: Ensure ansible/vars/vault-vars.yml is encrypted!"
           echo "   To encrypt: ansible-vault encrypt ansible/vars/vault-vars.yml"
@@ -527,13 +526,13 @@ jobs:
       - name: Validate Ansible Vault encryption
         run: |
           echo "🔍 Validating Ansible Vault encryption..."
-          
+
           # Check if vault-vars.yml exists
           if [ ! -f "ansible/vars/vault-vars.yml" ]; then
             echo "::error::ansible/vars/vault-vars.yml file not found!"
             exit 1
           fi
-          
+
           # Check if the file is encrypted (Ansible Vault files start with $ANSIBLE_VAULT)
           if ! head -1 ansible/vars/vault-vars.yml | grep -q "^\$ANSIBLE_VAULT"; then
             echo "::error::ansible/vars/vault-vars.yml is not encrypted with Ansible Vault!"
@@ -547,7 +546,7 @@ jobs:
             echo "3. Use the same password as your ANSIBLE_VAULT_PASSWORD secret"
             exit 1
           fi
-          
+
           # Test decryption with the provided password
           if ! ansible-vault view ansible/vars/vault-vars.yml --vault-password-file ~/.ansible_vault_pass >/dev/null 2>&1; then
             echo "::error::Cannot decrypt ansible/vars/vault-vars.yml with the provided vault password!"
@@ -561,7 +560,7 @@ jobs:
             echo "2. Or re-encrypt the file with: ansible-vault encrypt ansible/vars/vault-vars.yml"
             exit 1
           fi
-          
+
           echo "✅ Ansible Vault encryption validation passed"
 
       - name: Deploy using Ansible
@@ -586,7 +585,7 @@ jobs:
             echo "::error::DROPLET_IP environment variable is not set"
             exit 1
           fi
-          
+
           echo "🚀 Production Deployment using Image Promotion"
           echo "=============================================="
           echo "Droplet IP: $DROPLET_IP"
@@ -594,24 +593,24 @@ jobs:
           echo "Image Digest: ${{ needs.verify-promoted-image.outputs.image_digest }}"
           echo "Deployment Reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}"
           echo "=============================================="
-          
+
           # Set up ansible inventory dynamically
           echo "[digitalocean]" > inventory.ini
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
           cat inventory.ini
-          
+
           # Test SSH connection
           echo "Testing SSH connection to $DROPLET_IP..."
           ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/id_rsa root@$DROPLET_IP "echo SSH connection successful" || echo "SSH connection test failed, but continuing deployment anyway"
-          
+
           # Run the Ansible deployment directly
           echo "Starting Ansible deployment..."
           cd ansible
-          
+
           # Create inventory file
           echo "[digitalocean]" > inventory.ini
           echo "$DROPLET_IP ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'" >> inventory.ini
-          
+
           # Run production deployment playbook with GitHub token and username
           if ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini production-deploy.yml --vault-password-file ~/.ansible_vault_pass -e "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" -e "GITHUB_USERNAME=${{ github.actor }}" -e "GITHUB_REPO=${{ github.repository }}" -e "DOCKER_IMAGE=${{ needs.verify-promoted-image.outputs.full_image_name }}"; then
             echo "Deployment successful"
@@ -621,12 +620,10 @@ jobs:
             echo "deployment_success=false" >> $GITHUB_OUTPUT
             exit 1
           fi
-          
           # Cleanup vault password file
           echo "🧹 Cleaning up sensitive files..."
           rm -f ~/.ansible_vault_pass
           echo "✅ Vault password file securely removed"
-  
   deployment-verification:
     name: Comprehensive Deployment Verification
     runs-on: ubuntu-latest
@@ -636,11 +633,11 @@ jobs:
       health_check_passed: ${{ steps.health-checks.outputs.passed }}
       performance_check_passed: ${{ steps.performance-checks.outputs.passed }}
       security_check_passed: ${{ steps.security-checks.outputs.passed }}
-    
+
     steps:
       - name: Checkout repository for verification scripts
         uses: actions/checkout@v5
-      
+
       - name: Initial deployment status check
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
@@ -654,46 +651,46 @@ jobs:
           echo "- Production URL: http://$DROPLET_IP/"
           echo "- Verification Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
           echo ""
-      
+
       - name: Wait for application startup
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "⏳ Waiting for application to fully start up..."
-          
+
           # Wait for application to be ready (up to 5 minutes)
           TIMEOUT=300
           INTERVAL=10
           ELAPSED=0
-          
+
           while [ $ELAPSED -lt $TIMEOUT ]; do
             echo "⏰ Checking application startup... (${ELAPSED}s elapsed)"
-            
+
             if curl -s --max-time 10 --head http://$DROPLET_IP/ >/dev/null 2>&1; then
               echo "✅ Application is responding to requests"
               break
             fi
-            
+
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
-          
+
           if [ $ELAPSED -ge $TIMEOUT ]; then
             echo "❌ Application failed to start within ${TIMEOUT} seconds"
             exit 1
           fi
-          
+
           echo "🚀 Application startup completed in ${ELAPSED} seconds"
-      
+
       - name: Comprehensive health checks
         id: health-checks
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "🏥 Running comprehensive health checks..."
-          
+
           HEALTH_PASSED=true
-          
+
           # 1. Basic HTTP connectivity check
           echo "1️⃣ Checking basic HTTP connectivity..."
           if curl -s --max-time 30 --head http://$DROPLET_IP/ | grep -E "HTTP/[0-9.]+ (200|301|302)" >/dev/null; then
@@ -702,7 +699,7 @@ jobs:
             echo "❌ HTTP connectivity: FAILED"
             HEALTH_PASSED=false
           fi
-          
+
           # 2. Health endpoint check (if exists)
           echo "2️⃣ Checking health endpoint..."
           if curl -s --max-time 30 http://$DROPLET_IP/api/health >/dev/null 2>&1; then
@@ -712,7 +709,7 @@ jobs:
           else
             echo "⚠️ Health endpoint: Not available (this may be expected)"
           fi
-          
+
           # 3. Application load test
           echo "3️⃣ Running basic load test..."
           LOAD_TEST_PASSED=true
@@ -725,25 +722,25 @@ jobs:
             fi
             sleep 1
           done
-          
+
           if [ "$LOAD_TEST_PASSED" = "true" ]; then
             echo "✅ Basic load test: PASSED"
           else
             echo "❌ Basic load test: FAILED"
             HEALTH_PASSED=false
           fi
-          
+
           # 4. Response time check
           echo "4️⃣ Checking response time..."
           RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' http://$DROPLET_IP/ || echo "0")
           RESPONSE_TIME_MS=$(echo "$RESPONSE_TIME * 1000" | bc -l 2>/dev/null || echo "0")
-          
+
           if (( $(echo "$RESPONSE_TIME < 5.0" | bc -l 2>/dev/null || echo "0") )); then
             echo "✅ Response time: ${RESPONSE_TIME_MS}ms (PASSED)"
           else
             echo "⚠️ Response time: ${RESPONSE_TIME_MS}ms (SLOW - consider optimization)"
           fi
-          
+
           # 5. Content verification
           echo "5️⃣ Checking page content..."
           CONTENT=$(curl -s --max-time 30 http://$DROPLET_IP/ | head -n 20)
@@ -752,40 +749,40 @@ jobs:
           else
             echo "⚠️ Page content: No HTML detected (may be API-only service)"
           fi
-          
+
           echo "passed=$HEALTH_PASSED" >> $GITHUB_OUTPUT
-          
+
           if [ "$HEALTH_PASSED" = "true" ]; then
             echo "🎉 All health checks PASSED!"
           else
             echo "❌ Some health checks FAILED!"
           fi
-      
+
       - name: Performance verification
         id: performance-checks
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "⚡ Running performance verification..."
-          
+
           PERF_PASSED=true
-          
+
           # 1. Multiple concurrent requests test
           echo "1️⃣ Testing concurrent request handling..."
-          
+
           # Create a simple concurrent test
           for i in {1..3}; do
             curl -s --max-time 10 http://$DROPLET_IP/ >/dev/null &
           done
           wait
           echo "✅ Concurrent requests: PASSED"
-          
+
           # 2. Resource usage check (via SSH to server)
           echo "2️⃣ Checking server resource usage..."
           # Note: This would require SSH access to check actual resource usage
           # For now, we'll simulate this check
           echo "✅ Resource usage: Within acceptable limits"
-          
+
           # 3. Memory usage estimation
           echo "3️⃣ Estimating application performance..."
           # Test multiple page loads to check for memory leaks
@@ -796,39 +793,39 @@ jobs:
               PERF_PASSED=false
             fi
           done
-          
+
           echo "passed=$PERF_PASSED" >> $GITHUB_OUTPUT
-          
+
           if [ "$PERF_PASSED" = "true" ]; then
             echo "✅ Performance checks PASSED!"
           else
             echo "⚠️ Performance checks showed some concerns"
           fi
-      
+
       - name: Security verification
         id: security-checks
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "🔒 Running security verification..."
-          
+
           SECURITY_PASSED=true
-          
+
           # 1. Check for security headers
           echo "1️⃣ Checking security headers..."
           HEADERS=$(curl -s --max-time 30 -I http://$DROPLET_IP/ || echo "")
-          
+
           # Check for basic security headers
           if echo "$HEADERS" | grep -i "x-frame-options\|x-content-type-options\|x-xss-protection" >/dev/null; then
             echo "✅ Security headers: Some security headers present"
           else
             echo "⚠️ Security headers: Consider adding security headers"
           fi
-          
+
           # 2. Check for sensitive information exposure
           echo "2️⃣ Checking for information disclosure..."
           RESPONSE=$(curl -s --max-time 30 http://$DROPLET_IP/ | head -n 50)
-          
+
           # Check for common sensitive info patterns
           if echo "$RESPONSE" | grep -iE "(password|secret|token|key|api)" >/dev/null; then
             echo "⚠️ Information disclosure: Potential sensitive data in response"
@@ -836,7 +833,7 @@ jobs:
           else
             echo "✅ Information disclosure: No obvious sensitive data exposed"
           fi
-          
+
           # 3. Check for HTTPS availability (if configured)
           echo "3️⃣ Checking HTTPS configuration..."
           if curl -s --max-time 10 https://$DROPLET_IP/ >/dev/null 2>&1; then
@@ -844,7 +841,7 @@ jobs:
           else
             echo "ℹ️ HTTPS: Not configured (HTTP-only deployment)"
           fi
-          
+
           # 4. Basic port scan check
           echo "4️⃣ Checking for unnecessary open ports..."
           # Check common ports that shouldn't be publicly accessible
@@ -855,26 +852,26 @@ jobs:
             fi
           done
           echo "✅ Port security check completed"
-          
+
           echo "passed=$SECURITY_PASSED" >> $GITHUB_OUTPUT
-          
+
           if [ "$SECURITY_PASSED" = "true" ]; then
             echo "✅ Security checks PASSED!"
           else
             echo "⚠️ Security checks showed some concerns"
           fi
-      
+
       - name: Final verification status
         id: final-status
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "📋 Generating final verification report..."
-          
+
           HEALTH_STATUS="${{ steps.health-checks.outputs.passed }}"
           PERF_STATUS="${{ steps.performance-checks.outputs.passed }}"
           SECURITY_STATUS="${{ steps.security-checks.outputs.passed }}"
-          
+
           # Determine overall status
           if [ "$HEALTH_STATUS" = "true" ] && [ "$PERF_STATUS" = "true" ] && [ "$SECURITY_STATUS" = "true" ]; then
             OVERALL_STATUS="success"
@@ -886,9 +883,9 @@ jobs:
             OVERALL_STATUS="failed"
             echo "❌ DEPLOYMENT VERIFICATION FAILED"
           fi
-          
+
           echo "status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
-          
+
           echo ""
           echo "📊 Verification Summary:"
           echo "- Health Checks: $([ "$HEALTH_STATUS" = "true" ] && echo "✅ PASSED" || echo "❌ FAILED")"
@@ -898,40 +895,36 @@ jobs:
           echo ""
           echo "🌐 Production URL: http://$DROPLET_IP/"
           echo "🕒 Verification completed at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-          
+
           # Set deployment as failed if health checks failed
           if [ "$HEALTH_STATUS" != "true" ]; then
             echo "❌ Critical health checks failed - marking deployment as failed"
             exit 1
           fi
 
-  selenium-tests:
-    name: Run Selenium Tests
+  playwright-tests:
+    name: Run Playwright Tests
     runs-on: ubuntu-latest
     needs: [deployment-verification]
     if: ${{ !inputs.skip_tests && !github.event.inputs.skip_tests }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.19.0'
-          cache: 'npm'
-          
+          node-version: "22.21.0"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-        
-      - name: Install Chrome
-        run: |
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-      
-      - name: Run Selenium tests
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
         env:
           APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
         run: npm run test:e2e
@@ -939,12 +932,19 @@ jobs:
 
   send-deployment-notifications:
     name: Send Deployment Notifications
-    needs: [verify-promoted-image, setup-infra, deploy-app, deployment-verification, selenium-tests]
+    needs:
+      [
+        verify-promoted-image,
+        setup-infra,
+        deploy-app,
+        deployment-verification,
+        playwright-tests,
+      ]
     if: always()
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: ${{ (needs.deploy-app.result == 'success' && needs.deployment-verification.result == 'success') && 'deployment-success' || 'deployment-failed' }}
-      environment: 'production'
+      environment: "production"
       deployment_details: |
         {
           "image": "${{ needs.verify-promoted-image.outputs.full_image_name }}",
@@ -960,23 +960,31 @@ jobs:
           "health_check_passed": "${{ needs.deployment-verification.outputs.health_check_passed }}",
           "performance_check_passed": "${{ needs.deployment-verification.outputs.performance_check_passed }}",
           "security_check_passed": "${{ needs.deployment-verification.outputs.security_check_passed }}",
-          "selenium_tests_result": "${{ needs.selenium-tests.result }}"
+          "playwright_tests_result": "${{ needs.playwright-tests.result }}"
         }
-      notification_channels: 'github,slack,teams'
+      notification_channels: "github,slack,teams"
       severity: ${{ (needs.deployment-verification.outputs.verification_status == 'failed') && 'error' || (needs.deployment-verification.outputs.verification_status == 'warning') && 'warning' || 'info' }}
-      additional_context: ${{ (needs.selenium-tests.result == 'skipped') && 'Selenium tests were skipped for this deployment.' || '' }}
+      additional_context: ${{ (needs.playwright-tests.result == 'skipped') && 'Playwright tests were skipped for this deployment.' || '' }}
 
   deployment-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
-    needs: [verify-promoted-image, setup-infra, deploy-app, deployment-verification, selenium-tests, send-deployment-notifications]
+    needs:
+      [
+        verify-promoted-image,
+        setup-infra,
+        deploy-app,
+        deployment-verification,
+        playwright-tests,
+        send-deployment-notifications,
+      ]
     if: always()
     steps:
       - name: Generate deployment summary
         run: |
           echo "## 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Determine overall status
           if [ "${{ needs.deploy-app.result }}" = "success" ] && [ "${{ needs.deployment-verification.result }}" = "success" ]; then
             echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
@@ -985,7 +993,7 @@ jobs:
             echo "**Overall Status:** 🔴 FAILED" >> $GITHUB_STEP_SUMMARY
             STATUS="FAILED"
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Promoted Image: ${{ needs.verify-promoted-image.outputs.full_image_name }}" >> $GITHUB_STEP_SUMMARY
@@ -993,7 +1001,7 @@ jobs:
           echo "- Deployment Reason: ${{ inputs.deployment_reason || github.event.inputs.deployment_reason || 'Production deployment' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Production URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "**Job Results:**" >> $GITHUB_STEP_SUMMARY
           echo "- Image Verification: ${{ needs.verify-promoted-image.result == 'success' && '✅' || '❌' }} ${{ needs.verify-promoted-image.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Infrastructure Setup: ${{ needs.setup-infra.result == 'success' && '✅' || '❌' }} ${{ needs.setup-infra.result }}" >> $GITHUB_STEP_SUMMARY
@@ -1005,14 +1013,14 @@ jobs:
           echo "- Performance Checks: ${{ needs.deployment-verification.outputs.performance_check_passed == 'true' && '✅ PASSED' || '⚠️ WARNINGS' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Security Checks: ${{ needs.deployment-verification.outputs.security_check_passed == 'true' && '✅ PASSED' || '⚠️ WARNINGS' }}" >> $GITHUB_STEP_SUMMARY
           echo "- Overall Verification: ${{ needs.deployment-verification.outputs.verification_status == 'success' && '✅ SUCCESS' || (needs.deployment-verification.outputs.verification_status == 'warning' && '⚠️ WARNING' || '❌ FAILED') }}" >> $GITHUB_STEP_SUMMARY
-          
-          # Handle selenium tests (might be skipped)
+
+          # Handle playwright tests (might be skipped)
           if [ "${{ inputs.skip_tests }}" = "true" ] || [ "${{ github.event.inputs.skip_tests }}" = "true" ]; then
-            echo "- Selenium Tests: ⏭️ SKIPPED (Emergency deployment)" >> $GITHUB_STEP_SUMMARY
+            echo "- Playwright Tests: ⏭️ SKIPPED (Emergency deployment)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "- Selenium Tests: ${{ needs.selenium-tests.result == 'success' && '✅' || (needs.selenium-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.selenium-tests.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Playwright Tests: ${{ needs.playwright-tests.result == 'success' && '✅' || (needs.playwright-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.playwright-tests.result }}" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           if [ "$STATUS" = "SUCCESS" ]; then
