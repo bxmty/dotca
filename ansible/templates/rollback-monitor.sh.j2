@@ -62,12 +62,12 @@ perform_health_check() {
     local start_time=$(date +%s%3N)
     local response_code=0
     local response_time=0
-
+    
     # Try to get health endpoint
     if response_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time $HEALTH_CHECK_TIMEOUT "$HEALTH_CHECK_URL" 2>/dev/null); then
         local end_time=$(date +%s%3N)
         response_time=$((end_time - start_time))
-
+        
         if [ "$response_code" = "200" ]; then
             echo "SUCCESS:$response_time"
             return 0
@@ -84,28 +84,28 @@ perform_health_check() {
 # Function to check system resources
 check_system_resources() {
     local issues=()
-
+    
     # Check memory usage
     local memory_usage=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100.0}')
     if [ "$memory_usage" -gt "$MEMORY_THRESHOLD" ]; then
         issues+=("High memory usage: ${memory_usage}%")
     fi
-
+    
     # Check disk usage
     local disk_usage=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
     if [ "$disk_usage" -gt "$DISK_THRESHOLD" ]; then
         issues+=("High disk usage: ${disk_usage}%")
     fi
-
+    
     # Check load average
     local load_avg=$(uptime | awk -F'load average:' '{ print $2 }' | cut -d, -f1 | xargs)
     local cpu_cores=$(nproc)
     local load_threshold=$((cpu_cores * 2))
-
+    
     if [ "$(echo "$load_avg > $load_threshold" | bc -l 2>/dev/null || echo 0)" = "1" ]; then
         issues+=("High load average: $load_avg (threshold: $load_threshold)")
     fi
-
+    
     echo "${issues[*]}"
 }
 
@@ -113,25 +113,25 @@ check_system_resources() {
 check_container_status() {
     cd "$DOCKER_COMPOSE_DIR" || return 1
     local docker_compose_cmd=$(get_docker_compose_cmd)
-
+    
     if [ "$docker_compose_cmd" = "none" ]; then
         echo "Docker Compose not available"
         return 1
     fi
-
+    
     # Check if container is running
     if ! $docker_compose_cmd ps | grep -q "Up"; then
         echo "Container not running"
         return 1
     fi
-
+    
     # Check container health
     local container_health=$($docker_compose_cmd ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}" | grep web || echo "")
     if [[ "$container_health" == *"unhealthy"* ]]; then
         echo "Container unhealthy"
         return 1
     fi
-
+    
     echo "Container healthy"
     return 0
 }
@@ -140,12 +140,12 @@ check_container_status() {
 check_application_performance() {
     local response_time=0
     local start_time=$(date +%s%3N)
-
+    
     # Perform multiple health checks to get average response time
     local total_time=0
     local check_count=0
     local max_checks=3
-
+    
     for i in $(seq 1 $max_checks); do
         local check_start=$(date +%s%3N)
         if curl -s -f -o /dev/null "$HEALTH_CHECK_URL" >/dev/null 2>&1; then
@@ -156,16 +156,16 @@ check_application_performance() {
         fi
         sleep 1
     done
-
+    
     if [ $check_count -gt 0 ]; then
         response_time=$((total_time / check_count))
-
+        
         if [ $response_time -gt $PERFORMANCE_THRESHOLD ]; then
             echo "Performance degraded: ${response_time}ms (threshold: ${PERFORMANCE_THRESHOLD}ms)"
             return 1
         fi
     fi
-
+    
     echo "Performance OK: ${response_time}ms"
     return 0
 }
@@ -173,25 +173,25 @@ check_application_performance() {
 # Function to check for security issues
 check_security_issues() {
     local issues=()
-
+    
     # Check for failed login attempts
     local failed_logins=$(grep "Failed password" /var/log/auth.log 2>/dev/null | wc -l || echo "0")
     if [ "$failed_logins" -gt 10 ]; then
         issues+=("High number of failed login attempts: $failed_logins")
     fi
-
+    
     # Check for suspicious network connections
     local suspicious_conns=$(netstat -tuln 2>/dev/null | grep -E ":(22|23|3389)" | wc -l || echo "0")
     if [ "$suspicious_conns" -gt 5 ]; then
         issues+=("Multiple suspicious network connections detected")
     fi
-
+    
     # Check for unusual processes
     local unusual_procs=$(ps aux | grep -E "(nc|netcat|telnet|ssh-keygen)" | grep -v grep | wc -l || echo "0")
     if [ "$unusual_procs" -gt 0 ]; then
         issues+=("Unusual processes detected")
     fi
-
+    
     echo "${issues[*]}"
 }
 
@@ -202,31 +202,31 @@ should_rollback() {
     local performance_status=$3
     local security_issues=$4
     local consecutive_failures=$5
-
+    
     # Check consecutive health check failures
     if [ "$consecutive_failures" -ge "$MAX_CONSECUTIVE_FAILURES" ]; then
         log_message "Rollback triggered: $consecutive_failures consecutive health check failures"
         return 0
     fi
-
+    
     # Check container status
     if [[ "$container_status" == *"not running"* ]] || [[ "$container_status" == *"unhealthy"* ]]; then
         log_message "Rollback triggered: Container status issue - $container_status"
         return 0
     fi
-
+    
     # Check performance degradation
     if [[ "$performance_status" == *"degraded"* ]]; then
         log_message "Rollback triggered: Performance degradation detected"
         return 0
     fi
-
+    
     # Check security issues
     if [ -n "$security_issues" ] && [ "$security_issues" != "0" ]; then
         log_message "Rollback triggered: Security issues detected"
         return 0
     fi
-
+    
     return 1
 }
 
@@ -234,28 +234,28 @@ should_rollback() {
 select_rollback_target() {
     # Look for most recent rollback image
     local rollback_target=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'rollback-[0-9]{8}-[0-9]{6}' | head -1)
-
+    
     if [ -n "$rollback_target" ]; then
         echo "$rollback_target"
         return 0
     fi
-
+    
     # Look for version-tagged image
     local version_target=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-
+    
     if [ -n "$version_target" ]; then
         echo "$version_target"
         return 0
     fi
-
+    
     # Look for previous main image
     local main_target=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E ':main-[a-f0-9]+' | head -1)
-
+    
     if [ -n "$main_target" ]; then
         echo "$main_target"
         return 0
     fi
-
+    
     echo ""
     return 1
 }
@@ -264,32 +264,32 @@ select_rollback_target() {
 execute_rollback() {
     local rollback_target=$1
     local reason=$2
-
+    
     log_message "Executing automatic rollback to: $rollback_target (Reason: $reason)"
-
+    
     # Check if rollback script exists
     if [ ! -x "$ROLLBACK_EXEC_SCRIPT" ]; then
         log_message "ERROR: Rollback execution script not found: $ROLLBACK_EXEC_SCRIPT"
         return 1
     fi
-
+    
     # Execute rollback with force flag
     if "$ROLLBACK_EXEC_SCRIPT" -f -t "$rollback_target"; then
         log_message "Automatic rollback completed successfully"
-
+        
         # Update rollback status
         update_rollback_status "$rollback_target" "automatic" "$reason"
-
+        
         # Send notification (placeholder for future integration)
         send_rollback_notification "$rollback_target" "$reason" "success"
-
+        
         return 0
     else
         log_message "ERROR: Automatic rollback failed"
-
+        
         # Send failure notification
         send_rollback_notification "$rollback_target" "$reason" "failed"
-
+        
         return 1
     fi
 }
@@ -299,9 +299,9 @@ update_rollback_status() {
     local target=$1
     local type=$2
     local reason=$3
-
+    
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
+    
     # Create or update status file
     if [ -f "$STATUS_FILE" ]; then
         # Update existing file
@@ -345,11 +345,11 @@ send_rollback_notification() {
     local target=$1
     local reason=$2
     local status=$3
-
+    
     # Placeholder for future notification integration
     # This could integrate with Slack, email, PagerDuty, etc.
     log_message "NOTIFICATION: Rollback $status - Target: $target, Reason: $reason"
-
+    
     # Example: Send to syslog for external monitoring
     logger -t "rollback-monitor" "Rollback $status - Target: $target, Reason: $reason"
 }
@@ -362,9 +362,9 @@ generate_monitoring_report() {
     local system_issues=$4
     local security_issues=$5
     local consecutive_failures=$6
-
+    
     local report_file="$APP_DIR/monitoring-report-$(date +%Y%m%d-%H%M%S).txt"
-
+    
     cat > "$report_file" << EOF
 ============================================
 PRODUCTION ENVIRONMENT MONITORING REPORT
@@ -385,31 +385,31 @@ SYSTEM STATUS:
 
 RECOMMENDATIONS:
 EOF
-
+    
     # Add recommendations based on status
     if [ "$consecutive_failures" -ge "$MAX_CONSECUTIVE_FAILURES" ]; then
         echo "- IMMEDIATE ACTION REQUIRED: Health check failures detected" >> "$report_file"
         echo "- Consider automatic rollback to previous stable image" >> "$report_file"
     fi
-
+    
     if [[ "$container_status" == *"not running"* ]]; then
         echo "- Container is not running - investigate immediately" >> "$report_file"
     fi
-
+    
     if [[ "$performance_status" == *"degraded"* ]]; then
         echo "- Performance degradation detected - monitor closely" >> "$report_file"
     fi
-
+    
     if [ -n "$system_issues" ] && [ "$system_issues" != "0" ]; then
         echo "- System resource issues detected - investigate" >> "$report_file"
     fi
-
+    
     if [ -n "$security_issues" ] && [ "$security_issues" != "0" ]; then
         echo "- Security issues detected - immediate investigation required" >> "$report_file"
     fi
-
+    
     echo "============================================" >> "$report_file"
-
+    
     log_message "Monitoring report generated: $report_file"
     echo "$report_file"
 }
@@ -417,22 +417,22 @@ EOF
 # Main monitoring function
 main_monitoring() {
     log_message "Starting production environment monitoring..."
-
+    
     # Initialize failure counter
     local consecutive_failures=0
     local last_health_status=""
-
+    
     while true; do
         local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
         local issues_detected=false
-
+        
         log_message "=== Monitoring cycle started at $timestamp ==="
-
+        
         # Perform health check
         local health_result=$(perform_health_check)
         local health_status=""
         local response_time=0
-
+        
         if [[ "$health_result" == "SUCCESS:"* ]]; then
             health_status="HEALTHY"
             response_time=$(echo "$health_result" | cut -d: -f2)
@@ -444,7 +444,7 @@ main_monitoring() {
             print_status $RED "❌ Health check failed (attempt $consecutive_failures)"
             issues_detected=true
         fi
-
+        
         # Check container status
         local container_status=$(check_container_status)
         if [ $? -ne 0 ]; then
@@ -453,7 +453,7 @@ main_monitoring() {
         else
             print_status $GREEN "✅ Container status: $container_status"
         fi
-
+        
         # Check performance
         local performance_status=$(check_application_performance)
         if [ $? -ne 0 ]; then
@@ -462,32 +462,32 @@ main_monitoring() {
         else
             print_status $GREEN "✅ Performance: $performance_status"
         fi
-
+        
         # Check system resources
         local system_issues=$(check_system_resources)
         if [ -n "$system_issues" ] && [ "$system_issues" != "0" ]; then
             print_status $YELLOW "⚠️  System issues: $system_issues"
             issues_detected=true
         fi
-
+        
         # Check security
         local security_issues=$(check_security_issues)
         if [ -n "$security_issues" ] && [ "$security_issues" != "0" ]; then
             print_status $RED "🔒 Security issues: $security_issues"
             issues_detected=true
         fi
-
+        
         # Generate monitoring report
         local report_file=$(generate_monitoring_report "$health_status" "$container_status" "$performance_status" "$system_issues" "$security_issues" "$consecutive_failures")
-
+        
         # Check if rollback is needed
         if should_rollback "$health_status" "$container_status" "$performance_status" "$security_issues" "$consecutive_failures"; then
             print_status $RED "🚨 ROLLBACK TRIGGERED - Selecting rollback target..."
-
+            
             local rollback_target=$(select_rollback_target)
             if [ -n "$rollback_target" ]; then
                 local rollback_reason="Automatic rollback due to: $health_status, container: $container_status, performance: $performance_status"
-
+                
                 if execute_rollback "$rollback_target" "$rollback_reason"; then
                     print_status $GREEN "✅ Rollback completed successfully"
                     consecutive_failures=0
@@ -498,16 +498,16 @@ main_monitoring() {
                 print_status $RED "❌ No rollback target available - manual intervention required"
             fi
         fi
-
+        
         # Log monitoring summary
         if [ "$issues_detected" = true ]; then
             log_message "WARNING: Issues detected during monitoring cycle"
         else
             log_message "INFO: All systems healthy during monitoring cycle"
         fi
-
+        
         log_message "=== Monitoring cycle completed ==="
-
+        
         # Wait before next cycle (5 minutes)
         sleep 300
     done
@@ -554,22 +554,22 @@ EOF
         ;;
     --test)
         log_message "Testing monitoring functions..."
-
+        
         # Test health check
         echo "Testing health check..."
         local test_result=$(perform_health_check)
         echo "Health check result: $test_result"
-
+        
         # Test container status
         echo "Testing container status check..."
         local test_container_status=$(check_container_status)
         echo "Container status: $test_container_status"
-
+        
         # Test system resources
         echo "Testing system resource check..."
         local test_system_issues=$(check_system_resources)
         echo "System issues: $test_system_issues"
-
+        
         echo "Testing completed"
         exit 0
         ;;

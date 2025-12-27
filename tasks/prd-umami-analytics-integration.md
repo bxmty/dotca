@@ -15,13 +15,11 @@ This PRD outlines the requirements for integrating Umami analytics into our appl
 ## User Stories
 
 ### Business Stakeholder
-
 - As a business stakeholder, I want to see real-time visitor counts and page popularity so that I can understand which content resonates with our audience
 - As a business stakeholder, I want to track conversion funnels from visitor to lead so that I can measure the effectiveness of our marketing efforts
 - As a business stakeholder, I want to view analytics data without relying on third-party services so that I maintain control over our data privacy
 
 ### Developer
-
 - As a developer, I want to implement custom event tracking for lead generation forms so that we can measure conversion rates accurately
 - As a developer, I want to deploy Umami on the same infrastructure as our application so that I can manage everything in one place
 - As a developer, I want to ensure proper SSL configuration for the analytics dashboard so that users can access it securely
@@ -29,7 +27,6 @@ This PRD outlines the requirements for integrating Umami analytics into our appl
 ## Functional Requirements
 
 ### Next.js Integration
-
 1. The system must include Umami tracking script in the application layout
 2. The system must track basic page views automatically on route changes
 3. The system must support custom event tracking for key user actions
@@ -38,7 +35,6 @@ This PRD outlines the requirements for integrating Umami analytics into our appl
 6. The system must exclude bot traffic from analytics data
 
 ### Ansible Deployment
-
 7. The system must deploy Umami on the same VM as the application
 8. The system must configure SSL certificates for secure access to the analytics dashboard
 9. The system must initialize and configure the database using existing Terraform infrastructure
@@ -47,7 +43,6 @@ This PRD outlines the requirements for integrating Umami analytics into our appl
 12. The system must set up automated backups for the analytics database
 
 ### Analytics Dashboard
-
 13. The system must provide a web-based dashboard accessible at a dedicated subdomain
 14. The system must display real-time visitor statistics
 15. The system must show page view trends and popular content
@@ -66,20 +61,17 @@ This PRD outlines the requirements for integrating Umami analytics into our appl
 ## Technical Considerations
 
 ### Infrastructure
-
 - Deploy on existing VM alongside the main application
 - Use existing Terraform-managed database infrastructure
 - Configure SSL using existing certificate management setup
 - Set up nginx reverse proxy with existing configuration patterns
 
 ### Integration Points
-
 - Integrate with existing Next.js application structure
 - Follow existing Ansible playbook patterns for deployment
 - Maintain consistency with current monitoring and logging setup
 
 ### Performance Impact
-
 - Ensure tracking script doesn't significantly impact page load times
 - Implement proper caching for analytics assets
 - Monitor resource usage on the shared VM
@@ -103,25 +95,21 @@ This PRD outlines the requirements for integrating Umami analytics into our appl
 ## Implementation Timeline
 
 ### Phase 1: Infrastructure Setup (Week 1)
-
 - Deploy Umami on existing VM
 - Configure database and SSL
 - Set up nginx reverse proxy
 
 ### Phase 2: Next.js Integration (Week 2)
-
 - Add Umami tracking script
 - Implement basic page view tracking
 - Set up custom event tracking for conversions
 
 ### Phase 3: Testing and Validation (Week 3)
-
 - Test analytics data accuracy
 - Validate conversion tracking
 - Performance testing and optimization
 
 ### Phase 4: Deployment and Monitoring (Week 4)
-
 - Deploy to production
 - Set up monitoring and alerts
 - Train stakeholders on dashboard usage
