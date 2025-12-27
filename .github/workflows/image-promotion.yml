@@ -547,9 +547,122 @@ jobs:
       notification_channels: 'github,slack'
       severity: 'info'
 
+  validate-staging-deployment:
+    name: Validate Staging Deployment with Playwright
+    needs: [validate-promotion, notify-promotion-start, error-handler]
+    if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Error Handling Utilities
+        uses: actions/download-artifact@v5
+        with:
+          name: error-handling-utilities
+          path: ${{ github.workspace }}
+
+      - name: Setup Error Handling
+        id: error_setup
+        run: |
+          # Source error handling utilities
+          source "${{ github.workspace }}/error-utils.sh"
+          echo "✅ Error handling utilities loaded"
+
+      - name: Checkout repository for Playwright tests
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.21.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate staging deployment
+        id: staging_validation
+        run: |
+          # Source error handling utilities
+          source "${{ github.workspace }}/error-utils.sh"
+
+          # Log step start
+          log_step_start "staging_validation" "Running Playwright tests against staging deployment"
+
+          echo "🧪 Running Playwright validation tests against staging environment"
+          echo "Staging URL: http://134.122.44.193"
+
+          # Run Playwright tests with error handling
+          if APP_URL=http://134.122.44.193 npm run test:e2e; then
+            echo "✅ All Playwright tests passed - staging deployment validated"
+            VALIDATION_RESULT="success"
+          else
+            echo "❌ Playwright tests failed - staging deployment has issues"
+            VALIDATION_RESULT="failure"
+            exit 1
+          fi
+
+          # Update status tracking
+          echo "## 📊 Promotion Status Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** 🟡 IN PROGRESS" >> $GITHUB_STEP_SUMMARY
+          echo "**Started:** ${{ steps.status_tracking.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Approval:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Validation:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging Validation:** ✅ COMPLETED" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Progress:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🔍 Staging Deployment Validation" >> $GITHUB_STEP_SUMMARY
+          echo "6. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "7. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+
+          # Store validation result
+          echo "validation_result=$VALIDATION_RESULT" >> $GITHUB_OUTPUT
+
+          # Log successful validation
+          log_message "SUCCESS" "Staging deployment validation completed" "Result: $VALIDATION_RESULT" "staging_validation"
+          log_audit "staging-validated" "staging-deployment" "Playwright validation completed for staging deployment" "${{ github.actor }}"
+
+          # Log step completion
+          log_step_end "staging_validation" "success" "$(date +%s)"
+
+      - name: Upload Playwright test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: promotion-playwright-test-results
+          path: |
+            test-results/
+            playwright-report/
+            screenshots/
+            *.log
+          retention-days: 30
+
+      - name: Upload Log Files as Artifacts (Staging Validation Case)
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-logs-staging-validation
+          path: |
+            ${{ github.workspace }}/promotion.log
+            ${{ github.workspace }}/promotion-audit.log
+            ${{ github.workspace }}/promotion-performance.log
+            ${{ github.workspace }}/promotion-errors.log
+          retention-days: 30
+
   promote-image:
     name: Promote Staging Image to Production
-    needs: [validate-promotion, notify-promotion-start, error-handler]
+    needs:
+      [
+        validate-promotion,
+        validate-staging-deployment,
+        notify-promotion-start,
+        error-handler,
+      ]
     if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
     runs-on: ubuntu-latest
     permissions:
@@ -611,8 +724,9 @@ jobs:
           echo "2. 📋 Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
           echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
           echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
-          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
-          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🧪 Staging Deployment Validation" >> $GITHUB_STEP_SUMMARY
+          echo "6. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "7. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Log Files as Artifacts (Status Tracking Case)
         uses: actions/upload-artifact@v4
@@ -763,8 +877,9 @@ jobs:
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           echo "1. ✅ Manual approval granted" >> $GITHUB_STEP_SUMMARY
           echo "2. 🔍 Image validation and integrity checks" >> $GITHUB_STEP_SUMMARY
-          echo "3. 🏷️  Image promotion and tagging" >> $GITHUB_STEP_SUMMARY
-          echo "4. 📋 Post-promotion verification" >> $GITHUB_STEP_SUMMARY
+          echo "3. 🧪 Staging deployment validation" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🏷️  Image promotion and tagging" >> $GITHUB_STEP_SUMMARY
+          echo "5. 📋 Post-promotion verification" >> $GITHUB_STEP_SUMMARY
 
           # Log promotion plan
           log_message "INFO" "Pre-promotion summary created" "Ready to proceed with image validation" "pre_promotion_summary"
@@ -963,9 +1078,10 @@ jobs:
           echo "1. ✅ Manual Approval Required" >> $GITHUB_STEP_SUMMARY
           echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
           echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
-          echo "4. 🔍 Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
-          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
-          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
+          echo "5. ✅ Staging Deployment Validation" >> $GITHUB_STEP_SUMMARY
+          echo "6. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "7. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
 
           # Log successful validation
           log_message "SUCCESS" "Image validation completed" "Image ID: $IMAGE_ID, Size: $IMAGE_SIZE" "image_validation"
@@ -1176,8 +1292,9 @@ jobs:
           echo "2. ✅ Pre-Promotion Summary" >> $GITHUB_STEP_SUMMARY
           echo "3. ✅ Verify Manual Approval" >> $GITHUB_STEP_SUMMARY
           echo "4. ✅ Image Validation & Integrity Checks" >> $GITHUB_STEP_SUMMARY
-          echo "5. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
-          echo "6. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
+          echo "5. ✅ Staging Deployment Validation" >> $GITHUB_STEP_SUMMARY
+          echo "6. 🏷️  Image Promotion & Tagging" >> $GITHUB_STEP_SUMMARY
+          echo "7. 📋 Post-Promotion Verification" >> $GITHUB_STEP_SUMMARY
 
           # Log validation completion
           log_message "SUCCESS" "Comprehensive image validation completed" "Result: $VALIDATION_RESULT" "image_integrity"
@@ -1593,7 +1710,13 @@ jobs:
 
   promotion-complete:
     name: Promotion Complete
-    needs: [validate-promotion, promote-image, error-handler]
+    needs:
+      [
+        validate-promotion,
+        validate-staging-deployment,
+        promote-image,
+        error-handler,
+      ]
     if: ${{ needs.promote-image.outputs.promotion_success == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -1625,8 +1748,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           echo "1. ✅ Image is ready in production registry" >> $GITHUB_STEP_SUMMARY
-          echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
-          echo "3. 📋 Use the production image tag in your deployment" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🚀 Production deployment will be triggered automatically" >> $GITHUB_STEP_SUMMARY
+          echo "3. 📋 Monitor the production deployment progress" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Manual Production Deployment:**" >> $GITHUB_STEP_SUMMARY
           echo "- Go to Actions → Production Pipeline" >> $GITHUB_STEP_SUMMARY
@@ -1659,6 +1782,7 @@ jobs:
     needs:
       [
         validate-promotion,
+        validate-staging-deployment,
         promote-image,
         trigger-production-deployment,
         error-handler,
@@ -1689,6 +1813,7 @@ jobs:
     needs:
       [
         validate-promotion,
+        validate-staging-deployment,
         promote-image,
         trigger-production-deployment,
         send-promotion-notifications,
@@ -1783,13 +1908,15 @@ jobs:
           if [ "${{ needs.promote-image.outputs.promotion_success }}" = "true" ]; then
             echo "1. ✅ Image promotion completed successfully" >> $GITHUB_STEP_SUMMARY
             if [ "${{ needs.trigger-production-deployment.result }}" = "success" ]; then
-              echo "2. 🚀 Production deployment workflow has been triggered automatically" >> $GITHUB_STEP_SUMMARY
-              echo "3. 📋 Monitor the production deployment progress" >> $GITHUB_STEP_SUMMARY
-              echo "4. 🔍 Verify production deployment success when complete" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🚀 Production deployment workflow has been triggered automatically" >> $GITHUB_STEP_SUMMARY
+            echo "3. 📋 Monitor the production deployment progress" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🧪 Playwright tests will run as part of production deployment" >> $GITHUB_STEP_SUMMARY
+            echo "5. 🔍 Verify production deployment and test results" >> $GITHUB_STEP_SUMMARY
             else
               echo "2. 🔄 Manually trigger production deployment when ready" >> $GITHUB_STEP_SUMMARY
               echo "3. 📋 Use promoted image tags in production deployment" >> $GITHUB_STEP_SUMMARY
-              echo "4. 🔍 Monitor production deployment for any issues" >> $GITHUB_STEP_SUMMARY
+              echo "4. 🧪 Playwright tests will validate production deployment" >> $GITHUB_STEP_SUMMARY
+              echo "5. 🔍 Monitor production deployment and test results" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "1. ❌ Image promotion failed" >> $GITHUB_STEP_SUMMARY
@@ -1827,7 +1954,13 @@ jobs:
 
   trigger-production-deployment:
     name: Trigger Production Deployment
-    needs: [validate-promotion, promote-image, error-handler]
+    needs:
+      [
+        validate-promotion,
+        validate-staging-deployment,
+        promote-image,
+        error-handler,
+      ]
     if: ${{ needs.promote-image.outputs.promotion_success == 'true' && github.event.inputs.target_environment == 'production' }}
     uses: ./.github/workflows/prod-deploy.yml
     with:
@@ -1848,7 +1981,13 @@ jobs:
 
   promotion-failed:
     name: Handle Promotion Failure
-    needs: [validate-promotion, promote-image, error-handler]
+    needs:
+      [
+        validate-promotion,
+        validate-staging-deployment,
+        promote-image,
+        error-handler,
+      ]
     if: ${{ failure() && needs.validate-promotion.outputs.can_promote == 'true' }}
     runs-on: ubuntu-latest
     steps:
