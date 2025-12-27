@@ -7,24 +7,20 @@ on:
   workflow_dispatch:
     inputs:
       include_history:
-        description: 'Include deployment history'
+        description: "Include deployment history"
         required: false
         type: boolean
         default: true
       detailed_report:
-        description: 'Generate detailed status report'
+        description: "Generate detailed status report"
         required: false
         type: boolean
         default: false
       send_notifications:
-        description: 'Send dashboard notifications'
+        description: "Send dashboard notifications"
         required: false
         type: boolean
         default: false
-
-  schedule:
-    # Generate status report twice daily
-    - cron: '0 9,17 * * 1-5'  # 9 AM and 5 PM on weekdays
 
 env:
   INCLUDE_HISTORY: ${{ inputs.include_history || 'true' }}
@@ -43,26 +39,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      
+
       - name: Check production status
         id: check-production
         run: |
           echo "🔍 Checking production environment status..."
-          
+
           # This would typically check your actual production environment
           # For now, we'll simulate the check
-          
+
           # Try to determine production URL from environment or configuration
           if [ -f ".env.production" ]; then
             PROD_URL=$(grep -E "^(NEXT_)?PUBLIC_URL=" .env.production | cut -d'=' -f2 | tr -d '"' || echo "")
           fi
-          
+
           if [ -z "$PROD_URL" ]; then
             PROD_URL="https://production.example.com"  # Default/placeholder
           fi
-          
+
           echo "Production URL: $PROD_URL"
-          
+
           # Simulate production health check
           if curl -s --max-time 10 --head "$PROD_URL" >/dev/null 2>&1; then
             PROD_STATUS="healthy"
@@ -73,30 +69,30 @@ jobs:
             PROD_RESPONSE_TIME="N/A"
             PROD_LAST_DEPLOY="Unknown"
           fi
-          
+
           echo "production_status=$PROD_STATUS" >> $GITHUB_OUTPUT
           echo "production_url=$PROD_URL" >> $GITHUB_OUTPUT
           echo "production_response_time=$PROD_RESPONSE_TIME" >> $GITHUB_OUTPUT
           echo "production_last_deploy=$PROD_LAST_DEPLOY" >> $GITHUB_OUTPUT
-          
+
           echo "✅ Production status: $PROD_STATUS"
-      
+
       - name: Check staging status
         id: check-staging
         run: |
           echo "🔍 Checking staging environment status..."
-          
+
           # Similar check for staging environment
           if [ -f ".env.staging" ]; then
             STAGING_URL=$(grep -E "^(NEXT_)?PUBLIC_URL=" .env.staging | cut -d'=' -f2 | tr -d '"' || echo "")
           fi
-          
+
           if [ -z "$STAGING_URL" ]; then
             STAGING_URL="https://staging.example.com"  # Default/placeholder
           fi
-          
+
           echo "Staging URL: $STAGING_URL"
-          
+
           # Simulate staging health check
           if curl -s --max-time 10 --head "$STAGING_URL" >/dev/null 2>&1; then
             STAGING_STATUS="healthy"
@@ -107,19 +103,19 @@ jobs:
             STAGING_RESPONSE_TIME="N/A"
             STAGING_LAST_DEPLOY="Unknown"
           fi
-          
+
           echo "staging_status=$STAGING_STATUS" >> $GITHUB_OUTPUT
           echo "staging_url=$STAGING_URL" >> $GITHUB_OUTPUT
           echo "staging_response_time=$STAGING_RESPONSE_TIME" >> $GITHUB_OUTPUT
           echo "staging_last_deploy=$STAGING_LAST_DEPLOY" >> $GITHUB_OUTPUT
-          
+
           echo "✅ Staging status: $STAGING_STATUS"
-      
+
       - name: Check recent workflow runs
         id: check-workflows
         run: |
           echo "🔍 Checking recent workflow runs..."
-          
+
           # Get recent workflow runs using GitHub API
           RECENT_RUNS=$(gh api repos/${{ github.repository }}/actions/runs \
             --jq '.workflow_runs[:10] | map({
@@ -130,67 +126,67 @@ jobs:
               created_at: .created_at,
               html_url: .html_url
             })' 2>/dev/null || echo '[]')
-          
+
           echo "recent_runs<<EOF" >> $GITHUB_OUTPUT
           echo "$RECENT_RUNS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
           # Count failed workflows in last 24 hours
           FAILED_COUNT=$(echo "$RECENT_RUNS" | jq '[.[] | select(.conclusion == "failure" and (.created_at | fromdateiso8601) > (now - 86400))] | length' 2>/dev/null || echo "0")
-          
+
           echo "failed_workflows_24h=$FAILED_COUNT" >> $GITHUB_OUTPUT
           echo "📊 Failed workflows (24h): $FAILED_COUNT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Check container registry status
         id: check-registry
         run: |
           echo "🔍 Checking container registry status..."
-          
+
           # Check if images are available
           STAGING_IMAGE="ghcr.io/${{ github.repository }}:staging"
           PRODUCTION_IMAGE="ghcr.io/${{ github.repository }}:main"
-          
+
           STAGING_AVAILABLE="false"
           PRODUCTION_AVAILABLE="false"
-          
+
           if docker pull "$STAGING_IMAGE" >/dev/null 2>&1; then
             STAGING_AVAILABLE="true"
             STAGING_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
             STAGING_CREATED=$(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)
           fi
-          
+
           if docker pull "$PRODUCTION_IMAGE" >/dev/null 2>&1; then
             PRODUCTION_AVAILABLE="true"
             PRODUCTION_SIZE=$(docker images --format "{{.Size}}" "$PRODUCTION_IMAGE" | head -1)
             PRODUCTION_CREATED=$(docker images --format "{{.CreatedAt}}" "$PRODUCTION_IMAGE" | head -1)
           fi
-          
+
           echo "staging_image_available=$STAGING_AVAILABLE" >> $GITHUB_OUTPUT
           echo "staging_image_size=${STAGING_SIZE:-N/A}" >> $GITHUB_OUTPUT
           echo "staging_image_created=${STAGING_CREATED:-N/A}" >> $GITHUB_OUTPUT
-          
+
           echo "production_image_available=$PRODUCTION_AVAILABLE" >> $GITHUB_OUTPUT
           echo "production_image_size=${PRODUCTION_SIZE:-N/A}" >> $GITHUB_OUTPUT
           echo "production_image_created=${PRODUCTION_CREATED:-N/A}" >> $GITHUB_OUTPUT
-          
+
           echo "📦 Staging image available: $STAGING_AVAILABLE"
           echo "📦 Production image available: $PRODUCTION_AVAILABLE"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
-      
+
       - name: Generate comprehensive dashboard
         id: dashboard
         run: |
           echo "📊 Generating comprehensive status dashboard..."
-          
+
           # Collect all status information
           PROD_STATUS="${{ steps.check-production.outputs.production_status }}"
           STAGING_STATUS="${{ steps.check-staging.outputs.staging_status }}"
           FAILED_WORKFLOWS="${{ steps.check-workflows.outputs.failed_workflows_24h }}"
-          
+
           # Determine overall status
           ISSUES_COUNT=0
           if [ "$PROD_STATUS" != "healthy" ]; then
@@ -202,7 +198,7 @@ jobs:
           if [ "$FAILED_WORKFLOWS" -gt 0 ]; then
             ISSUES_COUNT=$((ISSUES_COUNT + FAILED_WORKFLOWS))
           fi
-          
+
           if [ $ISSUES_COUNT -eq 0 ]; then
             OVERALL_STATUS="healthy"
           elif [ $ISSUES_COUNT -le 2 ]; then
@@ -210,15 +206,15 @@ jobs:
           else
             OVERALL_STATUS="critical"
           fi
-          
+
           echo "overall_status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
           echo "production_status=$PROD_STATUS" >> $GITHUB_OUTPUT
           echo "staging_status=$STAGING_STATUS" >> $GITHUB_OUTPUT
           echo "issues_count=$ISSUES_COUNT" >> $GITHUB_OUTPUT
-          
+
           echo "🎯 Overall status: $OVERALL_STATUS"
           echo "📋 Issues found: $ISSUES_COUNT"
-      
+
       - name: Create status dashboard
         run: |
           echo "## 📊 Deployment Status Dashboard" >> $GITHUB_STEP_SUMMARY
@@ -226,7 +222,7 @@ jobs:
           echo "**Generated:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "**Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Overall status
           case "${{ steps.dashboard.outputs.overall_status }}" in
             "healthy")
@@ -239,54 +235,54 @@ jobs:
               echo "**Overall Status:** 🔴 CRITICAL" >> $GITHUB_STEP_SUMMARY
               ;;
           esac
-          
+
           echo "**Issues Count:** ${{ steps.dashboard.outputs.issues_count }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Environment status
           echo "### 🌍 Environment Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | Status | URL | Response Time | Last Deploy |" >> $GITHUB_STEP_SUMMARY
           echo "|-------------|--------|-----|---------------|-------------|" >> $GITHUB_STEP_SUMMARY
-          
+
           # Production row
           PROD_ICON="${{ steps.dashboard.outputs.production_status == 'healthy' && '🟢' || '🔴' }}"
           echo "| Production | $PROD_ICON ${{ steps.check-production.outputs.production_status }} | ${{ steps.check-production.outputs.production_url }} | ${{ steps.check-production.outputs.production_response_time }} | ${{ steps.check-production.outputs.production_last_deploy }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           # Staging row
           STAGING_ICON="${{ steps.dashboard.outputs.staging_status == 'healthy' && '🟢' || '🔴' }}"
           echo "| Staging | $STAGING_ICON ${{ steps.check-staging.outputs.staging_status }} | ${{ steps.check-staging.outputs.staging_url }} | ${{ steps.check-staging.outputs.staging_response_time }} | ${{ steps.check-staging.outputs.staging_last_deploy }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Container registry status
           echo "### 📦 Container Registry Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Image Type | Available | Size | Created |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|-----------|------|---------|" >> $GITHUB_STEP_SUMMARY
-          
+
           STAGING_IMG_ICON="${{ steps.check-registry.outputs.staging_image_available == 'true' && '✅' || '❌' }}"
           echo "| Staging | $STAGING_IMG_ICON ${{ steps.check-registry.outputs.staging_image_available }} | ${{ steps.check-registry.outputs.staging_image_size }} | ${{ steps.check-registry.outputs.staging_image_created }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           PROD_IMG_ICON="${{ steps.check-registry.outputs.production_image_available == 'true' && '✅' || '❌' }}"
           echo "| Production | $PROD_IMG_ICON ${{ steps.check-registry.outputs.production_image_available }} | ${{ steps.check-registry.outputs.production_image_size }} | ${{ steps.check-registry.outputs.production_image_created }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Recent workflow status
           echo "### 🔄 Recent Workflow Activity" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Failed workflows (24h):** ${{ steps.check-workflows.outputs.failed_workflows_24h }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Include recent runs if available
           if [ "${{ env.INCLUDE_HISTORY }}" = "true" ]; then
             echo "**Recent Workflow Runs:**" >> $GITHUB_STEP_SUMMARY
             echo "- View all runs: [GitHub Actions](https://github.com/${{ github.repository }}/actions)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Quick actions
           echo "### ⚡ Quick Actions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -295,7 +291,7 @@ jobs:
           echo "- [🌟 Deploy to Production](https://github.com/${{ github.repository }}/actions/workflows/prod-deploy.yml)" >> $GITHUB_STEP_SUMMARY
           echo "- [🔄 Rollback Production](https://github.com/${{ github.repository }}/actions/workflows/rollback.yml)" >> $GITHUB_STEP_SUMMARY
           echo "- [🔍 Verify Production](https://github.com/${{ github.repository }}/actions/workflows/production-verification.yml)" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "*Dashboard auto-generated by GitHub Actions*" >> $GITHUB_STEP_SUMMARY
@@ -307,7 +303,7 @@ jobs:
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: ${{ needs.generate-status-dashboard.outputs.overall_status == 'critical' && 'verification-failed' || 'verification-warning' }}
-      environment: 'production'
+      environment: "production"
       deployment_details: |
         {
           "overall_status": "${{ needs.generate-status-dashboard.outputs.overall_status }}",
@@ -318,6 +314,6 @@ jobs:
           "timestamp": "${{ github.event.head_commit.timestamp }}",
           "generated_by": "deployment-status-dashboard"
         }
-      notification_channels: 'github,slack'
+      notification_channels: "github,slack"
       severity: ${{ needs.generate-status-dashboard.outputs.overall_status == 'critical' && 'error' || 'warning' }}
-      additional_context: 'Automated status dashboard detected issues requiring attention.'
+      additional_context: "Automated status dashboard detected issues requiring attention."

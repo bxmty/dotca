@@ -3,7 +3,7 @@ name: Staging Pipeline
 on:
   push:
     branches: [staging]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch: # Allow manual triggering
     inputs:
       force_rebuild:
         description: Force rebuild infrastructure
@@ -16,9 +16,10 @@ on:
         default: false
         type: boolean
 env:
-  ANSIBLE_HOST_KEY_CHECKING: 'False'
-  ANSIBLE_STDOUT_CALLBACK: yaml
-  ANSIBLE_FORCE_COLOR: '1'
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+  ANSIBLE_STDOUT_CALLBACK: default
+  ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
+  ANSIBLE_FORCE_COLOR: "1"
 jobs:
   setup-infra:
     name: Setup Infrastructure
@@ -35,7 +36,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
-          terraform_wrapper: false  # Important for output parsing
+          terraform_wrapper: false # Important for output parsing
       - name: Setup DigitalOcean CLI
         run: |
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
@@ -348,13 +349,13 @@ jobs:
           # Extended wait for new or updated resources
           if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
             echo "⏳ Waiting for droplet to be fully ready (new/updated resources)..."
-            
+
             # Network connectivity check
             echo "🔍 Testing network connectivity..."
             PING_TIMEOUT=180
             PING_INTERVAL=10
             PING_ELAPSED=0
-            
+
             while [ $PING_ELAPSED -lt $PING_TIMEOUT ]; do
               if ping -c 1 -W 5 $DROPLET_IP >/dev/null 2>&1; then
                 echo "✅ Network connectivity established to $DROPLET_IP"
@@ -364,11 +365,11 @@ jobs:
               sleep $PING_INTERVAL
               PING_ELAPSED=$((PING_ELAPSED + PING_INTERVAL))
             done
-            
+
             if [ $PING_ELAPSED -ge $PING_TIMEOUT ]; then
               echo "::warning::Network connectivity check timed out after ${PING_TIMEOUT}s"
             fi
-            
+
             # Additional wait for system initialization
             echo "⏳ Waiting for system services to initialize..."
             sleep 60
@@ -489,7 +490,7 @@ jobs:
       - name: Run Ansible playbook with enhanced error handling
         env:
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          GITHUB_ACTIONS: 'true'
+          GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
@@ -550,7 +551,7 @@ jobs:
               if [ $attempt -lt $MAX_ATTEMPTS ]; then
                 echo "⏳ Waiting 60 seconds before retry..."
                 sleep 60
-                
+
                 # Test connectivity before retry
                 echo "🔍 Testing connectivity before retry..."
                 if ! ansible all -i ansible/inventory.yml -m ping --timeout=30; then
@@ -599,11 +600,11 @@ jobs:
           )
           for url in "${URLS[@]}"; do
             echo "Testing: $url"
-            
+
             # Try multiple times with increasing delays
             for i in {1..5}; do
               echo "  Attempt $i..."
-              
+
               if curl -s -f --max-time 10 --connect-timeout 5 "$url" >/dev/null; then
                 echo "  ✅ $url is responding"
                 break
@@ -663,8 +664,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Staging environment deployed successfully!"
           echo "🌐 Access it at: http://$DROPLET_IP/"
-  selenium-tests:
-    name: Run Selenium Tests
+  playwright-tests:
+    name: Run Playwright Tests
     runs-on: ubuntu-latest
     needs: [setup-infra, deployment-verification]
     timeout-minutes: 15
@@ -675,22 +676,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.19.0'
+          node-version: "22.21.0"
           cache: npm
       - name: Install dependencies
         run: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Setup Chrome for Selenium
-        run: |
-          echo "🌐 Installing Chrome for Selenium tests..."
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-
-          # Verify Chrome installation
-          google-chrome --version
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
       - name: Wait for application stability
         env:
           APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
@@ -709,18 +702,17 @@ jobs:
             fi
             sleep 10
           done
-      - name: Run Selenium tests
+      - name: Run Playwright tests
         env:
           APP_URL: http://${{ needs.setup-infra.outputs.droplet_ip }}
-          HEADLESS: true
         run: |
-          echo "🧪 Running Selenium tests against: $APP_URL"
+          echo "🧪 Running Playwright tests against: $APP_URL"
 
           # Run tests with proper error handling
           if npm run test:e2e; then
-            echo "✅ All Selenium tests passed!"
+            echo "✅ All Playwright tests passed!"
           else
-            echo "❌ Some Selenium tests failed"
+            echo "❌ Some Playwright tests failed"
             echo "This is marked as continue-on-error, so deployment is still considered successful"
             exit 0  # Don't fail the entire pipeline
           fi
@@ -729,38 +721,40 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: selenium-test-results
+          name: playwright-test-results
           path: |
             test-results/
+            playwright-report/
             screenshots/
             *.log
           retention-days: 7
 
   send-staging-notifications:
     name: Send Staging Notifications
-    needs: [setup-infra, deploy-app, selenium-tests]
+    needs: [setup-infra, deploy-app, playwright-tests]
     if: always()
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: ${{ needs.deploy-app.result == 'success' && 'deployment-success' || 'deployment-failed' }}
-      environment: 'staging'
+      environment: "staging"
       deployment_details: |
         {
           "staging_url": "http://${{ needs.setup-infra.outputs.droplet_ip }}",
-          "selenium_tests_result": "${{ needs.selenium-tests.result }}",
+          "playwright_tests_result": "${{ needs.playwright-tests.result }}",
           "workflow_run_id": "${{ github.run_id }}",
           "triggered_by": "${{ github.actor }}",
           "commit": "${{ github.sha }}",
           "ref": "${{ github.ref }}",
           "timestamp": "${{ github.event.head_commit.timestamp }}"
         }
-      notification_channels: 'github,slack'
+      notification_channels: "github,slack"
       severity: ${{ needs.deploy-app.result == 'success' && 'info' || 'error' }}
 
   staging-summary:
     name: Staging Deployment Summary
     runs-on: ubuntu-latest
-    needs: [setup-infra, deploy-app, selenium-tests, send-staging-notifications]
+    needs:
+      [setup-infra, deploy-app, playwright-tests, send-staging-notifications]
     if: always()
     outputs:
       staging_success: ${{ steps.summary.outputs.staging_success }}
@@ -772,7 +766,7 @@ jobs:
         run: |
           echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Determine overall success
           if [ "${{ needs.deploy-app.result }}" = "success" ]; then
             echo "**Overall Status:** 🟢 SUCCESS" >> $GITHUB_STEP_SUMMARY
@@ -787,24 +781,24 @@ jobs:
             echo "staging_success=false" >> $GITHUB_OUTPUT
             echo "ready_for_promotion=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Determine staging image tag (usually 'staging' or staging-{sha})
           STAGING_IMAGE_TAG="staging"
           echo "staging_image_tag=$STAGING_IMAGE_TAG" >> $GITHUB_OUTPUT
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Staging URL: http://${{ needs.setup-infra.outputs.droplet_ip }}" >> $GITHUB_STEP_SUMMARY
           echo "- Staging Image: ghcr.io/${{ github.repository }}:$STAGING_IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "- Ready for Promotion: $READY_FOR_PROMOTION" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "**Job Results:**" >> $GITHUB_STEP_SUMMARY
           echo "- Infrastructure Setup: ${{ needs.setup-infra.result == 'success' && '✅' || '❌' }} ${{ needs.setup-infra.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Application Deployment: ${{ needs.deploy-app.result == 'success' && '✅' || '❌' }} ${{ needs.deploy-app.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Selenium Tests: ${{ needs.selenium-tests.result == 'success' && '✅' || (needs.selenium-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.selenium-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Playwright Tests: ${{ needs.playwright-tests.result == 'success' && '✅' || (needs.playwright-tests.result == 'failure' && '⚠️') || '❌' }} ${{ needs.playwright-tests.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           if [ "$READY_FOR_PROMOTION" = "true" ]; then
             echo "1. ✅ Staging deployment completed successfully" >> $GITHUB_STEP_SUMMARY
