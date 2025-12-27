@@ -4,31 +4,31 @@ on:
   push:
     branches: [main, staging]
     paths:
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'Dockerfile'
-      - 'Dockerfile.dev'
-      - 'next.config.js'
-      - 'tsconfig.json'
-      - 'jest.config.js'
-      - 'eslint.config.mjs'
-      - '.github/workflows/docker-build.yml'
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - "Dockerfile.dev"
+      - "next.config.js"
+      - "tsconfig.json"
+      - "jest.config.js"
+      - "eslint.config.mjs"
+      - ".github/workflows/docker-build.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'Dockerfile'
-      - 'Dockerfile.dev'
-      - 'next.config.js'
-      - 'tsconfig.json'
-      - 'jest.config.js'
-      - 'eslint.config.mjs'
-      - '.github/workflows/docker-build.yml'
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - "Dockerfile.dev"
+      - "next.config.js"
+      - "tsconfig.json"
+      - "jest.config.js"
+      - "eslint.config.mjs"
+      - ".github/workflows/docker-build.yml"
 
 env:
   REGISTRY: ghcr.io

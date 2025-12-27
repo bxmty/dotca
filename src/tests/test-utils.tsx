@@ -20,31 +20,24 @@ export const mockPricingPlans = [
     name: 'Basic',
     price: '$99',
     description: 'Basic plan for small businesses',
-    features: ['Feature 1', 'Feature 2'],
+    features: ['Feature 1', 'Feature 2']
   },
   {
     name: 'Premium',
     price: '$199',
     description: 'Premium plan with additional features',
-    features: ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4'],
+    features: ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4']
   },
   {
     name: 'Enterprise',
     price: '$299',
     description: 'Enterprise plan for larger businesses',
-    features: [
-      'Feature 1',
-      'Feature 2',
-      'Feature 3',
-      'Feature 4',
-      'Feature 5',
-      'Feature 6',
-    ],
-  },
+    features: ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4', 'Feature 5', 'Feature 6']
+  }
 ];
 
 // Mock Next.js components
-// These mocks should be moved to jest.setup.js
+// These mocks should be moved to jest.setup.js 
 // or used with jest.doMock() inside individual test files
 
 // Example usage for individual tests
@@ -65,16 +58,16 @@ export const mockNextComponentsExample = `
       return <a href={href}>{children}</a>;
     }
   }));
-
+  
   jest.mock('next/image', () => ({
     __esModule: true,
     default: (props) => {
-      return <img
-        src={props.src}
-        alt={props.alt || ''}
-        width={props.width}
-        height={props.height}
-        className={props.className}
+      return <img 
+        src={props.src} 
+        alt={props.alt || ''} 
+        width={props.width} 
+        height={props.height} 
+        className={props.className} 
       />;
     },
   }));
@@ -99,9 +92,7 @@ export const resetMocks = () => {
 };
 
 // Mock fetch
-export const mockFetch = (
-  mockResponse: Record<string, unknown> = { ok: true }
-) => {
+export const mockFetch = (mockResponse: Record<string, unknown> = { ok: true }) => {
   // Create a mock Response object
   const mockResponseObj = {
     ok: true,
@@ -113,10 +104,8 @@ export const mockFetch = (
     redirected: false,
     type: 'basic' as ResponseType,
     url: '',
-    clone: function () {
-      return this;
-    },
-    ...mockResponse,
+    clone: function() { return this; },
+    ...mockResponse
   } as Response;
 
   // Set up the mock using jest.fn
