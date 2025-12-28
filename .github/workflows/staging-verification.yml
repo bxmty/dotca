@@ -1,7 +1,7 @@
-name: Production Verification
+name: Staging Verification
 
-# Standalone production verification workflow
-# Can be used to verify production deployment health at any time
+# Standalone staging verification workflow
+# Can be used to verify staging deployment health at any time
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ on:
           - 'tests-only'
         default: 'comprehensive'
       target_url:
-        description: 'Production URL to verify (leave empty to auto-detect)'
+        description: 'Staging URL to verify (leave empty to auto-detect)'
         required: false
         type: string
         default: ''
@@ -41,19 +41,19 @@ on:
         type: string
         default: 'comprehensive'
       target_url:
-        description: 'Production URL to verify'
+        description: 'Staging URL to verify'
         required: true
         type: string
     outputs:
       verification_passed:
         description: 'Whether verification passed'
-        value: ${{ jobs.verify-production.outputs.verification_passed }}
+        value: ${{ jobs.verify-staging.outputs.verification_passed }}
       issues_found:
         description: 'Number of issues found'
-        value: ${{ jobs.verify-production.outputs.issues_found }}
+        value: ${{ jobs.verify-staging.outputs.issues_found }}
       recommendation:
         description: 'Recommendations based on verification'
-        value: ${{ jobs.verify-production.outputs.recommendation }}
+        value: ${{ jobs.verify-staging.outputs.recommendation }}
 
 env:
   VERIFICATION_TYPE: ${{ inputs.verification_type || 'comprehensive' }}
@@ -61,8 +61,8 @@ env:
   NOTIFICATION_LEVEL: ${{ inputs.notification_level || 'warnings' }}
 
 jobs:
-  verify-production:
-    name: Production Verification
+  verify-staging:
+    name: Staging Verification
     runs-on: ubuntu-latest
     outputs:
       verification_passed: ${{ steps.final-assessment.outputs.passed }}
@@ -72,24 +72,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Auto-detect production URL
+      - name: Auto-detect staging URL
         id: detect-url
         run: |
           if [ -n "${{ env.TARGET_URL }}" ]; then
-            PRODUCTION_URL="${{ env.TARGET_URL }}"
-            echo "Using provided URL: $PRODUCTION_URL"
+            STAGING_URL="${{ env.TARGET_URL }}"
+            echo "Using provided URL: $STAGING_URL"
           else
-            # Try to detect production URL from infrastructure
-            echo "Auto-detecting production URL..."
+            # Try to detect staging URL from infrastructure or known patterns
+            echo "Auto-detecting staging URL..."
 
-            # This would typically query your infrastructure
+            # This would typically query your infrastructure or use known staging domains
             # For now, we'll use a placeholder approach
-            PRODUCTION_URL="http://production-server"
-            echo "Auto-detected URL: $PRODUCTION_URL"
+            STAGING_URL="http://staging-server"
+            echo "Auto-detected URL: $STAGING_URL"
           fi
 
-          echo "production_url=$PRODUCTION_URL" >> $GITHUB_OUTPUT
-          echo "PRODUCTION_URL=$PRODUCTION_URL" >> $GITHUB_ENV
+          echo "staging_url=$STAGING_URL" >> $GITHUB_OUTPUT
+          echo "STAGING_URL=$STAGING_URL" >> $GITHUB_ENV
 
       - name: Comprehensive health verification
         id: health-verification
@@ -102,7 +102,7 @@ jobs:
 
           # 1. Basic connectivity test
           echo "1️⃣ Testing basic connectivity..."
-          if curl -s --max-time 30 --head "$PRODUCTION_URL" >/dev/null 2>&1; then
+          if curl -s --max-time 30 --head "$STAGING_URL" >/dev/null 2>&1; then
             echo "✅ Basic connectivity: PASSED"
             HEALTH_DETAILS="$HEALTH_DETAILS\n- Basic connectivity: ✅ PASSED"
           else
@@ -113,7 +113,7 @@ jobs:
 
           # 2. Response code validation
           echo "2️⃣ Checking response codes..."
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$PRODUCTION_URL" || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$STAGING_URL" || echo "000")
           if [[ "$HTTP_CODE" =~ ^(200|301|302)$ ]]; then
             echo "✅ HTTP response code: $HTTP_CODE (PASSED)"
             HEALTH_DETAILS="$HEALTH_DETAILS\n- HTTP response: ✅ $HTTP_CODE"
@@ -125,14 +125,14 @@ jobs:
 
           # 3. Response time analysis
           echo "3️⃣ Analyzing response times..."
-          RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 30 "$PRODUCTION_URL" 2>/dev/null || echo "999")
+          RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 30 "$STAGING_URL" 2>/dev/null || echo "999")
           RESPONSE_TIME_MS=$(echo "$RESPONSE_TIME * 1000" | bc -l 2>/dev/null | cut -d. -f1)
 
-          if (( $(echo "$RESPONSE_TIME < 2.0" | bc -l 2>/dev/null || echo "0") )); then
+          if (( $(echo "$RESPONSE_TIME < 3.0" | bc -l 2>/dev/null || echo "0") )); then
             echo "✅ Response time: ${RESPONSE_TIME_MS}ms (EXCELLENT)"
             HEALTH_DETAILS="$HEALTH_DETAILS\n- Response time: ✅ ${RESPONSE_TIME_MS}ms"
-          elif (( $(echo "$RESPONSE_TIME < 5.0" | bc -l 2>/dev/null || echo "0") )); then
-            echo "⚠️ Response time: ${RESPONSE_TIME_MS}ms (ACCEPTABLE)"
+          elif (( $(echo "$RESPONSE_TIME < 8.0" | bc -l 2>/dev/null || echo "0") )); then
+            echo "⚠️ Response time: ${RESPONSE_TIME_MS}ms (ACCEPTABLE for staging)"
             HEALTH_DETAILS="$HEALTH_DETAILS\n- Response time: ⚠️ ${RESPONSE_TIME_MS}ms"
           else
             echo "❌ Response time: ${RESPONSE_TIME_MS}ms (TOO SLOW)"
@@ -142,7 +142,7 @@ jobs:
 
           # 4. Content integrity check
           echo "4️⃣ Checking content integrity..."
-          CONTENT_LENGTH=$(curl -s -I --max-time 30 "$PRODUCTION_URL" | grep -i "content-length" | awk '{print $2}' | tr -d '\r' || echo "0")
+          CONTENT_LENGTH=$(curl -s -I --max-time 30 "$STAGING_URL" | grep -i "content-length" | awk '{print $2}' | tr -d '\r' || echo "0")
           if [ "$CONTENT_LENGTH" -gt 100 ] 2>/dev/null; then
             echo "✅ Content length: ${CONTENT_LENGTH} bytes (PASSED)"
             HEALTH_DETAILS="$HEALTH_DETAILS\n- Content length: ✅ ${CONTENT_LENGTH} bytes"
@@ -157,7 +157,7 @@ jobs:
           API_WORKING=false
 
           for endpoint in "${API_ENDPOINTS[@]}"; do
-            if curl -s --max-time 10 "${PRODUCTION_URL}${endpoint}" >/dev/null 2>&1; then
+            if curl -s --max-time 10 "${STAGING_URL}${endpoint}" >/dev/null 2>&1; then
               echo "✅ API endpoint $endpoint: AVAILABLE"
               HEALTH_DETAILS="$HEALTH_DETAILS\n- API endpoint $endpoint: ✅ AVAILABLE"
               API_WORKING=true
@@ -196,7 +196,7 @@ jobs:
           FAILED_REQUESTS=0
 
           for i in $(seq 1 $CONCURRENT_REQUESTS); do
-            if ! curl -s --max-time 10 "$PRODUCTION_URL" >/dev/null 2>&1 &
+            if ! curl -s --max-time 10 "$STAGING_URL" >/dev/null 2>&1 &
             then
               FAILED_REQUESTS=$((FAILED_REQUESTS + 1))
             fi
@@ -204,7 +204,7 @@ jobs:
           wait
 
           SUCCESS_RATE=$(echo "scale=2; ($CONCURRENT_REQUESTS - $FAILED_REQUESTS) * 100 / $CONCURRENT_REQUESTS" | bc -l)
-          if (( $(echo "$SUCCESS_RATE >= 95" | bc -l) )); then
+          if (( $(echo "$SUCCESS_RATE >= 90" | bc -l) )); then
             echo "✅ Concurrent requests: ${SUCCESS_RATE}% success rate (PASSED)"
             PERF_DETAILS="$PERF_DETAILS\n- Load test: ✅ ${SUCCESS_RATE}% success"
           else
@@ -217,7 +217,7 @@ jobs:
           echo "2️⃣ Testing response time consistency..."
           RESPONSE_TIMES=()
           for i in {1..5}; do
-            TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$PRODUCTION_URL" 2>/dev/null || echo "999")
+            TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$STAGING_URL" 2>/dev/null || echo "999")
             RESPONSE_TIMES+=($TIME)
             echo "   Request $i: ${TIME}s"
           done
@@ -230,7 +230,7 @@ jobs:
           AVG_TIME=$(echo "scale=3; $AVG_TIME / ${#RESPONSE_TIMES[@]}" | bc -l)
           AVG_TIME_MS=$(echo "$AVG_TIME * 1000" | bc -l | cut -d. -f1)
 
-          if (( $(echo "$AVG_TIME < 3.0" | bc -l) )); then
+          if (( $(echo "$AVG_TIME < 5.0" | bc -l) )); then
             echo "✅ Average response time: ${AVG_TIME_MS}ms (PASSED)"
             PERF_DETAILS="$PERF_DETAILS\n- Avg response time: ✅ ${AVG_TIME_MS}ms"
           else
@@ -242,17 +242,17 @@ jobs:
           # 3. Memory leak detection (simulated)
           echo "3️⃣ Checking for potential memory leaks..."
           # Make multiple requests and check if response times increase significantly
-          FIRST_TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$PRODUCTION_URL" 2>/dev/null || echo "0")
+          FIRST_TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$STAGING_URL" 2>/dev/null || echo "0")
           sleep 2
           for i in {1..20}; do
-            curl -s --max-time 5 "$PRODUCTION_URL" >/dev/null 2>&1 &
+            curl -s --max-time 5 "$STAGING_URL" >/dev/null 2>&1 &
           done
           wait
           sleep 2
-          LAST_TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$PRODUCTION_URL" 2>/dev/null || echo "0")
+          LAST_TIME=$(curl -o /dev/null -s -w '%{time_total}' --max-time 10 "$STAGING_URL" 2>/dev/null || echo "0")
 
           TIME_INCREASE=$(echo "$LAST_TIME - $FIRST_TIME" | bc -l 2>/dev/null || echo "0")
-          if (( $(echo "$TIME_INCREASE < 1.0" | bc -l 2>/dev/null || echo "1") )); then
+          if (( $(echo "$TIME_INCREASE < 2.0" | bc -l 2>/dev/null || echo "1") )); then
             echo "✅ Memory leak check: No significant degradation (PASSED)"
             PERF_DETAILS="$PERF_DETAILS\n- Memory leak check: ✅ PASSED"
           else
@@ -283,7 +283,7 @@ jobs:
 
           # 1. Security headers check
           echo "1️⃣ Checking security headers..."
-          HEADERS=$(curl -s -I --max-time 30 "$PRODUCTION_URL" 2>/dev/null || echo "")
+          HEADERS=$(curl -s -I --max-time 30 "$STAGING_URL" 2>/dev/null || echo "")
 
           EXPECTED_HEADERS=("X-Frame-Options" "X-Content-Type-Options" "X-XSS-Protection")
           MISSING_HEADERS=()
@@ -304,10 +304,10 @@ jobs:
             SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
           fi
 
-          # 2. HTTPS configuration check
+          # 2. HTTPS configuration check (staging might use HTTP)
           echo "2️⃣ Checking HTTPS configuration..."
-          if echo "$PRODUCTION_URL" | grep -q "https://"; then
-            if curl -s --max-time 10 "$PRODUCTION_URL" >/dev/null 2>&1; then
+          if echo "$STAGING_URL" | grep -q "https://"; then
+            if curl -s --max-time 10 "$STAGING_URL" >/dev/null 2>&1; then
               echo "✅ HTTPS: Properly configured and working"
               SECURITY_DETAILS="$SECURITY_DETAILS\n- HTTPS: ✅ Working"
             else
@@ -316,16 +316,15 @@ jobs:
               SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
             fi
           else
-            echo "⚠️ HTTPS: Not configured (using HTTP)"
-            SECURITY_DETAILS="$SECURITY_DETAILS\n- HTTPS: ⚠️ Not configured"
-            SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+            echo "ℹ️ HTTPS: Not configured (common for staging)"
+            SECURITY_DETAILS="$SECURITY_DETAILS\n- HTTPS: ℹ️ Not configured (staging)"
           fi
 
           # 3. Information disclosure check
           echo "3️⃣ Checking for information disclosure..."
-          RESPONSE=$(curl -s --max-time 30 "$PRODUCTION_URL" 2>/dev/null | head -n 50)
+          RESPONSE=$(curl -s --max-time 30 "$STAGING_URL" 2>/dev/null | head -n 50)
 
-          SENSITIVE_PATTERNS=("password" "secret" "token" "api.*key" "private.*key")
+          SENSITIVE_PATTERNS=("password" "secret" "token" "api.*key" "private.*key" "prod" "production")
           DISCLOSED_INFO=()
 
           for pattern in "${SENSITIVE_PATTERNS[@]}"; do
@@ -390,7 +389,7 @@ jobs:
           # Wait for application stability before running tests
           echo "4️⃣ Verifying application stability..."
           for i in {1..3}; do
-            if curl -s -f --max-time 10 "$PRODUCTION_URL" >/dev/null; then
+            if curl -s -f --max-time 10 "$STAGING_URL" >/dev/null; then
               echo "✅ Application stability check $i passed"
             else
               echo "❌ Application stability check $i failed"
@@ -403,8 +402,8 @@ jobs:
 
           if [ $TEST_ISSUES -eq 0 ]; then
             # Run Playwright tests
-            echo "5️⃣ Running Playwright tests against: $PRODUCTION_URL"
-            export APP_URL="$PRODUCTION_URL"
+            echo "5️⃣ Running Playwright tests against: $STAGING_URL"
+            export APP_URL="$STAGING_URL"
 
             if npm run test:e2e; then
               echo "✅ All Playwright tests passed"
@@ -447,18 +446,18 @@ jobs:
           echo "- Test Issues: $TEST_ISSUES"
           echo "- Total Issues: $TOTAL_ISSUES"
 
-          # Determine overall status
-          if [ $HEALTH_ISSUES -eq 0 ] && [ $PERF_ISSUES -eq 0 ] && [ $SECURITY_ISSUES -eq 0 ] && [ $TEST_ISSUES -eq 0 ]; then
+          # Determine overall status (staging has more relaxed criteria)
+          if [ $HEALTH_ISSUES -eq 0 ] && [ $TEST_ISSUES -eq 0 ]; then
             VERIFICATION_PASSED="true"
-            RECOMMENDATION="Production system is healthy and performing well."
-            echo "🎉 VERIFICATION PASSED: Production system is healthy!"
+            RECOMMENDATION="Staging environment is functional and ready for testing."
+            echo "🎉 VERIFICATION PASSED: Staging environment is ready!"
           elif [ $HEALTH_ISSUES -eq 0 ]; then
             VERIFICATION_PASSED="warning"
-            RECOMMENDATION="Production system is functional but has performance or security concerns that should be addressed."
-            echo "⚠️ VERIFICATION WARNING: System functional but needs attention"
+            RECOMMENDATION="Staging environment is functional but has performance, security, or test concerns that should be addressed before production deployment."
+            echo "⚠️ VERIFICATION WARNING: Staging functional but needs attention"
           else
             VERIFICATION_PASSED="false"
-            RECOMMENDATION="Production system has critical health issues that require immediate attention."
+            RECOMMENDATION="Staging environment has critical health issues that require immediate attention."
             echo "❌ VERIFICATION FAILED: Critical issues detected!"
           fi
 
@@ -468,10 +467,10 @@ jobs:
 
       - name: Generate verification report
         run: |
-          echo "## 🔍 Production Verification Report" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 Staging Verification Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Verification Type:** ${{ env.VERIFICATION_TYPE }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Target URL:** ${{ steps.detect-url.outputs.production_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target URL:** ${{ steps.detect-url.outputs.staging_url }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -521,19 +520,19 @@ jobs:
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           case "${{ steps.final-assessment.outputs.passed }}" in
             "true")
-              echo "1. ✅ Production system is healthy and performing well" >> $GITHUB_STEP_SUMMARY
-              echo "2. 📅 Continue regular monitoring and verification" >> $GITHUB_STEP_SUMMARY
-              echo "3. 🔄 Consider scheduling automated verifications" >> $GITHUB_STEP_SUMMARY
+              echo "1. ✅ Staging environment is functional and ready" >> $GITHUB_STEP_SUMMARY
+              echo "2. 🧪 Consider running additional manual testing" >> $GITHUB_STEP_SUMMARY
+              echo "3. 🚀 Ready for production deployment when appropriate" >> $GITHUB_STEP_SUMMARY
               ;;
             "warning")
-              echo "1. 🔍 Review performance and security warnings above" >> $GITHUB_STEP_SUMMARY
-              echo "2. 📋 Create action items to address identified issues" >> $GITHUB_STEP_SUMMARY
+              echo "1. 🔍 Review warnings above before production deployment" >> $GITHUB_STEP_SUMMARY
+              echo "2. 📋 Address identified issues in staging first" >> $GITHUB_STEP_SUMMARY
               echo "3. 🔄 Re-run verification after implementing fixes" >> $GITHUB_STEP_SUMMARY
               ;;
             "false")
               echo "1. 🚨 Address critical health issues immediately" >> $GITHUB_STEP_SUMMARY
-              echo "2. 📞 Consider escalating to operations team" >> $GITHUB_STEP_SUMMARY
-              echo "3. 🔄 Consider rollback if issues are severe" >> $GITHUB_STEP_SUMMARY
-              echo "4. 📋 Run verification again after fixes" >> $GITHUB_STEP_SUMMARY
+              echo "2. 📞 Consider redeploying staging environment" >> $GITHUB_STEP_SUMMARY
+              echo "3. 🔄 Run verification again after fixes" >> $GITHUB_STEP_SUMMARY
+              echo "4. ⛔ Do not promote to production until issues are resolved" >> $GITHUB_STEP_SUMMARY
               ;;
           esac

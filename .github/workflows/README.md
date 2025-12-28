@@ -14,6 +14,21 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 
 ## 📋 Core Workflows
 
+### 🎯 Single Developer Workflows
+
+#### `single-developer-cicd.yml`
+
+**Purpose**: Streamlined CI/CD pipeline optimized for single developer workflow
+
+- **Triggers**: Push to `renovations`, `staging`, `main` branches, PRs, manual dispatch
+- **Branch Flow**: `renovations` → `staging` → `main` (production)
+- **Key Features**:
+  - Automatic builds and tests on all branches
+  - Auto-deploy to staging when pushing to staging branch
+  - Manual promotion to production with approval
+  - Simplified workflow replacing complex multi-workflow setup
+  - Maintains safety with tests, linting, and manual production approval
+
 ### 🔨 Build & CI Workflows
 
 #### `image-promotion.yml`
@@ -181,6 +196,13 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 
 ```mermaid
 graph TD
+    %% Single Developer Workflow (Recommended)
+    N[renovations branch] --> O[single-developer-cicd.yml]
+    O --> P[staging branch]
+    P --> Q[main branch]
+    Q --> R[production]
+
+    %% Multi-Developer Workflow (Advanced)
     A[Code Push] --> B[image-promotion.yml]
     B --> C[stg-deploy.yml]
     C --> D[image-promotion.yml]
@@ -206,8 +228,8 @@ graph TD
 
 | Workflow                | Automatic | Manual | Branch-based | Scheduled     |
 | ----------------------- | --------- | ------ | ------------ | ------------- |
+| single-developer-cicd   | ✅        | ✅     | ✅ (all)     | ❌            |
 | image-promotion         | ✅        | ❌     | ✅           | ❌            |
-| stg-deploy              | ✅        | ❌     | ✅ (staging) | ❌            |
 | stg-deploy              | ✅        | ✅     | ✅ (staging) | ❌            |
 | image-promotion         | ❌        | ✅     | ❌           | ❌            |
 | prod-deploy             | ❌        | ✅     | ❌           | ❌            |
@@ -218,6 +240,14 @@ graph TD
 ## 🎯 Usage Guidelines
 
 ### For Development
+
+#### Single Developer Workflow (Recommended)
+
+1. **Development**: Work on `renovations` branch, create PRs for Renovate updates
+2. **Testing**: Merge to `staging` branch for automatic staging deployment
+3. **Production**: Merge to `main` branch for production deployment (requires approval)
+
+#### Multi-Developer Workflow (Advanced)
 
 1. **Feature Development**: Work on feature branches, create PRs to `main`
 2. **QA Testing**: Merge to `qa` branch to trigger QA pipeline
