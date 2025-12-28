@@ -5,17 +5,17 @@ on:
   workflow_dispatch:
     inputs:
       promoted_image_tag:
-        description: 'Promoted image tag to deploy (e.g., main, main-abc123)'
+        description: "Promoted image tag to deploy (e.g., main, main-abc123)"
         required: true
-        default: 'main'
+        default: "main"
         type: string
       deployment_reason:
-        description: 'Reason for production deployment'
+        description: "Reason for production deployment"
         required: false
-        default: 'Manual production deployment'
+        default: "Manual production deployment"
         type: string
       skip_tests:
-        description: 'Skip Playwright tests (use for emergency deployments)'
+        description: "Skip Playwright tests (use for emergency deployments)"
         required: false
         default: false
         type: boolean
@@ -24,16 +24,16 @@ on:
   workflow_call:
     inputs:
       promoted_image_tag:
-        description: 'Promoted image tag to deploy'
+        description: "Promoted image tag to deploy"
         required: true
         type: string
       deployment_reason:
-        description: 'Reason for deployment'
+        description: "Reason for deployment"
         required: false
         type: string
-        default: 'Automatic deployment after image promotion'
+        default: "Automatic deployment after image promotion"
       github_username:
-        description: 'GitHub username for authentication'
+        description: "GitHub username for authentication"
         required: true
         type: string
     secrets:
@@ -69,8 +69,8 @@ jobs:
     name: Notify Deployment Start
     uses: ./.github/workflows/deployment-notifications.yml
     with:
-      event_type: 'deployment-started'
-      environment: 'production'
+      event_type: "deployment-started"
+      environment: "production"
       deployment_details: |
         {
           "promoted_image_tag": "${{ inputs.promoted_image_tag || github.event.inputs.promoted_image_tag || 'main' }}",
@@ -81,8 +81,8 @@ jobs:
           "ref": "${{ github.ref }}",
           "timestamp": "${{ github.event.head_commit.timestamp }}"
         }
-      notification_channels: 'github,slack'
-      severity: 'info'
+      notification_channels: "github,slack"
+      severity: "info"
 
   verify-promoted-image:
     name: Verify Promoted Image
@@ -565,9 +565,9 @@ jobs:
 
       - name: Deploy using Ansible
         env:
-          GIT_REPO_URL: '${{ github.server_url }}/${{ github.repository }}.git'
-          SSH_KEY_PATH: '~/.ssh/id_rsa'
-          GITHUB_ACTIONS: 'true'
+          GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+          SSH_KEY_PATH: "~/.ssh/id_rsa"
+          GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
@@ -915,8 +915,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.21.0'
-          cache: 'npm'
+          node-version: "22.21.0"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -944,7 +944,7 @@ jobs:
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: ${{ (needs.deploy-app.result == 'success' && needs.deployment-verification.result == 'success') && 'deployment-success' || 'deployment-failed' }}
-      environment: 'production'
+      environment: "production"
       deployment_details: |
         {
           "image": "${{ needs.verify-promoted-image.outputs.full_image_name }}",
@@ -962,7 +962,7 @@ jobs:
           "security_check_passed": "${{ needs.deployment-verification.outputs.security_check_passed }}",
           "playwright_tests_result": "${{ needs.playwright-tests.result }}"
         }
-      notification_channels: 'github,slack,teams'
+      notification_channels: "github,slack,teams"
       severity: ${{ (needs.deployment-verification.outputs.verification_status == 'failed') && 'error' || (needs.deployment-verification.outputs.verification_status == 'warning') && 'warning' || 'info' }}
       additional_context: ${{ (needs.playwright-tests.result == 'skipped') && 'Playwright tests were skipped for this deployment.' || '' }}
 

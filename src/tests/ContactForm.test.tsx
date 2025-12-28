@@ -28,17 +28,17 @@ describe('ContactForm Component', () => {
   it('updates input values on change', async () => {
     render(<ContactForm />);
     const user = userEvent.setup();
-
+    
     // Get form fields
     const nameInput = screen.getByLabelText(/Name/i);
     const emailInput = screen.getByLabelText(/Email/i);
     const phoneInput = screen.getByLabelText(/Phone/i);
-
+    
     // Fill in the form
     await user.type(nameInput, 'Test User');
     await user.type(emailInput, 'test@example.com');
     await user.type(phoneInput, '123-456-7890');
-
+    
     // Check input values
     expect(nameInput).toHaveValue('Test User');
     expect(emailInput).toHaveValue('test@example.com');
@@ -47,21 +47,15 @@ describe('ContactForm Component', () => {
 
   it('submits form data and redirects on success', async () => {
     render(<ContactForm />);
-
+    
     // Fill in the form
-    fireEvent.change(screen.getByLabelText(/Name/i), {
-      target: { value: 'Test User' },
-    });
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'test@example.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/Phone/i), {
-      target: { value: '123-456-7890' },
-    });
-
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '123-456-7890' } });
+    
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Book Your Consult/i }));
-
+    
     // Wait for fetch to be called
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/contact', {
@@ -76,7 +70,7 @@ describe('ContactForm Component', () => {
         }),
       });
     });
-
+    
     // Check if router.push was called to redirect
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/onboarding');
@@ -89,114 +83,82 @@ describe('ContactForm Component', () => {
       Promise.resolve({
         ok: false,
         status: 500,
-        json: () =>
-          Promise.resolve({
-            error: 'Server configuration error - missing API key',
-          }),
+        json: () => Promise.resolve({ error: 'Server configuration error - missing API key' }),
       })
     );
-
+    
     render(<ContactForm />);
-
+    
     // Fill in the form
-    fireEvent.change(screen.getByLabelText(/Name/i), {
-      target: { value: 'Test User' },
-    });
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'test@example.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/Phone/i), {
-      target: { value: '123-456-7890' },
-    });
-
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '123-456-7890' } });
+    
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Book Your Consult/i }));
-
+    
     // Check for specific error message that includes the server error
     await waitFor(() => {
-      expect(
-        screen.getByText(/Server configuration error - missing API key/)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Server configuration error - missing API key/)).toBeInTheDocument();
     });
   });
-
+  
   it('shows success message and does not redirect when API returns a message', async () => {
     // Mock fetch to return success with a message
     (global.fetch as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
-        json: () =>
-          Promise.resolve({
-            success: true,
-            message:
-              'Your information has already been submitted. We will contact you soon.',
-          }),
+        json: () => Promise.resolve({ 
+          success: true, 
+          message: 'Your information has already been submitted. We will contact you soon.' 
+        }),
       })
     );
-
+    
     render(<ContactForm />);
-
+    
     // Fill in the form
-    fireEvent.change(screen.getByLabelText(/Name/i), {
-      target: { value: 'Test User' },
-    });
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'test@example.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/Phone/i), {
-      target: { value: '123-456-7890' },
-    });
-
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '123-456-7890' } });
+    
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Book Your Consult/i }));
-
+    
     // Check for success message
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          'Your information has already been submitted. We will contact you soon.'
-        )
-      ).toBeInTheDocument();
+      expect(screen.getByText('Your information has already been submitted. We will contact you soon.')).toBeInTheDocument();
     });
-
+    
     // Router.push should not have been called
     expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('disables the submit button while submitting', async () => {
     // Mock fetch to take some time
-    (global.fetch as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
-          setTimeout(() => {
-            resolve({
-              ok: true,
-              json: () => Promise.resolve({ success: true }),
-            });
-          }, 100);
-        })
+    (global.fetch as jest.Mock).mockImplementationOnce(() =>
+      new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }, 100);
+      })
     );
-
+    
     render(<ContactForm />);
-
+    
     // Fill in the form
-    fireEvent.change(screen.getByLabelText(/Name/i), {
-      target: { value: 'Test User' },
-    });
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'test@example.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/Phone/i), {
-      target: { value: '123-456-7890' },
-    });
-
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '123-456-7890' } });
+    
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Book Your Consult/i }));
-
-    // Check if submit button is disabled and shows loading text
-    expect(
-      screen.getByRole('button', { name: /Book Your Consult/i })
-    ).toBeDisabled();
+    
+    // Check if button is disabled and shows loading text
+    expect(screen.getByRole('button')).toBeDisabled();
     expect(screen.getByText('Submitting...')).toBeInTheDocument();
   });
 });

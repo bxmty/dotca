@@ -4,8 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Boximity MSP - Enterprise IT Solutions',
     short_name: 'Boximity MSP',
-    description:
-      'Enterprise-grade technology solutions for small businesses without the complexity or cost.',
+    description: 'Enterprise-grade technology solutions for small businesses without the complexity or cost.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

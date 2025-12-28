@@ -4,39 +4,39 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Action to perform'
+        description: "Action to perform"
         required: true
         type: choice
         options:
-          - 'scan-registry'
-          - 'cleanup-old-images'
-          - 'generate-rollback-report'
-          - 'validate-rollback-targets'
-          - 'update-image-metadata'
+          - "scan-registry"
+          - "cleanup-old-images"
+          - "generate-rollback-report"
+          - "validate-rollback-targets"
+          - "update-image-metadata"
       registry_namespace:
-        description: 'Registry namespace to scan (e.g., bxtech)'
+        description: "Registry namespace to scan (e.g., bxtech)"
         required: false
         type: string
-        default: 'bxtech'
+        default: "bxtech"
       repository_name:
-        description: 'Repository name to scan (e.g., dotca)'
+        description: "Repository name to scan (e.g., dotca)"
         required: false
         type: string
-        default: 'dotca'
+        default: "dotca"
       max_images_per_tag:
-        description: 'Maximum images to keep per tag type'
+        description: "Maximum images to keep per tag type"
         required: false
         type: string
-        default: '10'
+        default: "10"
       dry_run:
-        description: 'Dry run mode (no actual deletions)'
+        description: "Dry run mode (no actual deletions)"
         required: false
         type: boolean
         default: true
 
   workflow_run:
     # Trigger when image promotion workflow completes
-    workflows: ['Image Promotion Workflow']
+    workflows: ["Image Promotion Workflow"]
     types: [completed]
 
 env:

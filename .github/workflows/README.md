@@ -17,9 +17,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 ### 🔨 Build & CI Workflows
 
 #### `image-promotion.yml`
-
 **Purpose**: Builds staging images and promotes them to production with validation
-
 - **Triggers**: Manual dispatch, staging deployment completion
 - **Outputs**: Promoted Docker images in GHCR
 - **Key Features**:
@@ -30,9 +28,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
   - Image promotion workflow with manual approval
 
 #### `image-promotion.yml`
-
 **Purpose**: Builds staging images and promotes them to production with validation
-
 - **Triggers**: Manual dispatch, staging deployment completion
 - **Features**:
   - Runs comprehensive test suite
@@ -44,9 +40,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 ### 🚀 Deployment Workflows
 
 #### `stg-deploy.yml`
-
 **Purpose**: Staging environment deployment pipeline
-
 - **Triggers**: Push to `staging` branch, manual dispatch
 - **Infrastructure**: DigitalOcean droplet managed by Terraform
 - **Key Features**:
@@ -57,9 +51,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
   - Selenium end-to-end testing
 
 #### `prod-deploy.yml`
-
 **Purpose**: Production deployment using promoted images
-
 - **Triggers**: Manual dispatch, called by image promotion workflow
 - **Security**: Requires promoted/tested images only
 - **Key Features**:
@@ -71,9 +63,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
   - Automated rollback on failure
 
 #### `image-promotion.yml`
-
 **Purpose**: Promotes staging images to production with manual approval
-
 - **Triggers**: Manual dispatch only
 - **Security**: Requires manual approval via GitHub environments
 - **Key Features**:
@@ -86,9 +76,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 ### 🔄 Management Workflows
 
 #### `rollback.yml`
-
 **Purpose**: Emergency rollback to previous production version
-
 - **Triggers**: Manual dispatch only
 - **Key Features**:
   - Rollback to any tagged version
@@ -98,9 +86,7 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
   - Team notifications
 
 #### `environment-destroy.yml`
-
 **Purpose**: Safely destroy staging or production environments
-
 - **Triggers**: Manual dispatch with confirmation
 - **Safety**: Requires typed confirmation to prevent accidents
 - **Features**:
@@ -109,61 +95,46 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
   - Cost optimization
 
 #### `environment-destroy.yml`
-
 **Purpose**: Clean up staging or production environment resources
-
 - **Triggers**: Manual dispatch with confirmation
 - **Purpose**: Resource cleanup and cost management
 
 ### 📊 Monitoring & Coordination
 
 #### `deployment-notifications.yml`
-
 **Purpose**: Centralized notification system for all deployments
-
 - **Type**: Reusable workflow (called by others)
 - **Channels**: GitHub, Slack, Teams, Email
 - **Events**: Deployment start/success/failure, promotions, rollbacks
 
 #### `production-verification.yml`
-
 **Purpose**: Standalone production health verification
-
 - **Triggers**: Manual dispatch, scheduled (optional)
 - **Checks**: Health, performance, security verification
 - **Use Cases**: Post-deployment verification, routine health checks
 
 #### `workflow-coordinator.yml`
-
 **Purpose**: Validates workflow dependencies and sequencing
-
-- **Features**:
+- **Features**: 
   - Dependency validation
   - Workflow readiness checks
   - Sequence recommendations
 
 #### `deployment-status-dashboard.yml`
-
 **Purpose**: Generates deployment status dashboards and reports
-
 - **Features**: Visual status tracking, historical reports
 
 #### `image-history-tracking.yml`
-
 **Purpose**: Tracks and maintains image promotion history
-
 - **Features**: Audit trail, version tracking, compliance reporting
 
 #### `dependency-check.yml`
-
 **Purpose**: Security vulnerability scanning for dependencies
-
 - **Features**: CVE scanning, security reporting
 
 ## 🔐 Security & Permissions
 
 ### Required Secrets
-
 - `DO_TOKEN`: DigitalOcean API token
 - `SSH_PRIVATE_KEY`: SSH key for server access
 - `SSH_KEY_FINGERPRINT`: SSH key fingerprint
@@ -173,7 +144,6 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 - `NEXT_PUBLIC_PRODUCTION_GA_ID`: Google Analytics
 
 ### GitHub Environments
-
 - **production-promotion**: Requires manual approval for image promotion
 - Environment protection rules enforce manual reviews for production changes
 
@@ -185,18 +155,18 @@ graph TD
     B --> C[stg-deploy.yml]
     C --> D[image-promotion.yml]
     D --> E[prod-deploy.yml]
-
+    
     F[staging branch] --> G[stg-deploy.yml]
-
+    
     H[Manual Trigger] --> I[rollback.yml]
     H --> J[production-verification.yml]
     H --> K[environment-destroy.yml]
-
+    
     C --> L[deployment-notifications.yml]
     D --> L
     E --> L
     I --> L
-
+    
     M[workflow-coordinator.yml] --> C
     M --> D
     M --> E
@@ -204,34 +174,31 @@ graph TD
 
 ## 🚦 Workflow States & Triggers
 
-| Workflow                | Automatic | Manual | Branch-based | Scheduled     |
-| ----------------------- | --------- | ------ | ------------ | ------------- |
-| image-promotion         | ✅        | ❌     | ✅           | ❌            |
-| stg-deploy              | ✅        | ❌     | ✅ (staging) | ❌            |
-| stg-deploy              | ✅        | ✅     | ✅ (staging) | ❌            |
-| image-promotion         | ❌        | ✅     | ❌           | ❌            |
-| prod-deploy             | ❌        | ✅     | ❌           | ❌            |
-| rollback                | ❌        | ✅     | ❌           | ❌            |
-| production-verification | ❌        | ✅     | ❌           | ⚠️ (optional) |
-| environment-destroy     | ❌        | ✅     | ❌           | ❌            |
+| Workflow | Automatic | Manual | Branch-based | Scheduled |
+|----------|-----------|--------|--------------|-----------|
+| image-promotion | ✅ | ❌ | ✅ | ❌ |
+| stg-deploy | ✅ | ❌ | ✅ (staging) | ❌ |
+| stg-deploy | ✅ | ✅ | ✅ (staging) | ❌ |
+| image-promotion | ❌ | ✅ | ❌ | ❌ |
+| prod-deploy | ❌ | ✅ | ❌ | ❌ |
+| rollback | ❌ | ✅ | ❌ | ❌ |
+| production-verification | ❌ | ✅ | ❌ | ⚠️ (optional) |
+| environment-destroy | ❌ | ✅ | ❌ | ❌ |
 
 ## 🎯 Usage Guidelines
 
 ### For Development
-
 1. **Feature Development**: Work on feature branches, create PRs to `main`
 2. **QA Testing**: Merge to `qa` branch to trigger QA pipeline
 3. **Staging Testing**: Merge to `staging` branch for staging deployment
 
 ### For Production Deployment
-
 1. **Image Promotion**: Manually trigger `image-promotion.yml` with staging image tag
 2. **Manual Approval**: Approve promotion in GitHub environment protection
 3. **Automatic Deployment**: Production deployment triggers automatically after promotion
 4. **Verification**: Monitor deployment health and run additional verification if needed
 
 ### For Emergency Situations
-
 1. **Rollback**: Use `rollback.yml` with specific rollback target
 2. **Environment Issues**: Use `environment-destroy.yml` if infrastructure needs recreation
 3. **Health Checks**: Use `production-verification.yml` for standalone health verification
@@ -239,14 +206,12 @@ graph TD
 ## 🔧 Customization
 
 ### Adding New Environments
-
 1. Create new deployment workflow (copy from `stg-deploy.yml`)
 2. Update Terraform configuration for new environment
 3. Add notification channels to `deployment-notifications.yml`
 4. Update `workflow-coordinator.yml` dependencies
 
 ### Modifying Deployment Flow
-
 1. Update workflow dependencies in respective files
 2. Modify notification events in `deployment-notifications.yml`
 3. Update image promotion workflow if needed
@@ -255,14 +220,12 @@ graph TD
 ## 📈 Monitoring & Troubleshooting
 
 ### Common Issues
-
 - **Permission Errors**: Check secrets and GitHub environment settings
 - **Deployment Failures**: Review logs in failed workflow runs
 - **Image Issues**: Verify images exist in GHCR before promotion
 - **Infrastructure Issues**: Check DigitalOcean resources and Terraform state
 
 ### Best Practices
-
 - Always test changes in staging before production
 - Use manual approval for production changes
 - Monitor deployment notifications

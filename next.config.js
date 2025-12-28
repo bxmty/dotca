@@ -29,10 +29,10 @@ const nextConfig = {
     return [
       {
         source: '/.well-known/acme-challenge/:path*',
-        destination: '/.well-known/acme-challenge/:path*',
-      },
-    ];
-  },
+        destination: '/.well-known/acme-challenge/:path*'
+      }
+    ]
+  }
 };
 
 // For standalone server configuration, ensure proper binding
