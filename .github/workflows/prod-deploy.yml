@@ -438,15 +438,33 @@ jobs:
             echo "  - This may cause SSL certificate issues"
           fi
 
+      - name: Determine droplet IP from DNS
+        run: |
+          echo "🔍 Determining droplet IP from DNS resolution..."
+
+          # Get IP from DNS resolution of boximity.ca
+          DROPLET_IP=$(nslookup boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
+
+          if [ -z "$DROPLET_IP" ]; then
+            DROPLET_IP=$(dig +short boximity.ca | head -1 || echo "")
+          fi
+
+          if [ -z "$DROPLET_IP" ]; then
+            echo "::error::Could not resolve boximity.ca to an IP address"
+            exit 1
+          fi
+
+          echo "✅ Resolved droplet IP: $DROPLET_IP"
+          echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+          echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
+
       - name: Add host key to known hosts
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
-          RESOURCES_EXIST: ${{ needs.setup-infra.outputs.resources_exist }}
-          TERRAFORM_CHANGES: ${{ needs.setup-infra.outputs.terraform_changes }}
         run: |
-          # Fail if we don't have an IP address
+          # Use the DNS-resolved IP if available, otherwise fall back to terraform output
           if [ -z "$DROPLET_IP" ]; then
-            echo "::error::Could not determine server IP address - infrastructure setup failed"
+            echo "::error::Could not determine server IP address"
             exit 1
           fi
 
