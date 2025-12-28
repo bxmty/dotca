@@ -454,7 +454,22 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
-          path: ${{ github.workspace }}
+          path: ${{ github.workspace }}/temp-artifacts
+
+      - name: Move Error Handling Utilities
+        run: |
+          # Move the downloaded file to the expected location
+          if [ -f "${{ github.workspace }}/temp-artifacts/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh to workspace root"
+          elif [ -f "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh from artifact subdirectory"
+          else
+            echo "❌ Error: Could not find error-utils.sh in downloaded artifact"
+            find ${{ github.workspace }}/temp-artifacts -name "*.sh" || echo "No .sh files found"
+            exit 1
+          fi
 
       - name: Setup Error Handling
         id: error_setup
@@ -560,7 +575,22 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
-          path: ${{ github.workspace }}
+          path: ${{ github.workspace }}/temp-artifacts
+
+      - name: Move Error Handling Utilities
+        run: |
+          # Move the downloaded file to the expected location
+          if [ -f "${{ github.workspace }}/temp-artifacts/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh to workspace root"
+          elif [ -f "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh from artifact subdirectory"
+          else
+            echo "❌ Error: Could not find error-utils.sh in downloaded artifact"
+            find ${{ github.workspace }}/temp-artifacts -name "*.sh" || echo "No .sh files found"
+            exit 1
+          fi
 
       - name: Setup Error Handling
         id: error_setup
@@ -1724,7 +1754,22 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
-          path: ${{ github.workspace }}
+          path: ${{ github.workspace }}/temp-artifacts
+
+      - name: Move Error Handling Utilities
+        run: |
+          # Move the downloaded file to the expected location
+          if [ -f "${{ github.workspace }}/temp-artifacts/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh to workspace root"
+          elif [ -f "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh from artifact subdirectory"
+          else
+            echo "❌ Error: Could not find error-utils.sh in downloaded artifact"
+            find ${{ github.workspace }}/temp-artifacts -name "*.sh" || echo "No .sh files found"
+            exit 1
+          fi
 
       - name: Setup Error Handling
         id: error_setup
@@ -1826,7 +1871,22 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
-          path: ${{ github.workspace }}
+          path: ${{ github.workspace }}/temp-artifacts
+
+      - name: Move Error Handling Utilities
+        run: |
+          # Move the downloaded file to the expected location
+          if [ -f "${{ github.workspace }}/temp-artifacts/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh to workspace root"
+          elif [ -f "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh from artifact subdirectory"
+          else
+            echo "❌ Error: Could not find error-utils.sh in downloaded artifact"
+            find ${{ github.workspace }}/temp-artifacts -name "*.sh" || echo "No .sh files found"
+            exit 1
+          fi
 
       - name: Setup Error Handling
         id: error_setup
@@ -1995,7 +2055,22 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: error-handling-utilities
-          path: ${{ github.workspace }}
+          path: ${{ github.workspace }}/temp-artifacts
+
+      - name: Move Error Handling Utilities
+        run: |
+          # Move the downloaded file to the expected location
+          if [ -f "${{ github.workspace }}/temp-artifacts/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh to workspace root"
+          elif [ -f "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" ]; then
+            mv "${{ github.workspace }}/temp-artifacts/error-handling-utilities/error-utils.sh" "${{ github.workspace }}/error-utils.sh"
+            echo "✅ Moved error-utils.sh from artifact subdirectory"
+          else
+            echo "❌ Error: Could not find error-utils.sh in downloaded artifact"
+            find ${{ github.workspace }}/temp-artifacts -name "*.sh" || echo "No .sh files found"
+            exit 1
+          fi
 
       - name: Setup Error Handling
         id: error_setup
