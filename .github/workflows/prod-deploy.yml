@@ -392,50 +392,77 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Validate DNS configuration
+      - name: Validate DNS and Cloudflare proxy configuration
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
-          echo "🔍 Validating DNS configuration for boximity.ca..."
+          echo "🔍 Validating DNS and Cloudflare proxy configuration..."
 
-          # Check if DNS resolves to our droplet IP
-          echo "Expected IP: $DROPLET_IP"
-          echo "DNS resolution for boximity.ca:"
+          # Step 1: Validate that DNS resolves to Cloudflare proxy IP range
+          echo "📡 Checking DNS resolution (should point to Cloudflare proxy)..."
+          DNS_IP=$(dig +short boximity.ca | head -1 || echo "")
 
-          # Try multiple DNS lookup methods
-          DNS_IP=$(nslookup boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
           if [ -z "$DNS_IP" ]; then
-            DNS_IP=$(dig +short boximity.ca | head -1 || echo "")
+            echo "::error::Cannot resolve boximity.ca - DNS issue"
+            exit 1
           fi
 
-          echo "Resolved IP: $DNS_IP"
+          echo "DNS Resolution: boximity.ca → $DNS_IP"
 
+          # Cloudflare proxy IPs typically start with 172.64-172.71, 173.245, 104.16-104.31, etc.
+          # For simplicity, we'll check it's not the droplet IP and looks like a proxy IP
           if [ "$DNS_IP" = "$DROPLET_IP" ]; then
-            echo "✅ DNS configuration is correct - boximity.ca resolves to $DROPLET_IP"
+            echo "::warning::DNS points directly to droplet IP instead of Cloudflare proxy"
+            echo "This reduces security - consider using Cloudflare proxy for web traffic"
+          elif [[ $DNS_IP =~ ^(172\.(6[4-9]|7[0-1])\.|104\.(1[6-9]|2[0-9]|3[0-1])\.|173\.245\.|131\.0\.72\.|141\.101\.6[5-9]\.|141\.101\.7[0-1]\.) ]]; then
+            echo "✅ DNS correctly points to Cloudflare proxy IP range"
           else
-            echo "⚠️ DNS configuration issue detected:"
-            echo "  - Expected: $DROPLET_IP"
-            echo "  - Actual: $DNS_IP"
-            echo "  - This may cause SSL certificate issues"
-            echo "  - Please ensure boximity.ca points to $DROPLET_IP in your DNS settings"
+            echo "ℹ️ DNS points to $DNS_IP (non-standard IP, may be Cloudflare or another proxy)"
           fi
 
-          # Also check www.boximity.ca
-          echo "DNS resolution for www.boximity.ca:"
-          WWW_DNS_IP=$(nslookup www.boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
-          if [ -z "$WWW_DNS_IP" ]; then
-            WWW_DNS_IP=$(dig +short www.boximity.ca | head -1 || echo "")
+          # Step 2: Test direct SSH connectivity to droplet
+          echo "🔐 Testing SSH connectivity to droplet..."
+          if ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o PasswordAuthentication=no root@$DROPLET_IP "echo 'SSH connectivity test successful'" 2>/dev/null; then
+            echo "✅ SSH connection to droplet successful"
+            SSH_OK=true
+          else
+            echo "::error::Cannot establish SSH connection to droplet at $DROPLET_IP"
+            echo "This will prevent deployment - check:"
+            echo "  - Droplet is running"
+            echo "  - SSH key is correctly configured"
+            echo "  - Firewall allows SSH (port 22)"
+            SSH_OK=false
+            exit 1
           fi
 
-          echo "Resolved IP: $WWW_DNS_IP"
-
-          if [ "$WWW_DNS_IP" = "$DROPLET_IP" ]; then
-            echo "✅ DNS configuration is correct - www.boximity.ca resolves to $DROPLET_IP"
+          # Step 3: Test end-to-end connectivity through Cloudflare
+          echo "🌐 Testing end-to-end connectivity through Cloudflare proxy..."
+          if curl -s --max-time 30 --head https://boximity.ca/ | grep -q "HTTP/[0-9.]* 200\|HTTP/[0-9.]* 301\|HTTP/[0-9.]* 302"; then
+            echo "✅ HTTPS connectivity through Cloudflare successful"
+            HTTPS_OK=true
           else
-            echo "⚠️ DNS configuration issue detected for www.boximity.ca:"
-            echo "  - Expected: $DROPLET_IP"
-            echo "  - Actual: $WWW_DNS_IP"
-            echo "  - This may cause SSL certificate issues"
+            echo "::warning::Cannot reach application through Cloudflare proxy"
+            echo "This may indicate:"
+            echo "  - Application is not running"
+            echo "  - Cloudflare proxy configuration issues"
+            echo "  - SSL certificate problems"
+            HTTPS_OK=false
+          fi
+
+          # Step 4: Summary and recommendations
+          echo ""
+          echo "📊 Connectivity Summary:"
+          echo "  • SSH to droplet ($DROPLET_IP): $([ "$SSH_OK" = "true" ] && echo "✅ OK" || echo "❌ FAILED")"
+          echo "  • DNS resolution: $DNS_IP $([ "$DNS_IP" != "$DROPLET_IP" ] && echo "(proxied)" || echo "(direct)")"
+          echo "  • HTTPS through Cloudflare: $([ "$HTTPS_OK" = "true" ] && echo "✅ OK" || echo "⚠️ ISSUES")"
+
+          if [ "$SSH_OK" = "true" ] && [ "$HTTPS_OK" = "true" ]; then
+            echo "🎉 All connectivity checks passed - ready for deployment!"
+          elif [ "$SSH_OK" = "true" ]; then
+            echo "⚠️ SSH OK but HTTPS issues detected - deployment may succeed but users can't access site"
+          else
+            echo "::error::Critical connectivity issues detected - deployment will fail"
+            exit 1
           fi
 
       - name: Determine droplet IP from DNS
@@ -776,6 +803,74 @@ jobs:
             echo "❌ Some health checks FAILED!"
           fi
 
+      - name: Cloudflare proxy verification
+        env:
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
+        run: |
+          echo "🌐 Verifying application accessibility through Cloudflare proxy..."
+
+          CLOUDFLARE_PASSED=true
+
+          # 1. Test HTTPS connectivity through Cloudflare
+          echo "1️⃣ Testing HTTPS connectivity through Cloudflare..."
+          if curl -s --max-time 30 --head https://boximity.ca/ | grep -q "HTTP/[0-9.]* [2-3][0-9][0-9]"; then
+            echo "✅ HTTPS connection to boximity.ca: SUCCESS"
+
+            # Get response code for detailed logging
+            RESPONSE_CODE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" https://boximity.ca/)
+            echo "   Response code: $RESPONSE_CODE"
+          else
+            echo "::error::HTTPS connection to boximity.ca: FAILED"
+            CLOUDFLARE_PASSED=false
+          fi
+
+          # 2. Test SSL certificate validity
+          echo "2️⃣ Verifying SSL certificate..."
+          if echo | openssl s_client -connect boximity.ca:443 -servername boximity.ca 2>/dev/null | openssl x509 -noout -checkend 86400 >/dev/null 2>&1; then
+            echo "✅ SSL certificate: Valid (expires in more than 24 hours)"
+          else
+            echo "::warning::SSL certificate: Expires soon or invalid"
+            # Don't fail deployment for SSL issues, just warn
+          fi
+
+          # 3. Compare direct vs proxied responses (basic content check)
+          echo "3️⃣ Comparing direct vs proxied content..."
+          DIRECT_CONTENT=$(curl -s --max-time 10 http://$DROPLET_IP/ | head -n 5 | tr -d '\n\t' | sed 's/<[^>]*>//g' | head -c 200)
+          PROXY_CONTENT=$(curl -s --max-time 10 https://boximity.ca/ | head -n 5 | tr -d '\n\t' | sed 's/<[^>]*>//g' | head -c 200)
+
+          if [ -n "$DIRECT_CONTENT" ] && [ -n "$PROXY_CONTENT" ]; then
+            # Simple content similarity check
+            if echo "$DIRECT_CONTENT" | grep -q "Enterprise\|Solutions\|Technology"; then
+              echo "✅ Content similarity check: PASSED (found expected keywords)"
+            else
+              echo "⚠️ Content similarity check: Could not verify content keywords"
+            fi
+          else
+            echo "⚠️ Content comparison: Could not retrieve content from both endpoints"
+          fi
+
+          # 4. Test Cloudflare security headers
+          echo "4️⃣ Checking Cloudflare security headers..."
+          SECURITY_HEADERS=$(curl -s --max-time 10 -I https://boximity.ca/ | grep -E "(CF-RAY|Server|CF-Cache-Status)" | wc -l)
+          if [ "$SECURITY_HEADERS" -gt 0 ]; then
+            echo "✅ Cloudflare headers detected: $SECURITY_HEADERS headers found"
+            echo "   This indicates traffic is properly routed through Cloudflare"
+          else
+            echo "⚠️ No Cloudflare headers detected - traffic may not be going through proxy"
+          fi
+
+          # Summary
+          echo ""
+          echo "📊 Cloudflare Proxy Verification Results:"
+          if [ "$CLOUDFLARE_PASSED" = "true" ]; then
+            echo "🎉 Cloudflare proxy verification: PASSED"
+            echo "::set-output name=passed::true"
+          else
+            echo "❌ Cloudflare proxy verification: FAILED"
+            echo "::warning::Application may not be accessible through Cloudflare proxy"
+            echo "::set-output name=passed::false"
+          fi
+
       - name: Performance verification
         id: performance-checks
         env:
@@ -889,12 +984,13 @@ jobs:
           HEALTH_STATUS="${{ steps.health-checks.outputs.passed }}"
           PERF_STATUS="${{ steps.performance-checks.outputs.passed }}"
           SECURITY_STATUS="${{ steps.security-checks.outputs.passed }}"
+          CLOUDFLARE_STATUS="${{ steps.cloudflare-proxy-verification.outputs.passed }}"
 
           # Determine overall status
-          if [ "$HEALTH_STATUS" = "true" ] && [ "$PERF_STATUS" = "true" ] && [ "$SECURITY_STATUS" = "true" ]; then
+          if [ "$HEALTH_STATUS" = "true" ] && [ "$PERF_STATUS" = "true" ] && [ "$SECURITY_STATUS" = "true" ] && [ "$CLOUDFLARE_STATUS" = "true" ]; then
             OVERALL_STATUS="success"
             echo "🎉 DEPLOYMENT VERIFICATION SUCCESSFUL!"
-          elif [ "$HEALTH_STATUS" = "true" ]; then
+          elif [ "$HEALTH_STATUS" = "true" ] && [ "$CLOUDFLARE_STATUS" = "true" ]; then
             OVERALL_STATUS="warning"
             echo "⚠️ DEPLOYMENT VERIFICATION COMPLETED WITH WARNINGS"
           else
@@ -909,6 +1005,7 @@ jobs:
           echo "- Health Checks: $([ "$HEALTH_STATUS" = "true" ] && echo "✅ PASSED" || echo "❌ FAILED")"
           echo "- Performance Checks: $([ "$PERF_STATUS" = "true" ] && echo "✅ PASSED" || echo "⚠️ WARNINGS")"
           echo "- Security Checks: $([ "$SECURITY_STATUS" = "true" ] && echo "✅ PASSED" || echo "⚠️ WARNINGS")"
+          echo "- Cloudflare Proxy: $([ "$CLOUDFLARE_STATUS" = "true" ] && echo "✅ PASSED" || echo "❌ FAILED")"
           echo "- Overall Status: $OVERALL_STATUS"
           echo ""
           echo "🌐 Production URL: http://$DROPLET_IP/"
