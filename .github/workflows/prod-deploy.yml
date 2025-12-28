@@ -377,27 +377,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Determine droplet IP from DNS
-        id: determine-ip
-        run: |
-          echo "🔍 Determining droplet IP from DNS resolution..."
-
-          # Get IP from DNS resolution of boximity.ca
-          DROPLET_IP=$(nslookup boximity.ca 2>/dev/null | grep -A 2 "Name:" | grep "Address:" | head -1 | awk '{print $2}' || echo "")
-
-          if [ -z "$DROPLET_IP" ]; then
-            DROPLET_IP=$(dig +short boximity.ca | head -1 || echo "")
-          fi
-
-          if [ -z "$DROPLET_IP" ]; then
-            echo "::error::Could not resolve boximity.ca to an IP address"
-            exit 1
-          fi
-
-          echo "✅ Resolved droplet IP: $DROPLET_IP"
-          echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
-          echo "ip=$DROPLET_IP" >> $GITHUB_OUTPUT
-
       - name: Install Ansible
         run: |
           sudo apt update
@@ -415,7 +394,7 @@ jobs:
 
       - name: Validate DNS configuration
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "🔍 Validating DNS configuration for boximity.ca..."
 
@@ -481,7 +460,7 @@ jobs:
 
       - name: Add host key to known hosts
         env:
-          DROPLET_IP: ${{ steps.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           # Use the DNS-resolved IP if available, otherwise fall back to terraform output
           if [ -z "$DROPLET_IP" ]; then
@@ -607,7 +586,7 @@ jobs:
           GIT_REPO_URL: "${{ github.server_url }}/${{ github.repository }}.git"
           SSH_KEY_PATH: "~/.ssh/id_rsa"
           GITHUB_ACTIONS: "true"
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
@@ -679,7 +658,7 @@ jobs:
 
       - name: Initial deployment status check
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "🔍 Starting comprehensive production deployment verification..."
           echo ""
@@ -693,7 +672,7 @@ jobs:
 
       - name: Wait for application startup
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "⏳ Waiting for application to fully start up..."
 
@@ -724,7 +703,7 @@ jobs:
       - name: Comprehensive health checks
         id: health-checks
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "🏥 Running comprehensive health checks..."
 
@@ -800,7 +779,7 @@ jobs:
       - name: Performance verification
         id: performance-checks
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "⚡ Running performance verification..."
 
@@ -844,7 +823,7 @@ jobs:
       - name: Security verification
         id: security-checks
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "🔒 Running security verification..."
 
@@ -903,7 +882,7 @@ jobs:
       - name: Final verification status
         id: final-status
         env:
-          DROPLET_IP: ${{ needs.determine-ip.outputs.ip || needs.setup-infra.outputs.droplet_ip }}
+          DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
         run: |
           echo "📋 Generating final verification report..."
 
