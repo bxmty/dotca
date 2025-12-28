@@ -553,6 +553,9 @@ jobs:
     if: ${{ needs.validate-promotion.outputs.can_promote == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository for Playwright tests
+        uses: actions/checkout@v5
+
       - name: Download Error Handling Utilities
         uses: actions/download-artifact@v5
         with:
@@ -565,9 +568,6 @@ jobs:
           # Source error handling utilities
           source "${{ github.workspace }}/error-utils.sh"
           echo "✅ Error handling utilities loaded"
-
-      - name: Checkout repository for Playwright tests
-        uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
