@@ -59,7 +59,7 @@ jobs:
         id: validate_target
         run: |
           echo "🔍 Validating rollback target: $ROLLBACK_TARGET"
-
+          
           # Handle special targets
           case "$ROLLBACK_TARGET" in
             "latest")
@@ -88,33 +88,33 @@ jobs:
               ROLLBACK_TARGET="$ROLLBACK_TARGET"
               ;;
           esac
-
+          
           # Check if target image exists in registry
           echo "🔍 Checking if target image exists in registry: $ROLLBACK_TARGET"
           if docker manifest inspect "$ROLLBACK_TARGET" >/dev/null 2>&1; then
             echo "✅ Rollback target found in registry: $ROLLBACK_TARGET"
-
+            
             # Get image details
             echo "📥 Pulling image for inspection..."
             docker pull "$ROLLBACK_TARGET"
-
+            
             # Extract image information
             IMAGE_DIGEST=$(docker images --digests "$ROLLBACK_TARGET" --format '{{.Digest}}' | head -1 | sed 's/sha256://')
             IMAGE_SIZE=$(docker images --format '{{.Size}}' "$ROLLBACK_TARGET" | head -1)
             IMAGE_CREATED=$(docker images --format '{{.CreatedAt}}' "$ROLLBACK_TARGET" | head -1)
-
+            
             echo "📊 Image Details:"
             echo "  - Digest: $IMAGE_DIGEST"
             echo "  - Size: $IMAGE_SIZE"
             echo "  - Created: $IMAGE_CREATED"
-
+            
             # Set outputs
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "image=$ROLLBACK_TARGET" >> $GITHUB_OUTPUT
             echo "digest=$IMAGE_DIGEST" >> $GITHUB_OUTPUT
             echo "size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
             echo "created=$IMAGE_CREATED" >> $GITHUB_OUTPUT
-
+            
           else
             echo "❌ Rollback target not found in registry: $ROLLBACK_TARGET"
             echo "exists=false" >> $GITHUB_OUTPUT
@@ -151,23 +151,23 @@ jobs:
       - name: Get rollback history and context
         run: |
           echo "📚 Gathering rollback context and history..."
-
+          
           # Create context directory
           mkdir -p rollback-context
-
+          
           # Get recent rollback history
           echo "📊 Recent Rollback History:" > rollback-context/rollback-context.md
           echo "=============================" >> rollback-context/rollback-context.md
           echo "" >> rollback-context/rollback-context.md
-
+          
           # Check if we have image history data
           if [ -d "image-history" ]; then
             echo "✅ Image history data available"
-
+            
             # Get rollback frequency
             ROLLBACK_COUNT=$(find image-history -name "image-rollback-*.json" | wc -l)
             echo "Total rollback images in registry: $ROLLBACK_COUNT" >> rollback-context/rollback-context.md
-
+            
             # Get recent rollback patterns
             echo "" >> rollback-context/rollback-context.md
             echo "### Recent Rollback Patterns" >> rollback-context/rollback-context.md
@@ -180,7 +180,7 @@ jobs:
             echo "⚠️  No image history data available"
             echo "No recent rollback data available" >> rollback-context/rollback-context.md
           fi
-
+          
           # Get current production status
           echo "" >> rollback-context/rollback-context.md
           echo "### Current Production Status" >> rollback-context/rollback-context.md
@@ -188,83 +188,83 @@ jobs:
           echo "- Rollback Reason: $ROLLBACK_REASON" >> rollback-context/rollback-context.md
           echo "- Triggered by: ${{ github.actor }}" >> rollback-context/rollback-context.md
           echo "- Timestamp: $(date -u)" >> rollback-context/rollback-context.md
-
+          
           echo "✅ Rollback context gathered"
 
       - name: Create comprehensive approval request
         run: |
           echo "📋 Creating comprehensive approval request..."
-
+          
           cat > rollback-context/approval-request.md << EOF
           # 🚨 PRODUCTION ROLLBACK APPROVAL REQUIRED
-
+          
           ## ⚠️  CRITICAL ACTION REQUIRED
-
+          
           A production rollback has been requested and requires your approval.
-
+          
           ## 📋 Rollback Details
-
+          
           **Target Image**: \`${{ needs.validate-rollback-target.outputs.target_image }}\`
           **Reason**: $ROLLBACK_REASON
           **Requested by**: ${{ github.actor }}
           **Requested at**: $(date -u)
-
+          
           ## 🔍 Target Image Information
-
+          
           - **Digest**: \`${{ needs.validate-rollback-target.outputs.target_digest }}\`
           - **Size**: ${{ needs.validate-rollback-target.outputs.target_size }}
           - **Created**: ${{ needs.validate-rollback-target.outputs.target_created }}
-
+          
           ## 📊 Rollback Context
-
+          
           $(cat rollback-context/rollback-context.md)
-
+          
           ## 🚨 IMPACT ASSESSMENT
-
+          
           ### What This Rollback Will Do:
           1. **Stop** current production container
           2. **Replace** with rollback target image
           3. **Restart** production services
           4. **Verify** deployment health
-
+          
           ### Potential Risks:
           - **Service interruption** during rollback (typically 1-2 minutes)
           - **Data loss** if current deployment has unsaved state
           - **Configuration changes** if rollback image differs significantly
-
+          
           ### Safety Measures:
           - ✅ **Backup created** before rollback
           - ✅ **Health verification** after rollback
           - ✅ **Automatic rollback** if verification fails
-
+          
           ## ✅ APPROVAL INSTRUCTIONS
-
+          
           **To approve this rollback:**
           1. Click "Review deployments" above
           2. Select "production-rollback" environment
           3. Click "Approve and deploy"
           4. Confirm your approval
-
+          
           **To reject this rollback:**
           1. Close this workflow run
           2. Or comment with rejection reason
-
+          
           ## 📞 CONTACT INFORMATION
-
+          
           - **Repository**: ${{ github.repository }}
           - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           - **Requested by**: ${{ github.actor }}
-
+          
           ---
           *This approval request was automatically generated by the rollback workflow*
           EOF
-
+          
           echo "✅ Approval request created"
 
       - name: Send rollback approval notification
         run: |
           echo "📢 Sending rollback approval notification..."
-
+          
           # Create notification payload
           cat > rollback-context/notification-payload.json << EOF
           {
@@ -307,7 +307,7 @@ jobs:
             ]
           }
           EOF
-
+          
           echo "✅ Notification payload created"
           echo "📢 To send notification, integrate with your notification system (Slack, Teams, etc.)"
           echo "📁 Payload saved to: rollback-context/notification-payload.json"
@@ -394,7 +394,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-rollback-target, approve-rollback]
     if: |
-      needs.validate-rollback-target.outputs.target_exists == 'true' &&
+      needs.validate-rollback-target.outputs.target_exists == 'true' && 
       (github.event.inputs.force_rollback == 'true' || needs.approve-rollback.result == 'success')
     environment:
       name: production
@@ -407,7 +407,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: '1.5.0'
+          terraform_version: "1.5.0"
 
       - name: Configure DigitalOcean credentials
         run: |
@@ -419,15 +419,15 @@ jobs:
         id: server_ip
         run: |
           echo "🌐 Getting production server IP..."
-
+          
           # Use Terraform to get the server IP
           cd terraform
           terraform init
           terraform output -raw public_ip > /tmp/server_ip.txt
-
+          
           SERVER_IP=$(cat /tmp/server_ip.txt)
           echo "✅ Production server IP: $SERVER_IP"
-
+          
           echo "ip=$SERVER_IP" >> $GITHUB_OUTPUT
           echo "server_ip=$SERVER_IP" >> $GITHUB_ENV
 
@@ -437,84 +437,84 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-
+          
           # Add known hosts
           ssh-keyscan -H ${{ steps.server_ip.outputs.ip }} >> ~/.ssh/known_hosts
-
+          
           echo "✅ SSH key configured"
 
       - name: Create rollback execution script
         run: |
           echo "📝 Creating rollback execution script..."
-
+          
           cat > rollback-execute.sh << 'EOF'
           #!/bin/bash
-
+          
           set -euo pipefail
-
+          
           # Configuration
           ROLLBACK_TARGET="$ROLLBACK_TARGET"
           APP_DIR="/app"
           DOCKER_COMPOSE_DIR="$APP_DIR/repo"
           BACKUP_DIR="$APP_DIR/backup-$(date +%Y%m%d-%H%M%S)"
-
+          
           echo "🚀 Starting production rollback..."
           echo "Target: $ROLLBACK_TARGET"
           echo "Backup: $BACKUP_DIR"
-
+          
           # Create backup of current deployment
           echo "💾 Creating backup of current deployment..."
           mkdir -p "$BACKUP_DIR"
-
+          
           # Save current docker-compose state
           cd "$DOCKER_COMPOSE_DIR"
           docker-compose ps > "$BACKUP_DIR/container-status.txt" 2>&1 || true
           docker-compose logs web > "$BACKUP_DIR/container-logs.txt" 2>&1 || true
-
+          
           # Save current image info
           docker images --format '{{.Repository}}:{{.Tag}} {{.Digest}} {{.Size}} {{.CreatedAt}}' | head -1 > "$BACKUP_DIR/current-image.txt" 2>&1 || true
-
+          
           echo "✅ Backup created at: $BACKUP_DIR"
-
+          
           # Stop current production container
           echo "🛑 Stopping current production container..."
           docker-compose down web || true
-
+          
           # Pull rollback image
           echo "📥 Pulling rollback image from registry..."
           docker pull "$ROLLBACK_TARGET" || {
             echo "❌ Failed to pull rollback image: $ROLLBACK_TARGET"
             exit 1
           }
-
+          
           # Update docker-compose.yml with rollback image
           echo "📝 Updating docker-compose.yml with rollback image..."
           sed -i.bak "s|image:.*|image: $ROLLBACK_TARGET|" "$DOCKER_COMPOSE_DIR/docker-compose.yml"
-
+          
           # Start rollback container
           echo "🚀 Starting rollback container..."
           docker-compose up -d web || {
             echo "❌ Failed to start rollback container"
             exit 1
           }
-
+          
           # Wait for container to be ready
           echo "⏳ Waiting for rollback container to be ready..."
           sleep 15
-
+          
           # Verify rollback deployment
           echo "🔍 Verifying rollback deployment..."
-
+          
           # Check container is running
           if ! docker-compose ps | grep -q "Up"; then
             echo "❌ Rollback container is not running"
             exit 1
           fi
-
+          
           # Health check
           local retries=0
           local max_retries=10
-
+          
           while [ $retries -lt $max_retries ]; do
             if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
               echo "✅ Health check passed"
@@ -524,16 +524,16 @@ jobs:
             echo "⏳ Health check attempt $retries/$max_retries..."
             sleep 5
           done
-
+          
           if [ $retries -eq $max_retries ]; then
             echo "❌ Health check failed after $max_retries attempts"
             exit 1
           fi
-
+          
           echo "✅ Rollback completed successfully!"
           echo "🖼️  Production now running: $ROLLBACK_TARGET"
           echo "📁 Backup available at: $BACKUP_DIR"
-
+          
           # Update rollback status
           cat > "$APP_DIR/rollback-status.json" << STATUS_EOF
           {
@@ -547,32 +547,32 @@ jobs:
             }
           }
           STATUS_EOF
-
+          
           echo "✅ Rollback status updated"
           EOF
-
+          
           chmod +x rollback-execute.sh
           echo "✅ Rollback execution script created"
 
       - name: Execute rollback on production server
         run: |
           echo "🚀 Executing rollback on production server..."
-
+          
           # Copy rollback script to server
           scp rollback-execute.sh root@${{ steps.server_ip.outputs.ip }}:/tmp/
-
+          
           # Execute rollback
           ssh root@${{ steps.server_ip.outputs.ip }} << 'EOF'
             echo "🔑 Setting environment variables..."
             export ROLLBACK_TARGET="$ROLLBACK_TARGET"
             export ROLLBACK_REASON="$ROLLBACK_REASON"
-
+            
             echo "📝 Executing rollback script..."
             bash /tmp/rollback-execute.sh
-
+            
             echo "✅ Rollback execution completed"
           EOF
-
+          
           echo "✅ Rollback executed successfully"
 
       - name: Verify rollback deployment
@@ -660,7 +660,7 @@ jobs:
 
           # Test main endpoint response time
           echo "### Response Time Tests" >> performance-verification/performance-report.md
-
+          
           # Multiple response time tests
           for i in {1..5}; do
             START_TIME=$(date +%s%N)
@@ -678,7 +678,7 @@ jobs:
           # Calculate average response time
           echo "" >> performance-verification/performance-report.md
           echo "### Performance Summary" >> performance-verification/performance-report.md
-
+          
           # Test SSL/TLS if available
           echo "" >> performance-verification/performance-report.md
           echo "### SSL/TLS Verification" >> performance-verification/performance-report.md
@@ -707,26 +707,26 @@ jobs:
           # Create verification script
           cat > verify-rollback-integrity.sh << 'EOF'
           #!/bin/bash
-
+          
           set -euo pipefail
-
+          
           ROLLBACK_TARGET="$ROLLBACK_TARGET"
           SERVER_IP="${{ steps.server_ip.outputs.ip }}"
-
+          
           echo "🔍 Verifying rollback integrity on $SERVER_IP..."
-
+          
           # SSH to server and verify
           ssh root@$SERVER_IP << 'SERVER_EOF'
             echo "🔍 Checking container status..."
-
+            
             # Check if container is running
             if docker ps | grep -q "Up"; then
               echo "✅ Container is running"
-
+              
               # Get running image
               RUNNING_IMAGE=$(docker ps --format '{{.Image}}' | head -1)
               echo "🖼️  Running image: $RUNNING_IMAGE"
-
+              
               # Check if it matches rollback target
               if [ "$RUNNING_IMAGE" = "$ROLLBACK_TARGET" ]; then
                 echo "✅ Image verification: PASSED - Running image matches rollback target"
@@ -736,11 +736,11 @@ jobs:
                 echo "Actual: $RUNNING_IMAGE"
                 exit 1
               fi
-
+              
               # Check container health
               CONTAINER_ID=$(docker ps --format '{{.ID}}' | head -1)
               HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $CONTAINER_ID 2>/dev/null || echo "no-health-check")
-
+              
               if [ "$HEALTH_STATUS" = "healthy" ]; then
                 echo "✅ Container health: HEALTHY"
               elif [ "$HEALTH_STATUS" = "starting" ]; then
@@ -748,22 +748,22 @@ jobs:
               else
                 echo "⚠️  Container health: $HEALTH_STATUS"
               fi
-
+              
               # Check resource usage
               echo "📊 Resource usage:"
               docker stats --no-stream --format "table {{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
-
+              
             else
               echo "❌ No containers running"
               exit 1
             fi
           SERVER_EOF
-
+          
           echo "✅ Rollback integrity verification completed"
           EOF
 
           chmod +x verify-rollback-integrity.sh
-
+          
           # Execute verification
           bash verify-rollback-integrity.sh
 
@@ -781,22 +781,22 @@ jobs:
 
           # Test for common security headers
           echo "### Security Headers" >> security-verification/security-report.md
-
+          
           # Check for security headers
           SECURITY_HEADERS=$(curl -f -s -I "http://${{ steps.server_ip.outputs.ip }}:8080" 2>/dev/null || echo "")
-
+          
           if echo "$SECURITY_HEADERS" | grep -q "X-Frame-Options"; then
             echo "✅ X-Frame-Options: PRESENT" >> security-verification/security-report.md
           else
             echo "⚠️  X-Frame-Options: MISSING" >> security-verification/security-report.md
           fi
-
+          
           if echo "$SECURITY_HEADERS" | grep -q "X-Content-Type-Options"; then
             echo "✅ X-Content-Type-Options: PRESENT" >> security-verification/security-report.md
           else
             echo "⚠️  X-Content-Type-Options: MISSING" >> security-verification/security-report.md
           fi
-
+          
           if echo "$SECURITY_HEADERS" | grep -q "Strict-Transport-Security"; then
             echo "✅ HSTS: PRESENT" >> security-verification/security-report.md
           else
@@ -806,7 +806,7 @@ jobs:
           # Test for open ports
           echo "" >> security-verification/security-report.md
           echo "### Port Security" >> security-verification/security-report.md
-
+          
           # Check if only expected ports are open
           if nmap -p 22,80,443,8080 ${{ steps.server_ip.outputs.ip }} 2>/dev/null | grep -q "open"; then
             echo "✅ Port security: VERIFIED - Only expected ports are open" >> security-verification/security-report.md
@@ -819,86 +819,86 @@ jobs:
       - name: Final rollback verification summary
         run: |
           echo "📋 Creating final rollback verification summary..."
-
+          
           # Create comprehensive verification summary
           cat > rollback-verification-summary.md << EOF
           # 🚀 Rollback Verification Summary
-
+          
           ## Rollback Details
           - **Target Image**: ${{ needs.validate-rollback-target.outputs.target_image }}
           - **Reason**: $ROLLBACK_REASON
           - **Production Server**: ${{ steps.server_ip.outputs.ip }}
           - **Verification Timestamp**: $(date -u)
-
+          
           ## Verification Results
-
+          
           ### ✅ Health Checks
           - Basic connectivity: PASSED
           - Health endpoint: $(if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/health" >/dev/null 2>&1; then echo "AVAILABLE"; else echo "NOT AVAILABLE"; fi)
           - API endpoint: $(if curl -f -s "http://${{ steps.server_ip.outputs.ip }}:8080/api" >/dev/null 2>&1; then echo "AVAILABLE"; else echo "NOT AVAILABLE"; fi)
-
+          
           ### 📊 Performance Verification
           - Response time tests: COMPLETED
           - SSL/TLS: $(if curl -f -s -k "https://${{ steps.server_ip.outputs.ip }}:443" >/dev/null 2>&1; then echo "AVAILABLE"; else echo "NOT AVAILABLE"; fi)
-
+          
           ### 🔒 Integrity Verification
           - Image verification: VERIFIED
           - Container status: RUNNING
           - Health status: CHECKED
-
+          
           ### 🔐 Security Verification
           - Security headers: VERIFIED
           - Port security: VERIFIED
-
+          
           ## Overall Status: ✅ SUCCESS
-
+          
           The rollback has been successfully verified with all critical checks passing.
-
+          
           ## Next Steps
           1. ✅ Rollback completed and verified
           2. Monitor application performance
           3. Verify all functionality is working
           4. Check backup location for previous deployment
-
+          
           ---
           *Generated by GitHub Actions Rollback Workflow*
           EOF
-
+          
           echo "✅ Final verification summary created"
           echo "📁 Summary saved to: rollback-verification-summary.md"
 
       - name: Create rollback summary
         run: |
           echo "📋 Creating rollback summary..."
-
+          
           cat >> $GITHUB_STEP_SUMMARY << EOF
-
+          
           ## 🚀 Production Rollback Completed Successfully
-
+          
           ### Rollback Details
           - **Target Image**: ${{ needs.validate-rollback-target.outputs.target_image }}
           - **Reason**: $ROLLBACK_REASON
           - **Triggered by**: ${{ github.actor }}
           - **Timestamp**: $(date -u)
           - **Status**: ✅ SUCCESS
-
+          
           ### Image Information
           - **Digest**: ${{ needs.validate-rollback-target.outputs.target_digest }}
           - **Size**: ${{ needs.validate-rollback-target.outputs.target_size }}
           - **Created**: ${{ needs.validate-rollback-target.outputs.target_created }}
-
+          
           ### Deployment Status
           - **Production Server**: ${{ steps.server_ip.outputs.ip }}
           - **Health Check**: ✅ PASSED
           - **Connectivity**: ✅ PASSED
           - **Backup Created**: ✅ YES
-
+          
           ### Next Steps
           1. ✅ Rollback completed successfully
           2. Monitor application performance
           3. Verify all functionality is working
           4. Check backup location for previous deployment
-
+          
           ---
           *Rollback executed via GitHub Actions workflow*
           EOF
@@ -906,7 +906,7 @@ jobs:
       - name: Send rollback success notification
         run: |
           echo "📢 Sending rollback success notification..."
-
+          
           # Create success notification payload
           cat > rollback-success-notification.json << EOF
           {
@@ -959,7 +959,7 @@ jobs:
             ]
           }
           EOF
-
+          
           echo "✅ Success notification payload created"
           echo "📢 To send notification, integrate with your notification system (Slack, Teams, etc.)"
           echo "📁 Payload saved to: rollback-success-notification.json"
@@ -967,7 +967,7 @@ jobs:
       - name: Create rollback audit log
         run: |
           echo "📝 Creating rollback audit log..."
-
+          
           # Create audit log entry
           cat > rollback-audit-log.json << EOF
           {
@@ -995,7 +995,7 @@ jobs:
             }
           }
           EOF
-
+          
           echo "✅ Rollback audit log created"
           echo "📁 Audit log saved to: rollback-audit-log.json"
 
@@ -1022,36 +1022,36 @@ jobs:
       - name: Create rollback notification
         run: |
           echo "📢 Creating rollback notification..."
-
+          
           # Create a comprehensive notification
           cat > rollback-notification.md << EOF
           # 🚀 Production Rollback Completed
-
+          
           ## Summary
           A production rollback has been completed successfully.
-
+          
           ## Details
           - **Repository**: ${{ github.repository }}
           - **Workflow**: Production Rollback
           - **Run ID**: ${{ github.run_id }}
           - **Triggered by**: ${{ github.actor }}
           - **Timestamp**: $(date -u)
-
+          
           ## Rollback Information
           - **Target Image**: ${{ needs.validate-rollback-target.outputs.target_image }}
           - **Reason**: $ROLLBACK_REASON
           - **Status**: ✅ SUCCESS
-
+          
           ## Technical Details
           - **Image Digest**: ${{ needs.validate-rollback-target.outputs.target_digest }}
           - **Image Size**: ${{ needs.validate-rollback-target.outputs.target_size }}
           - **Image Created**: ${{ needs.validate-rollback-target.outputs.target_created }}
-
+          
           ## Deployment
           - **Environment**: Production
           - **Server**: ${{ needs.execute-rollback.outputs.server_ip }}
           - **Health Status**: ✅ HEALTHY
-
+          
           ## Actions Taken
           1. ✅ Validated rollback target
           2. ✅ Created backup of current deployment
@@ -1061,17 +1061,17 @@ jobs:
           6. ✅ Started rollback container
           7. ✅ Verified deployment health
           8. ✅ Updated rollback status
-
+          
           ## Next Steps
           - Monitor application performance
           - Verify all functionality is working
           - Check backup location for previous deployment
           - Review rollback logs if needed
-
+          
           ---
           *This notification was automatically generated by GitHub Actions*
           EOF
-
+          
           echo "✅ Rollback notification created"
 
       - name: Display rollback completion summary
@@ -1116,7 +1116,7 @@ jobs:
       - name: Create failure notification
         run: |
           echo "❌ Creating rollback failure notification..."
-
+          
           # Determine failure reason
           if [ "${{ needs.validate-rollback-target.result }}" = "failure" ]; then
             FAILURE_REASON="Target validation failed"
@@ -1127,13 +1127,13 @@ jobs:
           else
             FAILURE_REASON="Unknown failure"
           fi
-
+          
           cat > rollback-failure-notification.md << EOF
           # ❌ Production Rollback Failed
-
+          
           ## Summary
           A production rollback has failed and requires immediate attention.
-
+          
           ## Failure Details
           - **Repository**: ${{ github.repository }}
           - **Workflow**: Production Rollback
@@ -1141,39 +1141,39 @@ jobs:
           - **Triggered by**: ${{ github.actor }}
           - **Timestamp**: $(date -u)
           - **Failure Reason**: $FAILURE_REASON
-
+          
           ## Rollback Information
           - **Target Image**: $ROLLBACK_TARGET
           - **Reason**: $ROLLBACK_REASON
           - **Status**: ❌ FAILED
-
+          
           ## Failure Analysis
           - **Target Validation**: ${{ needs.validate-rollback-target.result }}
           - **Manual Approval**: ${{ needs.approve-rollback.result }}
           - **Rollback Execution**: ${{ needs.execute-rollback.result }}
-
+          
           ## Immediate Actions Required
           1. 🔍 Investigate the failure cause
           2. 🚨 Check production environment status
           3. 📋 Review workflow logs for details
           4. 🛠️  Fix the underlying issue
           5. 🔄 Retry rollback if appropriate
-
+          
           ## Contact Information
           - **Repository**: ${{ github.repository }}
           - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           - **Triggered by**: ${{ github.actor }}
-
+          
           ---
           *This failure notification was automatically generated by GitHub Actions*
           EOF
-
+          
           echo "✅ Rollback failure notification created"
 
       - name: Send failure notification
         run: |
           echo "📢 Sending rollback failure notification..."
-
+          
           # Create failure notification payload
           cat > rollback-failure-notification.json << EOF
           {
@@ -1226,7 +1226,7 @@ jobs:
             ]
           }
           EOF
-
+          
           echo "✅ Failure notification payload created"
           echo "📢 To send notification, integrate with your notification system (Slack, Teams, etc.)"
           echo "📁 Payload saved to: rollback-failure-notification.json"
@@ -1234,7 +1234,7 @@ jobs:
       - name: Create failure audit log
         run: |
           echo "📝 Creating failure audit log..."
-
+          
           # Create failure audit log entry
           cat > rollback-failure-audit-log.json << EOF
           {
@@ -1265,7 +1265,7 @@ jobs:
             }
           }
           EOF
-
+          
           echo "✅ Failure audit log created"
           echo "📁 Failure audit log saved to: rollback-failure-audit-log.json"
 
