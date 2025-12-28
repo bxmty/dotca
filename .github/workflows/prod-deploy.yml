@@ -392,6 +392,33 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
+      - name: Manual Cloudflare Proxy Toggle Instructions
+        run: |
+          echo "🌐 MANUAL CLOUDFLARE PROXY MANAGEMENT REQUIRED"
+          echo "=================================================="
+          echo ""
+          echo "⚠️  IMPORTANT: You must manually toggle Cloudflare proxy before/after deployment"
+          echo ""
+          echo "BEFORE DEPLOYMENT (do this now):"
+          echo "1. Go to https://dash.cloudflare.com"
+          echo "2. Select your domain: boximity.ca"
+          echo "3. Go to DNS → Records"
+          echo "4. Find the 'boximity.ca' A record"
+          echo "5. Click the orange cloud icon to turn it gray (disable proxy)"
+          echo "6. Wait 5-10 minutes for DNS propagation"
+          echo ""
+          echo "AFTER DEPLOYMENT (don't forget this!):"
+          echo "1. Go back to the same DNS record"
+          echo "2. Click the gray cloud icon to turn it orange (re-enable proxy)"
+          echo ""
+          echo "Current DNS resolution:"
+          dig +short boximity.ca | head -1 || echo "DNS lookup failed"
+          echo ""
+          echo "Expected droplet IP: ${{ needs.setup-infra.outputs.droplet_ip }}"
+          echo ""
+          echo "⏳ Waiting 30 seconds for you to complete the proxy toggle..."
+          sleep 30
+
       - name: Validate DNS and Cloudflare proxy configuration
         env:
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
@@ -1038,6 +1065,26 @@ jobs:
             echo "❌ Critical health checks failed - marking deployment as failed"
             exit 1
           fi
+
+      - name: Cloudflare Proxy Re-enable Reminder
+        if: success()
+        run: |
+          echo "🎉 DEPLOYMENT SUCCESSFUL!"
+          echo ""
+          echo "⚠️  IMPORTANT: Re-enable Cloudflare proxy now!"
+          echo "=================================================="
+          echo ""
+          echo "You must manually re-enable the Cloudflare proxy:"
+          echo "1. Go to https://dash.cloudflare.com"
+          echo "2. Select your domain: boximity.ca"
+          echo "3. Go to DNS → Records"
+          echo "4. Find the 'boximity.ca' A record"
+          echo "5. Click the gray cloud icon to turn it orange (re-enable proxy)"
+          echo ""
+          echo "Your site will not be accessible through Cloudflare until you do this!"
+          echo ""
+          echo "🔒 Security reminder: Your droplet IP ($DROPLET_IP) is currently publicly accessible"
+          echo "   Re-enable the proxy to restore normal security and CDN benefits."
 
   playwright-tests:
     name: Run Playwright Tests
