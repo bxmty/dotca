@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
+import { 
   PaymentElement,
   useStripe,
   useElements,
@@ -11,9 +11,7 @@ interface StripePaymentFormProps {
   onSuccess: () => void;
 }
 
-export default function StripePaymentForm({
-  onSuccess,
-}: StripePaymentFormProps) {
+export default function StripePaymentForm({ onSuccess }: StripePaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -51,13 +49,15 @@ export default function StripePaymentForm({
   return (
     <form onSubmit={handleSubmit} className="stripe-form">
       <PaymentElement />
-
+      
       {errorMessage && (
-        <div className="alert alert-danger mt-3">{errorMessage}</div>
+        <div className="alert alert-danger mt-3">
+          {errorMessage}
+        </div>
       )}
-
-      <button
-        type="submit"
+      
+      <button 
+        type="submit" 
         disabled={!stripe || isLoading}
         className="btn btn-success w-100 py-3 mt-3 fs-5"
       >

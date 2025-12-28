@@ -7,17 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       include_history:
-        description: 'Include deployment history'
+        description: "Include deployment history"
         required: false
         type: boolean
         default: true
       detailed_report:
-        description: 'Generate detailed status report'
+        description: "Generate detailed status report"
         required: false
         type: boolean
         default: false
       send_notifications:
-        description: 'Send dashboard notifications'
+        description: "Send dashboard notifications"
         required: false
         type: boolean
         default: false
@@ -303,7 +303,7 @@ jobs:
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: ${{ needs.generate-status-dashboard.outputs.overall_status == 'critical' && 'verification-failed' || 'verification-warning' }}
-      environment: 'production'
+      environment: "production"
       deployment_details: |
         {
           "overall_status": "${{ needs.generate-status-dashboard.outputs.overall_status }}",
@@ -314,6 +314,6 @@ jobs:
           "timestamp": "${{ github.event.head_commit.timestamp }}",
           "generated_by": "deployment-status-dashboard"
         }
-      notification_channels: 'github,slack'
+      notification_channels: "github,slack"
       severity: ${{ needs.generate-status-dashboard.outputs.overall_status == 'critical' && 'error' || 'warning' }}
-      additional_context: 'Automated status dashboard detected issues requiring attention.'
+      additional_context: "Automated status dashboard detected issues requiring attention."
