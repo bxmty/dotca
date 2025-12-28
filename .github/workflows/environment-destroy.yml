@@ -20,7 +20,7 @@ jobs:
     name: Destroy ${{ github.event.inputs.environment }} Environment
     runs-on: ubuntu-latest
     if: github.event.inputs.confirmation == format('destroy-{0}', github.event.inputs.environment)
-
+    
     steps:
       - name: Validate Environment
         run: |
@@ -29,21 +29,21 @@ jobs:
             exit 1
           fi
           echo "✅ Environment '${{ github.event.inputs.environment }}' is valid"
-
+          
       - name: Checkout code
         uses: actions/checkout@v5
-
+        
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
-
+          
       - name: Setup DigitalOcean CLI
         run: |
           curl -sL https://github.com/digitalocean/doctl/releases/download/v1.94.0/doctl-1.94.0-linux-amd64.tar.gz | tar -xzv
           sudo mv doctl /usr/local/bin/
           doctl auth init -t ${{ secrets.DO_TOKEN }}
-
+          
       - name: Initialize Terraform
         working-directory: ./terraform
         run: |
@@ -51,7 +51,7 @@ jobs:
             -backend-config="access_key=${{ secrets.SPACES_ACCESS_ID }}" \
             -backend-config="secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
             -backend-config="key=dotca/terraform-${{ github.event.inputs.environment }}.tfstate"
-
+        
       - name: Set Git Branch
         id: set_branch
         run: |
@@ -60,7 +60,7 @@ jobs:
           else
             echo "git_branch=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
           fi
-
+      
       - name: Terraform Plan Destroy
         working-directory: ./terraform
         run: |
@@ -72,11 +72,11 @@ jobs:
             -var="git_branch=${{ steps.set_branch.outputs.git_branch }}" \
             -var="environment=${{ github.event.inputs.environment }}" \
             -out=tfdestroyplan
-
+        
       - name: Terraform Destroy
         working-directory: ./terraform
         run: terraform apply -auto-approve tfdestroyplan
-
+        
       - name: Destruction Notification
         run: |
           echo "🗑️ ${{ github.event.inputs.environment }} environment has been destroyed successfully!"

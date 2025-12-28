@@ -16,10 +16,10 @@ on:
         default: false
         type: boolean
 env:
-  ANSIBLE_HOST_KEY_CHECKING: 'False'
+  ANSIBLE_HOST_KEY_CHECKING: "False"
   ANSIBLE_STDOUT_CALLBACK: default
   ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
-  ANSIBLE_FORCE_COLOR: '1'
+  ANSIBLE_FORCE_COLOR: "1"
 jobs:
   setup-infra:
     name: Setup Infrastructure
@@ -490,7 +490,7 @@ jobs:
       - name: Run Ansible playbook with enhanced error handling
         env:
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          GITHUB_ACTIONS: 'true'
+          GITHUB_ACTIONS: "true"
           DROPLET_IP: ${{ needs.setup-infra.outputs.droplet_ip }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
@@ -676,7 +676,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.21.0'
+          node-version: "22.21.0"
           cache: npm
       - name: Install dependencies
         run: |
@@ -736,7 +736,7 @@ jobs:
     uses: ./.github/workflows/deployment-notifications.yml
     with:
       event_type: ${{ needs.deploy-app.result == 'success' && 'deployment-success' || 'deployment-failed' }}
-      environment: 'staging'
+      environment: "staging"
       deployment_details: |
         {
           "staging_url": "http://${{ needs.setup-infra.outputs.droplet_ip }}",
@@ -747,7 +747,7 @@ jobs:
           "ref": "${{ github.ref }}",
           "timestamp": "${{ github.event.head_commit.timestamp }}"
         }
-      notification_channels: 'github,slack'
+      notification_channels: "github,slack"
       severity: ${{ needs.deploy-app.result == 'success' && 'info' || 'error' }}
 
   staging-summary:

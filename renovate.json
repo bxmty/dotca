@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "rangeStrategy": "pin",
   "baseBranches": ["renovations"],
   "schedule": ["after 9am and before 5pm every weekday"],
@@ -24,14 +26,7 @@
     {
       "matchUpdateTypes": ["patch"],
       "matchDepTypes": ["dependencies"],
-      "excludePackageNames": [
-        "next",
-        "react",
-        "react-dom",
-        "@stripe/stripe-js",
-        "@stripe/react-stripe-js",
-        "stripe"
-      ],
+      "excludePackageNames": ["next", "react", "react-dom", "@stripe/stripe-js", "@stripe/react-stripe-js", "stripe"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"

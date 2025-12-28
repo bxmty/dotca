@@ -28,9 +28,7 @@ export default function UmamiAnalytics() {
       const hostUrl = process.env.NEXT_PUBLIC_UMAMI_HOST_URL;
 
       if (!websiteId || !hostUrl) {
-        console.warn(
-          'Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.'
-        );
+        console.warn('Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.');
         return;
       }
 
@@ -101,10 +99,7 @@ export default function UmamiAnalytics() {
   useEffect(() => {
     // Make tracking functions available globally for other components
     if (typeof window !== 'undefined') {
-      window.umamiTrackEvent = (
-        event: string,
-        data?: Record<string, unknown>
-      ) => {
+      window.umamiTrackEvent = (event: string, data?: Record<string, unknown>) => {
         if (!window.umami?.track) {
           console.warn('Umami tracking not available');
           return;
