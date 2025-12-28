@@ -495,50 +495,72 @@ jobs:
             exit 1
           fi
 
-          echo "Connecting to IP: $DROPLET_IP"
+          echo "🔧 Connecting to droplet at: $DROPLET_IP"
+          echo "📡 Current DNS resolution for boximity.ca:"
+          dig +short boximity.ca | head -1 || echo "DNS lookup failed"
 
-          # Wait longer for new or updated resources to be fully ready
-          if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
-            echo "Waiting for droplet to be fully ready..."
-            # Try to ping the droplet until it's accessible
-            TIMEOUT=300
-            INTERVAL=10
-            ELAPSED=0
-            while [ $ELAPSED -lt $TIMEOUT ]; do
-              echo "Attempting to ping $DROPLET_IP... (${ELAPSED}s elapsed)"
-              if ping -c 1 -W 5 $DROPLET_IP &> /dev/null; then
-                echo "Successfully reached droplet at $DROPLET_IP"
-                break
-              fi
-              sleep $INTERVAL
-              ELAPSED=$((ELAPSED + INTERVAL))
-            done
+          # Test basic connectivity first
+          echo "🧪 Testing basic connectivity to $DROPLET_IP..."
+          if ping -c 3 -W 5 $DROPLET_IP &> /dev/null; then
+            echo "✅ ICMP ping successful - droplet is reachable"
+          else
+            echo "❌ ICMP ping failed - checking if this is expected (firewall may block ICMP)"
 
-            if [ $ELAPSED -ge $TIMEOUT ]; then
-              echo "::warning::Droplet at $DROPLET_IP is not responding to ping after ${TIMEOUT}s"
-              # Continue anyway, since SSH might still work
+            # Try TCP connection to port 22 instead
+            if timeout 10 bash -c "</dev/tcp/$DROPLET_IP/22" 2>/dev/null; then
+              echo "✅ TCP connection to port 22 successful"
+            else
+              echo "::error::Cannot reach droplet at $DROPLET_IP on port 22"
+              echo "🔍 Troubleshooting steps:"
+              echo "  1. Check if Cloudflare proxy is disabled for boximity.ca"
+              echo "  2. Verify droplet IP is correct: $DROPLET_IP"
+              echo "  3. Check DigitalOcean firewall allows SSH (port 22)"
+              echo "  4. Confirm droplet is running and SSH service is active"
+              echo "  5. DNS may still be propagating (wait 5-10 minutes after proxy toggle)"
+              exit 1
             fi
+          fi
 
-            # Additional wait time for services to start
-            echo "Waiting additional time for services to start..."
+          # Wait for droplet to be fully ready
+          if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
+            echo "⏳ Waiting for droplet to be fully ready..."
             sleep 30
           fi
 
-          # Add host key to known_hosts
-          echo "Adding host key for $DROPLET_IP to known_hosts..."
+          # Add host key to known_hosts with better error handling
+          echo "🔐 Adding SSH host key for $DROPLET_IP to known_hosts..."
+          HOST_KEY_ADDED=false
           for i in {1..5}; do
+            echo "Attempt $i: Scanning host key..."
             if ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts 2>/dev/null; then
-              echo "Successfully added host key on attempt $i"
+              echo "✅ Successfully added host key on attempt $i"
+              HOST_KEY_ADDED=true
               break
             else
-              echo "Attempt $i to add host key failed, retrying in 10 seconds..."
-              sleep 10
-            fi
-
-            if [ $i -eq 5 ]; then
-              echo "::warning::Failed to add host key after 5 attempts, continuing anyway..."
+              echo "⚠️ Attempt $i failed - this may be normal if host key changes"
+              sleep 5
             fi
           done
+
+          if [ "$HOST_KEY_ADDED" = "false" ]; then
+            echo "::warning::Failed to add host key after 5 attempts, but continuing..."
+            echo "This is usually OK - SSH will prompt for host key verification"
+          fi
+
+          # Final connectivity test
+          echo "🔗 Testing SSH connectivity..."
+          if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o PasswordAuthentication=no -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH connectivity test successful'" 2>/dev/null; then
+            echo "✅ SSH connection test successful!"
+          else
+            echo "::error::SSH connection test failed"
+            echo "🔍 Possible causes:"
+            echo "  1. Cloudflare proxy still enabled (DNS points to proxy IP, not $DROPLET_IP)"
+            echo "  2. SSH key not authorized on droplet"
+            echo "  3. SSH service not running on droplet"
+            echo "  4. Firewall blocking SSH access"
+            echo "  5. Wrong droplet IP being used"
+            exit 1
+          fi
 
       - name: Setup Ansible Vault password file
         run: |
