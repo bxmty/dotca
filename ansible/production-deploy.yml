@@ -856,10 +856,9 @@
         - 8080
       become: true
 
-    - name: Enable UFW
+    - name: Disable UFW (rely on DigitalOcean firewall)
       community.general.ufw:
-        state: enabled
-        policy: deny
+        state: disabled
       become: true
 
     - name: Create enhanced monitoring script from template
