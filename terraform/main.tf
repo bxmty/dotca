@@ -7,7 +7,7 @@ terraform {
     }
   }
   required_version = ">= 1.5.0"
-  
+
   backend "s3" {
     endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
     region                      = "tor1"
@@ -54,20 +54,29 @@ resource "digitalocean_project_resources" "project_resources" {
   depends_on = [digitalocean_droplet.app_droplet]
 }
 
-# Get SSH key data - try multiple lookup methods
-data "digitalocean_ssh_key" "ssh_key" {
-  count = var.ssh_key_name != "" ? 1 : 0
+# Get SSH key data - primary: lookup by fingerprint, fallback: lookup by name
+data "digitalocean_ssh_key" "by_fingerprint" {
+  count       = var.ssh_key_fingerprint != "" ? 1 : 0
+  fingerprint = var.ssh_key_fingerprint
+}
+
+data "digitalocean_ssh_key" "by_name" {
+  count = var.ssh_key_fingerprint == "" && var.ssh_key_name != "" ? 1 : 0
   name  = var.ssh_key_name
 }
 
 # Fallback: get all SSH keys and use the first one (typically the default)
 data "digitalocean_ssh_keys" "all_keys" {
-  count = var.ssh_key_name == "" ? 1 : 0
+  count = var.ssh_key_fingerprint == "" && var.ssh_key_name == "" ? 1 : 0
 }
 
-# Use the appropriate SSH key
+# Use the appropriate SSH key - fingerprint takes priority
 locals {
-  ssh_key_id = var.ssh_key_name != "" ? data.digitalocean_ssh_key.ssh_key[0].id : data.digitalocean_ssh_keys.all_keys[0].ssh_keys[0].id
+  ssh_key_id = (
+    var.ssh_key_fingerprint != "" ? data.digitalocean_ssh_key.by_fingerprint[0].id :
+    var.ssh_key_name != "" ? data.digitalocean_ssh_key.by_name[0].id :
+    data.digitalocean_ssh_keys.all_keys[0].ssh_keys[0].id
+  )
 }
 
 # Create a new Droplet for the environment
@@ -87,23 +96,23 @@ resource "digitalocean_droplet" "app_droplet" {
     # Create a startup log file
     exec > >(tee /var/log/user-data.log) 2>&1
     echo "Starting minimal initialization for ${var.environment} environment: $(date)"
-    
+
     # Wait until apt is available
     echo "Waiting for apt to be available..."
     until apt-get update -q; do
       echo "Apt not ready yet, waiting..."
       sleep 5
     done
-    
+
     # Update system
     echo "Updating system packages..."
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-    
+
     # Install Python for Ansible
     echo "Installing Python for Ansible..."
     DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip
-    
+
     # Mark initialization as complete
     echo "Droplet initialized and ready for Ansible: $(date)" > /var/log/tf-init-complete
   EOF
@@ -113,7 +122,7 @@ resource "digitalocean_droplet" "app_droplet" {
 resource "digitalocean_firewall" "app_firewall" {
   count = var.use_existing_firewall ? 0 : 1
   name = "${var.project_name}-${var.environment}-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
-  
+
   # Allow SSH
   inbound_rule {
     protocol         = "tcp"
