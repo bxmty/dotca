@@ -171,6 +171,22 @@ jobs:
           printf '%s\n' '${{ secrets.SSH_PRIVATE_KEY }}' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
+          # Debug: Check if SSH key is valid (no key content exposed)
+          echo "🔍 SSH Key Debug Info:"
+          if [ -f ~/.ssh/id_rsa ]; then
+            echo "✅ SSH key file exists"
+            echo "File permissions: $(ls -la ~/.ssh/id_rsa | awk '{print $1, $3, $4}')"
+            echo "Key size: $(wc -c < ~/.ssh/id_rsa) bytes"
+            if ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
+              echo "✅ SSH key format is valid"
+              ssh-keygen -l -f ~/.ssh/id_rsa 2>/dev/null | head -1
+            else
+              echo "❌ SSH key format is invalid"
+            fi
+          else
+            echo "❌ SSH key file does not exist"
+          fi
+
       - name: Initialize Terraform
         working-directory: ./terraform
         run: |
@@ -576,6 +592,20 @@ jobs:
             echo "This is usually OK - SSH will prompt for host key verification"
           fi
 
+          # Test SSH key directly before connection
+          echo "🔐 Testing SSH key validity..."
+          if ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
+            echo "✅ SSH key format is valid"
+            ssh-keygen -l -f ~/.ssh/id_rsa
+          else
+            echo "::error::SSH key format is invalid"
+            echo "🔍 SSH key troubleshooting:"
+            echo "  - Check if the SSH_PRIVATE_KEY secret contains a valid private key"
+            echo "  - Ensure the key starts with '-----BEGIN OPENSSH PRIVATE KEY-----' or '-----BEGIN RSA PRIVATE KEY-----'"
+            echo "  - Verify the key was copied completely without truncation"
+            exit 1
+          fi
+
           # Final connectivity test
           echo "🔗 Testing SSH connectivity..."
           if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o PasswordAuthentication=no -i ~/.ssh/id_rsa root@$DROPLET_IP "echo 'SSH connectivity test successful'" 2>/dev/null; then
@@ -588,6 +618,7 @@ jobs:
             echo "  3. SSH service not running on droplet"
             echo "  4. Firewall blocking SSH access"
             echo "  5. Wrong droplet IP being used"
+            echo "  6. SSH key in GitHub secrets doesn't match DigitalOcean key"
             exit 1
           fi
 
