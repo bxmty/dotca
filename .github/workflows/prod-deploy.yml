@@ -566,30 +566,53 @@ jobs:
             fi
           fi
 
-          # Wait for droplet to be fully ready
+          # Wait for droplet to be fully ready - new droplets need more time
           if [ "$RESOURCES_EXIST" != "true" ] || [ "$TERRAFORM_CHANGES" == "true" ]; then
-            echo "⏳ Waiting for droplet to be fully ready..."
-            sleep 30
+            echo "⏳ New droplet detected - waiting for SSH to become available..."
+            echo "This may take up to 2 minutes for the droplet to fully initialize..."
+
+            # Wait for SSH port to be available (up to 120 seconds)
+            SSH_READY=false
+            for attempt in {1..24}; do
+              echo "Attempt $attempt/24: Checking if SSH port 22 is open on $DROPLET_IP..."
+              if timeout 5 bash -c "</dev/tcp/$DROPLET_IP/22" 2>/dev/null; then
+                echo "✅ SSH port is open!"
+                SSH_READY=true
+                # Give SSH daemon a few more seconds to fully initialize
+                sleep 10
+                break
+              else
+                echo "⏳ SSH not ready yet, waiting 5 seconds..."
+                sleep 5
+              fi
+            done
+
+            if [ "$SSH_READY" = "false" ]; then
+              echo "::error::SSH port 22 never became available after 2 minutes"
+              echo "The droplet may have failed to start or firewall is blocking SSH"
+              exit 1
+            fi
           fi
 
           # Add host key to known_hosts with better error handling
           echo "🔐 Adding SSH host key for $DROPLET_IP to known_hosts..."
           HOST_KEY_ADDED=false
-          for i in {1..5}; do
+          for i in {1..10}; do
             echo "Attempt $i: Scanning host key..."
             if ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts 2>/dev/null; then
               echo "✅ Successfully added host key on attempt $i"
               HOST_KEY_ADDED=true
               break
             else
-              echo "⚠️ Attempt $i failed - this may be normal if host key changes"
+              echo "⚠️ Attempt $i failed - SSH may still be initializing"
               sleep 5
             fi
           done
 
           if [ "$HOST_KEY_ADDED" = "false" ]; then
-            echo "::warning::Failed to add host key after 5 attempts, but continuing..."
-            echo "This is usually OK - SSH will prompt for host key verification"
+            echo "::error::Failed to add host key after 10 attempts"
+            echo "SSH service may not be running on the droplet"
+            exit 1
           fi
 
           # Test SSH key directly before connection
