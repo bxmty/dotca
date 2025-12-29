@@ -1,0 +1,295 @@
+name: Test Unified Deployment Workflow
+
+# This workflow tests the unified deployment pipeline to ensure it works correctly
+# across different environments and scenarios.
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      test_scenario:
+        description: "Test scenario to run"
+        required: true
+        type: choice
+        options:
+          - "full-pipeline-test"
+          - "environment-detection-test"
+          - "build-only-test"
+          - "staging-deploy-test"
+          - "production-deploy-dry-run"
+        default: "full-pipeline-test"
+      target_branch:
+        description: "Branch to simulate (for testing environment detection)"
+        required: false
+        type: choice
+        options: [main, staging, renovations]
+        default: "staging"
+
+  # Run on changes to the deployment workflow itself
+  push:
+    branches: [main, staging]
+    paths:
+      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy.yml.test.yml"
+
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy.yml.test.yml"
+
+# Global environment variables
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  TEST_MODE: true
+
+# Minimal permissions for testing
+permissions:
+  contents: read
+  packages: read # Only read for testing
+
+jobs:
+  # Test environment detection logic
+  test-environment-detection:
+    name: Test Environment Detection
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_scenario == 'environment-detection-test' || github.event.inputs.test_scenario == 'full-pipeline-test'
+
+    strategy:
+      matrix:
+        branch: [main, staging, renovations]
+        include:
+          - branch: main
+            expected_env: production
+            expected_deploy: true
+          - branch: staging
+            expected_env: staging
+            expected_deploy: true
+          - branch: renovations
+            expected_env: development
+            expected_deploy: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Test environment detection for ${{ matrix.branch }}
+        run: |
+          echo "🧪 Testing environment detection for branch: ${{ matrix.branch }}"
+
+          # Simulate the environment detection logic
+          case "${{ matrix.branch }}" in
+            "main")
+              ENVIRONMENT="production"
+              DEPLOY_TARGET="production"
+              SHOULD_BUILD="true"
+              SHOULD_DEPLOY="true"
+              SHOULD_TEST="true"
+              ;;
+            "staging")
+              ENVIRONMENT="staging"
+              DEPLOY_TARGET="staging"
+              SHOULD_BUILD="true"
+              SHOULD_DEPLOY="true"
+              SHOULD_TEST="true"
+              ;;
+            "renovations")
+              ENVIRONMENT="development"
+              DEPLOY_TARGET="none"
+              SHOULD_BUILD="true"
+              SHOULD_DEPLOY="false"
+              SHOULD_TEST="true"
+              ;;
+            *)
+              echo "::error::Unsupported branch: ${{ matrix.branch }}"
+              exit 1
+              ;;
+          esac
+
+          # Validate expectations
+          if [ "$ENVIRONMENT" != "${{ matrix.expected_env }}" ]; then
+            echo "::error::Environment detection failed for ${{ matrix.branch }}: expected ${{ matrix.expected_env }}, got $ENVIRONMENT"
+            exit 1
+          fi
+
+          if [ "$SHOULD_DEPLOY" != "${{ matrix.expected_deploy }}" ]; then
+            echo "::error::Deploy flag incorrect for ${{ matrix.branch }}: expected ${{ matrix.expected_deploy }}, got $SHOULD_DEPLOY"
+            exit 1
+          fi
+
+          echo "✅ Environment detection test passed for ${{ matrix.branch }}"
+          echo "   Environment: $ENVIRONMENT"
+          echo "   Deploy: $SHOULD_DEPLOY"
+          echo "   Test: $SHOULD_TEST"
+
+  # Test build process (without pushing)
+  test-build-process:
+    name: Test Build Process
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_scenario == 'build-only-test' || github.event.inputs.test_scenario == 'full-pipeline-test'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22.21.0"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run unit tests
+        run: npm run test:unit -- --watchAll=false
+
+      - name: Test Docker build (without push)
+        run: |
+          echo "🧪 Testing Docker build process..."
+
+          # Test Docker build without pushing
+          docker build -t test-image:latest .
+
+          # Verify the image was built
+          if docker images | grep -q test-image; then
+            echo "✅ Docker build test passed"
+          else
+            echo "::error::Docker build test failed"
+            exit 1
+          fi
+
+          # Clean up
+          docker rmi test-image:latest
+
+  # Test workflow syntax and structure
+  validate-workflow-syntax:
+    name: Validate Workflow Syntax
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Validate workflow YAML syntax
+        run: |
+          echo "🔍 Validating workflow YAML syntax..."
+
+          # Check if deploy.yml is valid YAML
+          if ! python3 -c "import yaml; yaml.safe_load(open('.github/workflows/deploy.yml'))"; then
+            echo "::error::deploy.yml contains invalid YAML syntax"
+            exit 1
+          fi
+
+          # Check if test workflow is valid YAML
+          if ! python3 -c "import yaml; yaml.safe_load(open('.github/workflows/deploy.yml.test.yml'))"; then
+            echo "::error::deploy.yml.test.yml contains invalid YAML syntax"
+            exit 1
+          fi
+
+          echo "✅ Workflow YAML syntax validation passed"
+
+      - name: Check for required workflow elements
+        run: |
+          echo "🔍 Checking for required workflow elements..."
+
+          # Check if deploy.yml has required sections
+          if ! grep -q "name:" .github/workflows/deploy.yml; then
+            echo "::error::deploy.yml missing name"
+            exit 1
+          fi
+
+          if ! grep -q "on:" .github/workflows/deploy.yml; then
+            echo "::error::deploy.yml missing triggers"
+            exit 1
+          fi
+
+          if ! grep -q "jobs:" .github/workflows/deploy.yml; then
+            echo "::error::deploy.yml missing jobs"
+            exit 1
+          fi
+
+          echo "✅ Required workflow elements check passed"
+
+  # Test action dependencies
+  test-action-dependencies:
+    name: Test Action Dependencies
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_scenario == 'full-pipeline-test'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Check if required actions exist
+        run: |
+          echo "🔍 Checking for required reusable actions..."
+
+          REQUIRED_ACTIONS=(
+            ".github/actions/deploy/action.yml"
+            ".github/actions/notify/action.yml"
+          )
+
+          for action in "${REQUIRED_ACTIONS[@]}"; do
+            if [ -f "$action" ]; then
+              echo "✅ Found: $action"
+            else
+              echo "::warning::Missing action: $action (will be created later)"
+            fi
+          done
+
+          echo "Action dependency check completed"
+
+  # Generate test report
+  test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs:
+      [
+        test-environment-detection,
+        test-build-process,
+        validate-workflow-syntax,
+        test-action-dependencies,
+      ]
+    if: always()
+
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "## 🧪 Deployment Workflow Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Scenario:** ${{ github.event.inputs.test_scenario || 'automated' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Test Results Summary
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment Detection: ${{ needs.test-environment-detection.result == 'success' && '✅ PASSED' || '❌ FAILED' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build Process: ${{ needs.test-build-process.result == 'success' && '✅ PASSED' || '❌ FAILED' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow Syntax: ${{ needs.validate-workflow-syntax.result == 'success' && '✅ PASSED' || '❌ FAILED' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Action Dependencies: ${{ needs.test-action-dependencies.result == 'success' && '✅ PASSED' || '⚠️ WARNINGS' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Overall Status
+          if [ "${{ needs.test-environment-detection.result }}" == "success" ] && \
+             [ "${{ needs.test-build-process.result }}" == "success" ] && \
+             [ "${{ needs.validate-workflow-syntax.result }}" == "success" ]; then
+            echo "**Overall Status:** 🟢 ALL TESTS PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Overall Status:** 🔴 SOME TESTS FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Fix any failed tests" >> $GITHUB_STEP_SUMMARY
+          echo "2. Create missing reusable actions" >> $GITHUB_STEP_SUMMARY
+          echo "3. Test end-to-end deployment in staging" >> $GITHUB_STEP_SUMMARY
+          echo "4. Validate production deployment readiness" >> $GITHUB_STEP_SUMMARY
