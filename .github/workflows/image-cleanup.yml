@@ -1,0 +1,51 @@
+name: Image Cleanup
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Weekly on Sunday at midnight UTC
+  workflow_dispatch:
+    inputs:
+      min_versions:
+        description: "Minimum versions to keep (failsafe)"
+        required: false
+        default: "50"
+        type: string
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cleanup untagged images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: "${{ github.event.repository.name }}"
+          package-type: "container"
+          delete-only-untagged-versions: "true"
+
+      - name: Keep only recent versions (failsafe)
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: "${{ github.event.repository.name }}"
+          package-type: "container"
+          min-versions-to-keep: ${{ github.event.inputs.min_versions || '50' }}
+
+      - name: Generate cleanup summary
+        run: |
+          echo "## 🧹 Image Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Actions Performed:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Removed all untagged container images" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Retained the ${{ github.event.inputs.min_versions || '50' }} most recent versions as failsafe" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "- Monitor storage usage over the next few weeks" >> $GITHUB_STEP_SUMMARY
+          echo "- Adjust retention count if needed (${{ github.event.inputs.min_versions || '50' }} versions)" >> $GITHUB_STEP_SUMMARY
+          echo "- Consider more sophisticated cleanup rules if basic cleanup is insufficient" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*This cleanup runs weekly. Manual runs available via workflow dispatch.*" >> $GITHUB_STEP_SUMMARY
