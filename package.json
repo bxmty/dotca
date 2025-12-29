@@ -18,7 +18,7 @@
     "pre-commit:run": "pre-commit run --all-files"
   },
   "dependencies": {
-    "@stripe/react-stripe-js": "4.0.2",
+    "@stripe/react-stripe-js": "5.4.1",
     "@stripe/stripe-js": "7.9.0",
     "@umami/node": "0.4.0",
     "bootstrap": "5.3.8",
