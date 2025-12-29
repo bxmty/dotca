@@ -5,7 +5,7 @@ variable "do_token" {
 }
 
 variable "ssh_key_fingerprint" {
-  description = "SSH public key for Droplet access (deprecated - use ssh_key_name instead)"
+  description = "SSH key fingerprint for Droplet access (primary lookup method)"
   type        = string
   default     = ""
 }
