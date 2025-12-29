@@ -54,28 +54,28 @@ resource "digitalocean_project_resources" "project_resources" {
   depends_on = [digitalocean_droplet.app_droplet]
 }
 
-# Get SSH key data - primary: lookup by fingerprint, fallback: lookup by name
-data "digitalocean_ssh_key" "by_fingerprint" {
-  count       = var.ssh_key_fingerprint != "" ? 1 : 0
-  fingerprint = var.ssh_key_fingerprint
-}
+# Get all SSH keys from DigitalOcean account
+data "digitalocean_ssh_keys" "all_keys" {}
 
-data "digitalocean_ssh_key" "by_name" {
-  count = var.ssh_key_fingerprint == "" && var.ssh_key_name != "" ? 1 : 0
-  name  = var.ssh_key_name
-}
-
-# Fallback: get all SSH keys and use the first one (typically the default)
-data "digitalocean_ssh_keys" "all_keys" {
-  count = var.ssh_key_fingerprint == "" && var.ssh_key_name == "" ? 1 : 0
-}
-
-# Use the appropriate SSH key - fingerprint takes priority
+# Find SSH key by fingerprint or name
 locals {
+  # Filter keys by fingerprint if provided
+  keys_by_fingerprint = var.ssh_key_fingerprint != "" ? [
+    for key in data.digitalocean_ssh_keys.all_keys.ssh_keys : key
+    if key.fingerprint == var.ssh_key_fingerprint
+  ] : []
+
+  # Filter keys by name if fingerprint not provided
+  keys_by_name = var.ssh_key_fingerprint == "" && var.ssh_key_name != "" ? [
+    for key in data.digitalocean_ssh_keys.all_keys.ssh_keys : key
+    if key.name == var.ssh_key_name
+  ] : []
+
+  # Use fingerprint match first, then name match, then first available key
   ssh_key_id = (
-    var.ssh_key_fingerprint != "" ? data.digitalocean_ssh_key.by_fingerprint[0].id :
-    var.ssh_key_name != "" ? data.digitalocean_ssh_key.by_name[0].id :
-    data.digitalocean_ssh_keys.all_keys[0].ssh_keys[0].id
+    length(local.keys_by_fingerprint) > 0 ? local.keys_by_fingerprint[0].id :
+    length(local.keys_by_name) > 0 ? local.keys_by_name[0].id :
+    data.digitalocean_ssh_keys.all_keys.ssh_keys[0].id
   )
 }
 
