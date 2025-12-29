@@ -27,3 +27,32 @@ output "firewall_id" {
   description = "ID of the DigitalOcean firewall"
   value       = var.use_existing_firewall ? var.existing_firewall_id : (length(digitalocean_firewall.app_firewall) > 0 ? digitalocean_firewall.app_firewall[0].id : "")
 }
+
+output "ssh_key_id_used" {
+  description = "ID of the SSH key used for the droplet"
+  value       = local.ssh_key_id
+}
+
+output "ssh_key_fingerprint_requested" {
+  description = "SSH key fingerprint that was requested (from variable)"
+  value       = var.ssh_key_fingerprint
+}
+
+output "ssh_keys_found_by_fingerprint" {
+  description = "Number of SSH keys found matching the fingerprint"
+  value       = length(local.keys_by_fingerprint)
+}
+
+output "ssh_keys_found_by_name" {
+  description = "Number of SSH keys found matching the name"
+  value       = length(local.keys_by_name)
+}
+
+output "all_ssh_keys_in_account" {
+  description = "All SSH keys available in the DigitalOcean account (for debugging)"
+  value       = [for key in data.digitalocean_ssh_keys.all_keys.ssh_keys : {
+    name        = key.name
+    fingerprint = key.fingerprint
+    id          = key.id
+  }]
+}
