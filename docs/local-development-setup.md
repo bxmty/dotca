@@ -306,16 +306,16 @@ sequenceDiagram
 git clone <repository-url>
 cd dotca
 
-# 2. Install prerequisites (see above)
+# 2. Install prerequisites (see Prerequisites section above)
 
-# 3. Setup environment variables in .env.local
-touch .env.local  # Create the file (gitignored)
-# Edit .env.local with your values (see Environment Variables Setup section above)
+# 3. Run initial setup (automates environment configuration)
+make setup
 
-# 4. Setup SSH agent
-ssh-add ~/.ssh/your_private_key
+# 4. Edit .env.local with your actual values
+# The setup script creates a template - fill in your real values
+nano .env.local
 
-# 5. Validate setup (this will load .env.local automatically)
+# 5. Validate setup
 make validate
 
 # 6. Test deployment (dry-run first)
@@ -339,6 +339,33 @@ make destroy ENVIRONMENT=staging
 
 # Get help
 make help
+```
+
+### Available Commands
+
+The Makefile provides these high-level commands:
+
+- `make setup` - Initial environment setup and configuration
+- `make validate` - Validate environment, tools, and access
+- `make deploy ENVIRONMENT=staging` - Deploy to specified environment
+- `make destroy ENVIRONMENT=staging` - Destroy environment (dangerous!)
+- `make status ENVIRONMENT=staging` - Check environment status
+- `make clean` - Clean up generated files
+- `make test` - Run all validations
+
+### Direct Script Usage
+
+You can also use the scripts directly:
+
+```bash
+# Deploy using script directly
+./scripts/local-deploy.sh staging --dry-run
+
+# Setup using script directly
+./scripts/setup-local-dev.sh --verbose
+
+# Destroy using script directly
+./scripts/local-destroy.sh staging --force
 ```
 
 ## Troubleshooting
