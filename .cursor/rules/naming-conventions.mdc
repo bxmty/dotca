@@ -1,0 +1,600 @@
+---
+alwaysApply: true
+---
+
+# Naming Conventions: Code Clarity Standards
+*Companion document to Software Design Principles*
+
+## Core Philosophy
+
+**Names are the primary documentation. Every identifier should communicate its purpose, scope, and lifetime without requiring additional context.**
+
+---
+
+## General Naming Principles
+
+### Principle 1: Clarity Over Brevity
+- Use complete words: `userAuthentication` not `userAuth` or `ua`
+- Exception: Well-established abbreviations in your domain (e.g., `HTTP`, `URL`, `API`)
+- AVOID: Single-letter variables except for loop counters (`i`, `j`, `k`) in short loops (<10 lines)
+- RULE: If you hesitate on an abbreviation, spell it out
+
+### Principle 2: Searchability
+- Names should be grep-able and unique enough to find
+- AVOID: Generic names like `data`, `info`, `manager`, `handler` without context
+- PREFER: `customerData`, `orderInfo`, `userSessionManager`, `paymentEventHandler`
+- MINIMUM: 3 characters for any identifier (except loop counters)
+
+### Principle 3: Consistency
+- Use the same word for the same concept throughout your codebase
+- If you call it `user` in one place, don't call it `account` elsewhere
+- Create a project glossary for domain terms
+- PATTERN: Document your project's vocabulary in a `GLOSSARY.md`
+
+---
+
+## Variables
+
+### Local Variables
+```
+// Good - Clear purpose and scope
+const userEmailAddress = user.email;
+const isPaymentProcessed = payment.status === 'completed';
+const totalOrderAmount = calculateTotal(orderItems);
+
+// Bad - Ambiguous or too short
+const email = user.email;
+const processed = payment.status === 'completed';
+const total = calculateTotal(orderItems);
+```
+
+**Rules:**
+- Use `camelCase`
+- Start with lowercase letter
+- Descriptive enough to understand without context
+- Include units when relevant: `timeoutInSeconds`, `maxRetryCount`, `priceInCents`
+
+### Constants
+```
+// Good - Screaming snake case for true constants
+const MAX_LOGIN_ATTEMPTS = 3;
+const DEFAULT_TIMEOUT_MS = 5000;
+const API_BASE_URL = 'https://api.example.com';
+
+// Good - camelCase for complex objects that don't change
+const defaultUserPreferences = {
+  theme: 'light',
+  notifications: true,
+  language: 'en'
+};
+
+// Bad - Inconsistent or unclear
+const max = 3;
+const TIMEOUT = 5000;  // Missing unit
+const url = 'https://api.example.com';
+```
+
+**Rules:**
+- `SCREAMING_SNAKE_CASE` for primitive constants
+- `camelCase` for constant objects/arrays
+- Always include units in numeric constants
+- Never use magic numbers - extract to named constants
+
+### Boolean Variables
+```
+// Good - Question form
+const isUserAuthenticated = checkAuth();
+const hasPermission = user.role === 'admin';
+const canEditPost = isOwner || hasModeratorRole;
+const shouldRetry = attemptCount < MAX_ATTEMPTS;
+
+// Bad - Ambiguous or negative
+const authenticated = checkAuth();
+const permission = user.role === 'admin';
+const notAllowed = !hasPermission;  // Avoid negatives
+```
+
+**Rules:**
+- Start with: `is`, `has`, `can`, `should`, `will`, `did`
+- Never use negative names: `isNotValid` → `isValid`
+- Make the true case the positive case
+
+### Collections
+```
+// Good - Plural nouns
+const userAccounts = [];
+const orderItems = new Set();
+const activeConnectionsByUserId = new Map();
+
+// Bad - Singular or ambiguous
+const user = [];  // Looks like single object
+const list = new Set();
+const data = new Map();
+```
+
+**Rules:**
+- Use plural nouns: `users`, `orders`, `transactions`
+- For maps/dictionaries: `<value>By<key>`: `usersByEmail`, `ordersByDate`
+- For sets: `<item>Set` if clarity needed: `uniqueUserIdSet`
+
+---
+
+## Functions and Methods
+
+### Function Names
+```
+// Good - Verb + noun, clear action
+function calculateOrderTotal(items) { }
+function validateUserEmail(email) { }
+function fetchUserProfile(userId) { }
+async function saveOrderToDatabase(order) { }
+
+// Bad - Ambiguous or wrong part of speech
+function order(items) { }  // Noun, not verb
+function check(email) { }  // Too vague
+function user(userId) { }  // Not a verb
+```
+
+**Rules:**
+- Start with a verb: `get`, `set`, `create`, `update`, `delete`, `fetch`, `save`, `calculate`, `validate`, `process`
+- Use `camelCase`
+- Be specific about what the function does
+- Async functions should indicate they're async: `fetchUser` not `getUser` (fetch implies async)
+
+### Verb Selection Guide
+- **get**: Return existing data without side effects (synchronous)
+- **fetch**: Retrieve data from external source (asynchronous)
+- **find**: Search for data with possible null/undefined result
+- **create**: Instantiate new object/entity
+- **build**: Construct complex object step-by-step
+- **calculate**: Perform computation and return result
+- **compute**: Same as calculate (choose one for your project)
+- **validate**: Check rules, return boolean or throw
+- **check**: Quick boolean test
+- **is/has**: Return boolean (for functions that read like properties)
+- **process**: Transform or handle data
+- **handle**: Respond to event or callback
+- **on**: Event handler (e.g., `onClick`, `onSubmit`)
+
+### Boolean-Returning Functions
+```
+// Good - Reads like a question
+function isValidEmail(email) { }
+function hasPermission(user, resource) { }
+function canAccessFile(user, file) { }
+function shouldRetryRequest(response) { }
+
+// Bad - Doesn't read as question
+function checkEmail(email) { }  // What does it return?
+function permission(user, resource) { }
+function access(user, file) { }
+```
+
+**Rules:**
+- Start with: `is`, `has`, `can`, `should`, `will`, `did`
+- Name should read like a yes/no question
+- Return only boolean (never null or undefined)
+
+### Parameters
+```
+// Good - Descriptive and typed
+function createUser(emailAddress, fullName, birthDate) { }
+function processPayment(amountInCents, currencyCode, customerId) { }
+
+// Better - Object parameter for >3 params
+function createUser({ emailAddress, fullName, birthDate, phoneNumber }) { }
+
+// Bad - Ambiguous or too many
+function createUser(email, name, dob) { }  // Abbreviations
+function process(a, b, c, d, e, f) { }  // Too many, unclear
+```
+
+**Rules:**
+- Use full descriptive names
+- Include units: `timeoutInMs`, `priceInDollars`
+- Max 3-4 individual parameters
+- Use object parameter for more than 4
+- Order: required params first, optional last
+
+---
+
+## Classes and Types
+
+### Class Names
+```
+// Good - Noun or noun phrase
+class UserAccount { }
+class OrderProcessor { }
+class PaymentService { }
+class EmailValidator { }
+class DatabaseConnection { }
+
+// Bad - Verb, ambiguous, or poor suffix
+class ProcessOrder { }  // Verb phrase
+class Manager { }  // Too generic
+class UserHelper { }  // "Helper" is a code smell
+class Utils { }  // Avoid
+```
+
+**Rules:**
+- Use `PascalCase`
+- Noun or noun phrase
+- Singular form: `User` not `Users`
+- Avoid suffixes: `Helper`, `Util`, `Manager` (usually indicates poor design)
+- Good suffixes: `Service`, `Factory`, `Builder`, `Validator`, `Processor`, `Handler`, `Repository`
+
+### Interface Names
+```
+// Good - Adjective or capability
+interface Serializable { }
+interface Comparable { }
+interface Authenticatable { }
+
+// Good - Noun describing contract
+interface UserRepository { }
+interface PaymentGateway { }
+interface Logger { }
+
+// Bad - "I" prefix (language-dependent)
+interface IUser { }  // Avoid unless in C# ecosystem
+```
+
+**Rules:**
+- Use `PascalCase`
+- Adjective ending in `-able` or `-ible` for capabilities
+- Noun for contracts/protocols
+- Don't use `I` prefix (except in C#/.NET where it's convention)
+
+### Type Aliases and Custom Types
+```
+// Good - Descriptive and clear
+type UserId = string;
+type EmailAddress = string;
+type UnixTimestamp = number;
+type RGB = [number, number, number];
+type UserRole = 'admin' | 'user' | 'guest';
+
+// Bad - Not adding clarity
+type ID = string;
+type Tuple = [number, number, number];
+type Role = string;
+```
+
+**Rules:**
+- Use `PascalCase`
+- Make purpose clear
+- Use for domain-specific types
+- Document constraints in comments
+
+### Enums
+```
+// Good - Singular name, PascalCase values
+enum OrderStatus {
+  Pending,
+  Processing,
+  Completed,
+  Cancelled
+}
+
+enum HttpMethod {
+  GET,
+  POST,
+  PUT,
+  DELETE
+}
+
+// Bad - Plural name or inconsistent
+enum OrderStatuses { }
+enum Status {
+  pending,  // Should be PascalCase
+  PROCESSING,  // Inconsistent
+  completed
+}
+```
+
+**Rules:**
+- Enum name: singular, `PascalCase`
+- Enum values: `PascalCase` (or `SCREAMING_SNAKE_CASE` if you prefer)
+- Be consistent throughout project
+
+---
+
+## Files and Directories
+
+### File Names
+```
+// Good - Match content
+userAccount.ts          // For UserAccount class
+userAccountService.ts   // For UserAccountService class
+calculateTax.ts         // For calculateTax function
+constants.ts            // For project constants
+types.ts                // For type definitions
+
+// Bad - Generic or inconsistent
+user.ts                 // Too generic if contains multiple things
+utils.ts                // Too generic
+UserAccount.ts          // Inconsistent casing (unless your convention)
+```
+
+**Rules:**
+- Use `camelCase` or `kebab-case` (choose one for project)
+- File name should match primary export
+- One primary export per file when possible
+- Group related small utilities in clearly named files
+
+### Directory Names
+```
+// Good - Feature-based or clear purpose
+/user-management
+  /models
+  /services
+  /controllers
+/order-processing
+/shared
+  /utils
+  /types
+  /constants
+
+// Bad - Too generic or nested
+/stuff
+/misc
+/helpers
+/utils/utils
+```
+
+**Rules:**
+- Use `kebab-case` for directories
+- Organize by feature, not by layer
+- Max 3-4 levels of nesting
+- Names should indicate what's inside
+
+---
+
+## Special Cases
+
+### Event Handlers
+```
+// Good - Indicates action and timing
+function handleUserClick() { }
+function onFormSubmit() { }
+function afterPaymentProcessed() { }
+function beforeModalClose() { }
+
+// Bad - Ambiguous
+function userClick() { }
+function submit() { }
+function payment() { }
+```
+
+**Rules:**
+- Prefix: `handle`, `on`, `before`, `after`
+- Include what's being handled: `onUserClick` not `onClick` in complex components
+
+### Callbacks
+```
+// Good - Descriptive of when/why called
+function onSuccess(result) { }
+function onError(error) { }
+function onComplete() { }
+function onDataReceived(data) { }
+
+// Bad - Generic
+function callback() { }
+function cb() { }
+function done() { }
+```
+
+**Rules:**
+- Name indicates when it's called
+- Include context: `onPaymentSuccess` not just `onSuccess`
+
+### Test Functions
+```
+// Good - Describes what's being tested
+describe('UserAccount', () => {
+  it('should create account with valid email', () => { });
+  it('should throw error when email is invalid', () => { });
+  it('should hash password before saving', () => { });
+});
+
+// Bad - Vague or redundant
+describe('tests', () => {
+  it('test1', () => { });
+  it('works', () => { });
+});
+```
+
+**Rules:**
+- Use full sentences for test descriptions
+- Start with "should" for behavior tests
+- Be specific about scenario and expected outcome
+
+---
+
+## Domain-Specific Guidelines
+
+### Database Related
+```
+// Tables/Collections - Plural
+users_table or users
+order_items
+
+// Models - Singular
+class User { }
+class OrderItem { }
+
+// Columns - snake_case (SQL) or camelCase (NoSQL)
+user_id, created_at, email_address
+userId, createdAt, emailAddress
+
+// Repositories
+class UserRepository { }
+interface OrderRepository { }
+```
+
+### API Endpoints
+```
+// RESTful - Plural resources
+GET    /api/users
+POST   /api/users
+GET    /api/users/:id
+PUT    /api/users/:id
+DELETE /api/users/:id
+
+// Actions - Use verbs for non-CRUD
+POST   /api/users/:id/activate
+POST   /api/orders/:id/cancel
+```
+
+### Environment Variables
+```
+// Good - SCREAMING_SNAKE_CASE with context
+DATABASE_URL
+API_KEY_STRIPE
+MAX_UPLOAD_SIZE_MB
+FEATURE_FLAG_NEW_DASHBOARD
+
+// Bad - Unclear or inconsistent
+URL
+KEY
+MAX
+FEATURE
+```
+
+---
+
+## Anti-Patterns to Avoid
+
+### ❌ Avoid These Naming Patterns
+
+1. **Generic names without context**
+   - `data`, `info`, `obj`, `item`, `thing`, `stuff`
+   - Use: `userData`, `orderInfo`, `userObject`, `orderItem`
+
+2. **Abbreviations and acronyms** (unless universally known)
+   - `usrMgr`, `ordProc`, `btnClk`
+   - Use: `userManager`, `orderProcessor`, `buttonClick`
+
+3. **Noise words** (words that add no meaning)
+   - `theUser`, `myVariable`, `dataObject`, `stringValue`
+   - Use: `user`, `userName`, `order`, `emailAddress`
+
+4. **Type encoding** (Hungarian notation)
+   - `strName`, `intCount`, `arrUsers`, `boolIsActive`
+   - Use: `name`, `count`, `users`, `isActive`
+
+5. **Number suffixes** (usually indicates poor naming)
+   - `user1`, `user2`, `temp`, `temp2`
+   - Use descriptive names or extract to array/collection
+
+6. **Overly cute or clever names**
+   - `bazinga()`, `yolo()`, `doTheThing()`, `unleashTheDragons()`
+   - Use professional, descriptive names
+
+7. **Redundant names**
+   - `userUser`, `OrderOrder`, `getUserUser()`
+   - One instance of the concept is enough
+
+---
+
+## Language-Specific Conventions
+
+### JavaScript/TypeScript
+- Variables/Functions: `camelCase`
+- Classes/Types/Interfaces: `PascalCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Private fields: `#privateField` or `_privateField`
+- Files: `camelCase.ts` or `kebab-case.ts`
+
+### Python
+- Variables/Functions: `snake_case`
+- Classes: `PascalCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Private: `_private` or `__private`
+- Files: `snake_case.py`
+
+### Java/C#
+- Variables/Methods: `camelCase`
+- Classes/Interfaces: `PascalCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Interfaces: `PascalCase` (C# uses `IPascalCase`)
+- Files: Match class name
+
+### Go
+- Variables/Functions: `camelCase` (exported: `PascalCase`)
+- Types: `PascalCase`
+- Constants: `PascalCase` or `camelCase`
+- Files: `snake_case.go`
+
+---
+
+## Naming Checklist
+
+Before committing code, verify:
+
+- [ ] Names are self-explanatory without comments
+- [ ] Boolean variables/functions start with is/has/can/should
+- [ ] Functions start with verbs
+- [ ] Classes are nouns
+- [ ] No abbreviations except standard ones (HTTP, URL, API)
+- [ ] Consistent terminology across codebase
+- [ ] Names include units where relevant
+- [ ] No magic numbers - all extracted to named constants
+- [ ] Collections are plural
+- [ ] Names are searchable (>2 characters)
+- [ ] Follows project/language conventions
+- [ ] Would make sense to someone new to the codebase
+
+---
+
+## Quick Reference
+
+| Type | Convention | Example |
+|------|-----------|---------|
+| Variable | camelCase | `userEmail`, `totalCount` |
+| Constant | SCREAMING_SNAKE_CASE | `MAX_RETRY_COUNT` |
+| Function | camelCase + verb | `calculateTotal()`, `fetchUser()` |
+| Class | PascalCase + noun | `UserAccount`, `OrderService` |
+| Interface | PascalCase | `Serializable`, `UserRepository` |
+| Boolean | is/has/can + camelCase | `isActive`, `hasPermission` |
+| Collection | Plural | `users`, `orderItems` |
+| File | camelCase/kebab-case | `userService.ts`, `user-service.ts` |
+| Directory | kebab-case | `user-management/` |
+| Enum | PascalCase | `OrderStatus` |
+| Enum Value | PascalCase | `OrderStatus.Pending` |
+
+---
+
+## Glossary Template
+
+Create a `GLOSSARY.md` in your project root:
+
+```markdown
+# Project Glossary
+
+Define your domain terms to ensure consistency:
+
+- **User**: A registered account holder
+- **Customer**: A user who has made a purchase
+- **Order**: A purchase transaction
+- **Cart**: Temporary collection of items before purchase
+- **Session**: Active authentication period
+- **Account**: User profile and settings
+
+Use these terms consistently in your code.
+```
+
+---
+
+## Enforcement
+
+- Configure linters to enforce naming conventions
+- Set up pre-commit hooks to check for common anti-patterns
+- Include naming review in code review checklist
+- Use search/replace to fix inconsistent naming
+- Document project-specific conventions in README
+
+---
+
+*Last updated: 2025*
+*Companion to: Software Design Principles*
