@@ -186,7 +186,9 @@ validate_environment() {
     # Check Terraform version
     local tf_version
     tf_version=$(terraform --version | head -n1 | sed 's/Terraform v//')
-    if ! [[ "$tf_version" =~ ^1\.[5-9]+\.[0-9]+ ]]; then
+    # Extract major, minor, patch versions for proper comparison
+    IFS='.' read -r major minor patch <<< "$tf_version"
+    if [[ "$major" -lt 1 ]] || [[ "$major" -eq 1 && "$minor" -lt 5 ]]; then
         log_error "Terraform version $tf_version is too old. Need >= 1.5.0"
         exit 1
     fi

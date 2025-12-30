@@ -20,6 +20,7 @@ NC='\033[0m' # No Color
 # Default values
 VERBOSE=false
 SKIP_DEPS=false
+SKIP_ENV_OVERWRITE=false
 
 # Logging functions
 log_info() {
@@ -48,6 +49,7 @@ Set up the local development environment for dotca deployments.
 OPTIONS:
     -v, --verbose           Enable verbose output
     -s, --skip-deps         Skip dependency installation checks
+    --skip-env-overwrite    Skip .env.local overwrite prompt (keep existing file)
     -h, --help             Show this help message
 
 EXAMPLES:
@@ -76,6 +78,10 @@ parse_args() {
                 ;;
             -s|--skip-deps)
                 SKIP_DEPS=true
+                shift
+                ;;
+            --skip-env-overwrite)
+                SKIP_ENV_OVERWRITE=true
                 shift
                 ;;
             -h|--help)
@@ -143,7 +149,9 @@ check_dependencies() {
     if [[ "$VERBOSE" == "true" ]]; then
         log_info "Terraform version: $tf_version"
     fi
-    if ! [[ "$tf_version" =~ ^1\.[5-9]+\.[0-9]+ ]]; then
+    # Extract major, minor, patch versions for proper comparison
+    IFS='.' read -r major minor patch <<< "$tf_version"
+    if [[ "$major" -lt 1 ]] || [[ "$major" -eq 1 && "$minor" -lt 5 ]]; then
         log_error "Terraform version $tf_version is too old. Need >= 1.5.0"
         exit 1
     fi
@@ -202,6 +210,10 @@ create_env_template() {
 
     if [[ -f "$env_file" ]]; then
         log_info ".env.local already exists"
+        if [[ "$SKIP_ENV_OVERWRITE" == "true" ]]; then
+            log_info "Keeping existing .env.local (--skip-env-overwrite)"
+            return 0
+        fi
         read -p "Overwrite existing .env.local? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then

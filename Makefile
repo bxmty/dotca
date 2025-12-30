@@ -50,7 +50,7 @@ setup: ## Set up local development environment
 		echo "$(RED)Error: setup-local-dev.sh not found$(NC)"; \
 		exit 1; \
 	fi
-	$(SCRIPTS_DIR)/setup-local-dev.sh $(if $(VERBOSE),--verbose)
+	$(SCRIPTS_DIR)/setup-local-dev.sh $(if $(VERBOSE),--verbose) --skip-env-overwrite
 
 # Validate target - Environment validation
 validate: ## Validate local environment and prerequisites
@@ -67,7 +67,7 @@ validate: ## Validate local environment and prerequisites
 	@echo "$(GREEN)✓ Required tools found$(NC)"
 
 	@# Load environment variables
-	@set -a && source .env.local && set +a && \
+	@set -a && . $(PWD)/.env.local && set +a && \
 		if [ -z "$$DO_TOKEN" ]; then \
 			echo "$(RED)Error: DO_TOKEN not set in .env.local$(NC)"; \
 			exit 1; \
@@ -91,12 +91,12 @@ validate: ## Validate local environment and prerequisites
 	@ssh-add -l >/dev/null 2>&1 && echo "$(GREEN)✓ SSH agent has keys$(NC)"
 
 	@# Test DigitalOcean access
-	@set -a && source .env.local && set +a && \
+	@set -a && . $(PWD)/.env.local && set +a && \
 		doctl account get >/dev/null 2>&1 || { echo "$(RED)Error: Cannot access DigitalOcean API$(NC)"; exit 1; } && \
 		echo "$(GREEN)✓ DigitalOcean API access$(NC)"
 
 	@# Test DigitalOcean Spaces access
-	@set -a && source .env.local && set +a && \
+	@set -a && . $(PWD)/.env.local && set +a && \
 		aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com >/dev/null 2>&1 || { echo "$(RED)Error: Cannot access DigitalOcean Spaces$(NC)"; exit 1; } && \
 		echo "$(GREEN)✓ DigitalOcean Spaces access$(NC)"
 
