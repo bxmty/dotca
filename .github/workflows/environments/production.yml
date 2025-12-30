@@ -1,0 +1,135 @@
+# Production Environment Configuration
+# This file defines the configuration for the production environment
+# Used by the unified deployment workflow
+# ⚠️  CHANGES HERE REQUIRE CAREFUL REVIEW
+
+name: production
+url: https://boximity.ca
+
+# Branch restrictions (strict)
+branches:
+  - main
+
+# Environment protection rules (maximum security)
+protection_rules:
+  required_reviewers: 2
+  required_checks:
+    - build
+    - test
+    - lint
+    - security-scan
+    - staging-deploy-success
+  restrict_pushes: true
+  allow_force_pushes: false
+  allow_deletions: false
+  wait_timer: 10 # 10 minute wait before deployment
+
+# Environment variables
+variables:
+  ENVIRONMENT: production
+  APP_URL: https://boximity.ca
+  DEBUG: false
+  NODE_ENV: production
+
+  # Application configuration
+  NEXT_PUBLIC_APP_ENV: production
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_live_51S7c8DKZd4rSrt9nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  NEXT_PUBLIC_PRODUCTION_GA_ID: G-P890DC395M
+
+  # Umami Analytics (Production)
+  UMAMI_WEBSITE_ID: umami-website-prod-001
+  UMAMI_HOST_URL: https://umami.boximity.ca
+  UMAMI_FORCE_HTTPS: true
+  UMAMI_DISABLE_TELEMETRY: true
+  UMAMI_LOG_LEVEL: warn
+
+  # Feature flags
+  ENABLE_DEBUG_LOGGING: false
+  ENABLE_PERFORMANCE_MONITORING: true
+
+# Required secrets (these must be set in GitHub Environment Secrets)
+secrets:
+  # Infrastructure
+  - DO_TOKEN
+  - SSH_PRIVATE_KEY
+  - SSH_KEY_FINGERPRINT
+  - SPACES_ACCESS_ID
+  - SPACES_SECRET_KEY
+
+  # Application secrets
+  - BREVO_API_KEY
+  - STRIPE_SECRET_KEY
+  - ANSIBLE_VAULT_PASSWORD
+
+  # Umami Database
+  - UMAMI_DB_PASSWORD
+  - UMAMI_APP_SECRET
+  - UMAMI_ADMIN_PASSWORD
+
+  # GitHub
+  - GITHUB_TOKEN
+
+# Deployment configuration
+deployment:
+  terraform_workspace: production
+  ansible_playbook: production-deploy.yml
+  health_check_endpoint: /api/health
+  health_check_timeout: 600 # Longer timeout for production
+
+  # Testing configuration (minimal for production)
+  enable_e2e_tests: false # Don't run E2E on production to avoid load
+  enable_integration_tests: true
+  enable_smoke_tests: true
+  test_timeout: 300
+
+  # Rollback configuration
+  rollback_enabled: true
+  rollback_timeout: 3600 # 1 hour for production rollback
+  auto_rollback_on_failure: false # Manual decision required
+
+# Monitoring and alerting
+monitoring:
+  enable_health_checks: true
+  enable_metrics_collection: true
+  alert_on_failure: true
+  notification_channels: ["github", "slack", "teams", "pagerduty"]
+
+  # Strict performance thresholds
+  response_time_threshold_ms: 2000
+  error_rate_threshold: 0.01 # 1% error rate threshold
+  uptime_sla: 0.999 # 99.9% uptime SLA
+
+# Resource allocation (higher for production)
+resources:
+  droplet_size: s-4vcpu-8gb
+  disk_size_gb: 100
+  backup_schedule: hourly
+
+# Security configuration (maximum security)
+security:
+  enable_https_redirect: true
+  enable_security_headers: true
+  enable_rate_limiting: true
+  rate_limit_requests_per_hour: 10000
+
+  # Firewall rules (restrictive)
+  allowed_ips:
+    - "0.0.0.0/0" # Cloudflare IPs only in practice
+  allowed_ports: [22, 80, 443]
+
+  # Additional security
+  enable_waf: true
+  enable_ddos_protection: true
+  enable_ssl_monitoring: true
+
+# Maintenance configuration
+maintenance:
+  enable_auto_updates: false # Never auto-update production
+  enable_backup_before_deploy: true
+  enable_rollback_snapshots: true
+
+  # Scheduled maintenance (off-peak hours)
+  maintenance_window:
+    day: sunday
+    hour: 1 # 1 AM UTC
+    duration_hours: 6

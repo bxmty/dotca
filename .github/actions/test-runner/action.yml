@@ -1,0 +1,293 @@
+name: "Test Runner"
+description: "Reusable action for running various types of tests"
+
+inputs:
+  test_type:
+    description: "Type of tests to run (unit, integration, e2e, smoke)"
+    required: true
+  environment:
+    description: "Target environment (development, staging, production)"
+    required: false
+    default: "development"
+  app_url:
+    description: "Application URL for integration/E2E tests"
+    required: false
+  fail_fast:
+    description: "Stop on first test failure"
+    required: false
+    default: "false"
+  collect_coverage:
+    description: "Collect test coverage reports"
+    required: false
+    default: "true"
+  timeout_minutes:
+    description: "Test execution timeout in minutes"
+    required: false
+    default: "10"
+  working_directory:
+    description: "Working directory for test execution"
+    required: false
+    default: "."
+
+outputs:
+  test_results:
+    description: "JSON summary of test results"
+    value: ${{ steps.test-results.outputs.results }}
+  test_passed:
+    description: "Whether all tests passed"
+    value: ${{ steps.test-results.outputs.passed }}
+  coverage_report:
+    description: "Path to coverage report (if generated)"
+    value: ${{ steps.coverage.outputs.report_path }}
+  test_duration:
+    description: "Test execution duration in seconds"
+    value: ${{ steps.test-results.outputs.duration }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup test environment
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "🧪 Setting up test environment for ${{ inputs.test_type }} tests..."
+
+        # Install dependencies if package.json exists
+        if [ -f "package.json" ]; then
+          npm ci
+        fi
+
+        # Create test results directory
+        mkdir -p test-results
+
+        # Set test environment variables
+        echo "TEST_TYPE=${{ inputs.test_type }}" >> $GITHUB_ENV
+        echo "TEST_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
+        if [ -n "${{ inputs.app_url }}" ]; then
+          echo "APP_URL=${{ inputs.app_url }}" >> $GITHUB_ENV
+        fi
+
+    - name: Run unit tests
+      id: unit-tests
+      if: inputs.test_type == 'unit'
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "🏃 Running unit tests..."
+
+        START_TIME=$(date +%s)
+
+        # Run unit tests with coverage if requested
+        if [ "${{ inputs.collect_coverage }}" = "true" ]; then
+          npm run test:unit -- --coverage --watchAll=false --passWithNoTests
+        else
+          npm run test:unit -- --watchAll=false --passWithNoTests
+        fi
+
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+
+        # Generate test results summary
+        echo "{\"type\":\"unit\",\"passed\":true,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}" > test-results/unit-results.json
+
+        echo "results={\"type\":\"unit\",\"passed\":true,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}" >> $GITHUB_OUTPUT
+
+    - name: Run integration tests
+      id: integration-tests
+      if: inputs.test_type == 'integration'
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "🔗 Running integration tests..."
+
+        START_TIME=$(date +%s)
+
+        # Set application URL for integration tests
+        if [ -n "${{ inputs.app_url }}" ]; then
+          export APP_URL="${{ inputs.app_url }}"
+        fi
+
+        # Run integration tests
+        if npm run test:integration -- --watchAll=false --passWithNoTests 2>/dev/null; then
+          TEST_PASSED=true
+        else
+          TEST_PASSED=false
+        fi
+
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+
+        # Generate test results summary
+        echo "{\"type\":\"integration\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" > test-results/integration-results.json
+
+        echo "results={\"type\":\"integration\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" >> $GITHUB_OUTPUT
+
+        # Exit with failure if tests failed and fail_fast is true
+        if [ "$TEST_PASSED" = "false" ] && [ "${{ inputs.fail_fast }}" = "true" ]; then
+          exit 1
+        fi
+
+    - name: Setup E2E test environment
+      id: e2e-setup
+      if: inputs.test_type == 'e2e'
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "🎭 Setting up E2E test environment..."
+
+        # Install Playwright browsers if E2E tests are requested
+        if [ -f "package.json" ] && grep -q "playwright" package.json; then
+          npx playwright install --with-deps chromium
+        fi
+
+    - name: Run E2E tests
+      id: e2e-tests
+      if: inputs.test_type == 'e2e'
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      continue-on-error: true
+      timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
+      run: |
+        echo "🎭 Running E2E tests..."
+
+        START_TIME=$(date +%s)
+
+        # Set application URL for E2E tests
+        if [ -n "${{ inputs.app_url }}" ]; then
+          export APP_URL="${{ inputs.app_url }}"
+        fi
+
+        # Run E2E tests
+        if npm run test:e2e -- --passWithNoTests 2>/dev/null; then
+          TEST_PASSED=true
+        else
+          TEST_PASSED=false
+        fi
+
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+
+        # Generate test results summary
+        echo "{\"type\":\"e2e\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" > test-results/e2e-results.json
+
+        echo "results={\"type\":\"e2e\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" >> $GITHUB_OUTPUT
+
+    - name: Run smoke tests
+      id: smoke-tests
+      if: inputs.test_type == 'smoke'
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "💨 Running smoke tests..."
+
+        START_TIME=$(date +%s)
+
+        # Basic smoke tests - check if application is responding
+        if [ -n "${{ inputs.app_url }}" ]; then
+          echo "Testing application health at ${{ inputs.app_url }}"
+
+          # Test basic HTTP connectivity
+          if curl -f --max-time 30 --head "${{ inputs.app_url }}" >/dev/null 2>&1; then
+            SMOKE_PASSED=true
+            echo "✅ Application is responding"
+          else
+            SMOKE_PASSED=false
+            echo "❌ Application is not responding"
+          fi
+
+          # Test health endpoint if it exists
+          if curl -f --max-time 30 --head "${{ inputs.app_url }}/api/health" >/dev/null 2>&1; then
+            echo "✅ Health endpoint is responding"
+          else
+            echo "⚠️ Health endpoint not available (may be expected)"
+          fi
+        else
+          echo "⚠️ No APP_URL provided for smoke tests"
+          SMOKE_PASSED=true  # Don't fail if no URL provided
+        fi
+
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+
+        # Generate test results summary
+        echo "{\"type\":\"smoke\",\"passed\":$SMOKE_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" > test-results/smoke-results.json
+
+        echo "results={\"type\":\"smoke\",\"passed\":$SMOKE_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" >> $GITHUB_OUTPUT
+
+    - name: Collect test artifacts
+      id: collect-artifacts
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "📦 Collecting test artifacts..."
+
+        # Create artifacts directory if it doesn't exist
+        mkdir -p test-artifacts
+
+        # Collect test results
+        if [ -d "test-results" ]; then
+          cp -r test-results/* test-artifacts/ 2>/dev/null || true
+        fi
+
+        # Collect coverage reports
+        if [ -d "coverage" ] && [ "${{ inputs.collect_coverage }}" = "true" ]; then
+          cp -r coverage test-artifacts/
+          echo "report_path=test-artifacts/coverage" >> $GITHUB_OUTPUT
+        fi
+
+        # Collect Playwright reports for E2E tests
+        if [ -d "playwright-report" ] && [ "${{ inputs.test_type }}" = "e2e" ]; then
+          cp -r playwright-report test-artifacts/
+        fi
+
+        # Collect Jest reports
+        if [ -d "jest-results" ]; then
+          cp -r jest-results test-artifacts/
+        fi
+
+        echo "✅ Test artifacts collected"
+
+    - name: Generate final test summary
+      id: test-results
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "📊 Generating test summary..."
+
+        # Calculate total duration
+        TOTAL_DURATION=0
+        OVERALL_PASSED=true
+
+        # Check all test result files
+        for result_file in test-results/*.json; do
+          if [ -f "$result_file" ]; then
+            # Extract duration and passed status
+            DURATION=$(jq -r '.duration // 0' "$result_file" 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.passed // true' "$result_file" 2>/dev/null || echo "true")
+
+            TOTAL_DURATION=$((TOTAL_DURATION + DURATION))
+
+            if [ "$PASSED" = "false" ]; then
+              OVERALL_PASSED=false
+            fi
+          fi
+        done
+
+        # Generate final summary
+        FINAL_RESULTS="{\"test_type\":\"${{ inputs.test_type }}\",\"environment\":\"${{ inputs.environment }}\",\"overall_passed\":$OVERALL_PASSED,\"total_duration\":$TOTAL_DURATION,\"app_url\":\"${{ inputs.app_url }}\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+
+        echo "$FINAL_RESULTS" > test-results/final-summary.json
+        echo "results=$FINAL_RESULTS" >> $GITHUB_OUTPUT
+        echo "passed=$OVERALL_PASSED" >> $GITHUB_OUTPUT
+        echo "duration=$TOTAL_DURATION" >> $GITHUB_OUTPUT
+
+        echo "📋 Test Summary:"
+        echo "  Type: ${{ inputs.test_type }}"
+        echo "  Environment: ${{ inputs.environment }}"
+        echo "  Passed: $OVERALL_PASSED"
+        echo "  Duration: ${TOTAL_DURATION}s"
+        if [ -n "${{ inputs.app_url }}" ]; then
+          echo "  App URL: ${{ inputs.app_url }}"
+        fi

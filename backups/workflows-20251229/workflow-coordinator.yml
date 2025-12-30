@@ -7,20 +7,20 @@ on:
   workflow_dispatch:
     inputs:
       check_type:
-        description: 'Type of dependency check to perform'
+        description: "Type of dependency check to perform"
         required: true
         type: choice
         options:
-          - 'validate-sequence'
-          - 'check-staging-ready'
-          - 'check-promotion-ready'
-          - 'check-production-ready'
-        default: 'validate-sequence'
+          - "validate-sequence"
+          - "check-staging-ready"
+          - "check-promotion-ready"
+          - "check-production-ready"
+        default: "validate-sequence"
       target_branch:
-        description: 'Branch to check (default: current branch)'
+        description: "Branch to check (default: current branch)"
         required: false
         type: string
-        default: ''
+        default: ""
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,13 +38,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      
+
       - name: Validate workflow sequence
         id: validate
         run: |
           echo "🔍 Validating workflow dependencies and sequencing..."
           echo ""
-          
+
           # Define the expected workflow sequence
           echo "📋 Expected Workflow Sequence:"
           echo "1. 🔨 Image Build (image-promotion.yml) - Builds and promotes staging images"
@@ -53,17 +53,17 @@ jobs:
           echo "4. 🌟 Production Deploy (prod-deploy.yml) - Deploys promoted images"
           echo "5. 🔄 Rollback (rollback.yml) - Emergency rollback if needed"
           echo ""
-          
+
           # Check for workflow files existence
           WORKFLOWS_DIR=".github/workflows"
           REQUIRED_WORKFLOWS=(
             "image-promotion.yml"
-            "stg-deploy.yml" 
+            "stg-deploy.yml"
             "image-promotion.yml"
             "prod-deploy.yml"
             "rollback.yml"
           )
-          
+
           ALL_EXIST=true
           for workflow in "${REQUIRED_WORKFLOWS[@]}"; do
             if [ -f "$WORKFLOWS_DIR/$workflow" ]; then
@@ -73,7 +73,7 @@ jobs:
               ALL_EXIST=false
             fi
           done
-          
+
           if [ "$ALL_EXIST" = "true" ]; then
             echo "valid=true" >> $GITHUB_OUTPUT
             echo "next_workflow=staging-ready-check" >> $GITHUB_OUTPUT
@@ -98,21 +98,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      
+
       - name: Check staging readiness
         id: check
         run: |
           echo "🔍 Checking if staging deployment is ready..."
           echo ""
-          
+
           # Check if staging images exist
           echo "📋 Checking for staging images..."
-          
+
           # This would typically check the container registry for staging images
           # For now, we'll simulate the check
           STAGING_READY=true
           ISSUES=""
-          
+
           # Check if staging branch exists
           if git show-ref --verify --quiet refs/remotes/origin/staging; then
             echo "✅ Staging branch exists"
@@ -121,7 +121,7 @@ jobs:
             STAGING_READY=false
             ISSUES="staging-branch-missing"
           fi
-          
+
           # Check if Dockerfile exists
           if [ -f "Dockerfile" ]; then
             echo "✅ Dockerfile exists"
@@ -130,10 +130,10 @@ jobs:
             STAGING_READY=false
             ISSUES="$ISSUES,dockerfile-missing"
           fi
-          
+
           echo "ready=$STAGING_READY" >> $GITHUB_OUTPUT
           echo "issues=$ISSUES" >> $GITHUB_OUTPUT
-          
+
           if [ "$STAGING_READY" = "true" ]; then
             echo "🎉 Staging deployment is READY"
           else
@@ -142,7 +142,7 @@ jobs:
           fi
 
   check-promotion-readiness:
-    name: Check Image Promotion Readiness  
+    name: Check Image Promotion Readiness
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.check_type == 'check-promotion-ready' }}
     outputs:
@@ -151,46 +151,46 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Check promotion readiness
         id: check
         run: |
           echo "🔍 Checking if image promotion is ready..."
           echo ""
-          
+
           # Check if staging image exists
           STAGING_IMAGE="ghcr.io/${{ github.repository }}:staging"
           echo "📋 Checking for staging image: $STAGING_IMAGE"
-          
+
           if docker pull "$STAGING_IMAGE" >/dev/null 2>&1; then
             echo "✅ Staging image is available"
             IMAGE_AVAILABLE=true
-            
+
             # Get image details
             IMAGE_SIZE=$(docker images --format "{{.Size}}" "$STAGING_IMAGE" | head -1)
             IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$STAGING_IMAGE" | head -1)
-            
+
             echo "📊 Image Details:"
             echo "- Size: $IMAGE_SIZE"
             echo "- Created: $IMAGE_CREATED"
-            
+
             PROMOTION_READY=true
           else
             echo "❌ Staging image not available"
             IMAGE_AVAILABLE=false
             PROMOTION_READY=false
           fi
-          
+
           echo "ready=$PROMOTION_READY" >> $GITHUB_OUTPUT
           echo "image_available=$IMAGE_AVAILABLE" >> $GITHUB_OUTPUT
-          
+
           if [ "$PROMOTION_READY" = "true" ]; then
             echo "🎉 Image promotion is READY"
             echo ""
@@ -209,7 +209,7 @@ jobs:
 
   check-production-readiness:
     name: Check Production Deployment Readiness
-    runs-on: ubuntu-latest  
+    runs-on: ubuntu-latest
     if: ${{ github.event.inputs.check_type == 'check-production-ready' }}
     outputs:
       production_ready: ${{ steps.check.outputs.ready }}
@@ -217,48 +217,48 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Check production readiness
         id: check
         run: |
           echo "🔍 Checking if production deployment is ready..."
           echo ""
-          
+
           # Check if promoted image exists
           PROMOTED_IMAGE="ghcr.io/${{ github.repository }}:main"
           echo "📋 Checking for promoted image: $PROMOTED_IMAGE"
-          
+
           if docker pull "$PROMOTED_IMAGE" >/dev/null 2>&1; then
             echo "✅ Promoted image is available"
             IMAGE_AVAILABLE=true
-            
+
             # Get image details
             IMAGE_DIGEST=$(docker images --digests "$PROMOTED_IMAGE" --format "{{.Digest}}" | head -1)
             IMAGE_SIZE=$(docker images --format "{{.Size}}" "$PROMOTED_IMAGE" | head -1)
             IMAGE_CREATED=$(docker images --format "{{.CreatedAt}}" "$PROMOTED_IMAGE" | head -1)
-            
+
             echo "📊 Promoted Image Details:"
             echo "- Digest: $IMAGE_DIGEST"
-            echo "- Size: $IMAGE_SIZE"  
+            echo "- Size: $IMAGE_SIZE"
             echo "- Created: $IMAGE_CREATED"
-            
+
             PRODUCTION_READY=true
           else
             echo "❌ Promoted image not available"
             IMAGE_AVAILABLE=false
             PRODUCTION_READY=false
           fi
-          
+
           echo "ready=$PRODUCTION_READY" >> $GITHUB_OUTPUT
           echo "image_available=$IMAGE_AVAILABLE" >> $GITHUB_OUTPUT
-          
+
           if [ "$PRODUCTION_READY" = "true" ]; then
             echo "🎉 Production deployment is READY"
             echo ""
@@ -280,7 +280,13 @@ jobs:
   generate-coordination-report:
     name: Generate Workflow Coordination Report
     runs-on: ubuntu-latest
-    needs: [validate-workflow-sequence, check-staging-readiness, check-promotion-readiness, check-production-readiness]
+    needs:
+      [
+        validate-workflow-sequence,
+        check-staging-readiness,
+        check-promotion-readiness,
+        check-production-readiness,
+      ]
     if: always()
     steps:
       - name: Generate comprehensive report
@@ -291,7 +297,7 @@ jobs:
           echo "**Target Branch:** ${{ env.TARGET_BRANCH }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Report results based on which job ran
           case "${{ github.event.inputs.check_type }}" in
             "validate-sequence")
@@ -327,11 +333,11 @@ jobs:
               echo "**Promoted Image Available:** ${{ needs.check-production-readiness.outputs.promoted_image_available }}" >> $GITHUB_STEP_SUMMARY
               ;;
           esac
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Workflow Dependencies:**" >> $GITHUB_STEP_SUMMARY
           echo "1. 🔨 **Image Build** → Builds staging images from code changes" >> $GITHUB_STEP_SUMMARY
-          echo "2. 🚀 **Staging Deploy** → Deploys and tests staging images" >> $GITHUB_STEP_SUMMARY  
+          echo "2. 🚀 **Staging Deploy** → Deploys and tests staging images" >> $GITHUB_STEP_SUMMARY
           echo "3. ✅ **Image Promotion** → Promotes tested staging images to production tags" >> $GITHUB_STEP_SUMMARY
           echo "4. 🌟 **Production Deploy** → Deploys promoted images to production" >> $GITHUB_STEP_SUMMARY
           echo "5. 🔄 **Rollback** → Emergency rollback using previous images" >> $GITHUB_STEP_SUMMARY

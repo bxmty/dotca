@@ -1,0 +1,117 @@
+# Development Environment Configuration
+# This file defines the configuration for the development environment
+# Used for build testing and validation without deployment
+
+name: development
+url: https://dev.boximity.ca
+
+# Branch restrictions
+branches:
+  - renovations
+
+# Environment protection rules (minimal for development)
+protection_rules:
+  required_reviewers: 0
+  required_checks:
+    - build
+    - lint
+  restrict_pushes: false
+  allow_force_pushes: true # Allow force pushes for development
+  allow_deletions: true
+
+# Environment variables
+variables:
+  ENVIRONMENT: development
+  APP_URL: https://dev.boximity.ca
+  DEBUG: true
+  NODE_ENV: development
+
+  # Application configuration
+  NEXT_PUBLIC_APP_ENV: development
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51S7c8DKZd4rSrt9n4kQU2lE9dZ9vSbpAkGRYu0qNRTMBmNvRxQvpFiYOIK2sZGkrmdQQAEaNxugOMGcXYLINRLCF00wuy1qoap
+  NEXT_PUBLIC_PRODUCTION_GA_ID: G-DEV123456789
+
+  # Umami Analytics (Development - optional)
+  UMAMI_WEBSITE_ID: umami-website-dev-001
+  UMAMI_HOST_URL: https://umami.dev.boximity.ca
+  UMAMI_FORCE_HTTPS: false
+  UMAMI_DISABLE_TELEMETRY: false
+  UMAMI_LOG_LEVEL: debug
+
+  # Feature flags
+  ENABLE_DEBUG_LOGGING: true
+  ENABLE_PERFORMANCE_MONITORING: false
+
+# Required secrets (minimal set for development)
+secrets:
+  # Infrastructure (may use shared/test credentials)
+  - DO_TOKEN
+  - SSH_PRIVATE_KEY
+  - SSH_KEY_FINGERPRINT
+  - SPACES_ACCESS_ID
+  - SPACES_SECRET_KEY
+
+  # Application secrets (test values)
+  - BREVO_API_KEY
+  - STRIPE_SECRET_KEY
+  - ANSIBLE_VAULT_PASSWORD
+
+  # GitHub
+  - GITHUB_TOKEN
+
+# Deployment configuration (no deployment for development)
+deployment:
+  terraform_workspace: development
+  ansible_playbook: none
+  health_check_endpoint: none
+  health_check_timeout: 0
+
+  # Testing configuration
+  enable_e2e_tests: false
+  enable_integration_tests: false
+  enable_unit_tests: true
+  test_timeout: 300
+
+  # Rollback configuration
+  rollback_enabled: false
+  rollback_timeout: 0
+  auto_rollback_on_failure: false
+
+# Monitoring and alerting (minimal)
+monitoring:
+  enable_health_checks: false
+  enable_metrics_collection: false
+  alert_on_failure: false
+  notification_channels: ["github"]
+
+  # Relaxed thresholds for development
+  response_time_threshold_ms: 10000
+  error_rate_threshold: 0.10
+  uptime_sla: 0.90
+
+# Resource allocation (minimal for development)
+resources:
+  droplet_size: s-1vcpu-1gb
+  disk_size_gb: 25
+  backup_schedule: none
+
+# Security configuration (relaxed for development)
+security:
+  enable_https_redirect: false
+  enable_security_headers: false
+  enable_rate_limiting: false
+  rate_limit_requests_per_hour: 1000
+
+  # Firewall rules
+  allowed_ips:
+    - "0.0.0.0/0"
+  allowed_ports: [22, 80, 443]
+
+# Maintenance configuration
+maintenance:
+  enable_auto_updates: false
+  enable_backup_before_deploy: false
+  enable_rollback_snapshots: false
+
+  # No scheduled maintenance for development
+  maintenance_window: null

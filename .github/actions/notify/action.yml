@@ -1,0 +1,142 @@
+name: "Send Notifications"
+description: "Send deployment notifications to various channels"
+
+inputs:
+  event_type:
+    description: "Type of event (deployment-success, deployment-failed, etc.)"
+    required: true
+  environment:
+    description: "Target environment"
+    required: true
+  workflow_run_id:
+    description: "GitHub workflow run ID"
+    required: false
+  commit:
+    description: "Git commit SHA"
+    required: false
+  triggered_by:
+    description: "User who triggered the deployment"
+    required: false
+  deployment_details:
+    description: "JSON string with deployment details"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare notification data
+      shell: bash
+      run: |
+        echo "📢 Preparing notification for ${{ inputs.event_type }}"
+
+        # Parse deployment details if provided
+        if [ -n "${{ inputs.deployment_details }}" ]; then
+          echo "Deployment details provided"
+        fi
+
+        # Create notification payload
+        NOTIFICATION_DATA="{
+          \"event_type\": \"${{ inputs.event_type }}\",
+          \"environment\": \"${{ inputs.environment }}\",
+          \"workflow_run_id\": \"${{ inputs.workflow_run_id }}\",
+          \"commit\": \"${{ inputs.commit }}\",
+          \"triggered_by\": \"${{ inputs.triggered_by }}\",
+          \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+          \"repository\": \"${{ github.repository }}\",
+          \"run_url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\"
+        }"
+
+        echo "NOTIFICATION_DATA=$NOTIFICATION_DATA" >> $GITHUB_ENV
+
+    - name: Send GitHub notification
+      shell: bash
+      run: |
+        echo "📝 Sending GitHub notification..."
+
+        # Determine emoji and message based on event type
+        case "${{ inputs.event_type }}" in
+          "deployment-success")
+            EMOJI="✅"
+            TITLE="Deployment Successful"
+            COLOR="good"
+            ;;
+          "deployment-failed")
+            EMOJI="❌"
+            TITLE="Deployment Failed"
+            COLOR="danger"
+            ;;
+          *)
+            EMOJI="ℹ️"
+            TITLE="Deployment Update"
+            COLOR="warning"
+            ;;
+        esac
+
+        # Create GitHub step summary
+        echo "## $EMOJI $TITLE" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Event:** ${{ inputs.event_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ inputs.commit }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by:** ${{ inputs.triggered_by }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow:** [${{ inputs.workflow_run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+
+        echo "✅ GitHub notification sent"
+
+    - name: Send Slack notification
+      shell: bash
+      if: env.SLACK_WEBHOOK != ''
+      run: |
+        echo "💬 Sending Slack notification..."
+
+        # Create Slack message payload
+        SLACK_PAYLOAD="{
+          \"username\": \"GitHub Deploy Bot\",
+          \"icon_emoji\": \":rocket:\",
+          \"attachments\": [{
+            \"color\": \"$COLOR\",
+            \"title\": \"$TITLE - ${{ inputs.environment }}\",
+            \"title_link\": \"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\",
+            \"fields\": [
+              {
+                \"title\": \"Environment\",
+                \"value\": \"${{ inputs.environment }}\",
+                \"short\": true
+              },
+              {
+                \"title\": \"Commit\",
+                \"value\": \"\`${{ inputs.commit }}\`\",
+                \"short\": true
+              },
+              {
+                \"title\": \"Triggered by\",
+                \"value\": \"${{ inputs.triggered_by }}\",
+                \"short\": true
+              }
+            ],
+            \"footer\": \"GitHub Actions\",
+            \"ts\": $(date +%s)
+          }]
+        }"
+
+        # Send to Slack (if webhook URL is available)
+        if [ -n "$SLACK_WEBHOOK" ]; then
+          curl -X POST -H 'Content-type: application/json' --data "$SLACK_PAYLOAD" "$SLACK_WEBHOOK"
+          echo "✅ Slack notification sent"
+        else
+          echo "⚠️ Slack webhook not configured"
+        fi
+
+    - name: Log notification event
+      shell: bash
+      run: |
+        echo "📋 Notification Summary:"
+        echo "  Event: ${{ inputs.event_type }}"
+        echo "  Environment: ${{ inputs.environment }}"
+        echo "  Workflow: ${{ inputs.workflow_run_id }}"
+        echo "  Commit: ${{ inputs.commit }}"
+        echo "  Triggered by: ${{ inputs.triggered_by }}"
+        echo "  Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "✅ All notifications sent"

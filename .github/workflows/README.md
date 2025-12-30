@@ -1,179 +1,161 @@
 # GitHub Actions Workflows
 
-This directory contains all GitHub Actions workflows for the DotCA project. These workflows manage the complete CI/CD pipeline from code changes to production deployment, including testing, building, deployment, and monitoring.
+This directory contains the simplified, unified CI/CD pipeline for the DotCA project. The pipeline has been consolidated from 7+ complex workflows into a streamlined, maintainable system.
 
-## 🏗️ Workflow Architecture
+## 🏗️ Simplified Architecture
 
-The workflows are designed with a **staged deployment pipeline** that follows this flow:
+The new architecture follows a **single unified deployment workflow** with supporting monitoring and maintenance workflows:
 
 ```
-Code Changes → Build → QA → Staging → Image Promotion → Production
+Code Changes → Unified Deploy Workflow → Environment Deployment
                 ↓
-            Notifications & Monitoring
+        Testing & Health Checks
+                ↓
+        Monitoring & Notifications
 ```
 
 ## 📋 Core Workflows
 
-### 🎯 Single Developer Workflows
+### 🚀 Unified Deployment (`deploy.yml`)
 
-#### `single-developer-cicd.yml`
+**Purpose**: Single workflow handling all deployments across environments
 
-**Purpose**: Streamlined CI/CD pipeline optimized for single developer workflow
-
-- **Triggers**: Push to `renovations`, `staging`, `main` branches, PRs, manual dispatch
-- **Branch Flow**: `renovations` → `staging` → `main` (production)
+- **Triggers**: Branch pushes (`main`, `staging`, `renovations`), manual dispatch
 - **Key Features**:
-  - Automatic builds and tests on all branches
-  - Auto-deploy to staging when pushing to staging branch
-  - Manual promotion to production with approval
-  - Simplified workflow replacing complex multi-workflow setup
-  - Maintains safety with tests, linting, and manual production approval
-
-### 🔨 Build & CI Workflows
-
-#### `image-promotion.yml`
-
-**Purpose**: Builds staging images and promotes them to production with validation
-
-- **Triggers**: Manual dispatch, staging deployment completion
-- **Outputs**: Promoted Docker images in GHCR
-- **Key Features**:
-  - Smart path filtering (only builds when code changes)
-  - Multi-architecture builds
-  - Automatic tagging based on branch/commit
-  - Security scanning with Trivy
-  - Image promotion workflow with manual approval
-
-#### `image-promotion.yml`
-
-**Purpose**: Builds staging images and promotes them to production with validation
-
-- **Triggers**: Manual dispatch, staging deployment completion
-- **Features**:
-  - Runs comprehensive test suite
-  - Code quality checks (linting, formatting)
-  - Unit and integration tests
-  - Test coverage reporting
-  - Image promotion workflow with manual approval
-
-### 🚀 Deployment Workflows
-
-#### `stg-deploy.yml`
-
-**Purpose**: Staging environment deployment pipeline
-
-- **Triggers**: Push to `staging` branch, manual dispatch
-- **Infrastructure**: DigitalOcean droplet managed by Terraform
-- **Key Features**:
-  - Infrastructure as Code (Terraform)
-  - Ansible-based application deployment
-  - Automatic SSL certificate management
-  - Health checks and verification
-  - Selenium end-to-end testing
-
-#### `prod-deploy.yml`
-
-**Purpose**: Production deployment using promoted images
-
-- **Triggers**: Manual dispatch, called by image promotion workflow
-- **Security**: Requires promoted/tested images only
-- **Key Features**:
-  - Infrastructure provisioning/updates
-  - Blue-green deployment strategy
+  - Automatic environment detection based on branch
+  - Integrated testing (unit, integration, E2E)
+  - Docker build and multi-architecture support
+  - Infrastructure provisioning (Terraform)
+  - Application deployment (Ansible)
   - Comprehensive health verification
-  - Performance testing
-  - Security checks
-  - Automated rollback on failure
+  - Environment-specific configurations
 
-#### `image-promotion.yml`
+**Environment Mapping:**
 
-**Purpose**: Promotes staging images to production with manual approval
+- `renovations` → Development (build-only)
+- `staging` → Staging (full deployment + testing)
+- `main` → Production (full deployment + verification)
 
-- **Triggers**: Manual dispatch only
-- **Security**: Requires manual approval via GitHub environments
+### 🔄 Rollback System (`rollback.yml`)
+
+**Purpose**: Emergency rollback capabilities for failed deployments
+
+- **Triggers**: Manual dispatch, automatic (future enhancement)
 - **Key Features**:
-  - Image validation and integrity checks
-  - Security vulnerability scanning
-  - Manual approval gate for production
-  - Automatic production deployment trigger
-  - Comprehensive audit logging
+  - Safety checks before rollback execution
+  - Environment-specific rollback logic
+  - Automatic health verification post-rollback
+  - Comprehensive rollback reporting
+  - Notification integration
 
-### 🔄 Management Workflows
+### 📊 Monitoring & Analytics
 
-#### `rollback.yml`
+#### `deployment-dashboard.yml`
 
-**Purpose**: Emergency rollback to previous production version
+**Purpose**: Deployment status monitoring and basic dashboard
 
-- **Triggers**: Manual dispatch only
-- **Key Features**:
-  - Rollback to any tagged version
-  - Safety confirmations required
-  - Automatic health verification
-  - Incident documentation
-  - Team notifications
+- **Triggers**: Post-deployment, manual refresh
+- **Features**: Environment status tracking, deployment history
 
-#### `environment-destroy.yml`
+#### `deployment-metrics.yml`
 
-**Purpose**: Safely destroy staging or production environments
+**Purpose**: Collect and analyze deployment metrics
 
-- **Triggers**: Manual dispatch with confirmation
-- **Safety**: Requires typed confirmation to prevent accidents
-- **Features**:
-  - Terraform state cleanup
-  - Resource verification
-  - Cost optimization
+- **Triggers**: Post-deployment, scheduled daily
+- **Features**: Success rates, deployment times, environment metrics
 
-#### `environment-destroy.yml`
+#### `log-aggregation.yml`
 
-**Purpose**: Clean up staging or production environment resources
+**Purpose**: Aggregate and analyze deployment logs
 
-- **Triggers**: Manual dispatch with confirmation
-- **Purpose**: Resource cleanup and cost management
+- **Triggers**: Post-deployment, scheduled cleanup
+- **Features**: Log collection, error pattern analysis, cleanup
 
-### 📊 Monitoring & Coordination
+### 🛠️ Maintenance Workflows
 
-#### `deployment-notifications.yml`
+#### `docker-build.yml`
 
-**Purpose**: Centralized notification system for all deployments
+**Purpose**: Standalone Docker image building
 
-- **Type**: Reusable workflow (called by others)
-- **Channels**: GitHub, Slack, Teams, Email
-- **Events**: Deployment start/success/failure, promotions, rollbacks
-
-#### `production-verification.yml`
-
-**Purpose**: Standalone production health verification
-
-- **Triggers**: Manual dispatch, scheduled (optional)
-- **Checks**: Health, performance, security verification
-- **Use Cases**: Post-deployment verification, routine health checks
-
-#### `workflow-coordinator.yml`
-
-**Purpose**: Validates workflow dependencies and sequencing
-
-- **Features**:
-  - Dependency validation
-  - Workflow readiness checks
-  - Sequence recommendations
-
-#### `deployment-status-dashboard.yml`
-
-**Purpose**: Generates deployment status dashboards and reports
-
-- **Features**: Visual status tracking, historical reports
-
-#### `image-history-tracking.yml`
-
-**Purpose**: Tracks and maintains image promotion history
-
-- **Features**: Audit trail, version tracking, compliance reporting
+- **Triggers**: Code changes, manual dispatch
+- **Features**: Multi-architecture builds, GHCR publishing
 
 #### `dependency-check.yml`
 
-**Purpose**: Security vulnerability scanning for dependencies
+**Purpose**: Dependency security scanning
 
-- **Features**: CVE scanning, security reporting
+- **Features**: CVE scanning, security vulnerability reports
+
+#### `image-cleanup.yml`
+
+**Purpose**: Clean up old Docker images
+
+- **Features**: Automated cleanup, retention policies
+
+#### `image-history-tracking.yml`
+
+**Purpose**: Track image promotion history
+
+- **Features**: Audit trails, version tracking
+
+#### `environment-destroy.yml`
+
+**Purpose**: Safely destroy environments
+
+- **Features**: Resource cleanup, safety confirmations
+
+## 🔧 Reusable Actions
+
+Located in `.github/actions/` for modular functionality:
+
+### `test-runner/`
+
+- **Purpose**: Unified test execution across all test types
+- **Supports**: Unit, integration, E2E, and smoke tests
+- **Features**: Environment-aware, configurable timeouts, artifact collection
+
+### `deploy/`
+
+- **Purpose**: Application deployment logic
+- **Features**: Infrastructure setup, app deployment, health verification
+
+### `health-check/`
+
+- **Purpose**: Comprehensive health verification
+- **Features**: HTTP checks, performance validation, security scanning
+
+### `notify/`
+
+- **Purpose**: Multi-channel notifications
+- **Channels**: GitHub, Slack, Teams, Email
+
+## 🔐 Security & Environments
+
+### GitHub Environments
+
+Environment-specific configurations in `.github/workflows/environments/`:
+
+- `development.yml` - Development build settings
+- `staging.yml` - Staging deployment configuration
+- `production.yml` - Production deployment with maximum security
+
+### Required Secrets
+
+- `DO_TOKEN` - DigitalOcean API access
+- `SSH_PRIVATE_KEY` - Server access key
+- `SSH_KEY_FINGERPRINT` - SSH key fingerprint
+- `SPACES_ACCESS_ID/SECRET_KEY` - Object storage
+- `BREVO_API_KEY` - Email service
+- `STRIPE_SECRET_KEY` - Payment processing
+- `ANSIBLE_VAULT_PASSWORD` - Ansible secrets
+- `GITHUB_TOKEN` - GitHub API access
+
+### Security Features
+
+- Environment-specific secret scoping
+- Branch protection rules
+- Manual approval requirements for production
+- Comprehensive audit logging
 
 ## 🔐 Security & Permissions
 
@@ -196,115 +178,110 @@ Code Changes → Build → QA → Staging → Image Promotion → Production
 
 ```mermaid
 graph TD
-    %% Single Developer Workflow (Recommended)
-    N[renovations branch] --> O[single-developer-cicd.yml]
-    O --> P[staging branch]
-    P --> Q[main branch]
-    Q --> R[production]
+    A[Code Push] --> B[deploy.yml]
+    B --> C{Environment}
+    C -->|Development| D[Build Only]
+    C -->|Staging| E[Full Deploy + Tests]
+    C -->|Production| F[Full Deploy + Verify]
 
-    %% Multi-Developer Workflow (Advanced)
-    A[Code Push] --> B[image-promotion.yml]
-    B --> C[stg-deploy.yml]
-    C --> D[image-promotion.yml]
-    D --> E[prod-deploy.yml]
+    G[Manual Trigger] --> H[rollback.yml]
+    G --> I[environment-destroy.yml]
 
-    F[staging branch] --> G[stg-deploy.yml]
+    B --> J[deployment-dashboard.yml]
+    B --> K[deployment-metrics.yml]
+    B --> L[log-aggregation.yml]
 
-    H[Manual Trigger] --> I[rollback.yml]
-    H --> J[production-verification.yml]
-    H --> K[environment-destroy.yml]
-
-    C --> L[deployment-notifications.yml]
-    D --> L
-    E --> L
-    I --> L
-
-    M[workflow-coordinator.yml] --> C
-    M --> D
-    M --> E
+    H --> J
+    H --> K
+    H --> L
 ```
 
 ## 🚦 Workflow States & Triggers
 
-| Workflow                | Automatic | Manual | Branch-based | Scheduled     |
-| ----------------------- | --------- | ------ | ------------ | ------------- |
-| single-developer-cicd   | ✅        | ✅     | ✅ (all)     | ❌            |
-| image-promotion         | ✅        | ❌     | ✅           | ❌            |
-| stg-deploy              | ✅        | ✅     | ✅ (staging) | ❌            |
-| image-promotion         | ❌        | ✅     | ❌           | ❌            |
-| prod-deploy             | ❌        | ✅     | ❌           | ❌            |
-| rollback                | ❌        | ✅     | ❌           | ❌            |
-| production-verification | ❌        | ✅     | ❌           | ⚠️ (optional) |
-| environment-destroy     | ❌        | ✅     | ❌           | ❌            |
+| Workflow                 | Automatic | Manual | Branch-based                  | Scheduled  |
+| ------------------------ | --------- | ------ | ----------------------------- | ---------- |
+| deploy.yml               | ✅        | ✅     | ✅ (main/staging/renovations) | ❌         |
+| rollback.yml             | ❌        | ✅     | ❌                            | ❌         |
+| deployment-dashboard.yml | ✅        | ✅     | ❌                            | ❌         |
+| deployment-metrics.yml   | ✅        | ❌     | ❌                            | ✅ (daily) |
+| log-aggregation.yml      | ✅        | ✅     | ❌                            | ✅ (daily) |
+| docker-build.yml         | ✅        | ✅     | ✅ (main/staging)             | ❌         |
+| dependency-check.yml     | ❌        | ✅     | ❌                            | ❌         |
 
 ## 🎯 Usage Guidelines
 
 ### For Development
 
-#### Single Developer Workflow (Recommended)
+1. **Feature Development**: Work on `renovations` branch
+2. **Automatic Testing**: Push to `renovations` triggers unit tests and build validation
+3. **No Deployment**: Development branch only validates builds, no actual deployment
 
-1. **Development**: Work on `renovations` branch, create PRs for Renovate updates
-2. **Testing**: Merge to `staging` branch for automatic staging deployment
-3. **Production**: Merge to `main` branch for production deployment (requires approval)
+### For Staging Deployment
 
-#### Multi-Developer Workflow (Advanced)
-
-1. **Feature Development**: Work on feature branches, create PRs to `main`
-2. **QA Testing**: Merge to `qa` branch to trigger QA pipeline
-3. **Staging Testing**: Merge to `staging` branch for staging deployment
+1. **Merge to Staging**: Push/merge to `staging` branch
+2. **Automatic Deployment**: Triggers full staging deployment with comprehensive testing
+3. **E2E Testing**: Includes integration and E2E tests
+4. **Health Verification**: Automatic health checks post-deployment
 
 ### For Production Deployment
 
-1. **Image Promotion**: Manually trigger `image-promotion.yml` with staging image tag
-2. **Manual Approval**: Approve promotion in GitHub environment protection
-3. **Automatic Deployment**: Production deployment triggers automatically after promotion
-4. **Verification**: Monitor deployment health and run additional verification if needed
+1. **Merge to Main**: Push/merge to `main` branch triggers automatic production deployment
+2. **Security Gates**: Requires approval through GitHub environment protection
+3. **Full Verification**: Includes health checks, smoke tests, and monitoring
+4. **Rollback Ready**: Automatic rollback capability on failures
 
 ### For Emergency Situations
 
-1. **Rollback**: Use `rollback.yml` with specific rollback target
-2. **Environment Issues**: Use `environment-destroy.yml` if infrastructure needs recreation
-3. **Health Checks**: Use `production-verification.yml` for standalone health verification
+1. **Rollback**: Use `rollback.yml` to rollback to previous stable version
+2. **Environment Issues**: Use `environment-destroy.yml` for infrastructure recreation
+3. **Health Checks**: Built into deployment workflow, or use manual health verification
 
 ## 🔧 Customization
 
 ### Adding New Environments
 
-1. Create new deployment workflow (copy from `stg-deploy.yml`)
-2. Update Terraform configuration for new environment
-3. Add notification channels to `deployment-notifications.yml`
-4. Update `workflow-coordinator.yml` dependencies
+1. Add new environment configuration in `.github/workflows/environments/`
+2. Update branch detection logic in `deploy.yml`
+3. Configure GitHub environment with appropriate secrets and protection rules
+4. Test deployment in new environment
 
 ### Modifying Deployment Flow
 
-1. Update workflow dependencies in respective files
-2. Modify notification events in `deployment-notifications.yml`
-3. Update image promotion workflow if needed
-4. Test changes in staging environment first
+1. Update reusable actions in `.github/actions/`
+2. Modify environment configurations as needed
+3. Test changes in staging environment first
+4. Update monitoring and notification logic
 
 ## 📈 Monitoring & Troubleshooting
 
 ### Common Issues
 
-- **Permission Errors**: Check secrets and GitHub environment settings
-- **Deployment Failures**: Review logs in failed workflow runs
-- **Image Issues**: Verify images exist in GHCR before promotion
-- **Infrastructure Issues**: Check DigitalOcean resources and Terraform state
+- **Permission Errors**: Check GitHub environment secrets and permissions
+- **Deployment Failures**: Review workflow logs and health check results
+- **Environment Detection**: Verify branch names match expected patterns
+- **Infrastructure Issues**: Check Terraform/Ansible configurations
 
 ### Best Practices
 
 - Always test changes in staging before production
-- Use manual approval for production changes
-- Monitor deployment notifications
-- Keep secrets up to date
-- Regularly verify production health
+- Monitor deployment dashboard for status updates
+- Use manual dispatch for emergency deployments when needed
+- Keep environment configurations updated
+- Regularly review deployment metrics
+
+### Health Check Endpoints
+
+- **Production**: https://boximity.ca/api/health
+- **Staging**: https://staging.boximity.ca/api/health
+- **Development**: Build validation only
 
 ## 📚 Related Documentation
 
-- [Deployment Guide](../../docs/DEPLOYMENT_GHCR.md)
+- [CI/CD Architecture](../../docs/ci-cd-architecture.md)
+- [Environment Configuration](./environments/README.md)
 - [Infrastructure Setup](../../terraform/README.md)
 - [Ansible Playbooks](../../ansible/README.md)
 
 ---
 
-**Note**: This is a living document. Update it when adding or modifying workflows to keep the team informed of changes.
+**Note**: This documentation reflects the simplified, unified CI/CD pipeline. The old complex multi-workflow system has been replaced with a single maintainable deployment workflow.

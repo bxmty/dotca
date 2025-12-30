@@ -1,0 +1,81 @@
+# CI/CD Pipeline Simplification - Task List
+
+## Relevant Files
+
+## Relevant Files
+
+- `.github/workflows/deploy.yml` - Main unified deployment workflow
+- `.github/workflows/environments/` - Directory for environment-specific configurations
+- `.github/actions/deploy/action.yml` - Reusable deployment action
+- `.github/actions/health-check/action.yml` - Health check action
+- `.github/workflows/deploy.yml.test.yml` - Tests for the deployment workflow
+- `.github/actions/deploy/action.test.yml` - Tests for the deployment action
+- `.github/actions/health-check/action.test.yml` - Tests for the health check action
+- `docs/ci-cd-architecture.md` - Architecture documentation with diagrams
+- `scripts/test-deployment.sh` - Deployment testing script
+
+### Notes
+
+- GitHub Actions workflows should be tested using `act` locally where possible
+- Environment-specific configurations use GitHub's built-in environment management
+- All actions should follow GitHub's composite action format for reusability
+- Testing workflows use GitHub Actions' workflow testing patterns
+
+## Tasks
+
+- [x] 1.0 Design Simplified Pipeline Architecture
+  - [x] 1.1 Analyze current workflow complexity and identify consolidation opportunities
+  - [x] 1.2 Define branch-to-environment mapping strategy (renovations→dev, staging→staging, main→production)
+  - [x] 1.3 Design environment-specific configuration management approach
+  - [x] 1.4 Plan reusable action structure for common deployment steps
+  - [x] 1.5 Define testing integration points across environments
+  - [x] 1.6 Create rollback strategy design for failed deployments
+
+- [x] 2.0 Create Class and Component Diagrams
+  - [x] 2.1 Create pipeline component diagram showing workflow relationships
+  - [x] 2.2 Design environment configuration class diagram
+  - [x] 2.3 Create deployment action sequence diagram
+  - [x] 2.4 Document testing workflow integration diagram
+  - [x] 2.5 Create notification and monitoring component diagram
+  - [x] 2.6 Generate mermaid.js diagrams in docs/ci-cd-architecture.md
+
+- [x] 3.0 Create Unified Deployment Workflow
+  - [x] 3.1 Create base deploy.yml workflow structure with branch triggers
+  - [x] 3.2 Implement environment detection logic based on branch names
+  - [x] 3.3 Add Docker build and push steps with multi-architecture support
+  - [x] 3.4 Integrate environment-specific configuration loading
+  - [x] 3.5 Implement conditional testing execution per environment
+  - [x] 3.6 Add deployment execution with error handling
+  - [x] 3.7 Create workflow testing file (deploy.yml.test.yml)
+
+- [x] 4.0 Implement Environment-Based Configuration
+  - [x] 4.1 Create .github/workflows/environments/ directory structure
+  - [x] 4.2 Define staging environment configuration file
+  - [x] 4.3 Define production environment configuration file
+  - [x] 4.4 Set up GitHub environment protections for production
+  - [x] 4.5 Configure environment-specific secrets management
+  - [x] 4.6 Create environment configuration validation script
+
+- [x] 5.0 Integrate Testing Strategy
+  - [x] 5.1 Create reusable test action for unit/integration tests
+  - [x] 5.2 Implement E2E test execution for staging environment
+  - [x] 5.3 Add test result reporting and artifact collection
+  - [x] 5.4 Configure test failure handling and notifications
+  - [x] 5.5 Implement parallel test execution where applicable
+  - [x] 5.6 Add test coverage reporting integration
+
+- [x] 6.0 Add Monitoring and Notifications
+  - [x] 6.1 Create health check action for post-deployment verification
+  - [x] 6.2 Implement notification system for deployment events
+  - [x] 6.3 Add rollback workflow for failed deployments
+  - [x] 6.4 Create deployment status dashboard integration
+  - [x] 6.5 Implement deployment metrics collection
+  - [x] 6.6 Add deployment log aggregation and analysis
+
+- [x] 7.0 Cleanup Old CI/CD Pipeline
+  - [x] 7.1 Identify all obsolete workflow files for removal
+  - [x] 7.2 Create backup of existing workflows before removal
+  - [x] 7.3 Update workflow documentation and README files
+  - [x] 7.4 Remove deprecated workflow files from repository
+  - [x] 7.5 Update any references to old workflows in documentation
+  - [x] 7.6 Test that all functionality still works after cleanup
