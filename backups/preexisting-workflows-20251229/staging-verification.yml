@@ -7,52 +7,52 @@ on:
   workflow_dispatch:
     inputs:
       verification_type:
-        description: 'Type of verification to perform'
+        description: "Type of verification to perform"
         required: true
         type: choice
         options:
-          - 'comprehensive'
-          - 'health-only'
-          - 'performance-only'
-          - 'security-only'
-          - 'tests-only'
-        default: 'comprehensive'
+          - "comprehensive"
+          - "health-only"
+          - "performance-only"
+          - "security-only"
+          - "tests-only"
+        default: "comprehensive"
       target_url:
-        description: 'Staging URL to verify (leave empty to auto-detect)'
+        description: "Staging URL to verify (leave empty to auto-detect)"
         required: false
         type: string
-        default: ''
+        default: ""
       notification_level:
-        description: 'Notification level for issues'
+        description: "Notification level for issues"
         required: false
         type: choice
         options:
-          - 'none'
-          - 'warnings'
-          - 'errors-only'
-          - 'all'
-        default: 'warnings'
+          - "none"
+          - "warnings"
+          - "errors-only"
+          - "all"
+        default: "warnings"
 
   workflow_call:
     inputs:
       verification_type:
-        description: 'Type of verification to perform'
+        description: "Type of verification to perform"
         required: false
         type: string
-        default: 'comprehensive'
+        default: "comprehensive"
       target_url:
-        description: 'Staging URL to verify'
+        description: "Staging URL to verify"
         required: true
         type: string
     outputs:
       verification_passed:
-        description: 'Whether verification passed'
+        description: "Whether verification passed"
         value: ${{ jobs.verify-staging.outputs.verification_passed }}
       issues_found:
-        description: 'Number of issues found'
+        description: "Number of issues found"
         value: ${{ jobs.verify-staging.outputs.issues_found }}
       recommendation:
-        description: 'Recommendations based on verification'
+        description: "Recommendations based on verification"
         value: ${{ jobs.verify-staging.outputs.recommendation }}
 
 env:
