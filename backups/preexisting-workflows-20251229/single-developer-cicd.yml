@@ -4,28 +4,28 @@ on:
   push:
     branches: [renovations, staging, main]
     paths:
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'Dockerfile'
-      - 'next.config.js'
-      - 'tsconfig.json'
-      - '.github/workflows/single-developer-cicd.yml'
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - "next.config.js"
+      - "tsconfig.json"
+      - ".github/workflows/single-developer-cicd.yml"
   pull_request:
     branches: [renovations, staging, main]
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Target environment'
+        description: "Target environment"
         required: true
-        default: 'staging'
+        default: "staging"
         type: choice
         options:
           - staging
           - production
       force_deploy:
-        description: 'Force deployment (skip some checks)'
+        description: "Force deployment (skip some checks)"
         required: false
         default: false
         type: boolean
@@ -50,8 +50,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.21.0'
-          cache: 'npm'
+          node-version: "22.21.0"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -219,8 +219,8 @@ jobs:
       - name: Trigger production deployment
         uses: ./.github/workflows/prod-deploy.yml
         with:
-          promoted_image_tag: 'main'
-          deployment_reason: 'Automatic deployment after merge to main branch'
+          promoted_image_tag: "main"
+          deployment_reason: "Automatic deployment after merge to main branch"
 
   # Handle PRs to renovations branch
   pr-checks:
@@ -235,8 +235,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22.21.0'
-          cache: 'npm'
+          node-version: "22.21.0"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
