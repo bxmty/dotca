@@ -1,7 +1,7 @@
 ## Relevant Files
 
-- `docs/local-development-setup.md` - Comprehensive local setup guide with prerequisites and architecture documentation
-- `docs/local-development-setup.md` - Mermaid diagrams for component and deployment flow architecture
+- `docs/local-development-setup.md` - Comprehensive local setup guide with prerequisites and architecture documentation (including Mermaid diagrams)
+- `Makefile` - High-level interface for local development operations
 - `scripts/local-deploy.sh` - Main local deployment script
 - `scripts/local-destroy.sh` - Local environment destruction script
 - `scripts/validate-environment.sh` - Environment validation and safety checks
@@ -9,7 +9,7 @@
 - `.github/actions/deploy/action.yml` - Updated deploy action with real Terraform/Ansible execution
 - `ansible/inventory/local.ini` - Local inventory configuration for testing
 - `ansible/ansible-local.cfg` - Local Ansible configuration using SSH agent
-- `scripts/local-deploy.sh` - Unit tests for validation functions
+- `scripts/validate-environment.test.sh` - Unit tests for validation functions
 - `scripts/local-deploy.test.sh` - Integration tests for deployment scripts
 
 ### Notes
@@ -31,7 +31,7 @@
   - [ ] 1.7 Document differences between local and CI/CD execution environments
   - [ ] 1.8 Add troubleshooting section for common local execution issues
 
-- [ ] 2.0 Create Local Execution Scripts
+- [ ] 2.0 Create Local Execution Scripts and Makefile
   - [ ] 2.1 Create `scripts/local-deploy.sh` script with environment selection and validation
   - [ ] 2.2 Implement Terraform execution logic (init, plan, apply) in deploy script
   - [ ] 2.3 Add Ansible playbook execution with dynamic inventory from Terraform outputs
@@ -40,6 +40,8 @@
   - [ ] 2.6 Implement configuration script to modify ansible.cfg for local SSH agent usage
   - [ ] 2.7 Add support for dry-run mode in deployment scripts
   - [ ] 2.8 Create script to generate local inventory from Terraform outputs
+  - [ ] 2.9 Create `Makefile` with common targets for local development workflow
+  - [ ] 2.10 Add Makefile targets for setup, deploy, destroy, validate, and testing operations
 
 - [ ] 3.0 Fix Deploy Action Implementation
   - [ ] 3.1 Replace simulation comments in `.github/actions/deploy/action.yml` with actual Terraform execution
