@@ -56,7 +56,8 @@
   - [ ] 4.2 Add SSH agent validation and key accessibility testing
   - [ ] 4.3 Implement required tools version checking (terraform, ansible, doctl)
   - [ ] 4.4 Add environment variable validation for all required secrets
-  - [ ] 4.5 Create safety prompts for destructive operations (terraform destroy)
-  - [ ] 4.6 Add cost estimation display before Terraform apply operations
-  - [ ] 4.7 Implement timeout controls for long-running operations
-  - [ ] 4.8 Add rollback verification and cleanup safeguards
+  - [ ] 4.5 Add DigitalOcean Spaces access validation for Terraform state connectivity
+  - [ ] 4.6 Create safety prompts for destructive operations (terraform destroy)
+  - [ ] 4.7 Add cost estimation display before Terraform apply operations
+  - [ ] 4.8 Implement timeout controls for long-running operations
+  - [ ] 4.9 Add rollback verification and cleanup safeguards

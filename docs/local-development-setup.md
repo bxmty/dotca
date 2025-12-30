@@ -85,30 +85,50 @@ ssh-add ~/.ssh/id_ed25519
 ssh-add -l
 ```
 
+#### DigitalOcean Spaces Access for Terraform State
+
+The Terraform configuration uses DigitalOcean Spaces for remote state storage. Ensure you have access to the Spaces bucket:
+
+```bash
+# Configure Spaces access (uses same credentials as DO_TOKEN)
+# The Spaces access keys should be configured in your DigitalOcean account
+# and accessible via the DO_TOKEN
+
+# Test Spaces access
+doctl compute spaces list
+
+# Verify the terraform state bucket exists
+doctl compute spaces list-objects bxtf --bucket bxtf
+```
+
+**Important**: Your DigitalOcean token must have Spaces access permissions to read/write the Terraform state file.
+
 ## Environment Variables Setup
 
 ### Required Environment Variables
 
-Set these environment variables in your shell profile (`.bashrc`, `.zshrc`, etc.) or use a `.env` file:
+Create a `.env.local` file in the project root (this file is gitignored) and set these environment variables:
 
 ```bash
 # DigitalOcean API Access
-export DO_TOKEN="your_digitalocean_api_token_here"
+DO_TOKEN=your_digitalocean_api_token_here
 
 # SSH Configuration (uses SSH agent)
-export SSH_KEY_FINGERPRINT="your_ssh_key_fingerprint_here"  # Optional: if multiple keys
+SSH_KEY_FINGERPRINT=your_ssh_key_fingerprint_here  # Optional: if multiple keys
 
 # Application Secrets
-export BREVO_API_KEY="your_brevo_api_key_here"
-export STRIPE_SECRET_KEY="your_stripe_secret_key_here"
-export STRIPE_PUBLISHABLE_KEY="your_stripe_publishable_key_here"
-export GA_STAGING_ID="G-XXXXXXXXXX"  # Google Analytics staging
-export GA_PRODUCTION_ID="G-XXXXXXXXXX"  # Google Analytics production
+BREVO_API_KEY=your_brevo_api_key_here
+STRIPE_SECRET_KEY=your_stripe_secret_key_here
+STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
+GA_STAGING_ID=G-XXXXXXXXXX  # Google Analytics staging
+GA_PRODUCTION_ID=G-XXXXXXXXXX  # Google Analytics production
 
 # Optional: Override defaults
-export DOCKER_IMAGE="ghcr.io/yourusername/dotca:custom-tag"
-export ANSIBLE_VAULT_PASSWORD="your_vault_password_if_using_encrypted_vars"
+DOCKER_IMAGE=ghcr.io/yourusername/dotca:custom-tag
+ANSIBLE_VAULT_PASSWORD=your_vault_password_if_using_encrypted_vars
 ```
+
+**Note**: The `.env.local` file is automatically loaded by the local execution scripts. Do not commit this file to version control.
 
 ### Getting Your DigitalOcean Token
 
@@ -288,14 +308,14 @@ cd dotca
 
 # 2. Install prerequisites (see above)
 
-# 3. Setup environment variables
-cp .env.example .env.local  # If exists, or set manually
-# Edit .env.local with your values
+# 3. Setup environment variables in .env.local
+touch .env.local  # Create the file (gitignored)
+# Edit .env.local with your values (see Environment Variables Setup section above)
 
 # 4. Setup SSH agent
 ssh-add ~/.ssh/your_private_key
 
-# 5. Validate setup
+# 5. Validate setup (this will load .env.local automatically)
 make validate
 
 # 6. Test deployment (dry-run first)
