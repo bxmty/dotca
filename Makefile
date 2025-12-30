@@ -97,7 +97,7 @@ validate: ## Validate local environment and prerequisites
 
 	@# Test DigitalOcean Spaces access
 	@set -a && source .env.local && set +a && \
-		doctl compute spaces list-objects bxtf --bucket bxtf >/dev/null 2>&1 || { echo "$(RED)Error: Cannot access DigitalOcean Spaces$(NC)"; exit 1; } && \
+		aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com >/dev/null 2>&1 || { echo "$(RED)Error: Cannot access DigitalOcean Spaces$(NC)"; exit 1; } && \
 		echo "$(GREEN)✓ DigitalOcean Spaces access$(NC)"
 
 	@echo "$(GREEN)✓ Environment validation passed!$(NC)"
@@ -148,7 +148,7 @@ status: ## Check status of specified environment
 		if [ -n "$$DO_TOKEN" ]; then \
 			if doctl account get >/dev/null 2>&1; then \
 				echo "  DigitalOcean API: $(GREEN)✓ Accessible$(NC)"; \
-				if doctl compute spaces list-objects bxtf --bucket bxtf >/dev/null 2>&1; then \
+				if aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com >/dev/null 2>&1; then \
 					echo "  DigitalOcean Spaces: $(GREEN)✓ Accessible$(NC)"; \
 				else \
 					echo "  DigitalOcean Spaces: $(RED)✗ Not accessible$(NC)"; \

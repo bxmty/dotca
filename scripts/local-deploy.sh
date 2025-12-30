@@ -207,10 +207,10 @@ validate_environment() {
         exit 1
     fi
 
-    # Check DigitalOcean Spaces access
-    if ! doctl compute spaces list-objects bxtf --bucket bxtf &> /dev/null; then
+    # Check DigitalOcean Spaces access using AWS CLI
+    if ! aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com &> /dev/null; then
         log_error "Cannot access DigitalOcean Spaces bucket 'bxtf'"
-        log_error "Please ensure your DO_TOKEN has Spaces access permissions"
+        log_error "Please ensure your AWS credentials are configured for Spaces access"
         exit 1
     fi
 

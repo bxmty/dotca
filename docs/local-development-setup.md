@@ -61,6 +61,24 @@ doctl account get
 doctl version
 ```
 
+#### AWS CLI (for DigitalOcean Spaces access)
+
+```bash
+# Install AWS CLI
+pip install awscli
+
+# Configure for DigitalOcean Spaces
+# Note: Use your DigitalOcean Spaces access keys, not regular AWS credentials
+aws configure
+# AWS Access Key ID: Your Spaces access key
+# AWS Secret Access Key: Your Spaces secret key
+# Default region: us-east-1 (or your preferred region)
+# Default output format: json
+
+# Verify installation
+aws --version
+```
+
 #### Docker
 
 ```bash
@@ -94,11 +112,14 @@ The Terraform configuration uses DigitalOcean Spaces for remote state storage. E
 # The Spaces access keys should be configured in your DigitalOcean account
 # and accessible via the DO_TOKEN
 
-# Test Spaces access
-doctl compute spaces list
+# Test Spaces access using AWS CLI (recommended)
+aws s3 ls --endpoint-url https://tor1.digitaloceanspaces.com
 
-# Verify the terraform state bucket exists
-doctl compute spaces list-objects bxtf --bucket bxtf
+# Or test using curl with DigitalOcean API
+curl -H "Authorization: Bearer $DO_TOKEN" https://api.digitalocean.com/v2/spaces
+
+# Verify the terraform state bucket exists using AWS CLI
+aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com
 ```
 
 **Important**: Your DigitalOcean token must have Spaces access permissions to read/write the Terraform state file.
@@ -112,6 +133,10 @@ Create a `.env.local` file in the project root (this file is gitignored) and set
 ```bash
 # DigitalOcean API Access
 DO_TOKEN=your_digitalocean_api_token_here
+
+# DigitalOcean Spaces Access (for Terraform state)
+AWS_ACCESS_KEY_ID=your_spaces_access_key_here
+AWS_SECRET_ACCESS_KEY=your_spaces_secret_key_here
 
 # SSH Configuration (uses SSH agent)
 SSH_KEY_FINGERPRINT=your_ssh_key_fingerprint_here  # Optional: if multiple keys
@@ -135,6 +160,15 @@ ANSIBLE_VAULT_PASSWORD=your_vault_password_if_using_encrypted_vars
 1. Go to [DigitalOcean Dashboard](https://cloud.digitalocean.com/account/api/tokens)
 2. Generate a new Personal Access Token with read/write permissions
 3. Copy the token and set it as `DO_TOKEN`
+
+### Getting Your DigitalOcean Spaces Credentials
+
+1. Go to [DigitalOcean Dashboard](https://cloud.digitalocean.com/account/api/tokens)
+2. Under "Spaces Keys" section, generate a new Spaces access key
+3. Copy the Access Key and Secret Key
+4. Set them as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` respectively
+
+**Note**: Spaces access keys are separate from regular API tokens and are specifically for object storage access.
 
 ### Getting SSH Key Fingerprint
 
@@ -444,7 +478,7 @@ The `make validate` command performs comprehensive validation of:
 
 **🔧 Tools & Versions:**
 
-- Terraform ≥ 1.5.0, Ansible, DigitalOcean CLI, Docker, SSH, Git, Python 3
+- Terraform ≥ 1.5.0, Ansible, DigitalOcean CLI, AWS CLI, Docker, SSH, Git, Python 3
 
 **🔑 SSH & Authentication:**
 

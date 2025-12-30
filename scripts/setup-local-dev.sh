@@ -264,11 +264,11 @@ test_digitalocean_access() {
     fi
     log_success "DigitalOcean API access confirmed"
 
-    # Test Spaces access
-    if ! doctl compute spaces list-objects bxtf --bucket bxtf &> /dev/null; then
+    # Test Spaces access using AWS CLI
+    if ! aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com &> /dev/null; then
         log_error "Cannot access DigitalOcean Spaces bucket 'bxtf'"
-        log_error "Your DO_TOKEN may not have Spaces access permissions"
-        log_error "Contact your administrator to grant Spaces access"
+        log_error "Your AWS credentials may not be configured correctly for Spaces access"
+        log_error "Ensure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set"
         return 1
     fi
     log_success "DigitalOcean Spaces access confirmed"

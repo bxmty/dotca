@@ -341,17 +341,18 @@ check_digitalocean_spaces() {
         return 1
     fi
 
-    # Test Spaces access
-    if ! doctl compute spaces list &> /dev/null; then
-        add_issue "Cannot access DigitalOcean Spaces. Your DO_TOKEN may not have Spaces permissions."
-        add_issue "Contact your DigitalOcean administrator to grant Spaces access."
+    # Test Spaces access using AWS CLI
+    if ! aws s3 ls --endpoint-url https://tor1.digitaloceanspaces.com &> /dev/null; then
+        add_issue "Cannot access DigitalOcean Spaces. Your AWS credentials may not be configured correctly."
+        add_issue "Ensure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set for Spaces access."
+        add_issue "See: https://docs.digitalocean.com/products/platform/availability-matrix/"
         return 1
     fi
 
     log_success "DigitalOcean Spaces access confirmed"
 
     # Check if the terraform state bucket exists
-    if ! doctl compute spaces list-objects bxtf --bucket bxtf &> /dev/null; then
+    if ! aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com &> /dev/null; then
         add_issue "Cannot access terraform state bucket 'bxtf'"
         add_issue "The bucket may not exist or you may not have access permissions."
         add_issue "Contact your administrator to create the bucket or grant access."
@@ -362,7 +363,7 @@ check_digitalocean_spaces() {
 
     # Check for existing terraform state
     local state_objects
-    state_objects=$(doctl compute spaces list-objects bxtf --bucket bxtf 2>/dev/null | grep -c "terraform.tfstate" || echo 0)
+    state_objects=$(aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com 2>/dev/null | grep -c "terraform.tfstate" || echo 0)
     if [[ "$state_objects" -gt 0 ]]; then
         log_info "Found $state_objects terraform state file(s) in bucket"
     else
