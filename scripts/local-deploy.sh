@@ -168,6 +168,13 @@ load_env_vars() {
         exit 1
     fi
 
+    # Set GIT_REPO_URL if not already set
+    if [[ -z "${GIT_REPO_URL:-}" ]]; then
+        GIT_REPO_URL=$(git remote get-url origin 2>/dev/null || echo "https://github.com/bxmty/dotca.git")
+        export GIT_REPO_URL
+        log_info "Set GIT_REPO_URL to: $GIT_REPO_URL"
+    fi
+
     log_success "Environment variables loaded successfully"
 }
 
@@ -351,7 +358,10 @@ run_terraform() {
 
     # Plan the deployment
     log_info "Planning Terraform changes..."
-    execute "terraform plan -var=\"environment=$ENVIRONMENT\" -out=tfplan"
+    tf_vars="-var=\"environment=$ENVIRONMENT\""
+    [[ -n "$DO_TOKEN" ]] && tf_vars="$tf_vars -var=\"do_token=$DO_TOKEN\""
+    [[ -n "${GIT_REPO_URL:-}" ]] && tf_vars="$tf_vars -var=\"git_repo_url=$GIT_REPO_URL\""
+    execute "terraform plan $tf_vars -out=tfplan"
 
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "Dry run mode - showing plan only"
@@ -410,7 +420,7 @@ run_ansible() {
 
     # Run the playbook
     log_info "Executing Ansible playbook: $playbook"
-    execute "ansible-playbook -i \"$inventory_file\" \"$playbook\""
+    execute "ANSIBLE_CONFIG=ansible-local.cfg ansible-playbook --vault-password-file .vault-pass -i \"$inventory_file\" \"$playbook\""
 
     log_success "Ansible deployment completed successfully"
 
