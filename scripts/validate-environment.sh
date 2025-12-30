@@ -141,7 +141,9 @@ check_required_tools() {
             "terraform")
                 local version
                 version=$(terraform --version | head -n1 | sed 's/Terraform v//')
-                if ! [[ "$version" =~ ^1\.[5-9]+\.[0-9]+ ]]; then
+                # Extract major, minor, patch versions
+                IFS='.' read -r major minor patch <<< "$version"
+                if [[ "$major" -lt 1 ]] || [[ "$major" -eq 1 && "$minor" -lt 5 ]]; then
                     add_issue "Terraform version $version is too old. Need >= 1.5.0"
                 else
                     log_success "Terraform $version ✓"

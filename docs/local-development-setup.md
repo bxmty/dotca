@@ -64,7 +64,10 @@ doctl version
 #### AWS CLI (for DigitalOcean Spaces access)
 
 ```bash
-# Install AWS CLI
+# Install AWS CLI via apt (recommended for Ubuntu/Debian)
+sudo apt update && sudo apt install -y awscli
+
+# Alternative: Install via pip (gets latest version)
 pip install awscli
 
 # Configure for DigitalOcean Spaces
