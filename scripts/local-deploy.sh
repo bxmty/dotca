@@ -23,6 +23,7 @@ ENVIRONMENT=""
 DRY_RUN=false
 SKIP_VALIDATION=false
 VERBOSE=false
+BACKEND_TYPE="remote"  # Default to remote for safety
 
 # Logging functions
 log_info() {
@@ -56,10 +57,12 @@ OPTIONS:
     -d, --dry-run           Show what would be executed without running commands
     -s, --skip-validation   Skip environment validation checks
     -v, --verbose           Enable verbose output
+    -b, --backend TYPE      Terraform backend type: local or remote (default: remote)
     -h, --help             Show this help message
 
 EXAMPLES:
-    $SCRIPT_NAME staging                    # Deploy to staging
+    $SCRIPT_NAME staging                    # Deploy to staging (remote backend)
+    $SCRIPT_NAME --backend local staging    # Deploy with local state
     $SCRIPT_NAME --dry-run production       # Dry run production deployment
     $SCRIPT_NAME -v staging                 # Deploy with verbose output
 
@@ -67,6 +70,7 @@ ENVIRONMENT SETUP:
     1. Create .env.local file with required environment variables
     2. Ensure SSH agent is running with your keys
     3. Run 'make validate' to check your setup
+    4. Choose backend: 'remote' for shared state, 'local' for isolated development
 
 For more information, see docs/local-development-setup.md
 EOF
@@ -87,6 +91,15 @@ parse_args() {
             -v|--verbose)
                 VERBOSE=true
                 shift
+                ;;
+            -b|--backend)
+                if [[ $# -lt 2 ]]; then
+                    log_error "Backend type not specified"
+                    usage
+                    exit 1
+                fi
+                BACKEND_TYPE="$2"
+                shift 2
                 ;;
             -h|--help)
                 usage
@@ -113,6 +126,12 @@ parse_args() {
 
     if [[ "$ENVIRONMENT" != "staging" && "$ENVIRONMENT" != "production" ]]; then
         log_error "Invalid environment: $ENVIRONMENT. Must be 'staging' or 'production'"
+        exit 1
+    fi
+
+    # Validate backend type
+    if [[ "$BACKEND_TYPE" != "local" && "$BACKEND_TYPE" != "remote" ]]; then
+        log_error "Invalid backend type: $BACKEND_TYPE. Must be 'local' or 'remote'"
         exit 1
     fi
 }
@@ -209,11 +228,14 @@ validate_environment() {
         exit 1
     fi
 
-    # Check DigitalOcean Spaces access using AWS CLI
-    if ! aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com &> /dev/null; then
-        log_error "Cannot access DigitalOcean Spaces bucket 'bxtf'"
-        log_error "Please ensure your AWS credentials are configured for Spaces access"
-        exit 1
+    # Check DigitalOcean Spaces access using AWS CLI (only for remote backend)
+    if [[ "$BACKEND_TYPE" == "remote" ]]; then
+        if ! aws s3 ls s3://bxtf --endpoint-url https://tor1.digitaloceanspaces.com &> /dev/null; then
+            log_error "Cannot access DigitalOcean Spaces bucket 'bxtf'"
+            log_error "Please ensure your AWS credentials are configured for Spaces access"
+            log_error "For local development, use: --backend local"
+            exit 1
+        fi
     fi
 
     log_success "Environment validation passed"
@@ -235,20 +257,90 @@ execute() {
     eval "$cmd"
 }
 
+# Configure Terraform backend
+configure_backend() {
+    # Determine which backend to enable and which to disable
+    local backend_to_enable="$BACKEND_TYPE"
+    local backend_to_disable
+    if [[ "$BACKEND_TYPE" == "local" ]]; then
+        backend_to_disable="remote"
+    else
+        backend_to_disable="local"
+    fi
+
+    local enable_file="$tf_dir/backend-${backend_to_enable}.tf"
+    local disable_file="$tf_dir/backend-${backend_to_disable}.tf"
+
+    # Enable the desired backend
+    if [[ -f "${enable_file}.disabled" ]]; then
+        mv "${enable_file}.disabled" "$enable_file"
+        log_info "Enabled $backend_to_enable backend"
+    elif [[ -f "$enable_file" ]]; then
+        log_info "$backend_to_enable backend already active"
+    else
+        log_error "Backend file $enable_file not found"
+        exit 1
+    fi
+
+    # Disable the other backend
+    if [[ -f "$disable_file" ]]; then
+        mv "$disable_file" "${disable_file}.disabled"
+        log_info "Disabled $backend_to_disable backend"
+    elif [[ -f "${disable_file}.disabled" ]]; then
+        log_info "$backend_to_disable backend already disabled"
+    fi
+
+    log_info "Configured $BACKEND_TYPE backend"
+}
+
+# Check if backend configuration has changed
+backend_changed() {
+    local active_backend_file="$tf_dir/backend-${BACKEND_TYPE}.tf"
+    local inactive_backend_file="$tf_dir/backend-${BACKEND_TYPE}.tf.disabled"
+
+    # If the desired backend file doesn't exist (active or inactive), it needs to be configured
+    if [[ ! -f "$active_backend_file" ]] && [[ ! -f "$inactive_backend_file" ]]; then
+        return 0  # Backend file missing, needs configuration
+    fi
+
+    # If the desired backend is not active, it needs to be configured
+    if [[ ! -f "$active_backend_file" ]]; then
+        return 0  # Backend not active, needs configuration
+    fi
+
+    return 1  # Backend is already correctly configured
+}
+
 # Run Terraform operations
 run_terraform() {
     local tf_dir="$PROJECT_ROOT/terraform"
     local tf_vars_file="$tf_dir/${ENVIRONMENT}.tfvars"
 
-    log_info "Running Terraform operations for $ENVIRONMENT environment"
+    log_info "Running Terraform operations for $ENVIRONMENT environment (backend: $BACKEND_TYPE)"
 
     # Change to terraform directory
     cd "$tf_dir"
 
-    # Initialize Terraform (only if needed)
-    if [[ ! -d ".terraform" ]]; then
-        log_info "Initializing Terraform..."
-        execute "terraform init"
+    # Configure backend if needed
+    configure_backend
+
+    # Check if this is a backend switch
+    local is_backend_switch=false
+    local backend_marker_file=".current_backend"
+    if [[ -f "$backend_marker_file" ]]; then
+        local previous_backend=$(cat "$backend_marker_file")
+        if [[ "$previous_backend" != "$BACKEND_TYPE" ]]; then
+            is_backend_switch=true
+            log_info "Backend switch detected: $previous_backend -> $BACKEND_TYPE"
+        fi
+    fi
+
+    # Initialize Terraform (only if needed or backend changed or switched)
+    if [[ ! -d ".terraform" ]] || backend_changed || $is_backend_switch; then
+        log_info "Initializing Terraform with $BACKEND_TYPE backend..."
+        execute "terraform init -reconfigure"
+        # Update the backend marker
+        echo "$BACKEND_TYPE" > "$backend_marker_file"
     fi
 
     # Create tfvars file if it doesn't exist

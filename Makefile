@@ -8,6 +8,7 @@
 
 # Environment variables with defaults
 ENVIRONMENT ?= staging
+BACKEND ?= remote
 DRY_RUN ?= false
 VERBOSE ?= false
 FORCE ?= false
@@ -31,6 +32,7 @@ help: ## Show this help message
 	@echo
 	@echo "Environment Variables:"
 	@echo "  ENVIRONMENT    Target environment (staging|production) [default: staging]"
+	@echo "  BACKEND        Terraform backend type (local|remote) [default: remote]"
 	@echo "  DRY_RUN       Show what would happen without executing [default: false]"
 	@echo "  VERBOSE        Enable verbose output [default: false]"
 	@echo "  FORCE          Skip confirmation prompts [default: false]"
@@ -38,7 +40,8 @@ help: ## Show this help message
 	@echo "Examples:"
 	@echo "  make setup                    # Initial environment setup"
 	@echo "  make validate                 # Validate environment"
-	@echo "  make deploy ENVIRONMENT=staging   # Deploy to staging"
+	@echo "  make deploy ENVIRONMENT=staging   # Deploy to staging (remote backend)"
+	@echo "  make deploy ENVIRONMENT=staging BACKEND=local   # Deploy with local backend"
 	@echo "  make deploy ENVIRONMENT=production # Deploy to production"
 	@echo "  make destroy ENVIRONMENT=staging   # Destroy staging environment"
 	@echo "  make status ENVIRONMENT=staging    # Check environment status"
@@ -113,6 +116,7 @@ deploy: ## Deploy to specified environment
 		echo "$(YELLOW)DRY RUN MODE - No actual changes will be made$(NC)"; \
 	fi
 	$(SCRIPTS_DIR)/local-deploy.sh $(ENVIRONMENT) \
+		$(if $(BACKEND),--backend $(BACKEND)) \
 		$(if $(filter true, $(DRY_RUN)),--dry-run) \
 		$(if $(filter true, $(VERBOSE)),--verbose)
 

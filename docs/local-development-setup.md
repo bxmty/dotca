@@ -183,6 +183,73 @@ ssh-keygen -l -E md5 -f ~/.ssh/your_key_file
 doctl compute ssh-key list
 ```
 
+## Terraform State Backend Selection
+
+The deployment system supports two Terraform state backend options for different development scenarios:
+
+### Remote Backend (DigitalOcean Spaces - Default)
+
+**Best for:** Team collaboration, production deployments, shared state
+
+- Shared state across team members and CI/CD pipelines
+- Automatic backups and version history in DigitalOcean Spaces
+- Requires AWS credentials configured for Spaces access
+- Recommended for production and collaborative development
+
+### Local Backend
+
+**Best for:** Individual development, experimentation, isolated testing
+
+- Isolated state file for personal development work
+- Faster initialization (no network calls required)
+- No shared state (changes don't affect other developers)
+- Perfect for testing infrastructure changes safely
+
+### Backend Configuration
+
+```bash
+# Use remote backend (default - requires Spaces access)
+./scripts/local-deploy.sh staging
+make deploy ENVIRONMENT=staging
+
+# Use local backend for isolated development
+./scripts/local-deploy.sh --backend local staging
+make deploy ENVIRONMENT=staging BACKEND=local
+```
+
+### Important Considerations
+
+- **Switching backends** requires running `terraform init -reconfigure`
+- **Local state files** are automatically excluded from version control
+- **Remote backend** requires proper DigitalOcean Spaces credentials
+- **CI/CD always uses** remote backend for consistency
+- **Local backend** is ideal for development experimentation
+
+### Manual Backend Selection
+
+If you need to manually configure the backend:
+
+```bash
+# Change to terraform directory
+cd terraform
+
+# Select local backend (enables backend-local.tf, disables backend-remote.tf)
+./select-backend.sh local
+
+# Select remote backend (enables backend-remote.tf, disables backend-local.tf)
+./select-backend.sh remote
+
+# Reinitialize terraform with the new backend
+terraform init -reconfigure
+```
+
+**How it works:**
+
+- Only one backend configuration is active at a time
+- Active backends have `.tf` extension and are loaded by Terraform
+- Inactive backends have `.disabled` extension and are ignored by Terraform
+- The system automatically manages file extensions during deployment
+
 ## SSH Key Management
 
 ### SSH Agent Integration
@@ -440,24 +507,30 @@ nano .env.local
 # 5. Validate setup
 make validate
 
-# 6. Test deployment (dry-run first)
+# 6. Choose backend and test deployment (dry-run first)
+# For development/testing (recommended for first deployment):
+make deploy ENVIRONMENT=staging BACKEND=local DRY_RUN=true
+# For production/shared work (requires Spaces access):
 make deploy ENVIRONMENT=staging DRY_RUN=true
 ```
 
 ### Common Operations
 
 ```bash
-# Full deployment to staging
+# Full deployment to staging (local backend - good for development)
+make deploy ENVIRONMENT=staging BACKEND=local
+
+# Full deployment to staging (remote backend - requires Spaces access)
 make deploy ENVIRONMENT=staging
 
-# Deploy to production (with confirmation)
+# Deploy to production (always uses remote backend)
 make deploy ENVIRONMENT=production
 
 # Check environment status
 make status ENVIRONMENT=staging
 
 # Destroy environment (with confirmation)
-make destroy ENVIRONMENT=staging
+make destroy ENVIRONMENT=staging BACKEND=local
 
 # Get help
 make help
@@ -496,7 +569,8 @@ The `make validate` command performs comprehensive validation of:
 **☁️ DigitalOcean Access:**
 
 - API connectivity and authentication
-- Spaces access for Terraform state storage
+- **Remote backend:** Spaces access for Terraform state storage
+- **Local backend:** No additional Spaces access required
 - SSH keys available in account
 
 **🏗️ Infrastructure Setup:**

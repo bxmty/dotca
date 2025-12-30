@@ -50,6 +50,7 @@ CLAUDE.md
 **/.terraform/*
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
 *.tfvars
 *.tfvars.json
 crash.log
@@ -61,6 +62,13 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+
+# Local terraform state (when using local backend)
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+
+# Backend state tracking (local file)
+terraform/.current_backend
 
 
 # ansible

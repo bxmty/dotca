@@ -8,16 +8,8 @@ terraform {
   }
   required_version = ">= 1.5.0"
 
-  backend "s3" {
-    endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
-    region                      = "tor1"
-    bucket                      = "bxtf"
-    key                         = "dotca/terraform.tfstate"
-    skip_credentials_validation = true
-    skip_metadata_api_check     = true
-    skip_region_validation      = true
-    force_path_style            = true
-  }
+  # Backend configuration is handled by separate backend-*.tf files
+  # based on the use_local_state variable
 }
 
 # Configure the Digital Ocean Provider
