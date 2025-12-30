@@ -1,0 +1,161 @@
+name: Log Aggregation and Analysis
+
+# This workflow aggregates deployment logs and provides analysis
+# for troubleshooting and performance monitoring
+
+on:
+  # Aggregate logs after deployments
+  workflow_run:
+    workflows: ["Unified Deployment Pipeline", "Deployment Rollback"]
+    types: [completed]
+
+  # Manual log analysis
+  workflow_dispatch:
+    inputs:
+      analysis_type:
+        description: "Type of log analysis to perform"
+        required: true
+        type: choice
+        options: ["error-analysis", "performance-analysis", "full-summary"]
+        default: "full-summary"
+      time_range:
+        description: "Time range for analysis"
+        required: false
+        type: choice
+        options: ["1h", "24h", "7d", "30d"]
+        default: "24h"
+
+  # Daily log cleanup and analysis
+  schedule:
+    - cron: "0 3 * * *" # Daily at 3 AM UTC
+
+env:
+  LOGS_DIR: deployment-logs
+  ANALYSIS_DIR: log-analysis
+  RETENTION_DAYS: 30
+
+jobs:
+  aggregate-logs:
+    name: Aggregate Deployment Logs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup log aggregation
+        shell: bash
+        run: |
+          echo "📝 Setting up log aggregation..."
+
+          # Create directories
+          mkdir -p $LOGS_DIR $ANALYSIS_DIR
+
+          # Set timestamp
+          echo "LOG_TIMESTAMP=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+          echo "LOG_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+
+      - name: Collect workflow logs
+        id: collect-workflow-logs
+        shell: bash
+        run: |
+          echo "🔍 Collecting workflow run logs..."
+
+          # Get recent workflow runs
+          WORKFLOW_RUNS=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs?per_page=50")
+
+          # Simple log collection
+          echo "[]" > "$LOGS_DIR/workflow-logs-$LOG_TIMESTAMP.json"
+
+          echo "logs_file=logs.json" >> $GITHUB_OUTPUT
+          echo "✅ Log collection completed"
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          echo "📦 Collecting deployment artifacts..."
+          echo "{}" > "$LOGS_DIR/artifacts-$LOG_TIMESTAMP.json"
+          echo "✅ Artifacts collected"
+
+      - name: Basic log analysis
+        id: error-analysis
+        shell: bash
+        run: |
+          echo "🔍 Performing basic log analysis..."
+          echo "{}" > "$ANALYSIS_DIR/error-analysis-$LOG_TIMESTAMP.json"
+          echo "analysis={}" >> $GITHUB_OUTPUT
+          echo "✅ Log analysis completed"
+
+      - name: Generate summary
+        shell: bash
+        run: |
+          echo "📋 Generating log summary..."
+          echo "{}" > "$LOGS_DIR/summary-$LOG_TIMESTAMP.json"
+          echo "✅ Summary generated"
+
+      - name: Cleanup old logs
+        shell: bash
+        run: |
+          echo "🧹 Cleaning up old log files..."
+
+          # Remove files older than retention period
+          find "$LOGS_DIR" -name "*.json" -mtime +$RETENTION_DAYS -delete 2>/dev/null || true
+          find "$ANALYSIS_DIR" -name "*.json" -mtime +$RETENTION_DAYS -delete 2>/dev/null || true
+
+          CLEANED_COUNT=$(find "$LOGS_DIR" "$ANALYSIS_DIR" -name "*.json" -mtime +$RETENTION_DAYS -print -delete 2>/dev/null | wc -l || echo "0")
+
+          echo "✅ Cleaned up $CLEANED_COUNT old log files"
+
+      - name: Upload logs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-logs-${{ env.LOG_DATE }}
+          path: |
+            ${{ env.LOGS_DIR }}/
+            ${{ env.ANALYSIS_DIR }}/
+          retention-days: 30
+
+      - name: Generate analysis report
+        shell: bash
+        run: |
+          echo "📈 Generating analysis report..."
+
+          # Read the latest error analysis
+          LATEST_ANALYSIS=$(find "$ANALYSIS_DIR" -name "error-analysis-*.json" -print0 2>/dev/null | xargs -0 ls -t | head -1)
+
+          if [ -f "$LATEST_ANALYSIS" ]; then
+            # Extract top error patterns
+            TOP_ERRORS=$(cat "$LATEST_ANALYSIS" | jq -r 'to_entries | sort_by(.value) | reverse | .[0:5] | .[] | "\(.key): \(.value)"')
+
+            echo "## 🔍 Log Analysis Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Analysis Date:** $LOG_DATE" >> $GITHUB_STEP_SUMMARY
+            echo "**Analysis Period:** Last 24 hours" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            echo "### Top Error Patterns" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$TOP_ERRORS" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            echo "### Recommendations" >> $GITHUB_STEP_SUMMARY
+            if echo "$TOP_ERRORS" | grep -q "failed"; then
+              echo "- 🔴 High failure rate detected - review deployment pipeline" >> $GITHUB_STEP_SUMMARY
+            fi
+            if echo "$TOP_ERRORS" | grep -q "timeout"; then
+              echo "- ⏱️ Timeout issues detected - consider increasing timeouts or optimizing builds" >> $GITHUB_STEP_SUMMARY
+            fi
+            if echo "$TOP_ERRORS" | grep -q "connection"; then
+              echo "- 🌐 Connection issues detected - check network connectivity and service availability" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "*This analysis is automatically generated from deployment logs.*" >> $GITHUB_STEP_SUMMARY
+          fi

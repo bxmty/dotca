@@ -168,10 +168,12 @@ jobs:
 
       - name: Run unit tests
         id: test
-        run: |
-          npm run test:unit -- --coverage --passWithNoTests --watchAll=false
-          echo "results=passed" >> $GITHUB_OUTPUT
-        continue-on-error: true
+        uses: ./.github/actions/test-runner
+        with:
+          test_type: unit
+          environment: ${{ steps.detect.outputs.environment }}
+          collect_coverage: true
+          fail_fast: false
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -263,27 +265,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: "22.21.0"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
       - name: Run integration tests
-        run: npm run test:integration
-        env:
-          APP_URL: ${{ vars.APP_URL || format('https://staging.{0}', github.event.repository.name) }}
+        uses: ./.github/actions/test-runner
+        with:
+          test_type: integration
+          environment: staging
+          app_url: ${{ vars.APP_URL }}
+          fail_fast: false
+          timeout_minutes: 15
 
       - name: Run E2E tests
-        run: npm run test:e2e
-        env:
-          APP_URL: ${{ vars.APP_URL || format('https://staging.{0}', github.event.repository.name) }}
+        uses: ./.github/actions/test-runner
+        with:
+          test_type: e2e
+          environment: staging
+          app_url: ${{ vars.APP_URL }}
+          fail_fast: false
+          timeout_minutes: 20
 
       - name: Upload test artifacts
         if: always()

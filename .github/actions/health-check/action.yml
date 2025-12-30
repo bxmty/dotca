@@ -1,0 +1,298 @@
+name: "Health Check"
+description: "Comprehensive health verification for deployed applications"
+
+inputs:
+  environment:
+    description: "Target environment (development, staging, production)"
+    required: true
+  app_url:
+    description: "Application URL to check"
+    required: true
+  health_endpoint:
+    description: "Health check endpoint path"
+    required: false
+    default: "/api/health"
+  timeout_seconds:
+    description: "Timeout for health checks in seconds"
+    required: false
+    default: "30"
+  retries:
+    description: "Number of retry attempts"
+    required: false
+    default: "3"
+  retry_delay_seconds:
+    description: "Delay between retries in seconds"
+    required: false
+    default: "5"
+  enable_performance_checks:
+    description: "Enable performance validation"
+    required: false
+    default: "true"
+  enable_security_checks:
+    description: "Enable basic security validation"
+    required: false
+    default: "true"
+
+outputs:
+  health_status:
+    description: "Overall health status (healthy, degraded, unhealthy)"
+    value: ${{ steps.final-check.outputs.status }}
+  response_time_ms:
+    description: "Average response time in milliseconds"
+    value: ${{ steps.final-check.outputs.response_time }}
+  checks_passed:
+    description: "Number of checks that passed"
+    value: ${{ steps.final-check.outputs.passed }}
+  checks_total:
+    description: "Total number of checks performed"
+    value: ${{ steps.final-check.outputs.total }}
+  health_report:
+    description: "Detailed JSON health report"
+    value: ${{ steps.final-check.outputs.report }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup health check environment
+      shell: bash
+      run: |
+        echo "🏥 Starting health check for ${{ inputs.environment }} environment"
+        echo "🌐 URL: ${{ inputs.app_url }}"
+        echo "📊 Endpoint: ${{ inputs.health_endpoint }}"
+        echo "⏱️  Timeout: ${{ inputs.timeout_seconds }}s"
+
+        # Initialize health check tracking
+        echo "HEALTH_CHECKS_PASSED=0" >> $GITHUB_ENV
+        echo "HEALTH_CHECKS_TOTAL=0" >> $GITHUB_ENV
+        echo "HEALTH_REPORT=[]" >> $GITHUB_ENV
+
+    - name: HTTP Connectivity Check
+      id: http-check
+      shell: bash
+      continue-on-error: true
+      run: |
+        echo "🌐 Checking HTTP connectivity..."
+
+        START_TIME=$(date +%s%3N)
+        RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time ${{ inputs.timeout_seconds }} "${{ inputs.app_url }}" || echo "000")
+        END_TIME=$(date +%s%3N)
+        RESPONSE_TIME=$((END_TIME - START_TIME))
+
+        echo "response_time=$RESPONSE_TIME" >> $GITHUB_OUTPUT
+
+        if [[ "$RESPONSE_CODE" =~ ^(200|301|302)$ ]]; then
+          echo "✅ HTTP connectivity: PASSED (Status: $RESPONSE_CODE, ${RESPONSE_TIME}ms)"
+          echo "HEALTH_CHECKS_PASSED=$((HEALTH_CHECKS_PASSED + 1))" >> $GITHUB_ENV
+          RESULT="passed"
+        else
+          echo "❌ HTTP connectivity: FAILED (Status: $RESPONSE_CODE, ${RESPONSE_TIME}ms)"
+          RESULT="failed"
+        fi
+
+        echo "HEALTH_CHECKS_TOTAL=$((HEALTH_CHECKS_TOTAL + 1))" >> $GITHUB_ENV
+
+        # Add to health report
+        CHECK_JSON="{\"name\":\"http_connectivity\",\"status\":\"$RESULT\",\"response_code\":\"$RESPONSE_CODE\",\"response_time_ms\":$RESPONSE_TIME,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+        echo "HEALTH_REPORT=$(echo "$HEALTH_REPORT" | jq -c ". + [$CHECK_JSON]")" >> $GITHUB_ENV
+
+    - name: Health Endpoint Check
+      id: health-endpoint-check
+      shell: bash
+      continue-on-error: true
+      run: |
+        echo "🏥 Checking health endpoint..."
+
+        HEALTH_URL="${{ inputs.app_url }}${{ inputs.health_endpoint }}"
+        echo "Health URL: $HEALTH_URL"
+
+        START_TIME=$(date +%s%3N)
+        RESPONSE=$(curl -s --max-time ${{ inputs.timeout_seconds }} "$HEALTH_URL" || echo "")
+        END_TIME=$(date +%s%3N)
+        RESPONSE_TIME=$((END_TIME - START_TIME))
+
+        if [ -n "$RESPONSE" ]; then
+          echo "✅ Health endpoint: RESPONDING (${RESPONSE_TIME}ms)"
+          echo "Response preview: ${RESPONSE:0:100}..."
+
+          # Try to parse JSON response
+          if echo "$RESPONSE" | jq empty 2>/dev/null; then
+            echo "✅ Health response is valid JSON"
+            HEALTH_STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+            echo "Health status: $HEALTH_STATUS"
+          else
+            echo "⚠️ Health response is not JSON"
+            HEALTH_STATUS="unknown"
+          fi
+
+          RESULT="passed"
+          echo "HEALTH_CHECKS_PASSED=$((HEALTH_CHECKS_PASSED + 1))" >> $GITHUB_ENV
+        else
+          echo "❌ Health endpoint: NOT RESPONDING"
+          RESULT="failed"
+          HEALTH_STATUS="unreachable"
+        fi
+
+        echo "HEALTH_CHECKS_TOTAL=$((HEALTH_CHECKS_TOTAL + 1))" >> $GITHUB_ENV
+
+        # Add to health report
+        CHECK_JSON="{\"name\":\"health_endpoint\",\"status\":\"$RESULT\",\"health_status\":\"$HEALTH_STATUS\",\"response_time_ms\":$RESPONSE_TIME,\"url\":\"$HEALTH_URL\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+        echo "HEALTH_REPORT=$(echo "$HEALTH_REPORT" | jq -c ". + [$CHECK_JSON]")" >> $GITHUB_ENV
+
+    - name: Performance Check
+      id: performance-check
+      shell: bash
+      continue-on-error: true
+      if: inputs.enable_performance_checks == 'true'
+      run: |
+        echo "⚡ Running performance checks..."
+
+        # Multiple requests to check consistency
+        TOTAL_TIME=0
+        REQUESTS=5
+        SUCCESSFUL_REQUESTS=0
+
+        for i in {1..5}; do
+          START_TIME=$(date +%s%3N)
+          if curl -s --max-time 10 "${{ inputs.app_url }}" >/dev/null 2>&1; then
+            END_TIME=$(date +%s%3N)
+            REQUEST_TIME=$((END_TIME - START_TIME))
+            TOTAL_TIME=$((TOTAL_TIME + REQUEST_TIME))
+            SUCCESSFUL_REQUESTS=$((SUCCESSFUL_REQUESTS + 1))
+            echo "Request $i: ${REQUEST_TIME}ms ✅"
+          else
+            echo "Request $i: FAILED ❌"
+          fi
+        done
+
+        if [ $SUCCESSFUL_REQUESTS -eq $REQUESTS ]; then
+          AVG_TIME=$((TOTAL_TIME / REQUESTS))
+          echo "✅ Performance check: PASSED (Avg: ${AVG_TIME}ms, All $REQUESTS requests successful)"
+
+          # Check against performance thresholds
+          case "${{ inputs.environment }}" in
+            "production")
+              THRESHOLD=2000
+              ;;
+            "staging")
+              THRESHOLD=5000
+              ;;
+            *)
+              THRESHOLD=10000
+              ;;
+          esac
+
+          if [ $AVG_TIME -le $THRESHOLD ]; then
+            echo "✅ Performance within acceptable limits (< ${THRESHOLD}ms)"
+            RESULT="passed"
+            echo "HEALTH_CHECKS_PASSED=$((HEALTH_CHECKS_PASSED + 1))" >> $GITHUB_ENV
+          else
+            echo "⚠️ Performance degraded (> ${THRESHOLD}ms)"
+            RESULT="degraded"
+          fi
+        else
+          echo "❌ Performance check: FAILED ($SUCCESSFUL_REQUESTS/$REQUESTS requests successful)"
+          RESULT="failed"
+        fi
+
+        echo "HEALTH_CHECKS_TOTAL=$((HEALTH_CHECKS_TOTAL + 1))" >> $GITHUB_ENV
+
+        # Add to health report
+        CHECK_JSON="{\"name\":\"performance\",\"status\":\"$RESULT\",\"avg_response_time_ms\":$AVG_TIME,\"successful_requests\":$SUCCESSFUL_REQUESTS,\"total_requests\":$REQUESTS,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+        echo "HEALTH_REPORT=$(echo "$HEALTH_REPORT" | jq -c ". + [$CHECK_JSON]")" >> $GITHUB_ENV
+
+    - name: Security Check
+      id: security-check
+      shell: bash
+      continue-on-error: true
+      if: inputs.enable_security_checks == 'true'
+      run: |
+        echo "🔒 Running basic security checks..."
+
+        SECURITY_ISSUES=0
+        SECURITY_CHECKS=0
+
+        # Check for security headers
+        echo "Checking security headers..."
+        HEADERS=$(curl -s -I --max-time 10 "${{ inputs.app_url }}" | tr -d '\r')
+
+        SECURITY_CHECKS=$((SECURITY_CHECKS + 1))
+        if echo "$HEADERS" | grep -i -E "(strict-transport-security|x-frame-options|x-content-type-options)" >/dev/null; then
+          echo "✅ Security headers present"
+          echo "HEALTH_CHECKS_PASSED=$((HEALTH_CHECKS_PASSED + 1))" >> $GITHUB_ENV
+        else
+          echo "⚠️ Missing recommended security headers"
+          SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+        fi
+
+        # Check HTTPS (for production)
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          SECURITY_CHECKS=$((SECURITY_CHECKS + 1))
+          if curl -s --max-time 10 "https://${{ inputs.app_url }}" >/dev/null 2>&1; then
+            echo "✅ HTTPS available"
+            echo "HEALTH_CHECKS_PASSED=$((HEALTH_CHECKS_PASSED + 1))" >> $GITHUB_ENV
+          else
+            echo "⚠️ HTTPS not available"
+            SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+          fi
+        fi
+
+        echo "HEALTH_CHECKS_TOTAL=$((HEALTH_CHECKS_TOTAL + SECURITY_CHECKS))" >> $GITHUB_ENV
+
+        # Determine security status
+        if [ $SECURITY_ISSUES -eq 0 ]; then
+          RESULT="passed"
+          echo "✅ Security checks: PASSED"
+        elif [ $SECURITY_ISSUES -lt $SECURITY_CHECKS ]; then
+          RESULT="degraded"
+          echo "⚠️ Security checks: DEGRADED ($SECURITY_ISSUES issues found)"
+        else
+          RESULT="failed"
+          echo "❌ Security checks: FAILED"
+        fi
+
+        # Add to health report
+        CHECK_JSON="{\"name\":\"security\",\"status\":\"$RESULT\",\"issues_found\":$SECURITY_ISSUES,\"checks_performed\":$SECURITY_CHECKS,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+        echo "HEALTH_REPORT=$(echo "$HEALTH_REPORT" | jq -c ". + [$CHECK_JSON]")" >> $GITHUB_ENV
+
+    - name: Generate Final Health Report
+      id: final-check
+      shell: bash
+      run: |
+        echo "📋 Generating final health report..."
+
+        # Calculate overall health status
+        PASSED_RATIO=$((HEALTH_CHECKS_PASSED * 100 / HEALTH_CHECKS_TOTAL))
+
+        if [ $PASSED_RATIO -eq 100 ]; then
+          OVERALL_STATUS="healthy"
+          echo "🎉 Overall health: HEALTHY (100% checks passed)"
+        elif [ $PASSED_RATIO -ge 75 ]; then
+          OVERALL_STATUS="degraded"
+          echo "⚠️ Overall health: DEGRADED ($PASSED_RATIO% checks passed)"
+        else
+          OVERALL_STATUS="unhealthy"
+          echo "❌ Overall health: UNHEALTHY ($PASSED_RATIO% checks passed)"
+        fi
+
+        # Get average response time from HTTP check
+        AVG_RESPONSE_TIME=${{ steps.http-check.outputs.response_time }}
+
+        # Generate final JSON report
+        FINAL_REPORT="{\\"environment\\": \\"${{ inputs.environment }}\\", \\"app_url\\": \\"${{ inputs.app_url }}\\", \\"overall_status\\": \\"$OVERALL_STATUS\\", \\"checks_passed\\": $HEALTH_CHECKS_PASSED, \\"checks_total\\": $HEALTH_CHECKS_TOTAL, \\"pass_ratio\\": $PASSED_RATIO, \\"average_response_time_ms\\": $AVG_RESPONSE_TIME, \\"timestamp\\": \\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\", \\"checks\\": $HEALTH_REPORT}"
+
+        # Write outputs
+        echo "status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+        echo "response_time=$AVG_RESPONSE_TIME" >> $GITHUB_OUTPUT
+        echo "passed=$HEALTH_CHECKS_PASSED" >> $GITHUB_OUTPUT
+        echo "total=$HEALTH_CHECKS_TOTAL" >> $GITHUB_OUTPUT
+        echo "report=$FINAL_REPORT" >> $GITHUB_OUTPUT
+
+        # Save report to file for artifacts
+        echo "$FINAL_REPORT" > health-report.json
+
+        echo "📊 Health Check Summary:"
+        echo "  Environment: ${{ inputs.environment }}"
+        echo "  Status: $OVERALL_STATUS"
+        echo "  Checks: $HEALTH_CHECKS_PASSED/$HEALTH_CHECKS_TOTAL passed"
+        echo "  Response Time: ${AVG_RESPONSE_TIME}ms"
+        echo "  Report saved: health-report.json"
