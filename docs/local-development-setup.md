@@ -237,6 +237,76 @@ graph TB
     style DEPLOY_ACTION fill:#ffebee
 ```
 
+### Dynamic Inventory Management
+
+The system uses **dynamic Ansible inventory generation** to ensure deployments work seamlessly across different environments and infrastructure instances.
+
+#### Inventory Template Structure
+
+The `ansible/inventory/local.ini` file serves as a **template and documentation file**:
+
+```ini
+# Local Ansible inventory for dotca deployments
+# This file is generated dynamically by deployment scripts
+# Do not edit manually - it will be overwritten
+
+[digitalocean]
+# Host entries will be added here by deployment scripts
+# Example: dotca-staging ansible_host=147.182.159.169
+
+[digitalocean:vars]
+# Common variables for DigitalOcean droplets
+ansible_user=root
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+project_name=dotca-nextjs
+app_dir=/app
+
+# Environment-specific variables will be added here by deployment scripts
+```
+
+#### Runtime Inventory Generation
+
+Both **local scripts** and **GitHub Actions** generate inventory files dynamically during deployment:
+
+**Local Deployment:**
+
+```bash
+# Script gets real droplet IP from Terraform
+DROPLET_IP=$(terraform output -raw droplet_ip)
+
+# Generates inventory with actual values
+cat > ansible/inventory/local.ini << EOF
+[digitalocean]
+dotca-staging ansible_host=$DROPLET_IP
+
+[digitalocean:vars]
+# ... actual configuration values
+environment=staging
+docker_image=ghcr.io/bxmty/dotca:staging
+staging_domain=staging.boximity.ca
+EOF
+```
+
+**GitHub Actions:**
+
+```yaml
+# Action generates inventory with Terraform outputs
+cat > ansible/inventory/deploy.ini << EOF
+[digitalocean]
+dotca-production ansible_host=$DROPLET_IP
+# ... production-specific configuration
+EOF
+```
+
+#### Key Benefits
+
+- **🚀 Environment Agnostic**: Works with any droplet IP (staging/production/new instances)
+- **🔄 Dynamic Adaptation**: Automatically adapts to infrastructure changes
+- **🧹 Automatic Cleanup**: Generated files removed after deployment
+- **🔒 Security**: No sensitive data committed to version control
+- **📋 Consistency**: Same inventory structure locally and in CI/CD
+
 ### Deployment Flow
 
 ```mermaid
@@ -254,15 +324,19 @@ sequenceDiagram
         Dev->>Local: make deploy ENVIRONMENT=staging
         Local->>Local: Validate environment & prerequisites
         Local->>TF: terraform init/plan/apply
+        TF->>Local: Return droplet IP
+        Local->>Local: Generate ansible/inventory/local.ini
     else CI/CD Execution
         Dev->>CI_CD: Push to main/staging branch
         CI_CD->>CI_CD: Build Docker image
         CI_CD->>Deploy_Action: Call deploy action
         Deploy_Action->>Deploy_Action: Validate secrets & environment
+        Deploy_Action->>TF: terraform init/plan/apply
+        TF->>Deploy_Action: Return droplet IP
+        Deploy_Action->>Deploy_Action: Generate ansible/inventory/deploy.ini
     end
 
     TF->>DO: Provision/Update infrastructure
-    TF->>Deploy_Action: Return droplet IP
 
     Deploy_Action->>Ansible: ansible-playbook staging-deploy.yml
     Ansible->>DO: Connect via SSH (agent or key)
@@ -272,6 +346,8 @@ sequenceDiagram
     Ansible->>Deploy_Action: Deployment complete
     Deploy_Action->>CI_CD: Success confirmation
     Local->>Dev: Success confirmation
+
+    Note over Local,CI_CD: Cleanup: Remove generated inventory files
 ```
 
 ## Local vs CI/CD Execution Differences
@@ -533,6 +609,32 @@ ssh -v root@DROPLET_IP
 # Check DigitalOcean API access
 doctl account get
 doctl compute droplet list
+```
+
+#### Ansible Inventory Issues
+
+**Problem**: Manual edits to `ansible/inventory/local.ini` get overwritten
+
+**Solution**: The `local.ini` file is a **dynamic template** that gets regenerated during each deployment with real infrastructure values (droplet IPs, environment variables). Do not manually edit this file - it will be overwritten.
+
+**Manual Inventory Testing**:
+
+```bash
+# Test Ansible connectivity without deployment
+make ansible-ping ENVIRONMENT=staging
+
+# Check inventory syntax
+make ansible-syntax
+```
+
+**Debugging Inventory Generation**:
+
+```bash
+# Run deployment with verbose output to see inventory creation
+make deploy ENVIRONMENT=staging VERBOSE=true
+
+# Check generated inventory after deployment
+cat ansible/inventory/local.ini
 ```
 
 ### Getting Help
