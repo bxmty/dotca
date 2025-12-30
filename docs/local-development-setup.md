@@ -210,9 +210,10 @@ graph TB
 
     subgraph "CI/CD Execution Path"
         GHACTIONS[GitHub Actions]
-        GHACTIONS --> TF_ACTION[Terraform Action]
-        GHACTIONS --> ANSIBLE_ACTION[Ansible Action]
-        TF_ACTION --> ANSIBLE_ACTION
+        GHACTIONS --> DEPLOY_ACTION[Deploy Action]
+        DEPLOY_ACTION --> TF_EXEC[Terraform Execution]
+        DEPLOY_ACTION --> ANSIBLE_EXEC[Ansible Execution]
+        TF_EXEC --> ANSIBLE_EXEC
     end
 
     subgraph "Infrastructure"
@@ -225,12 +226,15 @@ graph TB
     SSH_AGENT --> DROPLET
     DOCKER_COMPOSE --> REGISTRY
     TF_APPLY --> DROPLET
+    TF_EXEC --> DROPLET
+    ANSIBLE_EXEC --> DROPLET
     DO --> DROPLET
 
     style DEV fill:#e1f5fe
     style TERRAFORM fill:#f3e5f5
     style ANSIBLE fill:#e8f5e8
     style GHACTIONS fill:#fff3e0
+    style DEPLOY_ACTION fill:#ffebee
 ```
 
 ### Deployment Flow
@@ -239,29 +243,34 @@ graph TB
 sequenceDiagram
     participant Dev as Developer
     participant Local as Local Scripts
+    participant CI_CD as GitHub Actions
+    participant Deploy_Action as Deploy Action
     participant TF as Terraform
     participant Ansible as Ansible
     participant DO as DigitalOcean
     participant Registry as GHCR
 
-    Dev->>Local: make deploy ENVIRONMENT=staging
-    Local->>Local: Validate environment & prerequisites
-
-    Local->>TF: terraform init
-    TF->>DO: Connect to remote state
-    TF->>TF: terraform plan
-    Dev->>TF: Review plan (optional)
-    TF->>TF: terraform apply
+    alt Local Execution
+        Dev->>Local: make deploy ENVIRONMENT=staging
+        Local->>Local: Validate environment & prerequisites
+        Local->>TF: terraform init/plan/apply
+    else CI/CD Execution
+        Dev->>CI_CD: Push to main/staging branch
+        CI_CD->>CI_CD: Build Docker image
+        CI_CD->>Deploy_Action: Call deploy action
+        Deploy_Action->>Deploy_Action: Validate secrets & environment
+    end
 
     TF->>DO: Provision/Update infrastructure
-    TF->>Local: Return droplet IP
+    TF->>Deploy_Action: Return droplet IP
 
-    Local->>Ansible: ansible-playbook staging-deploy.yml
-    Ansible->>DO: Connect via SSH agent
+    Deploy_Action->>Ansible: ansible-playbook staging-deploy.yml
+    Ansible->>DO: Connect via SSH (agent or key)
     Ansible->>Registry: docker login & pull images
     Ansible->>DO: Configure services & deploy
 
-    Ansible->>Local: Deployment complete
+    Ansible->>Deploy_Action: Deployment complete
+    Deploy_Action->>CI_CD: Success confirmation
     Local->>Dev: Success confirmation
 ```
 
