@@ -355,12 +355,48 @@ make help
 The Makefile provides these high-level commands:
 
 - `make setup` - Initial environment setup and configuration
-- `make validate` - Validate environment, tools, and access
+- `make validate` - **Comprehensive environment validation** (see below)
 - `make deploy ENVIRONMENT=staging` - Deploy to specified environment
 - `make destroy ENVIRONMENT=staging` - Destroy environment (dangerous!)
 - `make status ENVIRONMENT=staging` - Check environment status
 - `make clean` - Clean up generated files
 - `make test` - Run all validations
+
+### Environment Validation Checks
+
+The `make validate` command performs comprehensive validation of:
+
+**🔧 Tools & Versions:**
+
+- Terraform ≥ 1.5.0, Ansible, DigitalOcean CLI, Docker, SSH, Git, Python 3
+
+**🔑 SSH & Authentication:**
+
+- SSH agent running and keys loaded
+- SSH key file accessibility and format
+
+**🔐 Environment Variables:**
+
+- Required secrets (DO_TOKEN, API keys) present and valid
+- Optional variables checked with warnings
+
+**☁️ DigitalOcean Access:**
+
+- API connectivity and authentication
+- Spaces access for Terraform state storage
+- SSH keys available in account
+
+**🏗️ Infrastructure Setup:**
+
+- Terraform configuration files present
+- Ansible playbooks and configuration
+- Project directory structure
+
+**📋 Validation Results:**
+
+- Clear pass/fail status with detailed error messages
+- Actionable suggestions for fixing issues
+- Comprehensive report of all checks
 
 ### Direct Script Usage
 
