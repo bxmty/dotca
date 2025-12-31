@@ -144,9 +144,9 @@ status: ## Check status of specified environment
 	@echo "$(BLUE)Checking $(ENVIRONMENT) environment status...$(NC)"
 	@set -a && source .env.local 2>/dev/null && set +a && \
 		echo "$(BLUE)Local Environment:$(NC)" && \
-		echo "  .env.local: $(if [ -f .env.local ]; then echo "$(GREEN)✓ Found$(NC)"; else echo "$(RED)✗ Missing$(NC)"; fi)" && \
-		echo "  DO_TOKEN: $(if [ -n "$$DO_TOKEN" ]; then echo "$(GREEN)✓ Set$(NC)"; else echo "$(RED)✗ Missing$(NC)"; fi)" && \
-		echo "  SSH Agent: $(if ssh-add -l >/dev/null 2>&1; then echo "$(GREEN)✓ Running$(NC)"; else echo "$(RED)✗ Not running$(NC)"; fi)" && \
+		if [ -f .env.local ]; then echo "  .env.local: $(GREEN)✓ Found$(NC)"; else echo "  .env.local: $(RED)✗ Missing$(NC)"; fi && \
+		if [ -n "$$DO_TOKEN" ]; then echo "  DO_TOKEN: $(GREEN)✓ Set$(NC)"; else echo "  DO_TOKEN: $(RED)✗ Missing$(NC)"; fi && \
+		if ssh-add -l >/dev/null 2>&1; then echo "  SSH Agent: $(GREEN)✓ Running$(NC)"; else echo "  SSH Agent: $(RED)✗ Not running$(NC)"; fi && \
 		echo && \
 		echo "$(BLUE)Remote Environment:$(NC)" && \
 		if [ -n "$$DO_TOKEN" ]; then \

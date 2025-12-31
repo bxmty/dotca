@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface PricingPlan {
   name: string;
-  price: string;
+  unit_price: string;
   description: string;
   features: string[];
 }
@@ -15,14 +15,19 @@ interface PlanSelectorProps {
   onPlanSelected: (plan: PricingPlan | null) => void;
 }
 
-export default function PlanSelector({ pricingPlans, onPlanSelected }: PlanSelectorProps) {
+export default function PlanSelector({
+  pricingPlans,
+  onPlanSelected,
+}: PlanSelectorProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const planName = searchParams?.get('plan');
+    const planName = searchParams?.get("plan");
     if (planName) {
-      const plan = pricingPlans.find(p => p.name.toLowerCase() === planName.toLowerCase());
+      const plan = pricingPlans.find(
+        (p) => p.name.toLowerCase() === planName.toLowerCase(),
+      );
       if (plan) {
         onPlanSelected(plan);
       } else {
