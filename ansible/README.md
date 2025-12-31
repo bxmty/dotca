@@ -18,7 +18,7 @@ This project supports deployment to two environments:
 2. Environment variables configured for each environment:
    - `GIT_REPO_URL`: The Git repository URL for your project
    - `SSH_KEY_PATH`: Path to the SSH private key for accessing the droplet
-   
+
    Note: `DROPLET_IP` is automatically obtained from Terraform outputs
 
 ### Deployment

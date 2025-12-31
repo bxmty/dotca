@@ -37,11 +37,7 @@ const reportWebVitals = async (metric: WebVitalsMetric) => {
   // Example of sending to a custom analytics endpoint
   try {
     // Send to Google Analytics if available and ready
-    if (
-      gtag.GA_MEASUREMENT_ID &&
-      typeof window !== "undefined" &&
-      window.gtag
-    ) {
+    if (gtag.GA_MEASUREMENT_ID && typeof window !== "undefined") {
       gtag.event({
         action: "web_vitals",
         category: "Web Vitals",

@@ -1,17 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { 
+import { useState } from "react";
+import {
   PaymentElement,
   useStripe,
   useElements,
-} from '@stripe/react-stripe-js';
+} from "@stripe/react-stripe-js";
 
 interface StripePaymentFormProps {
   onSuccess: () => void;
 }
 
-export default function StripePaymentForm({ onSuccess }: StripePaymentFormProps) {
+export default function StripePaymentForm({
+  onSuccess,
+}: StripePaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +35,7 @@ export default function StripePaymentForm({ onSuccess }: StripePaymentFormProps)
       confirmParams: {
         return_url: `${window.location.origin}/checkout/confirmation`,
       },
-      redirect: 'if_required',
+      redirect: "if_required",
     });
 
     if (error) {
@@ -49,19 +51,17 @@ export default function StripePaymentForm({ onSuccess }: StripePaymentFormProps)
   return (
     <form onSubmit={handleSubmit} className="stripe-form">
       <PaymentElement />
-      
+
       {errorMessage && (
-        <div className="alert alert-danger mt-3">
-          {errorMessage}
-        </div>
+        <div className="alert alert-danger mt-3">{errorMessage}</div>
       )}
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         disabled={!stripe || isLoading}
         className="btn btn-success w-100 py-3 mt-3 fs-5"
       >
-        {isLoading ? 'Processing...' : 'Complete Payment'}
+        {isLoading ? "Processing..." : "Complete Payment"}
       </button>
     </form>
   );

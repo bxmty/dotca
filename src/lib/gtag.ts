@@ -69,7 +69,7 @@ export const initGA = () => {
   console.log("Initializing Google Analytics with ID:", GA_MEASUREMENT_ID);
 
   // Check if gtag is already available (script might be loaded)
-  if (typeof window !== "undefined" && window.gtag) {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
     console.log("GA script already loaded, configuring directly...");
     configureGA();
     return;
@@ -89,11 +89,7 @@ export const initGA = () => {
 
   // Configure GA after a short delay to ensure script is ready
   setTimeout(() => {
-    if (window.gtag) {
-      configureGA();
-    } else {
-      console.warn("GA script not ready, will configure on next attempt");
-    }
+    configureGA();
   }, 1000);
 };
 
