@@ -36,22 +36,32 @@ repos:
         pass_filenames: false
         files: \.(js|jsx|ts|tsx)$
 
-  # TypeScript type checking (temporarily disabled due to existing errors)
-  # - repo: local
-  #   hooks:
-  #     - id: typecheck
-  #       name: TypeScript Type Check
-  #       entry: npm run typecheck
-  #       language: system
-  #       pass_filenames: false
-  #       files: \.(ts|tsx)$
+  # TypeScript type checking (re-enabled after fixing errors)
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: TypeScript Type Check
+        entry: npm run typecheck
+        language: system
+        pass_filenames: false
+        files: \.(ts|tsx)$
 
-  # Jest tests (temporarily disabled due to existing test failures)
-  # - repo: local
-  #   hooks:
-  #     - id: test
-  #       name: Jest Tests
-  #       entry: npm test
-  #       language: system
-  #       pass_filenames: false
-  #       files: \.(js|jsx|ts|tsx)$
+  # Security audit
+  - repo: local
+    hooks:
+      - id: audit
+        name: Security Audit
+        entry: npm audit --audit-level moderate
+        language: system
+        pass_filenames: false
+        files: package-lock\.json$
+
+  # Jest tests (re-enabled with improved test suite)
+  - repo: local
+    hooks:
+      - id: test
+        name: Jest Tests
+        entry: npm test -- --watchAll=false --passWithNoTests --coverage=false
+        language: system
+        pass_filenames: false
+        files: \.(js|jsx|ts|tsx)$

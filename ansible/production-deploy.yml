@@ -541,25 +541,25 @@
 
     - name: Verify container is actually running after startup
       ansible.builtin.shell: |
-        echo "Checking if container is running..."
-        CONTAINER_COUNT=$(docker ps --filter "publish=8080" --format "{{{{.Names}}}}" | wc -l)
+        {% raw %}echo "Checking if container is running..."
+        CONTAINER_COUNT=$(docker ps --filter "publish=8080" --format "{{.Names}}" | wc -l)
         if [ $CONTAINER_COUNT -eq 0 ]; then
           echo "ERROR: No container running on port 8080!"
           echo "Available containers:"
           docker ps -a
           exit 1
         fi
-        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{{{.Names}}}}")
+        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{.Names}}")
         echo "Container running: $CONTAINER_NAME"
         echo "Verifying restart policy..."
-        RESTART_POLICY=$(docker inspect --format "{{{{.HostConfig.RestartPolicy.Name}}}}" "$CONTAINER_NAME")
+        RESTART_POLICY=$(docker inspect --format "{{.HostConfig.RestartPolicy.Name}}" "$CONTAINER_NAME")
         echo "Restart policy: $RESTART_POLICY"
         if [ "$RESTART_POLICY" != "always" ]; then
           echo "WARNING: Container restart policy is not 'always', updating..."
           docker update --restart=always "$CONTAINER_NAME"
           echo "Updated restart policy to 'always'"
         fi
-        exit 0
+        exit 0{% endraw %}
       register: container_verification
       changed_when: false
       failed_when: container_verification.rc != 0
@@ -602,10 +602,10 @@
 
     - name: Final deployment verification - ensure container survives reboot
       ansible.builtin.shell: |
-        echo "=== Final Deployment Verification ==="
+        {% raw %}echo "=== Final Deployment Verification ==="
         echo ""
         echo "1. Checking container is running..."
-        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{{{.Names}}}}" | head -1)
+        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{.Names}}" | head -1)
         if [ -z "$CONTAINER_NAME" ]; then
           echo "❌ ERROR: No container running on port 8080"
           exit 1
@@ -613,7 +613,7 @@
         echo "✅ Container running: $CONTAINER_NAME"
         echo ""
         echo "2. Verifying restart policy..."
-        RESTART_POLICY=$(docker inspect --format "{{{{.HostConfig.RestartPolicy.Name}}}}" "$CONTAINER_NAME")
+        RESTART_POLICY=$(docker inspect --format "{{.HostConfig.RestartPolicy.Name}}" "$CONTAINER_NAME")
         echo "   Restart policy: $RESTART_POLICY"
         if [ "$RESTART_POLICY" != "always" ]; then
           echo "❌ ERROR: Restart policy is not 'always'"
@@ -636,7 +636,7 @@
           echo "⚠️  WARNING: Docker service not enabled for boot"
         fi
         echo ""
-        echo "=== All deployment verifications passed ==="
+        echo "=== All deployment verifications passed ==="{% endraw %}
       register: final_verification
       changed_when: false
       failed_when: final_verification.rc != 0
@@ -1088,19 +1088,74 @@
         state: started
       when: nginx_ssl_restart is changed
 
+    - name: Ensure Docker container is still running after SSL setup
+      ansible.builtin.shell: |
+        {% raw %}echo "Checking Docker container status after SSL setup..."
+
+        # Check if container is running
+        CONTAINER_STATUS=$(docker ps --filter "publish=8080" --format "{{.Names}}:{{.Status}}" | head -1 || echo "none")
+        echo "Container status: $CONTAINER_STATUS"
+
+        if [[ "$CONTAINER_STATUS" == "none" ]] || [[ "$CONTAINER_STATUS" == *":Exited"* ]]; then
+          echo "❌ Container is not running, attempting restart..."
+          cd {{ app_dir }}/repo
+
+          # Stop any existing containers first
+          docker-compose down -v --remove-orphans || true
+
+          # Start fresh
+          docker-compose up -d --force-recreate --remove-orphans web
+
+          # Wait for container to start
+          sleep 10
+
+          # Check status again
+          NEW_STATUS=$(docker ps --filter "publish=8080" --format "{{.Names}}:{{.Status}}" | head -1 || echo "failed")
+          echo "After restart: $NEW_STATUS"
+
+          if [[ "$NEW_STATUS" == "failed" ]] || [[ "$NEW_STATUS" == *":Exited"* ]]; then
+            echo "❌ Failed to restart container"
+            docker-compose logs web || true
+            exit 1
+          fi
+
+          echo "✅ Container restarted successfully"
+        else
+          echo "✅ Container is still running"
+        fi{% endraw %}
+      register: container_restart_check
+      changed_when: false
+      when: nginx_ssl_restart is defined and nginx_ssl_restart.changed | default(false)
+
     - name: Test HTTPS endpoint after restart
       ansible.builtin.shell: |
         echo "Testing HTTPS endpoint..."
-        if curl -k -s -o /dev/null -w "%{http_code}" https://localhost | grep -q "200\|301\|302"; then
-          echo "✅ HTTPS is working"
+        # First check what status code we actually get
+        STATUS_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
+        echo "Received HTTP status code: $STATUS_CODE"
+
+        if echo "$STATUS_CODE" | grep -q "^\(200\|301\|302\)$"; then
+          echo "✅ HTTPS is working (status: $STATUS_CODE)"
           exit 0
         else
-          echo "❌ HTTPS test failed"
+          echo "❌ HTTPS test failed (status: $STATUS_CODE)"
+          # Additional debugging
+          echo "Checking if application is responding on port 8080..."
+          APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null || echo "connection_failed")
+          echo "Direct app check (port 8080): $APP_STATUS"
+
+          echo "Checking Nginx error logs..."
+          tail -10 /var/log/nginx/error.log 2>/dev/null || echo "No error logs found"
+
+          # Show container logs if available
+          echo "Checking container logs..."
+          cd {{ app_dir }}/repo && docker-compose logs --tail=20 web 2>/dev/null || echo "No container logs available"
+
           exit 1
         fi
       register: https_endpoint_test
       changed_when: false
-      when: nginx_ssl_restart is changed
+      when: nginx_ssl_restart is defined and nginx_ssl_restart.changed | default(false)
 
     - name: Final SSL certificate status
       ansible.builtin.debug:

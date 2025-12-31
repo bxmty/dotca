@@ -31,27 +31,142 @@ runs:
         echo "📦 Image: ${{ inputs.image_tag }}"
         echo "⏰ $(date)"
 
+        # Validate required environment variables
+        if [[ -z "${DO_TOKEN:-}" ]]; then
+          echo "::error::DO_TOKEN environment variable is required"
+          exit 1
+        fi
+
+        if [[ -z "${SSH_PRIVATE_KEY:-}" ]]; then
+          echo "::error::SSH_PRIVATE_KEY environment variable is required"
+          exit 1
+        fi
+
+        if [[ -z "${BREVO_API_KEY:-}" ]]; then
+          echo "::error::BREVO_API_KEY environment variable is required"
+          exit 1
+        fi
+
+        if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
+          echo "::error::STRIPE_SECRET_KEY environment variable is required"
+          exit 1
+        fi
+
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
         echo "DOCKER_IMAGE=${{ inputs.image_tag }}" >> $GITHUB_ENV
 
-    - name: Setup infrastructure
+        # Create temporary SSH key file for Terraform/Ansible
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+
+        # Configure SSH to use the key
+        echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
+
+        echo "✅ Deployment environment configured"
+
+    - name: Setup infrastructure with Terraform
       shell: bash
       run: |
-        echo "🔧 Setting up infrastructure for ${{ inputs.environment }}..."
+        echo "🔧 Setting up infrastructure with Terraform for ${{ inputs.environment }}..."
 
-        # This would normally call Terraform/Ansible
-        # For now, we'll simulate infrastructure setup
-        echo "✅ Infrastructure setup completed"
+        cd terraform
 
-    - name: Deploy application
+        # Initialize Terraform (only if needed)
+        if [[ ! -d ".terraform" ]]; then
+          echo "Initializing Terraform..."
+          terraform init
+        fi
+
+        # Plan the infrastructure changes
+        echo "Planning infrastructure changes..."
+        terraform plan -var="environment=${{ inputs.environment }}" -out=tfplan -no-color
+
+        # Apply the infrastructure changes
+        echo "Applying infrastructure changes..."
+        terraform apply tfplan -no-color
+
+        # Get the droplet IP for Ansible
+        DROPLET_IP=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
+        if [[ -z "$DROPLET_IP" ]]; then
+          echo "::error::Failed to get droplet IP from Terraform output"
+          exit 1
+        fi
+
+        echo "DROPLET_IP=$DROPLET_IP" >> $GITHUB_ENV
+        echo "✅ Infrastructure setup completed - Droplet IP: $DROPLET_IP"
+
+    - name: Deploy application with Ansible
       shell: bash
       run: |
-        echo "📦 Deploying application with image: ${{ inputs.image_tag }}"
+        echo "📦 Deploying application with Ansible to ${{ inputs.environment }}..."
 
-        # This would normally run Ansible playbooks or Docker deployments
-        # For now, we'll simulate deployment
+        cd ansible
+
+        # Generate inventory for the deployment
+        cat > inventory/deploy.ini << EOF
+        [digitalocean]
+        dotca-${{ inputs.environment }} ansible_host=$DROPLET_IP
+
+        [digitalocean:vars]
+        ansible_user=root
+        ansible_python_interpreter=/usr/bin/python3
+        ansible_ssh_private_key_file=~/.ssh/deploy_key
+        ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        environment=${{ inputs.environment }}
+        project_name=dotca-nextjs
+        app_dir=/app
+        docker_image=${{ inputs.image_tag }}
+        public_ip=$DROPLET_IP
+        staging_domain=staging.boximity.ca
+        brevo_api_key=${BREVO_API_KEY:-}
+        stripe_secret_key=${STRIPE_SECRET_KEY:-}
+        stripe_publishable_key=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        ga_staging_id=${GA_STAGING_ID:-}
+        ga_production_id=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
+        github_token=${GITHUB_TOKEN:-}
+        github_username=bxmty
+        EOF
+
+        if [[ "${{ inputs.environment }}" == "production" ]]; then
+          cat >> inventory/deploy.ini << EOF
+        nginx_server_name=boximity.ca
+        EOF
+        fi
+
+        echo "Generated Ansible inventory for deployment"
+
+        # Run the appropriate Ansible playbook
+        PLAYBOOK="${{ inputs.environment }}-deploy.yml"
+        if [[ ! -f "$PLAYBOOK" ]]; then
+          echo "::error::Ansible playbook $PLAYBOOK not found"
+          exit 1
+        fi
+
+        echo "Executing Ansible playbook: $PLAYBOOK"
+        ansible-playbook -i inventory/deploy.ini "$PLAYBOOK" -v
+
         echo "✅ Application deployment completed"
+
+    - name: Cleanup sensitive files
+      if: always()
+      shell: bash
+      run: |
+        echo "🧹 Cleaning up sensitive files..."
+
+        # Remove SSH key file
+        rm -f ~/.ssh/deploy_key
+
+        # Remove generated inventory with sensitive data
+        rm -f ansible/inventory/deploy.ini
+
+        # Clean up Terraform plan files
+        rm -f terraform/tfplan
+        rm -f terraform/destroy-plan
+
+        echo "✅ Sensitive files cleaned up"
 
     - name: Run post-deployment tests
       if: inputs.skip_tests != 'true'
@@ -69,17 +184,60 @@ runs:
       run: |
         echo "🔍 Verifying deployment..."
 
-        # Basic deployment verification
         DEPLOYMENT_SUCCESS=true
 
-        # Check if deployment artifacts exist
-        if [ -f "deployment.log" ]; then
-          echo "✅ Deployment log found"
+        # Test basic connectivity to the deployed application
+        DEPLOY_URL=""
+        case "${{ inputs.environment }}" in
+          "production")
+            DEPLOY_URL="https://boximity.ca"
+            ;;
+          "staging")
+            DEPLOY_URL="https://staging.boximity.ca"
+            ;;
+          *)
+            DEPLOY_URL="http://$DROPLET_IP"
+            ;;
+        esac
+
+        echo "Testing connectivity to $DEPLOY_URL"
+
+        # Wait a moment for services to fully start
+        sleep 10
+
+        # Test HTTP connectivity
+        if curl -f --max-time 30 --silent "$DEPLOY_URL/api/health" > /dev/null 2>&1; then
+          echo "✅ Application health check passed"
         else
-          echo "⚠️ Deployment log not found"
+          echo "⚠️ Application health check failed - may still be starting"
+          # Don't fail immediately, give it more time
+          sleep 20
+          if curl -f --max-time 30 --silent "$DEPLOY_URL/api/health" > /dev/null 2>&1; then
+            echo "✅ Application health check passed (after retry)"
+          else
+            echo "❌ Application health check failed"
+            DEPLOYMENT_SUCCESS=false
+          fi
         fi
 
+        # Test basic HTTP response
+        if curl --max-time 10 --silent "$DEPLOY_URL" > /dev/null 2>&1; then
+          echo "✅ HTTP connectivity confirmed"
+        else
+          echo "❌ HTTP connectivity failed"
+          DEPLOYMENT_SUCCESS=false
+        fi
+
+        # Log deployment details for debugging
+        echo "Deployment Details:" >&2
+        echo "  Environment: ${{ inputs.environment }}" >&2
+        echo "  Image: ${{ inputs.image_tag }}" >&2
+        echo "  Droplet IP: $DROPLET_IP" >&2
+        echo "  Deploy URL: $DEPLOY_URL" >&2
+        echo "  Terraform State: terraform/terraform.tfstate" >&2
+
         echo "verification_success=$DEPLOYMENT_SUCCESS" >> $GITHUB_OUTPUT
+        echo "deploy_url=$DEPLOY_URL" >> $GITHUB_OUTPUT
 
     - name: Generate deployment summary
       id: final-result
@@ -94,20 +252,16 @@ runs:
         else
           DEPLOYMENT_STATUS="failed"
           echo "❌ Deployment verification failed"
+
+          # Log additional debugging information on failure
+          echo "::warning::Deployment verification failed. Check the following:"
+          echo "::warning::- Application may still be starting up"
+          echo "::warning::- Check firewall rules and security groups"
+          echo "::warning::- Verify SSL certificate configuration"
+          echo "::warning::- Review Ansible playbook execution logs"
         fi
 
-        # Get deployment URL based on environment
-        case "${{ inputs.environment }}" in
-          "production")
-            DEPLOY_URL="https://boximity.ca"
-            ;;
-          "staging")
-            DEPLOY_URL="https://staging.boximity.ca"
-            ;;
-          *)
-            DEPLOY_URL="unknown"
-            ;;
-        esac
+        DEPLOY_URL="${{ steps.verify.outputs.deploy_url }}"
 
         echo "status=$DEPLOYMENT_STATUS" >> $GITHUB_OUTPUT
         echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
@@ -117,4 +271,16 @@ runs:
         echo "  Status: $DEPLOYMENT_STATUS"
         echo "  URL: $DEPLOY_URL"
         echo "  Image: ${{ inputs.image_tag }}"
+        echo "  Droplet IP: $DROPLET_IP"
         echo "  Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+        # Create deployment log artifact
+        mkdir -p deployment-logs
+        echo "Deployment Summary" > deployment-logs/summary.txt
+        echo "==================" >> deployment-logs/summary.txt
+        echo "Environment: ${{ inputs.environment }}" >> deployment-logs/summary.txt
+        echo "Status: $DEPLOYMENT_STATUS" >> deployment-logs/summary.txt
+        echo "URL: $DEPLOY_URL" >> deployment-logs/summary.txt
+        echo "Image: ${{ inputs.image_tag }}" >> deployment-logs/summary.txt
+        echo "Droplet IP: $DROPLET_IP" >> deployment-logs/summary.txt
+        echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> deployment-logs/summary.txt
