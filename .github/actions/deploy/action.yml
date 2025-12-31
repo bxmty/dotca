@@ -174,7 +174,7 @@ runs:
       with:
         test_type: smoke
         environment: ${{ inputs.environment }}
-        app_url: ${{ vars.APP_URL }}
+        app_url: ${{ inputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
         fail_fast: false
         timeout_minutes: 5
 
