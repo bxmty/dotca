@@ -1,0 +1,60 @@
+name: Test Actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      action_to_test:
+        description: "Which action to test"
+        required: true
+        type: choice
+        options: [test-runner, deploy, notify]
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22.21.0"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test test-runner action
+        if: inputs.action_to_test == 'test-runner'
+        uses: ./.github/actions/test-runner
+        with:
+          test_type: unit
+          environment: development
+          collect_coverage: false
+          fail_fast: false
+
+      - name: Test deploy action (dry-run)
+        if: inputs.action_to_test == 'deploy'
+        uses: ./.github/actions/deploy
+        with:
+          environment: staging
+          image_tag: test-image:latest
+          skip_tests: true
+        env:
+          DO_TOKEN: mock-do-token
+          SSH_PRIVATE_KEY: mock-ssh-private-key
+          BREVO_API_KEY: mock-brevo-api-key
+          STRIPE_SECRET_KEY: mock-stripe-secret-key
+
+      - name: Test notify action
+        if: inputs.action_to_test == 'notify'
+        uses: ./.github/actions/notify
+        with:
+          event_type: test-event
+          environment: staging
+          workflow_run_id: 12345
+          commit: abc123
+          triggered_by: test-user
+        env:
+          SLACK_WEBHOOK: mock-slack-webhook

@@ -1,0 +1,20 @@
+{
+  "ref": "refs/heads/staging",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "1234567890123456789012345678901234567890",
+  "repository": {
+    "name": "dotca",
+    "full_name": "bxmty/dotca",
+    "owner": {
+      "name": "bxmty"
+    }
+  },
+  "pusher": {
+    "name": "test-user"
+  },
+  "head_commit": {
+    "id": "1234567890123456789012345678901234567890",
+    "message": "Test commit for staging deployment",
+    "timestamp": "2025-12-31T19:57:30Z"
+  }
+}

@@ -44,7 +44,7 @@ outputs:
     value: ${{ steps.test-results.outputs.duration }}
 
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Setup test environment
       shell: bash
@@ -79,9 +79,9 @@ runs:
 
         # Run unit tests with coverage if requested
         if [ "${{ inputs.collect_coverage }}" = "true" ]; then
-          npm run test:unit -- --coverage --watchAll=false --passWithNoTests
+          npm run test -- --coverage --watchAll=false --passWithNoTests
         else
-          npm run test:unit -- --watchAll=false --passWithNoTests
+          npm run test -- --watchAll=false --passWithNoTests
         fi
 
         END_TIME=$(date +%s)
@@ -146,7 +146,6 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       continue-on-error: true
-      timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
       run: |
         echo "🎭 Running E2E tests..."
 
