@@ -254,6 +254,8 @@ jobs:
           SSH_KEY_FINGERPRINT: ${{ secrets.SSH_KEY_FINGERPRINT }}
           SPACES_ACCESS_ID: ${{ secrets.SPACES_ACCESS_ID }}
           SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
