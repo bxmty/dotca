@@ -94,15 +94,22 @@ runs:
             -backend-config="key=dotca/terraform-${{ inputs.environment }}.tfstate"
         fi
 
+        # Set terraform variables as environment variables
+        export TF_VAR_do_token="$DO_TOKEN"
+        export TF_VAR_environment="${{ inputs.environment }}"
+        export TF_VAR_ssh_key_fingerprint="$SSH_KEY_FINGERPRINT"
+        export TF_VAR_git_repo_url="${{ github.server_url }}/${{ github.repository }}.git"
+        export TF_VAR_git_branch="${{ inputs.environment }}"
+        export TF_VAR_use_existing_project="true"  # Assume project exists for CI/CD
+        export TF_VAR_use_existing_firewall="true"  # Assume firewall exists for CI/CD
+
         # Plan the infrastructure changes
         echo "Planning infrastructure changes..."
-        tf_vars="-var=\"environment=${{ inputs.environment }}\""
-        [[ -n "$DO_TOKEN" ]] && tf_vars="$tf_vars -var=\"do_token=$DO_TOKEN\""
-        terraform plan $tf_vars -out=tfplan -no-color
+        terraform plan -out=tfplan -no-color
 
         # Apply the infrastructure changes
         echo "Applying infrastructure changes..."
-        terraform apply tfplan -no-color
+        terraform apply -auto-approve tfplan -no-color
 
         # Get the droplet IP for Ansible
         DROPLET_IP=$(terraform output -raw droplet_ip 2>/dev/null || echo "")
