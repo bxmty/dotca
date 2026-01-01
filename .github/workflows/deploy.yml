@@ -236,6 +236,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
       - name: Deploy application
         uses: ./.github/actions/deploy
         id: deployment
