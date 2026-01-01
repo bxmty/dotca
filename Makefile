@@ -45,6 +45,8 @@ help: ## Show this help message
 	@echo "  make deploy ENVIRONMENT=production # Deploy to production"
 	@echo "  make destroy ENVIRONMENT=staging   # Destroy staging environment"
 	@echo "  make status ENVIRONMENT=staging    # Check environment status"
+	@echo "  make terraform-plan ENVIRONMENT=staging  # Plan terraform changes"
+	@echo "  make terraform-apply ENVIRONMENT=staging BACKEND=local  # Apply with local backend"
 
 # Setup target - Initial environment configuration
 setup: ## Set up local development environment
@@ -183,18 +185,54 @@ test: ## Run tests and validations
 	@echo "$(GREEN)✓ All tests passed$(NC)"
 
 # Terraform-specific targets
-terraform-init: ## Initialize Terraform
-	@echo "$(BLUE)Initializing Terraform...$(NC)"
-	cd terraform && terraform init
+terraform-init: ## Initialize Terraform with configured backend
+	@echo "$(BLUE)Initializing Terraform with $(BACKEND) backend...$(NC)"
+	@if [ "$(BACKEND)" = "remote" ]; then \
+		cd terraform && \
+		if [ -f "backend-remote.tf.disabled" ]; then \
+			mv backend-remote.tf.disabled backend-remote.tf; \
+		fi && \
+		if [ -f "backend-local.tf" ]; then \
+			mv backend-local.tf backend-local.tf.disabled; \
+		fi && \
+		terraform init -reconfigure; \
+	else \
+		cd terraform && \
+		if [ -f "backend-local.tf.disabled" ]; then \
+			mv backend-local.tf.disabled backend-local.tf; \
+		fi && \
+		if [ -f "backend-remote.tf" ]; then \
+			mv backend-remote.tf backend-remote.tf.disabled; \
+		fi && \
+		terraform init -reconfigure; \
+	fi
 
 terraform-plan: ## Show Terraform plan for current environment
-	@echo "$(BLUE)Planning Terraform changes for $(ENVIRONMENT)...$(NC)"
+	@echo "$(BLUE)Planning Terraform changes for $(ENVIRONMENT) (backend: $(BACKEND))...$(NC)"
+	@if [ "$(BACKEND)" = "remote" ]; then \
+		cd terraform && \
+		if [ -f "backend-remote.tf.disabled" ]; then \
+			mv backend-remote.tf.disabled backend-remote.tf; \
+		fi && \
+		if [ -f "backend-local.tf" ]; then \
+			mv backend-local.tf backend-local.tf.disabled; \
+		fi; \
+	fi && \
 	cd terraform && terraform plan -var="environment=$(ENVIRONMENT)"
 
 terraform-apply: ## Apply Terraform changes (USE WITH CAUTION)
 	@echo "$(RED)WARNING: This will modify infrastructure!$(NC)"
 	@read -p "Are you sure? (y/N): " confirm; \
 		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+			if [ "$(BACKEND)" = "remote" ]; then \
+				cd terraform && \
+				if [ -f "backend-remote.tf.disabled" ]; then \
+					mv backend-remote.tf.disabled backend-remote.tf; \
+				fi && \
+				if [ -f "backend-local.tf" ]; then \
+					mv backend-local.tf backend-local.tf.disabled; \
+				fi; \
+			fi && \
 			cd terraform && terraform apply -var="environment=$(ENVIRONMENT)"; \
 		else \
 			echo "$(YELLOW)Cancelled$(NC)"; \
@@ -204,6 +242,15 @@ terraform-destroy: ## Destroy Terraform-managed infrastructure (DANGER!)
 	@echo "$(RED)DANGER: This will destroy all infrastructure!$(NC)"
 	@read -p "Are you absolutely sure? Type 'DESTROY' to continue: " confirm; \
 		if [ "$$confirm" = "DESTROY" ]; then \
+			if [ "$(BACKEND)" = "remote" ]; then \
+				cd terraform && \
+				if [ -f "backend-remote.tf.disabled" ]; then \
+					mv backend-remote.tf.disabled backend-remote.tf; \
+				fi && \
+				if [ -f "backend-local.tf" ]; then \
+					mv backend-local.tf backend-local.tf.disabled; \
+				fi; \
+			fi && \
 			cd terraform && terraform destroy -var="environment=$(ENVIRONMENT)"; \
 		else \
 			echo "$(YELLOW)Cancelled$(NC)"; \
