@@ -18,6 +18,7 @@ on:
       - "jest.config.js"
       - "eslint.config.mjs"
       - ".github/workflows/deploy.yml"
+      - ".github/actions/deploy/action.yml"
       - "terraform/**"
       - "ansible/**"
 
@@ -102,6 +103,7 @@ jobs:
       should_build: ${{ steps.detect.outputs.should_build }}
       should_deploy: ${{ steps.detect.outputs.should_deploy }}
       should_test: ${{ steps.detect.outputs.should_test }}
+      should_promote: ${{ steps.detect.outputs.should_promote }}
 
     steps:
       - name: Detect environment and deployment strategy
@@ -129,43 +131,52 @@ jobs:
             "main")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              # Only build if app files changed or if manually triggered
+              # Production: promote from staging, never build
               if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="true"
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
                 SHOULD_TEST="true"
+                echo "🚀 Production deployment: will promote staging image"
               else
                 SHOULD_BUILD="false"
+                SHOULD_PROMOTE="false"
                 SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
                 SHOULD_TEST="false"
-                echo "⏭️  Skipping build: no app changes detected"
+                echo "⏭️  Skipping build/promotion: no app changes detected"
               fi
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              # Only build if app files changed or if manually triggered
+              # Staging: promote from renovations, never build
               if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="true"
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
                 SHOULD_TEST="true"
+                echo "🚀 Staging deployment: will promote renovations image"
               else
                 SHOULD_BUILD="false"
+                SHOULD_PROMOTE="false"
                 SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
                 SHOULD_TEST="false"
-                echo "⏭️  Skipping build: no app changes detected"
+                echo "⏭️  Skipping build/promotion: no app changes detected"
               fi
               ;;
             "renovations")
               ENVIRONMENT="development"
               DEPLOY_TARGET="none"
-              # Only build if app files changed or if manually triggered
+              # Renovations: build only (source of truth), never deploy
               if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
                 SHOULD_BUILD="true"
+                SHOULD_PROMOTE="false"
                 SHOULD_DEPLOY="false"
                 SHOULD_TEST="true"
+                echo "🔨 Building source image on renovations branch"
               else
                 SHOULD_BUILD="false"
+                SHOULD_PROMOTE="false"
                 SHOULD_DEPLOY="false"
                 SHOULD_TEST="false"
                 echo "⏭️  Skipping build: no app changes detected"
@@ -183,6 +194,7 @@ jobs:
           echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
           echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
           echo "should_test=$SHOULD_TEST" >> $GITHUB_OUTPUT
+          echo "should_promote=$SHOULD_PROMOTE" >> $GITHUB_OUTPUT
 
           echo "📋 Deployment Configuration:"
           echo "  Branch: $BRANCH_NAME"
@@ -293,11 +305,88 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+  # Image promotion job
+  promote-image:
+    name: Promote Image to ${{ needs.detect-environment.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [detect-environment]
+    if: needs.detect-environment.outputs.should_promote == 'true'
+
+    outputs:
+      promoted_image_tag: ${{ steps.promotion.outputs.image_tag }}
+
+    steps:
+      - name: Log in to Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Determine source and target images
+        id: image_info
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          case "$BRANCH_NAME" in
+            "staging")
+              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:renovations-${{ github.sha }}"
+              TARGET_TAG="staging-${{ github.sha }}"
+              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
+              SOURCE_DESC="renovations"
+              ;;
+            "main")
+              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-${{ github.sha }}"
+              TARGET_TAG="main-${{ github.sha }}"
+              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
+              SOURCE_DESC="staging"
+              ;;
+            *)
+              echo "::error::Unsupported branch for promotion: $BRANCH_NAME"
+              exit 1
+              ;;
+          esac
+
+          echo "source_image=$SOURCE_IMAGE" >> $GITHUB_OUTPUT
+          echo "target_image=$TARGET_IMAGE" >> $GITHUB_OUTPUT
+          echo "target_tag=$TARGET_TAG" >> $GITHUB_OUTPUT
+          echo "source_desc=$SOURCE_DESC" >> $GITHUB_OUTPUT
+
+      - name: Pull source image
+        run: |
+          echo "📥 Pulling source image: ${{ steps.image_info.outputs.source_image }}"
+          docker pull ${{ steps.image_info.outputs.source_image }}
+
+      - name: Verify source image exists
+        run: |
+          if ! docker images | grep -q "${{ env.IMAGE_NAME }}.*${{ steps.image_info.outputs.source_desc }}"; then
+            echo "::error::Source image not found: ${{ steps.image_info.outputs.source_image }}"
+            echo "Available images:"
+            docker images | grep "${{ env.IMAGE_NAME }}"
+            exit 1
+          fi
+          echo "✅ Source image verified"
+
+      - name: Tag image for target environment
+        run: |
+          echo "🏷️  Tagging image for ${{ needs.detect-environment.outputs.environment }}"
+          docker tag ${{ steps.image_info.outputs.source_image }} ${{ steps.image_info.outputs.target_image }}
+          echo "✅ Image tagged"
+
+      - name: Push promoted image
+        id: push
+        run: |
+          echo "⬆️  Pushing promoted image: ${{ steps.image_info.outputs.target_image }}"
+          docker push ${{ steps.image_info.outputs.target_image }}
+          echo "✅ Image pushed successfully"
+
+      - name: Set promoted image tag output
+        id: promotion
+        run: |
+          echo "image_tag=${{ steps.image_info.outputs.target_tag }}" >> $GITHUB_OUTPUT
+          echo "🚀 Image promotion complete: ${{ steps.image_info.outputs.source_desc }} → ${{ needs.detect-environment.outputs.environment }}"
+
   # Deployment job
   deploy:
     name: Deploy to ${{ needs.detect-environment.outputs.deploy_target }}
     runs-on: ubuntu-latest
-    needs: [detect-environment]
+    needs: [detect-environment, quality-and-build, promote-image]
     if: needs.detect-environment.outputs.should_deploy == 'true'
     environment: ${{ needs.detect-environment.outputs.environment }}
 
@@ -313,8 +402,12 @@ jobs:
       - name: Set deployment image tag
         id: image_tag
         run: |
-          if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+          if [ "${{ needs.detect-environment.outputs.should_promote }}" = "true" ]; then
+            echo "image_tag=${{ needs.promote-image.outputs.promoted_image_tag }}" >> $GITHUB_OUTPUT
+            echo "🚀 Using promoted image: ${{ needs.promote-image.outputs.promoted_image_tag }}"
+          elif [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
             echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
+            echo "🔨 Using built image: ${{ needs.quality-and-build.outputs.image_tag }}"
           else
             # For infra-only deployments, use current commit as fallback
             echo "image_tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
