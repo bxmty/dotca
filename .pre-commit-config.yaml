@@ -65,3 +65,42 @@ repos:
         language: system
         pass_filenames: false
         files: \.(js|jsx|ts|tsx)$
+
+  # Terraform linting and validation
+  - repo: local
+    hooks:
+      - id: terraform_fmt
+        name: Terraform Format
+        entry: terraform fmt -check -diff
+        language: system
+        pass_filenames: false
+        files: \.tf$
+
+      - id: terraform_validate
+        name: Terraform Validate
+        entry: terraform validate
+        language: system
+        pass_filenames: false
+        files: \.tf$
+
+      - id: tflint
+        name: TFLint
+        entry: tflint
+        language: system
+        pass_filenames: false
+        files: \.tf$
+
+  # Ansible linting
+  - repo: local
+    hooks:
+      - id: ansible_lint
+        name: Ansible Lint
+        entry: ansible-lint
+        language: system
+        pass_filenames: false
+        files: \.(yml|yaml)$
+        exclude: |
+          (?x)(
+            \.pre-commit-config\.yaml$
+            | test-.*
+          )

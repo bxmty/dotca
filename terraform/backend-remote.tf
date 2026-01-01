@@ -3,7 +3,9 @@
 
 terraform {
   backend "s3" {
-    endpoint                    = "https://bxtf.tor1.digitaloceanspaces.com"
+    endpoints = {
+      s3 = "https://bxtf.tor1.digitaloceanspaces.com"
+    }
     region                      = "tor1"
     bucket                      = "bxtf"
     key                         = "dotca/terraform.tfstate"
