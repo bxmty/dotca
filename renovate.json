@@ -2,8 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "rangeStrategy": "pin",
-  "baseBranches": ["renovations"],
-  "schedule": ["after 9am and before 5pm every weekday"],
+  "baseBranches": ["upgrades"],
+  "schedule": ["at any time"],
   "timezone": "America/New_York",
   "lockFileMaintenance": {
     "enabled": true,
@@ -32,6 +32,12 @@
         "@stripe/react-stripe-js",
         "stripe"
       ],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "merge-commit"
+    },
+    {
+      "matchUpdateTypes": ["minor"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"
