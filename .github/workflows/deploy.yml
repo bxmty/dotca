@@ -87,10 +87,11 @@ jobs:
               - 'tsconfig.json'
               - 'jest.config.js'
               - 'eslint.config.mjs'
-              - '.github/workflows/deploy.yml'
             infra:
               - 'terraform/**'
               - 'ansible/**'
+              - '.github/workflows/**'
+              - '.github/actions/**'
 
   # Environment detection and setup
   detect-environment:
@@ -128,7 +129,7 @@ jobs:
 
           # Environment detection logic
           case "$BRANCH_NAME" in
-            "main")
+            "main"|"production")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
               # Production: promote from staging, never build
