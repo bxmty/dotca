@@ -1,40 +1,58 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "rangeStrategy": "pin",
-  "baseBranches": ["renovations"],
-  "schedule": ["after 9am and before 5pm every weekday"],
+  "baseBranchPatterns": [
+    "renovations"
+  ],
+  "schedule": [
+    "after 9am and before 5pm every weekday"
+  ],
   "timezone": "America/New_York",
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on Friday"]
+    "schedule": [
+      "before 6am on Friday"
+    ]
   },
   "packageRules": [
     {
-      "matchManagers": ["npm"],
+      "matchManagers": [
+        "npm"
+      ],
       "enabled": true
     },
     {
-      "matchUpdateTypes": ["patch"],
-      "matchDepTypes": ["devDependencies"],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "merge-commit"
-    },
-    {
-      "matchUpdateTypes": ["patch"],
-      "matchDepTypes": ["dependencies"],
-      "excludePackageNames": [
-        "next",
-        "react",
-        "react-dom",
-        "@stripe/stripe-js",
-        "@stripe/react-stripe-js",
-        "stripe"
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "matchDepTypes": [
+        "devDependencies"
       ],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"
+    },
+    {
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "matchDepTypes": [
+        "dependencies"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "merge-commit",
+      "matchPackageNames": [
+        "!next",
+        "!react",
+        "!react-dom",
+        "!@stripe/stripe-js",
+        "!@stripe/react-stripe-js",
+        "!stripe"
+      ]
     }
   ]
 }
