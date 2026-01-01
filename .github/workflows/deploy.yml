@@ -326,13 +326,15 @@ jobs:
           BRANCH_NAME="${{ github.ref_name }}"
           case "$BRANCH_NAME" in
             "staging")
-              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:renovations-${{ github.sha }}"
+              # For staging, promote the latest renovations build
+              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:renovations"
               TARGET_TAG="staging-${{ github.sha }}"
               TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
               SOURCE_DESC="renovations"
               ;;
             "main")
-              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-${{ github.sha }}"
+              # For main, promote the latest staging build
+              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging"
               TARGET_TAG="main-${{ github.sha }}"
               TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
               SOURCE_DESC="staging"
