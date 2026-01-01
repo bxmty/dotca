@@ -4,7 +4,7 @@
 terraform {
   backend "s3" {
     endpoints = {
-      s3 = "https://bxtf.tor1.digitaloceanspaces.com"
+      s3 = "https://tor1.digitaloceanspaces.com"
     }
     region                      = "tor1"
     bucket                      = "bxtf"
@@ -13,6 +13,6 @@ terraform {
     skip_metadata_api_check     = true
     skip_region_validation      = true
     skip_requesting_account_id  = true
-    force_path_style            = true
+    use_path_style              = true
   }
 }
