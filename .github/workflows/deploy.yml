@@ -88,6 +88,7 @@ jobs:
               - 'jest.config.js'
               - 'eslint.config.mjs'
               - '.github/workflows/deploy.yml'
+              - '.github/actions/**'
             infra:
               - 'terraform/**'
               - 'ansible/**'
@@ -111,11 +112,11 @@ jobs:
         run: |
           echo "🔍 Analyzing deployment context..."
 
-          # Get branch name (handle both push and manual triggers)
+          # Get branch name (always use actual branch for deployment strategy)
           BRANCH_NAME="${{ github.ref_name }}"
-          if [ -n "${{ github.event.inputs.target_environment }}" ]; then
-            BRANCH_NAME="${{ github.event.inputs.target_environment }}"
-            echo "Manual override: using branch $BRANCH_NAME"
+          TARGET_ENVIRONMENT="${{ github.event.inputs.target_environment }}"
+          if [ -n "$TARGET_ENVIRONMENT" ]; then
+            echo "Manual override: deploying to $TARGET_ENVIRONMENT environment from $BRANCH_NAME branch"
           fi
 
           # Check what files have changed
@@ -129,10 +130,11 @@ jobs:
           # Environment detection logic
           case "$BRANCH_NAME" in
             "main")
-              ENVIRONMENT="production"
-              DEPLOY_TARGET="production"
+              # Default to production for main branch
+              ENVIRONMENT="${TARGET_ENVIRONMENT:-production}"
+              DEPLOY_TARGET="${TARGET_ENVIRONMENT:-production}"
               # Production: promote from staging, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+              if [ "$APP_CHANGED" = "true" ] || [ -n "$TARGET_ENVIRONMENT" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
@@ -147,10 +149,11 @@ jobs:
               fi
               ;;
             "staging")
-              ENVIRONMENT="staging"
-              DEPLOY_TARGET="staging"
+              # Default to staging for staging branch
+              ENVIRONMENT="${TARGET_ENVIRONMENT:-staging}"
+              DEPLOY_TARGET="${TARGET_ENVIRONMENT:-staging}"
               # Staging: promote from renovations, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+              if [ "$APP_CHANGED" = "true" ] || [ -n "$TARGET_ENVIRONMENT" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
@@ -165,10 +168,11 @@ jobs:
               fi
               ;;
             "renovations")
-              ENVIRONMENT="development"
-              DEPLOY_TARGET="none"
+              # Renovations always builds, never deploys by default
+              ENVIRONMENT="${TARGET_ENVIRONMENT:-development}"
+              DEPLOY_TARGET="${TARGET_ENVIRONMENT:-none}"
               # Renovations: build only (source of truth), never deploy
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+              if [ "$APP_CHANGED" = "true" ] || [ -n "$TARGET_ENVIRONMENT" ]; then
                 SHOULD_BUILD="true"
                 SHOULD_PROMOTE="false"
                 SHOULD_DEPLOY="false"
@@ -198,6 +202,7 @@ jobs:
 
           echo "📋 Deployment Configuration:"
           echo "  Branch: $BRANCH_NAME"
+          echo "  Target Environment: $TARGET_ENVIRONMENT"
           echo "  Environment: $ENVIRONMENT"
           echo "  Deploy Target: $DEPLOY_TARGET"
           echo "  App Changed: $APP_CHANGED"
