@@ -103,4 +103,6 @@ repos:
           (?x)(
             \.pre-commit-config\.yaml$
             | test-.*
+            | \.github/.*
+            | backups/.*
           )

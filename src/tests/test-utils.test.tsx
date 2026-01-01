@@ -197,7 +197,6 @@ describe("Test Utilities", () => {
       );
 
       // Get the mocked component - dynamic import is needed for test setup
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const Link = require("next/link").default;
 
       // Render using our customRender
@@ -242,7 +241,6 @@ describe("Test Utilities", () => {
       );
 
       // Get the mocked component (with our custom implementation above)
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const Image = require("next/image").default;
 
       // Render using our test-utils render to avoid Next.js specific issues

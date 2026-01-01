@@ -15,7 +15,7 @@ interface UmamiConfig {
 }
 
 // Transform event data to Umami-compatible format
-const transformEventData = (
+export const transformEventData = (
   data?: Record<string, unknown>,
 ): UmamiEventData | undefined => {
   if (!data) return undefined;
@@ -40,7 +40,7 @@ const transformEventData = (
 };
 
 // Get Umami configuration from environment variables
-const getUmamiConfig = (): UmamiConfig | null => {
+export const getUmamiConfig = (): UmamiConfig | null => {
   const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
   const hostUrl = process.env.NEXT_PUBLIC_UMAMI_HOST_URL;
 

@@ -96,6 +96,7 @@ flowchart TD
 ```
 
 **Error Categories:**
+
 - **VALIDATION**: Image integrity and metadata issues
 - **NETWORK**: Registry connectivity problems
 - **AUTHENTICATION**: GHCR access issues
@@ -194,6 +195,7 @@ flowchart TD
 ```
 
 **Audit Log Contents:**
+
 - **Workflow Metadata**: Run ID, actor, repository, timestamps
 - **Image Information**: Source/destination tags, SHA256 hashes, sizes
 - **Validation Results**: All checks performed with pass/fail status
@@ -236,6 +238,7 @@ flowchart TD
 ```
 
 **Approval Features:**
+
 - **Environment Protection Rules**: Configurable required reviewers
 - **Timeout Handling**: Automatic rejection after inactivity
 - **Audit Trail**: Complete record of who approved/rejected and when
@@ -278,6 +281,7 @@ flowchart TD
 ```
 
 **Rollback Integration Features:**
+
 - **Automatic Triggers**: Failed promotions can auto-trigger rollback workflows
 - **Target Selection**: Intelligent selection of best rollback image
 - **Health Verification**: Post-rollback health checks and validation

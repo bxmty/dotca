@@ -25,7 +25,7 @@ export type WebVitalsMetric =
 /**
  * Report web vitals metrics to an analytics endpoint
  */
-const reportWebVitals = async (metric: WebVitalsMetric) => {
+export const reportWebVitals = async (metric: WebVitalsMetric) => {
   // You can use this function to send metrics to your analytics service
   // For example: Google Analytics, custom endpoint, etc.
 

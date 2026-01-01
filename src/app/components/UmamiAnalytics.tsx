@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 /**
  * UmamiAnalytics component for client-side tracking
@@ -28,31 +28,33 @@ export default function UmamiAnalytics() {
       const hostUrl = process.env.NEXT_PUBLIC_UMAMI_HOST_URL;
 
       if (!websiteId || !hostUrl) {
-        console.warn('Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.');
+        console.warn(
+          "Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.",
+        );
         return;
       }
 
       // Check if script is already loaded
-      const existingScript = document.querySelector('script[data-umami]');
+      const existingScript = document.querySelector("script[data-umami]");
       if (existingScript) {
-        console.log('Umami script already loaded');
+        console.log("Umami script already loaded");
         return;
       }
 
       // Create and inject Umami script
-      const script = document.createElement('script');
+      const script = document.createElement("script");
       script.src = `${hostUrl}/script.js`;
-      script.setAttribute('data-website-id', websiteId);
-      script.setAttribute('data-umami', '');
+      script.setAttribute("data-website-id", websiteId);
+      script.setAttribute("data-umami", "");
       script.async = true;
 
       // Add error handling
       script.onerror = () => {
-        console.error('Failed to load Umami tracking script');
+        console.error("Failed to load Umami tracking script");
       };
 
       script.onload = () => {
-        console.log('Umami tracking script loaded successfully');
+        console.log("Umami tracking script loaded successfully");
       };
 
       document.head.appendChild(script);
@@ -83,10 +85,10 @@ export default function UmamiAnalytics() {
           ? `${pathname}?${searchParams.toString()}`
           : pathname;
 
-        console.log('Route changed, tracking pageview with Umami:', url);
+        console.log("Route changed, tracking pageview with Umami:", url);
         window.umami.trackView(url, document.referrer);
       } catch (error) {
-        console.error('Error tracking pageview with Umami:', error);
+        console.error("Error tracking pageview with Umami:", error);
       }
     };
 
@@ -98,32 +100,35 @@ export default function UmamiAnalytics() {
   // Track custom events (can be called from other components)
   useEffect(() => {
     // Make tracking functions available globally for other components
-    if (typeof window !== 'undefined') {
-      window.umamiTrackEvent = (event: string, data?: Record<string, unknown>) => {
+    if (typeof window !== "undefined") {
+      window.umamiTrackEvent = (
+        event: string,
+        data?: Record<string, unknown>,
+      ) => {
         if (!window.umami?.track) {
-          console.warn('Umami tracking not available');
+          console.warn("Umami tracking not available");
           return;
         }
 
         try {
           window.umami.track(event, data);
-          console.log('Custom event tracked with Umami:', event, data);
+          console.log("Custom event tracked with Umami:", event, data);
         } catch (error) {
-          console.error('Error tracking custom event with Umami:', error);
+          console.error("Error tracking custom event with Umami:", error);
         }
       };
 
       window.umamiTrackView = (url?: string, referrer?: string) => {
         if (!window.umami?.trackView) {
-          console.warn('Umami tracking not available');
+          console.warn("Umami tracking not available");
           return;
         }
 
         try {
           window.umami.trackView(url, referrer);
-          console.log('Pageview tracked with Umami:', url);
+          console.log("Pageview tracked with Umami:", url);
         } catch (error) {
-          console.error('Error tracking pageview with Umami:', error);
+          console.error("Error tracking pageview with Umami:", error);
         }
       };
     }

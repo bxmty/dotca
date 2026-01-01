@@ -74,6 +74,17 @@ runs:
 
         cd terraform
 
+        # Configure backend for CI/CD (use local backend, disable remote)
+        echo "🔧 Configuring Terraform backend for CI/CD..."
+        if [[ -f "backend-remote.tf" ]]; then
+          mv backend-remote.tf backend-remote.tf.disabled
+          echo "Disabled remote backend for CI/CD"
+        fi
+        if [[ -f "backend-local.tf.disabled" ]]; then
+          mv backend-local.tf.disabled backend-local.tf
+          echo "Enabled local backend for CI/CD"
+        fi
+
         # Initialize Terraform (only if needed)
         if [[ ! -d ".terraform" ]]; then
           echo "Initializing Terraform..."

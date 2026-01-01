@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { initGA, pageview, GA_MEASUREMENT_ID } from '../../lib/gtag';
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { initGA, pageview, GA_MEASUREMENT_ID } from "../../lib/gtag";
 
 export default function GoogleAnalytics() {
   const pathname = usePathname();
@@ -10,16 +10,16 @@ export default function GoogleAnalytics() {
 
   // Initialize GA when component mounts
   useEffect(() => {
-    console.log('GoogleAnalytics component mounted, initializing GA...');
-    console.log('GA_MEASUREMENT_ID:', GA_MEASUREMENT_ID);
+    console.log("GoogleAnalytics component mounted, initializing GA...");
+    console.log("GA_MEASUREMENT_ID:", GA_MEASUREMENT_ID);
 
     // Initialize GA immediately
     initGA();
 
     // Also try after a delay in case the script loads slowly
     const timer = setTimeout(() => {
-      if (typeof window !== 'undefined' && !window.gtag) {
-        console.log('Retrying GA initialization...');
+      if (typeof window !== "undefined" && !window.gtag) {
+        console.log("Retrying GA initialization...");
         initGA();
       }
     }, 2000);
@@ -37,10 +37,10 @@ export default function GoogleAnalytics() {
           ? `${pathname}?${searchParams.toString()}`
           : pathname;
 
-        console.log('Route changed, tracking pageview:', url);
+        console.log("Route changed, tracking pageview:", url);
         pageview(url);
       } catch (error) {
-        console.error('Error tracking pageview:', error);
+        console.error("Error tracking pageview:", error);
       }
     };
 

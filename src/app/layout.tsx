@@ -20,10 +20,19 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     template: "%s | Boximity MSP",
-    default: "Boximity MSP - Enterprise IT Solutions for Small Businesses"
+    default: "Boximity MSP - Enterprise IT Solutions for Small Businesses",
   },
-  description: "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost. Password management, web hosting, business email, and more.",
-  keywords: ["IT Services", "MSP", "Managed Service Provider", "Small Business IT", "Password Management", "Web Hosting", "Business Email"],
+  description:
+    "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost. Password management, web hosting, business email, and more.",
+  keywords: [
+    "IT Services",
+    "MSP",
+    "Managed Service Provider",
+    "Small Business IT",
+    "Password Management",
+    "Web Hosting",
+    "Business Email",
+  ],
   creator: "Boximity MSP",
   publisher: "Boximity MSP",
   formatDetection: {
@@ -50,7 +59,8 @@ export const metadata: Metadata = {
     locale: "en_CA",
     url: "https://boximity.ca",
     title: "Boximity MSP - Enterprise IT Solutions for Small Businesses",
-    description: "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost.",
+    description:
+      "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost.",
     siteName: "Boximity MSP",
     images: [
       {
@@ -64,7 +74,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Boximity MSP - Enterprise IT Solutions for Small Businesses",
-    description: "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost.",
+    description:
+      "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost.",
     images: ["/images/twitter-image.jpg"],
   },
 };
@@ -107,9 +118,7 @@ export default function RootLayout({
         <WebVitalsReporter />
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
-          <main className="flex-grow-1">
-            {children}
-          </main>
+          <main className="flex-grow-1">{children}</main>
           <Footer />
         </div>
       </body>

@@ -57,10 +57,45 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Check what files have changed to determine if we need to build
+  check-changes:
+    name: Check for App Changes
+    runs-on: ubuntu-latest
+    outputs:
+      app_changed: ${{ steps.filter.outputs.app }}
+      infra_changed: ${{ steps.filter.outputs.infra }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'public/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'Dockerfile'
+              - 'next.config.js'
+              - 'tsconfig.json'
+              - 'jest.config.js'
+              - 'eslint.config.mjs'
+              - '.github/workflows/deploy.yml'
+            infra:
+              - 'terraform/**'
+              - 'ansible/**'
+
   # Environment detection and setup
   detect-environment:
     name: Environment Detection
     runs-on: ubuntu-latest
+    needs: [check-changes]
     outputs:
       environment: ${{ steps.detect.outputs.environment }}
       deploy_target: ${{ steps.detect.outputs.deploy_target }}
@@ -81,28 +116,60 @@ jobs:
             echo "Manual override: using branch $BRANCH_NAME"
           fi
 
+          # Check what files have changed
+          APP_CHANGED="${{ needs.check-changes.outputs.app_changed }}"
+          INFRA_CHANGED="${{ needs.check-changes.outputs.infra_changed }}"
+
+          echo "📊 Change Analysis:"
+          echo "  App files changed: $APP_CHANGED"
+          echo "  Infra files changed: $INFRA_CHANGED"
+
           # Environment detection logic
           case "$BRANCH_NAME" in
             "main")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              SHOULD_BUILD="true"
-              SHOULD_DEPLOY="true"
-              SHOULD_TEST="true"
+              # Only build if app files changed or if manually triggered
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+                SHOULD_BUILD="true"
+                SHOULD_DEPLOY="true"
+                SHOULD_TEST="true"
+              else
+                SHOULD_BUILD="false"
+                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
+                SHOULD_TEST="false"
+                echo "⏭️  Skipping build: no app changes detected"
+              fi
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              SHOULD_BUILD="true"
-              SHOULD_DEPLOY="true"
-              SHOULD_TEST="true"
+              # Only build if app files changed or if manually triggered
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+                SHOULD_BUILD="true"
+                SHOULD_DEPLOY="true"
+                SHOULD_TEST="true"
+              else
+                SHOULD_BUILD="false"
+                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
+                SHOULD_TEST="false"
+                echo "⏭️  Skipping build: no app changes detected"
+              fi
               ;;
             "renovations")
               ENVIRONMENT="development"
               DEPLOY_TARGET="none"
-              SHOULD_BUILD="true"
-              SHOULD_DEPLOY="false"
-              SHOULD_TEST="true"
+              # Only build if app files changed or if manually triggered
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+                SHOULD_BUILD="true"
+                SHOULD_DEPLOY="false"
+                SHOULD_TEST="true"
+              else
+                SHOULD_BUILD="false"
+                SHOULD_DEPLOY="false"
+                SHOULD_TEST="false"
+                echo "⏭️  Skipping build: no app changes detected"
+              fi
               ;;
             *)
               echo "::error::Unsupported branch: $BRANCH_NAME"
@@ -121,6 +188,8 @@ jobs:
           echo "  Branch: $BRANCH_NAME"
           echo "  Environment: $ENVIRONMENT"
           echo "  Deploy Target: $DEPLOY_TARGET"
+          echo "  App Changed: $APP_CHANGED"
+          echo "  Infra Changed: $INFRA_CHANGED"
           echo "  Build: $SHOULD_BUILD"
           echo "  Deploy: $SHOULD_DEPLOY"
           echo "  Test: $SHOULD_TEST"
@@ -228,7 +297,7 @@ jobs:
   deploy:
     name: Deploy to ${{ needs.detect-environment.outputs.deploy_target }}
     runs-on: ubuntu-latest
-    needs: [detect-environment, quality-and-build]
+    needs: [detect-environment]
     if: needs.detect-environment.outputs.should_deploy == 'true'
     environment: ${{ needs.detect-environment.outputs.environment }}
 
@@ -241,12 +310,23 @@ jobs:
         with:
           terraform_version: "1.6.6"
 
+      - name: Set deployment image tag
+        id: image_tag
+        run: |
+          if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+            echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            # For infra-only deployments, use current commit as fallback
+            echo "image_tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "ℹ️ Using fallback image tag for infra-only deployment"
+          fi
+
       - name: Deploy application
         uses: ./.github/actions/deploy
         id: deployment
         with:
           environment: ${{ needs.detect-environment.outputs.environment }}
-          image_tag: ${{ needs.quality-and-build.outputs.image_tag }}
+          image_tag: ${{ steps.image_tag.outputs.image_tag }}
           skip_tests: ${{ github.event.inputs.skip_tests || 'false' }}
         env:
           DO_TOKEN: ${{ secrets.DO_TOKEN }}
