@@ -136,7 +136,7 @@ jobs:
     environment: ${{ needs.detect-environment.outputs.environment }}
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
+      image_tag: ${{ github.ref_name }}-${{ github.sha }}
       image_digest: ${{ steps.build.outputs.digest }}
       test_results: ${{ steps.test.outputs.results }}
       build_success: ${{ steps.build.outcome }}
