@@ -86,3 +86,9 @@ variable "existing_firewall_id" {
   type        = string
   default     = ""
 }
+
+variable "use_local_state" {
+  description = "Whether to use local state file instead of remote S3 backend"
+  type        = bool
+  default     = false
+}

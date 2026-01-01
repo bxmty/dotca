@@ -39,6 +39,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# act configuration (may contain secrets for local testing)
+.actrc
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -50,6 +53,7 @@ CLAUDE.md
 **/.terraform/*
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
 *.tfvars
 *.tfvars.json
 crash.log
@@ -61,6 +65,13 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+
+# Local terraform state (when using local backend)
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+
+# Backend state tracking (local file)
+terraform/.current_backend
 
 
 # ansible

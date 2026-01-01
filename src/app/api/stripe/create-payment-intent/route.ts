@@ -1,14 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getServerStripe } from '../../../../lib/stripe';
+import { NextResponse } from "next/server";
+import { getServerStripe } from "../../../../lib/stripe";
 
 // Server-side Stripe API implementation
 export async function POST(request: Request) {
   try {
     // Parse request body
-    const { amount, currency = 'usd', metadata = {} } = await request.json();
-    
+    const { amount, currency = "usd", metadata = {} } = await request.json();
+
     if (!amount || isNaN(amount)) {
-      throw new Error('A valid amount is required');
+      throw new Error("A valid amount is required");
     }
 
     // Get Stripe instance (asynchronously)
@@ -24,14 +24,14 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ 
-      clientSecret: paymentIntent.client_secret 
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
     });
   } catch (error) {
-    console.error('Stripe error:', error);
+    console.error("Stripe error:", error);
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Unknown error" }, { status: 500 });
   }
 }

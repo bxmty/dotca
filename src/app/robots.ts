@@ -1,18 +1,18 @@
-import { MetadataRoute } from 'next';
+import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
-      userAgent: '*',
-      allow: '/',
+      userAgent: "*",
+      allow: "/",
       disallow: [
-        '/checkout',
-        '/checkout/',
-        '/onboarding',
-        '/onboarding/',
-        '/api/',
+        "/checkout",
+        "/checkout/",
+        "/onboarding",
+        "/onboarding/",
+        "/api/",
       ],
     },
-    sitemap: 'https://boximity.ca/sitemap.xml',
+    sitemap: "https://boximity.ca/sitemap.xml",
   };
 }

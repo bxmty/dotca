@@ -1,6 +1,6 @@
 // jest.setup.js
-import '@testing-library/jest-dom';
-import React from 'react';
+import "@testing-library/jest-dom";
+import React from "react";
 
 // Mock console.error and console.warn to fail tests when they're called
 // This helps catch issues that would otherwise be silent
@@ -42,11 +42,11 @@ global.fetch = jest.fn(() =>
   Promise.resolve({
     ok: true,
     json: () => Promise.resolve({}),
-  })
+  }),
 );
 
 // Next.js mocks
-jest.mock('next/navigation', () => ({
+jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
     back: jest.fn(),
@@ -57,19 +57,19 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-jest.mock('next/link', () => ({
+jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ children, href }) => {
-    return React.createElement('a', { href }, children);
-  }
+    return React.createElement("a", { href }, children);
+  },
 }));
 
-jest.mock('next/image', () => ({
+jest.mock("next/image", () => ({
   __esModule: true,
   default: (props) => {
-    return React.createElement('img', {
+    return React.createElement("img", {
       src: props.src,
-      alt: props.alt || '',
+      alt: props.alt || "",
       width: props.width,
       height: props.height,
       className: props.className,

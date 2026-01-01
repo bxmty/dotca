@@ -9,13 +9,13 @@ Guidelines for managing task lists in markdown files to track progress on comple
 ## Task Implementation
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y"
 - **Always build to specification:** there is comprehensive documentation in the `docs/` directory. You need to follow that and if there is a reason not to, propose the changes to the user and implement both the code and the update to the documentation.
-- **Completion protocol:**  
+- **Completion protocol:**
   1. When you finish a **sub‑task**, immediately mark it as completed by changing `[ ]` to `[x]`.
   2. If **all** subtasks underneath a parent task are now `[x]`, follow this sequence:
     - **First**: Run the full test suite (`pytest`, `npm test`, `bin/rails test`, etc.)
     - **Only if all tests pass**: Stage changes (`git add .`)
     - **Clean up**: Remove any temporary files and temporary code
-   
+
   3. Once all the subtasks are marked completed and changes have been committed, mark the **parent task** as completed.
 - Stop after each sub‑task and wait for the user's go‑ahead.
 
@@ -47,13 +47,13 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
 ## Task Implementation
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y"
-- **Completion protocol:**  
+- **Completion protocol:**
   1. When you finish a **sub‑task**, immediately mark it as completed by changing `[ ]` to `[x]`.
   2. If **all** subtasks underneath a parent task are now `[x]`, follow this sequence:
     - **First**: Run the full test suite (`pytest`, `npm test`, `bin/rails test`, etc.)
     - **Only if all tests pass**: Stage changes (`git add .`)
     - **Clean up**: Remove any temporary files and temporary code
-   
+
   3. Once all the subtasks are marked completed and changes have been committed, mark the **parent task** as completed.
 - Stop after each sub‑task and wait for the user's go‑ahead.
 

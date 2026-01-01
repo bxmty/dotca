@@ -12,8 +12,20 @@
  */
 
 // Import both analytics providers
-import { pageview as gaPageview, event as gaEvent, initGA, GA_MEASUREMENT_ID } from './gtag';
-import { trackPageView as umamiTrackPageView, trackCustomEvent, trackFormSubmission, trackButtonClick as umamiTrackButtonClick, trackEngagement as umamiTrackEngagement, isUmamiConfigured } from './umami';
+import {
+  pageview as gaPageview,
+  event as gaEvent,
+  initGA,
+  GA_MEASUREMENT_ID,
+} from "./gtag";
+import {
+  trackPageView as umamiTrackPageView,
+  trackCustomEvent,
+  trackFormSubmission,
+  trackButtonClick as umamiTrackButtonClick,
+  trackEngagement as umamiTrackEngagement,
+  isUmamiConfigured,
+} from "./umami";
 
 // Types for unified analytics interface
 export interface UnifiedEventData {
@@ -34,11 +46,16 @@ export interface AnalyticsConfig {
 const getAnalyticsConfig = (): AnalyticsConfig => ({
   enableGoogleAnalytics: !!GA_MEASUREMENT_ID,
   enableUmami: isUmamiConfigured(),
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
 });
 
 // Global analytics state
 let isInitialized = false;
+
+// Reset function for testing
+export const __resetAnalyticsState = () => {
+  isInitialized = false;
+};
 
 /**
  * Initialize all enabled analytics providers
@@ -47,7 +64,7 @@ export const initializeAnalytics = (): void => {
   const config = getAnalyticsConfig();
 
   if (config.debug) {
-    console.log('🔧 Analytics Configuration:', config);
+    console.log("🔧 Analytics Configuration:", config);
   }
 
   // Initialize Google Analytics if enabled and available
@@ -55,16 +72,16 @@ export const initializeAnalytics = (): void => {
     try {
       initGA();
       if (config.debug) {
-        console.log('✅ Google Analytics initialized');
+        console.log("✅ Google Analytics initialized");
       }
     } catch (error) {
-      console.error('❌ Failed to initialize Google Analytics:', error);
+      console.error("❌ Failed to initialize Google Analytics:", error);
     }
   }
 
   // Umami is initialized automatically by the UmamiAnalytics component
   if (config.enableUmami && config.debug) {
-    console.log('✅ Umami tracking enabled (initialized by component)');
+    console.log("✅ Umami tracking enabled (initialized by component)");
   }
 
   isInitialized = true;
@@ -75,7 +92,10 @@ export const initializeAnalytics = (): void => {
  * @param url - The page URL/path to track
  * @param title - Optional page title
  */
-export const trackPageView = async (url: string, title?: string): Promise<void> => {
+export const trackPageView = async (
+  url: string,
+  title?: string,
+): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (!isInitialized) {
@@ -93,16 +113,16 @@ export const trackPageView = async (url: string, title?: string): Promise<void> 
     try {
       gaPageview(url);
     } catch (error) {
-      console.error('❌ GA pageview error:', error);
+      console.error("❌ GA pageview error:", error);
     }
   }
 
   // Track with Umami (server-side)
   if (config.enableUmami) {
     promises.push(
-      umamiTrackPageView(url, undefined, title).catch(error => {
-        console.error('❌ Umami pageview error:', error);
-      })
+      umamiTrackPageView(url, undefined, title).catch((error) => {
+        console.error("❌ Umami pageview error:", error);
+      }),
     );
   }
 
@@ -114,7 +134,9 @@ export const trackPageView = async (url: string, title?: string): Promise<void> 
  * Track a custom event across all enabled analytics providers
  * @param eventData - The event data to track
  */
-export const trackEvent = async (eventData: UnifiedEventData): Promise<void> => {
+export const trackEvent = async (
+  eventData: UnifiedEventData,
+): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (!isInitialized) {
@@ -132,21 +154,21 @@ export const trackEvent = async (eventData: UnifiedEventData): Promise<void> => 
     try {
       gaEvent({
         action: eventData.action,
-        category: eventData.category || 'engagement',
-        label: eventData.label || '',
+        category: eventData.category || "engagement",
+        label: eventData.label || "",
         value: eventData.value,
       });
     } catch (error) {
-      console.error('❌ GA event error:', error);
+      console.error("❌ GA event error:", error);
     }
   }
 
   // Track with Umami (server-side)
   if (config.enableUmami) {
     promises.push(
-      trackCustomEvent(eventData.action, eventData).catch(error => {
-        console.error('❌ Umami event error:', error);
-      })
+      trackCustomEvent(eventData.action, eventData).catch((error) => {
+        console.error("❌ Umami event error:", error);
+      }),
     );
   }
 
@@ -161,7 +183,7 @@ export const trackEvent = async (eventData: UnifiedEventData): Promise<void> => 
  */
 export const trackFormSubmit = async (
   formName: string,
-  formData?: Record<string, unknown>
+  formData?: Record<string, unknown>,
 ): Promise<void> => {
   const config = getAnalyticsConfig();
 
@@ -171,15 +193,15 @@ export const trackFormSubmit = async (
 
   // Track with Umami (includes GA-compatible event)
   if (config.enableUmami) {
-    await trackFormSubmission(formName, formData).catch(error => {
-      console.error('❌ Form tracking error:', error);
+    await trackFormSubmission(formName, formData).catch((error) => {
+      console.error("❌ Form tracking error:", error);
     });
   }
 
   // Also track as a regular event for consistency
   await trackEvent({
-    action: 'form_submit',
-    category: 'forms',
+    action: "form_submit",
+    category: "forms",
     label: formName,
   });
 };
@@ -191,25 +213,28 @@ export const trackFormSubmit = async (
  */
 export const trackButtonClick = async (
   buttonName: string,
-  buttonContext?: string
+  buttonContext?: string,
 ): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (config.debug) {
-    console.log(`👆 Tracking button click: ${buttonName}`, buttonContext ? { context: buttonContext } : {});
+    console.log(
+      `👆 Tracking button click: ${buttonName}`,
+      buttonContext ? { context: buttonContext } : {},
+    );
   }
 
   // Track with Umami (includes GA-compatible event)
   if (config.enableUmami) {
-    await umamiTrackButtonClick(buttonName, buttonContext).catch(error => {
-      console.error('❌ Button tracking error:', error);
+    await umamiTrackButtonClick(buttonName, buttonContext).catch((error) => {
+      console.error("❌ Button tracking error:", error);
     });
   }
 
   // Also track as a regular event for consistency
   await trackEvent({
-    action: 'button_click',
-    category: 'interaction',
+    action: "button_click",
+    category: "interaction",
     label: buttonName,
   });
 };
@@ -221,7 +246,7 @@ export const trackButtonClick = async (
  */
 export const trackEngagement = async (
   action: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): Promise<void> => {
   const config = getAnalyticsConfig();
 
@@ -231,15 +256,15 @@ export const trackEngagement = async (
 
   // Track with Umami (includes GA-compatible event)
   if (config.enableUmami) {
-    await umamiTrackEngagement(action, details).catch(error => {
-      console.error('❌ Engagement tracking error:', error);
+    await umamiTrackEngagement(action, details).catch((error) => {
+      console.error("❌ Engagement tracking error:", error);
     });
   }
 
   // Also track as a regular event for consistency
   await trackEvent({
     action: `engagement_${action}`,
-    category: 'engagement',
+    category: "engagement",
     label: action,
   });
 };
@@ -255,7 +280,9 @@ export const isAnalyticsConfigured = (): boolean => {
 /**
  * Get current analytics configuration (for debugging)
  */
-export const getAnalyticsStatus = (): AnalyticsConfig & { initialized: boolean } => ({
+export const getAnalyticsStatus = (): AnalyticsConfig & {
+  initialized: boolean;
+} => ({
   ...getAnalyticsConfig(),
   initialized: isInitialized,
 });

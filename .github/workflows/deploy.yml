@@ -18,6 +18,7 @@ on:
       - "jest.config.js"
       - "eslint.config.mjs"
       - ".github/workflows/deploy.yml"
+      - ".github/actions/deploy/action.yml"
       - "terraform/**"
       - "ansible/**"
 
@@ -57,16 +58,52 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Check what files have changed to determine if we need to build
+  check-changes:
+    name: Check for App Changes
+    runs-on: ubuntu-latest
+    outputs:
+      app_changed: ${{ steps.filter.outputs.app }}
+      infra_changed: ${{ steps.filter.outputs.infra }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'public/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'Dockerfile'
+              - 'next.config.js'
+              - 'tsconfig.json'
+              - 'jest.config.js'
+              - 'eslint.config.mjs'
+              - '.github/workflows/deploy.yml'
+            infra:
+              - 'terraform/**'
+              - 'ansible/**'
+
   # Environment detection and setup
   detect-environment:
     name: Environment Detection
     runs-on: ubuntu-latest
+    needs: [check-changes]
     outputs:
       environment: ${{ steps.detect.outputs.environment }}
       deploy_target: ${{ steps.detect.outputs.deploy_target }}
       should_build: ${{ steps.detect.outputs.should_build }}
       should_deploy: ${{ steps.detect.outputs.should_deploy }}
       should_test: ${{ steps.detect.outputs.should_test }}
+      should_promote: ${{ steps.detect.outputs.should_promote }}
 
     steps:
       - name: Detect environment and deployment strategy
@@ -81,28 +118,69 @@ jobs:
             echo "Manual override: using branch $BRANCH_NAME"
           fi
 
+          # Check what files have changed
+          APP_CHANGED="${{ needs.check-changes.outputs.app_changed }}"
+          INFRA_CHANGED="${{ needs.check-changes.outputs.infra_changed }}"
+
+          echo "📊 Change Analysis:"
+          echo "  App files changed: $APP_CHANGED"
+          echo "  Infra files changed: $INFRA_CHANGED"
+
           # Environment detection logic
           case "$BRANCH_NAME" in
             "main")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              SHOULD_BUILD="true"
-              SHOULD_DEPLOY="true"
-              SHOULD_TEST="true"
+              # Production: promote from staging, never build
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="true"
+                SHOULD_DEPLOY="true"
+                SHOULD_TEST="true"
+                echo "🚀 Production deployment: will promote staging image"
+              else
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="false"
+                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
+                SHOULD_TEST="false"
+                echo "⏭️  Skipping build/promotion: no app changes detected"
+              fi
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              SHOULD_BUILD="true"
-              SHOULD_DEPLOY="true"
-              SHOULD_TEST="true"
+              # Staging: promote from renovations, never build
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="true"
+                SHOULD_DEPLOY="true"
+                SHOULD_TEST="true"
+                echo "🚀 Staging deployment: will promote renovations image"
+              else
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="false"
+                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
+                SHOULD_TEST="false"
+                echo "⏭️  Skipping build/promotion: no app changes detected"
+              fi
               ;;
             "renovations")
               ENVIRONMENT="development"
               DEPLOY_TARGET="none"
-              SHOULD_BUILD="true"
-              SHOULD_DEPLOY="false"
-              SHOULD_TEST="true"
+              # Renovations: build only (source of truth), never deploy
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+                SHOULD_BUILD="true"
+                SHOULD_PROMOTE="false"
+                SHOULD_DEPLOY="false"
+                SHOULD_TEST="true"
+                echo "🔨 Building source image on renovations branch"
+              else
+                SHOULD_BUILD="false"
+                SHOULD_PROMOTE="false"
+                SHOULD_DEPLOY="false"
+                SHOULD_TEST="false"
+                echo "⏭️  Skipping build: no app changes detected"
+              fi
               ;;
             *)
               echo "::error::Unsupported branch: $BRANCH_NAME"
@@ -116,11 +194,14 @@ jobs:
           echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
           echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
           echo "should_test=$SHOULD_TEST" >> $GITHUB_OUTPUT
+          echo "should_promote=$SHOULD_PROMOTE" >> $GITHUB_OUTPUT
 
           echo "📋 Deployment Configuration:"
           echo "  Branch: $BRANCH_NAME"
           echo "  Environment: $ENVIRONMENT"
           echo "  Deploy Target: $DEPLOY_TARGET"
+          echo "  App Changed: $APP_CHANGED"
+          echo "  Infra Changed: $INFRA_CHANGED"
           echo "  Build: $SHOULD_BUILD"
           echo "  Deploy: $SHOULD_DEPLOY"
           echo "  Test: $SHOULD_TEST"
@@ -130,44 +211,61 @@ jobs:
     name: Quality Checks & Build
     runs-on: ubuntu-latest
     needs: [detect-environment]
-    if: needs.detect-environment.outputs.should_build == 'true'
+    # Always run but skip actual build/test for non-building environments
+    if: always()
 
     # Set the environment for this job
     environment: ${{ needs.detect-environment.outputs.environment }}
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
+      image_tag: ${{ github.ref_name }}-${{ github.sha }}
       image_digest: ${{ steps.build.outputs.digest }}
       test_results: ${{ steps.test.outputs.results }}
       build_success: ${{ steps.build.outcome }}
 
     steps:
+      - name: Skip build for non-building environments
+        if: needs.detect-environment.outputs.should_build != 'true'
+        run: |
+          echo "⏭️ Skipping build for ${{ needs.detect-environment.outputs.environment }} environment"
+          echo "image_tag=skipped" >> $GITHUB_OUTPUT
+          echo "image_digest=skipped" >> $GITHUB_OUTPUT
+          echo "test_results=skipped" >> $GITHUB_OUTPUT
+          echo "build_success=skipped" >> $GITHUB_OUTPUT
+
       - name: Checkout repository
+        if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Full history for proper tagging
 
       - name: Setup Node.js
+        if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: "22.21.0"
           cache: "npm"
 
       - name: Install dependencies
+        if: needs.detect-environment.outputs.should_build == 'true'
         run: npm ci
 
       - name: Run linting
+        if: needs.detect-environment.outputs.should_build == 'true'
         run: npm run lint
 
       - name: Run type checking
-        run: npm run type-check
+        if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
+        run: npm run typecheck
 
       - name: Run security audit
+        if: needs.detect-environment.outputs.should_build == 'true'
         run: npm audit --audit-level moderate
         continue-on-error: true
 
       - name: Run unit tests
         id: test
+        if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
         uses: ./.github/actions/test-runner
         with:
           test_type: unit
@@ -176,8 +274,8 @@ jobs:
           fail_fast: false
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ needs.detect-environment.outputs.environment }}
           path: |
@@ -187,17 +285,19 @@ jobs:
           retention-days: 30
 
       - name: Fail on test failures (unless forced)
-        if: steps.test.outcome == 'failure' && github.event.inputs.force_deploy != 'true'
+        if: needs.detect-environment.outputs.should_build == 'true' && steps.test.outcome == 'failure' && github.event.inputs.force_deploy != 'true'
         run: |
           echo "::error::Unit tests failed and force_deploy is not enabled"
           exit 1
 
       - name: Log in to Container Registry
+        if: needs.detect-environment.outputs.should_build == 'true'
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
       - name: Extract metadata
         id: meta
+        if: needs.detect-environment.outputs.should_build == 'true'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -207,26 +307,111 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Set up Docker Buildx
+        if: needs.detect-environment.outputs.should_build == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
         id: build
+        if: needs.detect-environment.outputs.should_build == 'true'
         uses: docker/build-push-action@v5
+        # Optimized for performance: scoped caching, inline cache, fast compression
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=build-${{ github.ref_name }}
+          cache-to: type=gha,mode=max,scope=build-${{ github.ref_name }}
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+          outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
+
+  # Image promotion job
+  promote-image:
+    name: Promote Image to ${{ needs.detect-environment.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [detect-environment]
+    if: needs.detect-environment.outputs.should_promote == 'true'
+
+    outputs:
+      promoted_image_tag: ${{ steps.promotion.outputs.image_tag }}
+
+    steps:
+      - name: Log in to Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Determine source and target images
+        id: image_info
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          case "$BRANCH_NAME" in
+            "staging")
+              # For staging, promote the latest renovations build
+              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:renovations"
+              TARGET_TAG="staging-${{ github.sha }}"
+              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
+              SOURCE_DESC="renovations"
+              ;;
+            "main")
+              # For main, promote the latest staging build
+              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging"
+              TARGET_TAG="main-${{ github.sha }}"
+              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
+              SOURCE_DESC="staging"
+              ;;
+            *)
+              echo "::error::Unsupported branch for promotion: $BRANCH_NAME"
+              exit 1
+              ;;
+          esac
+
+          echo "source_image=$SOURCE_IMAGE" >> $GITHUB_OUTPUT
+          echo "target_image=$TARGET_IMAGE" >> $GITHUB_OUTPUT
+          echo "target_tag=$TARGET_TAG" >> $GITHUB_OUTPUT
+          echo "source_desc=$SOURCE_DESC" >> $GITHUB_OUTPUT
+
+      - name: Pull source image
+        run: |
+          echo "📥 Pulling source image: ${{ steps.image_info.outputs.source_image }}"
+          docker pull ${{ steps.image_info.outputs.source_image }}
+
+      - name: Verify source image exists
+        run: |
+          if ! docker images | grep -q "${{ env.IMAGE_NAME }}.*${{ steps.image_info.outputs.source_desc }}"; then
+            echo "::error::Source image not found: ${{ steps.image_info.outputs.source_image }}"
+            echo "Available images:"
+            docker images | grep "${{ env.IMAGE_NAME }}"
+            exit 1
+          fi
+          echo "✅ Source image verified"
+
+      - name: Tag image for target environment
+        run: |
+          echo "🏷️  Tagging image for ${{ needs.detect-environment.outputs.environment }}"
+          docker tag ${{ steps.image_info.outputs.source_image }} ${{ steps.image_info.outputs.target_image }}
+          echo "✅ Image tagged"
+
+      - name: Push promoted image
+        id: push
+        run: |
+          echo "⬆️  Pushing promoted image: ${{ steps.image_info.outputs.target_image }}"
+          docker push ${{ steps.image_info.outputs.target_image }}
+          echo "✅ Image pushed successfully"
+
+      - name: Set promoted image tag output
+        id: promotion
+        run: |
+          echo "image_tag=${{ steps.image_info.outputs.target_tag }}" >> $GITHUB_OUTPUT
+          echo "🚀 Image promotion complete: ${{ steps.image_info.outputs.source_desc }} → ${{ needs.detect-environment.outputs.environment }}"
 
   # Deployment job
   deploy:
     name: Deploy to ${{ needs.detect-environment.outputs.deploy_target }}
     runs-on: ubuntu-latest
-    needs: [detect-environment, quality-and-build]
+    needs: [detect-environment, quality-and-build, promote-image]
     if: needs.detect-environment.outputs.should_deploy == 'true'
     environment: ${{ needs.detect-environment.outputs.environment }}
 
@@ -234,12 +419,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
+      - name: Set deployment image tag
+        id: image_tag
+        run: |
+          if [ "${{ needs.detect-environment.outputs.should_promote }}" = "true" ]; then
+            echo "image_tag=${{ needs.promote-image.outputs.promoted_image_tag }}" >> $GITHUB_OUTPUT
+            echo "🚀 Using promoted image: ${{ needs.promote-image.outputs.promoted_image_tag }}"
+          elif [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+            echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
+            echo "🔨 Using built image: ${{ needs.quality-and-build.outputs.image_tag }}"
+          else
+            # For infra-only deployments, use current commit as fallback
+            echo "image_tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "ℹ️ Using fallback image tag for infra-only deployment"
+          fi
+
       - name: Deploy application
         uses: ./.github/actions/deploy
         id: deployment
         with:
           environment: ${{ needs.detect-environment.outputs.environment }}
-          image_tag: ${{ needs.quality-and-build.outputs.image_tag }}
+          image_tag: ${{ steps.image_tag.outputs.image_tag }}
           skip_tests: ${{ github.event.inputs.skip_tests || 'false' }}
         env:
           DO_TOKEN: ${{ secrets.DO_TOKEN }}
@@ -247,6 +452,10 @@ jobs:
           SSH_KEY_FINGERPRINT: ${{ secrets.SSH_KEY_FINGERPRINT }}
           SPACES_ACCESS_ID: ${{ secrets.SPACES_ACCESS_ID }}
           SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+          AWS_REGION: tor1
+          AWS_DEFAULT_REGION: tor1
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
@@ -259,7 +468,7 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [detect-environment, deploy]
-    if: needs.detect-environment.outputs.should_test == 'true' && needs.detect-environment.outputs.environment == 'staging'
+    if: needs.detect-environment.outputs.should_test == 'true' && needs.detect-environment.outputs.environment == 'staging' && github.event.inputs.skip_tests != 'true'
 
     steps:
       - name: Checkout repository
@@ -270,7 +479,7 @@ jobs:
         with:
           test_type: integration
           environment: staging
-          app_url: ${{ vars.APP_URL }}
+          app_url: https://staging.boximity.ca
           fail_fast: false
           timeout_minutes: 15
 
@@ -279,7 +488,7 @@ jobs:
         with:
           test_type: e2e
           environment: staging
-          app_url: ${{ vars.APP_URL }}
+          app_url: https://staging.boximity.ca
           fail_fast: false
           timeout_minutes: 20
 

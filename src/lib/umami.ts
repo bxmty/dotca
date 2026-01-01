@@ -1,4 +1,4 @@
-import { trackEvent, trackPageview } from '@umami/node';
+import { Umami, type UmamiEventData } from "@umami/node";
 
 /**
  * Umami tracking utility functions for server-side analytics
@@ -14,13 +14,40 @@ interface UmamiConfig {
   ip?: string;
 }
 
+// Transform event data to Umami-compatible format
+export const transformEventData = (
+  data?: Record<string, unknown>,
+): UmamiEventData | undefined => {
+  if (!data || Object.keys(data).length === 0) return undefined;
+
+  const transformed: UmamiEventData = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    // Only include values that are strings, numbers, or Date objects
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      value instanceof Date
+    ) {
+      transformed[key] = value;
+    } else if (value !== null && value !== undefined) {
+      // Convert other types to strings for tracking
+      transformed[key] = String(value);
+    }
+  }
+
+  return Object.keys(transformed).length === 0 ? undefined : transformed;
+};
+
 // Get Umami configuration from environment variables
-const getUmamiConfig = (): UmamiConfig | null => {
+export const getUmamiConfig = (): UmamiConfig | null => {
   const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
   const hostUrl = process.env.NEXT_PUBLIC_UMAMI_HOST_URL;
 
   if (!websiteId || !hostUrl) {
-    console.warn('Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.');
+    console.warn(
+      "Umami configuration missing. Please set NEXT_PUBLIC_UMAMI_WEBSITE_ID and NEXT_PUBLIC_UMAMI_HOST_URL environment variables.",
+    );
     return null;
   }
 
@@ -42,7 +69,7 @@ const getUmamiConfig = (): UmamiConfig | null => {
 export async function trackPageView(
   pathname: string,
   referrer?: string,
-  title?: string
+  title?: string,
 ): Promise<void> {
   const config = getUmamiConfig();
 
@@ -51,19 +78,18 @@ export async function trackPageView(
   }
 
   try {
-    await trackPageview({
-      website: config.websiteId,
-      url: pathname,
-      referrer: referrer || '',
-      hostname: config.hostUrl,
-      language: 'en-US',
-      screen: '1920x1080',
-      title: title || document?.title || '',
-    }, {
+    const umami = new Umami({
+      websiteId: config.websiteId,
       hostUrl: config.hostUrl,
     });
+
+    await umami.track("pageview", {
+      url: pathname,
+      referrer: referrer || "",
+      title: title || "Unknown Page",
+    });
   } catch (error) {
-    console.error('Failed to track pageview with Umami:', error);
+    console.error("Failed to track pageview with Umami:", error);
   }
 }
 
@@ -74,7 +100,7 @@ export async function trackPageView(
  */
 export async function trackCustomEvent(
   eventName: string,
-  eventData?: Record<string, unknown>
+  eventData?: Record<string, unknown>,
 ): Promise<void> {
   const config = getUmamiConfig();
 
@@ -83,18 +109,14 @@ export async function trackCustomEvent(
   }
 
   try {
-    await trackEvent(
-      {
-        website: config.websiteId,
-        name: eventName,
-        data: eventData || {},
-      },
-      {
-        hostUrl: config.hostUrl,
-      }
-    );
+    const umami = new Umami({
+      websiteId: config.websiteId,
+      hostUrl: config.hostUrl,
+    });
+
+    await umami.track(eventName, transformEventData(eventData));
   } catch (error) {
-    console.error('Failed to track event with Umami:', error);
+    console.error("Failed to track custom event with Umami:", error);
   }
 }
 
@@ -105,19 +127,28 @@ export async function trackCustomEvent(
  */
 export async function trackFormSubmission(
   formName: string,
-  formData?: Record<string, unknown>
+  formData?: Record<string, unknown>,
 ): Promise<void> {
   // Sanitize form data to avoid tracking sensitive information
-  const sanitizedData = formData ? Object.keys(formData).reduce((acc, key) => {
-    // Only include non-sensitive fields
-    if (!['password', 'email', 'phone', 'credit_card', 'ssn'].some(field =>
-      key.toLowerCase().includes(field))) {
-      acc[key] = typeof formData[key] === 'string' && formData[key].length > 100
-        ? `${formData[key].substring(0, 100)}...`
-        : formData[key];
-    }
-    return acc;
-  }, {} as Record<string, unknown>) : {};
+  const sanitizedData = formData
+    ? Object.keys(formData).reduce(
+        (acc, key) => {
+          // Only include non-sensitive fields
+          if (
+            !["password", "email", "phone", "credit_card", "ssn"].some(
+              (field) => key.toLowerCase().includes(field),
+            )
+          ) {
+            acc[key] =
+              typeof formData[key] === "string" && formData[key].length > 100
+                ? `${formData[key].substring(0, 100)}...`
+                : formData[key];
+          }
+          return acc;
+        },
+        {} as Record<string, unknown>,
+      )
+    : {};
 
   await trackCustomEvent(`form_submission_${formName}`, {
     form_name: formName,
@@ -133,11 +164,11 @@ export async function trackFormSubmission(
  */
 export async function trackButtonClick(
   buttonName: string,
-  buttonContext?: string
+  buttonContext?: string,
 ): Promise<void> {
-  await trackCustomEvent('button_click', {
+  await trackCustomEvent("button_click", {
     button_name: buttonName,
-    context: buttonContext || 'unknown',
+    context: buttonContext || "unknown",
   });
 }
 
@@ -148,7 +179,7 @@ export async function trackButtonClick(
  */
 export async function trackEngagement(
   action: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): Promise<void> {
   await trackCustomEvent(`engagement_${action}`, details);
 }
@@ -157,8 +188,10 @@ export async function trackEngagement(
  * Check if Umami tracking is properly configured
  */
 export function isUmamiConfigured(): boolean {
-  return !!(process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID &&
-           process.env.NEXT_PUBLIC_UMAMI_HOST_URL);
+  return !!(
+    process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID &&
+    process.env.NEXT_PUBLIC_UMAMI_HOST_URL
+  );
 }
 
 /**
@@ -166,9 +199,9 @@ export function isUmamiConfigured(): boolean {
  */
 export function initializeUmamiTracking(): void {
   if (!isUmamiConfigured()) {
-    console.warn('Umami tracking is not configured. Skipping initialization.');
+    console.warn("Umami tracking is not configured. Skipping initialization.");
     return;
   }
 
-  console.log('Umami tracking initialized successfully');
+  console.log("Umami tracking initialized successfully");
 }
