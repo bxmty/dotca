@@ -96,7 +96,9 @@ runs:
 
         # Plan the infrastructure changes
         echo "Planning infrastructure changes..."
-        terraform plan -var="environment=${{ inputs.environment }}" -out=tfplan -no-color
+        tf_vars="-var=\"environment=${{ inputs.environment }}\""
+        [[ -n "$DO_TOKEN" ]] && tf_vars="$tf_vars -var=\"do_token=$DO_TOKEN\""
+        terraform plan $tf_vars -out=tfplan -no-color
 
         # Apply the infrastructure changes
         echo "Applying infrastructure changes..."
