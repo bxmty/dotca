@@ -22,14 +22,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Cleanup untagged images
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: "${{ github.event.repository.name }}"
           package-type: "container"
           delete-only-untagged-versions: "true"
 
       - name: Keep only recent versions (failsafe)
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: "${{ github.event.repository.name }}"
           package-type: "container"
