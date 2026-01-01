@@ -172,6 +172,10 @@ runs:
 
         echo "Generated Ansible inventory for deployment"
 
+        # Install required Ansible Galaxy roles
+        echo "📦 Installing Ansible Galaxy roles..."
+        ansible-galaxy install -r requirements.yml
+
         # Run the appropriate Ansible playbook
         PLAYBOOK="${{ inputs.environment }}-deploy.yml"
         if [[ ! -f "$PLAYBOOK" ]]; then

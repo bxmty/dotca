@@ -251,7 +251,7 @@ show_cost_warning() {
 
     # Try to estimate costs (rough estimate)
     log_info "Estimated monthly costs for destroyed resources:"
-    log_info "- Droplet (s-1vcpu-2gb): ~$6/month"
+    log_info "- Droplet (s-1vcpu-2gb): ~\$6/month"
     log_info "- Any attached volumes: Additional costs"
     log_info "- Data transfer: Variable costs"
 }
