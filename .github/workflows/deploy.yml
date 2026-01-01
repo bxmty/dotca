@@ -305,15 +305,6 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Tag with branch name for promotion
-        run: |
-          BRANCH_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
-          SOURCE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ github.sha }}"
-          echo "🏷️  Tagging image with branch name: $BRANCH_TAG"
-          docker tag $SOURCE_TAG $BRANCH_TAG
-          docker push $BRANCH_TAG
-          echo "✅ Branch tag pushed: $BRANCH_TAG"
-
   # Image promotion job
   promote-image:
     name: Promote Image to ${{ needs.detect-environment.outputs.environment }}
