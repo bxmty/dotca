@@ -24,6 +24,7 @@ repos:
             | next-env\.d\.ts$
             | CLAUDE\.md$
             | ansible/
+            | \.github/actions/
           )
 
   # ESLint
