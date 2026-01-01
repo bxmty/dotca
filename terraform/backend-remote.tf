@@ -4,7 +4,7 @@
 terraform {
   backend "s3" {
     endpoints = {
-      s3 = "https://bxtf.tor1.digitaloceanspaces.com"
+      s3 = "https://tor1.digitaloceanspaces.com"
     }
     region                      = "tor1"
     bucket                      = "bxtf"
