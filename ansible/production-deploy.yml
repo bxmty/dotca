@@ -216,12 +216,12 @@
       delay: 5
       until: git_pull is success
 
-    - name: Stop existing Docker Compose services
+    - name: Stop existing Docker Compose services (if docker-compose.yml exists)
       command: docker-compose down -v --remove-orphans
       args:
         chdir: "{{ app_dir }}/repo"
       register: docker_down_result
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Clean up any remaining Docker resources
       shell: |
