@@ -65,6 +65,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+tfplan
+destroy-plan
 
 # Local terraform state (when using local backend)
 terraform/terraform.tfstate
