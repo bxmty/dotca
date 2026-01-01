@@ -298,7 +298,8 @@ describe("web-vitals.ts web performance tracking", () => {
       initWebVitals();
 
       const originalWindow = global.window;
-      delete (global as NodeJS.Global & { window?: typeof global.window }).window;
+      delete (global as NodeJS.Global & { window?: typeof global.window })
+        .window;
 
       const metric: WebVitalsMetric = {
         name: "FCP",

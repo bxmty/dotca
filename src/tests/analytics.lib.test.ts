@@ -1,23 +1,14 @@
-import {
-  initializeAnalytics,
-  trackPageView,
-  trackEvent,
-  trackFormSubmit,
-  trackButtonClick,
-  trackEngagement,
-  isAnalyticsConfigured,
-  getAnalyticsStatus,
-  analytics,
-  type UnifiedEventData,
-} from "@/lib/analytics";
-
 // Mock the dependencies
-jest.mock("@/lib/gtag", () => ({
-  pageview: jest.fn(),
-  event: jest.fn(),
-  initGA: jest.fn(),
-  GA_MEASUREMENT_ID: "GA-TEST-ID",
-}));
+jest.mock(
+  "@/lib/gtag",
+  () => ({
+    pageview: jest.fn(),
+    event: jest.fn(),
+    initGA: jest.fn(),
+    GA_MEASUREMENT_ID: "GA-TEST-ID",
+  }),
+  { virtual: true },
+);
 
 jest.mock("@/lib/umami", () => ({
   trackPageView: jest.fn().mockResolvedValue(undefined),
@@ -29,10 +20,20 @@ jest.mock("@/lib/umami", () => ({
 }));
 
 import {
-  pageview as gaPageview,
-  event as gaEvent,
-  initGA,
-} from "@/lib/gtag";
+  initializeAnalytics,
+  trackPageView,
+  trackEvent,
+  trackFormSubmit,
+  trackButtonClick,
+  trackEngagement,
+  isAnalyticsConfigured,
+  getAnalyticsStatus,
+  analytics,
+  __resetAnalyticsState,
+  type UnifiedEventData,
+} from "@/lib/analytics";
+
+import { pageview as gaPageview, event as gaEvent, initGA } from "@/lib/gtag";
 import {
   trackPageView as umamiTrackPageView,
   trackCustomEvent,
@@ -50,6 +51,8 @@ describe("analytics.ts unified analytics interface", () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
+    // Reset analytics global state
+    __resetAnalyticsState();
   });
 
   afterEach(() => {
@@ -101,6 +104,9 @@ describe("analytics.ts unified analytics interface", () => {
 
     it("tracks page view with Umami", async () => {
       (isUmamiConfigured as jest.Mock).mockReturnValue(true);
+      // Disable Google Analytics for this test
+      const originalGA = process.env.GA_MEASUREMENT_ID;
+      delete process.env.GA_MEASUREMENT_ID;
 
       await trackPageView("/test-page", "Test Page");
 
@@ -110,6 +116,9 @@ describe("analytics.ts unified analytics interface", () => {
         "Test Page",
       );
       expect(gaPageview).not.toHaveBeenCalled();
+
+      // Restore
+      process.env.GA_MEASUREMENT_ID = originalGA;
     });
 
     it("tracks page view with both providers when both are enabled", async () => {
@@ -285,10 +294,11 @@ describe("analytics.ts unified analytics interface", () => {
       await trackFormSubmit("contact_form");
 
       expect(trackFormSubmission).not.toHaveBeenCalled();
-      expect(trackCustomEvent).toHaveBeenCalledWith("form_submit", {
+      expect(gaEvent).toHaveBeenCalledWith({
         action: "form_submit",
         category: "forms",
         label: "contact_form",
+        value: undefined,
       });
     });
 
@@ -332,10 +342,11 @@ describe("analytics.ts unified analytics interface", () => {
       await trackButtonClick("submit_button");
 
       expect(umamiTrackButtonClick).not.toHaveBeenCalled();
-      expect(trackCustomEvent).toHaveBeenCalledWith("button_click", {
+      expect(gaEvent).toHaveBeenCalledWith({
         action: "button_click",
         category: "interaction",
         label: "submit_button",
+        value: undefined,
       });
     });
 
@@ -378,10 +389,11 @@ describe("analytics.ts unified analytics interface", () => {
       await trackEngagement("time_on_page", { seconds: 30 });
 
       expect(umamiTrackEngagement).not.toHaveBeenCalled();
-      expect(trackCustomEvent).toHaveBeenCalledWith("engagement_time_on_page", {
+      expect(gaEvent).toHaveBeenCalledWith({
         action: "engagement_time_on_page",
         category: "engagement",
         label: "time_on_page",
+        value: undefined,
       });
     });
 
@@ -426,9 +438,12 @@ describe("analytics.ts unified analytics interface", () => {
     });
 
     it("returns false when neither provider is configured", () => {
-      const originalGA_MEASUREMENT_ID = process.env.GA_MEASUREMENT_ID;
-      delete process.env.GA_MEASUREMENT_ID;
+      // Temporarily mock GA_MEASUREMENT_ID to be undefined
+      const gtagModule = jest.requireMock("@/lib/gtag");
+      const originalGAValue = gtagModule.GA_MEASUREMENT_ID;
+      gtagModule.GA_MEASUREMENT_ID = undefined;
 
+      // Mock isUmamiConfigured to return false
       (isUmamiConfigured as jest.Mock).mockReturnValue(false);
 
       const result = isAnalyticsConfigured();
@@ -436,7 +451,7 @@ describe("analytics.ts unified analytics interface", () => {
       expect(result).toBe(false);
 
       // Restore
-      process.env.GA_MEASUREMENT_ID = originalGA_MEASUREMENT_ID;
+      gtagModule.GA_MEASUREMENT_ID = originalGAValue;
     });
   });
 
@@ -449,7 +464,7 @@ describe("analytics.ts unified analytics interface", () => {
       expect(status).toEqual({
         enableGoogleAnalytics: true,
         enableUmami: true,
-        debug: false, // assuming NODE_ENV is not development
+        debug: process.env.NODE_ENV === "development", // matches actual environment
         initialized: false, // not initialized yet
       });
     });

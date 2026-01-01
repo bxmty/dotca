@@ -18,7 +18,7 @@ interface UmamiConfig {
 export const transformEventData = (
   data?: Record<string, unknown>,
 ): UmamiEventData | undefined => {
-  if (!data) return undefined;
+  if (!data || Object.keys(data).length === 0) return undefined;
 
   const transformed: UmamiEventData = {};
 
@@ -36,7 +36,7 @@ export const transformEventData = (
     }
   }
 
-  return transformed;
+  return Object.keys(transformed).length === 0 ? undefined : transformed;
 };
 
 // Get Umami configuration from environment variables

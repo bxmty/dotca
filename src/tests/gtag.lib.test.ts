@@ -1,4 +1,3 @@
-
 // Mock window and document for browser environment testing
 const mockGtag = jest.fn();
 const mockDataLayer: Array<IArguments | unknown[]> = [];
@@ -129,7 +128,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
 
       // Pre-set gtag function
-      (window ).gtag = mockGtag;
+      window.gtag = mockGtag;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");
@@ -147,7 +146,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
 
       // Remove gtag initially
-      delete (window ).gtag;
+      delete window.gtag;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");
@@ -171,7 +170,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
 
-      (window ).gtag = mockGtag;
+      window.gtag = mockGtag;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");
@@ -188,7 +187,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "staging";
       process.env.NEXT_PUBLIC_STAGING_GA_ID = "GA-STAGING-ID";
 
-      (window ).gtag = mockGtag;
+      window.gtag = mockGtag;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");
@@ -204,7 +203,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "development";
       process.env.NEXT_PUBLIC_DEV_GA_ID = "GA-DEV-ID";
 
-      (window ).gtag = mockGtag;
+      window.gtag = mockGtag;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");
@@ -222,7 +221,7 @@ describe("gtag.ts Google Analytics utilities", () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
-      (window ).gtag = mockGtag;
+      window.gtag = mockGtag;
     });
 
     it("does not track pageview when GA_MEASUREMENT_ID is missing", () => {
@@ -238,7 +237,7 @@ describe("gtag.ts Google Analytics utilities", () => {
     });
 
     it("warns when gtag is not available", () => {
-      delete (window ).gtag;
+      delete window.gtag;
 
       jest.resetModules();
       const { pageview: newPageview } = require("@/lib/gtag");
@@ -298,7 +297,7 @@ describe("gtag.ts Google Analytics utilities", () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
-      (window ).gtag = mockGtag;
+      window.gtag = mockGtag;
     });
 
     it("does not track event when GA_MEASUREMENT_ID is missing", () => {
@@ -318,7 +317,7 @@ describe("gtag.ts Google Analytics utilities", () => {
     });
 
     it("warns when gtag is not available", () => {
-      delete (window ).gtag;
+      delete window.gtag;
 
       jest.resetModules();
       const { event: newEvent } = require("@/lib/gtag");
@@ -516,7 +515,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
 
       // Remove gtag initially
-      delete (window ).gtag;
+      delete window.gtag;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");

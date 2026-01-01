@@ -1,23 +1,46 @@
-
 import type { Stripe as StripeClient } from "@stripe/stripe-js";
 import type Stripe from "stripe";
 
 // Mock the Stripe modules
 const mockLoadStripe = jest.fn();
 
+// Define proper types for the Stripe constructor
+interface StripeConstructorOptions {
+  apiVersion?: string;
+  timeout?: number;
+  maxNetworkRetries?: number;
+  [key: string]: unknown;
+}
+
+// Mock Stripe instance type for testing
+interface MockStripeInstance {
+  id: string;
+  secretKey: string;
+  options?: StripeConstructorOptions;
+}
+
 // Create a proper constructor mock for Stripe
-const MockStripeConstructor = jest.fn().mockImplementation(function(this: any, secretKey: string, options?: any) {
+const MockStripeConstructor = jest.fn().mockImplementation(function (
+  this: MockStripeInstance,
+  secretKey: string,
+  options?: StripeConstructorOptions,
+) {
   this.id = "mock-stripe-instance";
   this.secretKey = secretKey;
   this.options = options;
   return this;
 });
 
+// Alias for backward compatibility
+const mockStripeConstructor = MockStripeConstructor;
+
 jest.mock("@stripe/stripe-js", () => ({
   loadStripe: mockLoadStripe,
 }));
 
-jest.mock("stripe", () => ({
+// Mock the stripe module for dynamic imports
+jest.doMock("stripe", () => ({
+  __esModule: true,
   default: MockStripeConstructor,
 }));
 
@@ -197,7 +220,9 @@ describe("stripe.ts utility", () => {
     });
 
     it("handles undefined environment variables", () => {
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = undefined as string | undefined;
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = undefined as
+        | string
+        | undefined;
       process.env.STRIPE_SECRET_KEY = undefined as string | undefined;
 
       const { getStripe } = require("@/lib/stripe");

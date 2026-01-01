@@ -52,6 +52,11 @@ const getAnalyticsConfig = (): AnalyticsConfig => ({
 // Global analytics state
 let isInitialized = false;
 
+// Reset function for testing
+export const __resetAnalyticsState = () => {
+  isInitialized = false;
+};
+
 /**
  * Initialize all enabled analytics providers
  */

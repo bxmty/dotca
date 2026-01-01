@@ -1,4 +1,5 @@
 // tests/checkout-page.test.tsx
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import CheckoutPage from "@/app/checkout/page";
@@ -12,10 +13,10 @@ jest.mock("@/app/checkout/PlanSelector", () => {
     onPlanSelected: (plan: unknown) => void;
     pricingPlans: unknown[];
   }) {
-    // Auto-select the first plan after a small delay
-    setTimeout(() => {
+    // Auto-select the first plan synchronously
+    React.useEffect(() => {
       onPlanSelected(pricingPlans[0]);
-    }, 0);
+    }, [onPlanSelected, pricingPlans]);
 
     return null;
   };
@@ -217,7 +218,9 @@ describe("CheckoutPage Component", () => {
     });
 
     // Find employee count input
-    const employeeInput = screen.getByLabelText("Number of Employees (minimum 5)");
+    const employeeInput = screen.getByLabelText(
+      "Number of Employees (minimum 5)",
+    );
     expect(employeeInput).toBeInTheDocument();
 
     // Test valid values
@@ -320,9 +323,7 @@ describe("CheckoutPage Component", () => {
     const mockWaitlistButton = {
       click: jest.fn(),
     } as HTMLElement;
-    jest
-      .spyOn(document, "querySelector")
-      .mockReturnValue(mockWaitlistButton);
+    jest.spyOn(document, "querySelector").mockReturnValue(mockWaitlistButton);
 
     render(<CheckoutPage />);
 

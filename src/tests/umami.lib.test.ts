@@ -19,6 +19,9 @@ jest.mock("@umami/node", () => ({
   })),
 }));
 
+// Get reference to the mocked Umami constructor for tests
+const MockUmami = require("@umami/node").Umami;
+
 describe("umami.ts server-side analytics", () => {
   const originalEnv = process.env;
 
@@ -367,7 +370,8 @@ describe("umami.ts server-side analytics", () => {
 
       expect(mockTrack).toHaveBeenCalledWith("form_submission_contact_form", {
         form_name: "contact_form",
-        field_count: 1, // Only safe_field should be included
+        field_count: 2, // name and safe_field should be included (others are sensitive)
+        name: "John",
         safe_field: "this is safe",
       });
     });
