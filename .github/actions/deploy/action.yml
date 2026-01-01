@@ -65,6 +65,14 @@ runs:
         echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
         chmod 600 ~/.ssh/config
 
+        # Create Ansible vault password file if vault password is provided
+        if [[ -n "${ANSIBLE_VAULT_PASSWORD:-}" ]]; then
+          echo "$ANSIBLE_VAULT_PASSWORD" > ~/.ansible_vault_pass
+          chmod 600 ~/.ansible_vault_pass
+          echo "ANSIBLE_VAULT_PASSWORD_FILE=~/.ansible_vault_pass" >> $GITHUB_ENV
+          echo "✅ Ansible vault password file configured"
+        fi
+
         echo "✅ Deployment environment configured"
 
     - name: Setup infrastructure with Terraform
@@ -184,6 +192,9 @@ runs:
 
         # Remove SSH key file
         rm -f ~/.ssh/deploy_key
+
+        # Remove Ansible vault password file
+        rm -f ~/.ansible_vault_pass
 
         # Remove generated inventory with sensitive data
         rm -f ansible/inventory/deploy.ini
