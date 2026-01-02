@@ -132,8 +132,8 @@ jobs:
             "main"|"production")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              # Production: promote from staging, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+              # Production: always promote from staging for consistency, never build
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ] || [ "$INFRA_CHANGED" = "true" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
@@ -141,17 +141,17 @@ jobs:
                 echo "🚀 Production deployment: will promote staging image"
               else
                 SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
-                SHOULD_TEST="false"
-                echo "⏭️  Skipping build/promotion: no app changes detected"
+                SHOULD_PROMOTE="true"  # Always promote for consistency
+                SHOULD_DEPLOY="true"   # Always deploy for consistency
+                SHOULD_TEST="false"    # Skip tests for pure infra changes
+                echo "🚀 Production deployment: will promote staging image (infra-only changes)"
               fi
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              # Staging: promote from renovations, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
+              # Staging: always promote from renovations for consistency, never build
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ] || [ "$INFRA_CHANGED" = "true" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
@@ -159,10 +159,10 @@ jobs:
                 echo "🚀 Staging deployment: will promote renovations image"
               else
                 SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
-                SHOULD_TEST="false"
-                echo "⏭️  Skipping build/promotion: no app changes detected"
+                SHOULD_PROMOTE="true"  # Always promote for consistency
+                SHOULD_DEPLOY="true"   # Always deploy for consistency
+                SHOULD_TEST="false"    # Skip tests for pure infra changes
+                echo "🚀 Staging deployment: will promote renovations image (infra-only changes)"
               fi
               ;;
             "renovations")
