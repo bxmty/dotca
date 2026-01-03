@@ -152,7 +152,7 @@ runs:
         environment=${{ inputs.environment }}
         project_name=dotca-nextjs
         app_dir=/app
-        docker_image=${{ inputs.image_tag }}
+        docker_image=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}
         public_ip=$DROPLET_IP
         staging_domain=staging.boximity.ca
         brevo_api_key=${BREVO_API_KEY:-}
@@ -184,6 +184,8 @@ runs:
         fi
 
         echo "Executing Ansible playbook: $PLAYBOOK"
+        echo "DOCKER_IMAGE=$DOCKER_IMAGE"
+        export DOCKER_IMAGE="$DOCKER_IMAGE"
         ansible-playbook -i inventory/deploy.ini "$PLAYBOOK" -v
 
         echo "✅ Application deployment completed"
