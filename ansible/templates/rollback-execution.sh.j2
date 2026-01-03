@@ -331,7 +331,7 @@ verify_rollback_deployment() {
     fi
 
     # Basic connectivity test
-    if curl -f -s "http://localhost:8080" >/dev/null 2>&1; then
+    if curl -f -s "http://localhost:3000" >/dev/null 2>&1; then
         print_status $GREEN "✅ Application responding on root endpoint"
     else
         print_status $YELLOW "⚠️  Application not responding on root endpoint (continuing...)"

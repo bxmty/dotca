@@ -207,6 +207,39 @@ jobs:
           echo "  Deploy: $SHOULD_DEPLOY"
           echo "  Test: $SHOULD_TEST"
 
+      - name: Generate deployment summary
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 🚀 Deployment Pipeline Started
+
+          **Triggered by:** ${{ github.actor }}
+          **Branch:** ${{ github.ref_name }}
+          **Commit:** `${{ github.sha }}`
+
+          ### 📊 Deployment Configuration
+          | Setting | Value |
+          |---------|-------|
+          | Environment | `${{ steps.detect.outputs.environment }}` |
+          | Deploy Target | `${{ steps.detect.outputs.deploy_target }}` |
+          | App Changes | ${{ needs.check-changes.outputs.app_changed == 'true' && '✅ Yes' || '❌ No' }} |
+          | Infra Changes | ${{ needs.check-changes.outputs.infra_changed == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Build | ${{ steps.detect.outputs.should_build == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Deploy | ${{ steps.detect.outputs.should_deploy == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Test | ${{ steps.detect.outputs.should_test == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Promote | ${{ steps.detect.outputs.should_promote == 'true' && '✅ Yes' || '❌ No' }} |
+
+          ### 🔄 Pipeline Status
+          - [ ] Environment Detection ✅
+          - [ ] Quality Checks & Build ${{ steps.detect.outputs.should_build == 'true' && '⏳' || '⏭️' }}
+          - [ ] Image Promotion ${{ steps.detect.outputs.should_promote == 'true' && '⏳' || '⏭️' }}
+          - [ ] Deployment ${{ steps.detect.outputs.should_deploy == 'true' && '⏳' || '⏭️' }}
+          - [ ] Integration Tests ${{ steps.detect.outputs.should_test == 'true' && '⏳' || '⏭️' }}
+          - [ ] Notifications ⏳
+
+          ---
+          *Workflow: `${{ github.workflow }}` | Run: #${{ github.run_number }}*
+          EOF
+
   # Quality checks and building
   quality-and-build:
     name: Quality Checks & Build
@@ -329,6 +362,35 @@ jobs:
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
+      - name: Update build summary
+        if: always()
+        run: |
+          if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+            BUILD_STATUS="${{ steps.build.outcome == 'success' && '✅ Success' || steps.build.outcome == 'failure' && '❌ Failed' || '⏳ Running' }}"
+            TEST_STATUS="${{ steps.test.outcome == 'success' && '✅ Passed' || steps.test.outcome == 'failure' && '❌ Failed' || steps.test.outcome == 'skipped' && '⏭️ Skipped' || '⏳ Running' }}"
+          else
+            BUILD_STATUS="⏭️ Skipped"
+            TEST_STATUS="⏭️ Skipped"
+          fi
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ### 🔨 Build & Quality Status
+          | Component | Status |
+          |-----------|--------|
+          | Code Linting | ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Type Checking | ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Security Audit | ${{ steps.build.outcome == 'success' && '✅ Passed' || '⚠️ Warnings' }} |
+          | Unit Tests | \$TEST_STATUS |
+          | Docker Build | \$BUILD_STATUS |
+
+          EOF
+
+          if [ "${{ steps.build.outcome }}" = "success" ] && [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+            echo "**Image Tag:** \`${{ steps.meta.outputs.tags }}\`" >> \$GITHUB_STEP_SUMMARY
+            echo "**Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> \$GITHUB_STEP_SUMMARY
+          fi
+
   # Image promotion job
   promote-image:
     name: Promote Image to ${{ needs.detect-environment.outputs.environment }}
@@ -408,6 +470,23 @@ jobs:
           echo "image_tag=${{ steps.image_info.outputs.target_tag }}" >> $GITHUB_OUTPUT
           echo "🚀 Image promotion complete: ${{ steps.image_info.outputs.source_desc }} → ${{ needs.detect-environment.outputs.environment }}"
 
+      - name: Update promotion summary
+        if: always()
+        run: |
+          PROMOTION_STATUS="${{ job.status == 'success' && '✅ Success' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ### 🏷️ Image Promotion Status
+          | Component | Details |
+          |-----------|---------|
+          | Source Environment | \`${{ steps.image_info.outputs.source_desc }}\` |
+          | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
+          | Target Image Tag | \`${{ steps.image_info.outputs.target_tag }}\` |
+          | Promotion Status | \$PROMOTION_STATUS |
+
+          EOF
+
   # Deployment job
   deploy:
     name: Deploy to ${{ needs.detect-environment.outputs.deploy_target }}
@@ -476,6 +555,27 @@ jobs:
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Update deployment summary
+        if: always()
+        run: |
+          DEPLOY_STATUS="${{ job.status == 'success' && '✅ Success' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ### 🚀 Deployment Status
+          | Component | Details |
+          |-----------|---------|
+          | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
+          | Deploy Target | \`${{ needs.detect-environment.outputs.deploy_target }}\` |
+          | Image Tag Used | \`${{ steps.image_tag.outputs.image_tag }}\` |
+          | Deployment Status | \$DEPLOY_STATUS |
+
+          EOF
+
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "**🌐 Application URL:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
+          fi
+
   # Integration testing (staging only)
   integration-tests:
     name: Integration Tests
@@ -515,6 +615,23 @@ jobs:
             playwright-report/
           retention-days: 30
 
+      - name: Update testing summary
+        if: always()
+        run: |
+          TEST_STATUS="${{ job.status == 'success' && '✅ Passed' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ### 🧪 Integration Testing Status
+          | Test Type | Status |
+          |-----------|--------|
+          | Integration Tests | \$TEST_STATUS |
+          | E2E Tests | \$TEST_STATUS |
+          | Test Environment | \`staging\` |
+          | Test URL | https://staging.boximity.ca |
+
+          EOF
+
   # Notifications
   notify:
     name: Send Notifications
@@ -523,7 +640,7 @@ jobs:
     if: always() # Always run notifications
 
     steps:
-      - name: Send deployment notifications
+      - name: Send GitHub deployment notifications
         uses: ./.github/actions/notify
         with:
           event_type: ${{ needs.deploy.result == 'success' && 'deployment-success' || 'deployment-failed' }}
@@ -541,6 +658,41 @@ jobs:
               "integration_tests": "${{ needs.integration-tests.result || 'skipped' }}",
               "timestamp": "${{ github.event.head_commit.timestamp }}"
             }
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
+
+      - name: Generate final workflow summary
+        if: always()
+        run: |
+          OVERALL_STATUS="${{ needs.deploy.result == 'success' && '✅ Success' || '❌ Failed' }}"
+          DURATION="<!-- Workflow completed at ${{ github.event.head_commit.timestamp || 'unknown time' }} -->"
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ## 📋 Final Deployment Summary
+
+          **Overall Status:** \$OVERALL_STATUS
+          **Completed:** \`${{ github.event.head_commit.timestamp }}\`
+
+          ### 🔄 Pipeline Results
+          | Stage | Result |
+          |-------|--------|
+          | Environment Detection | ✅ Completed |
+          | Quality Checks & Build | ${{ needs.quality-and-build.result == 'success' && '✅ Success' || needs.quality-and-build.result == 'failure' && '❌ Failed' || needs.quality-and-build.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Image Promotion | ${{ needs.promote-image.result == 'success' && '✅ Success' || needs.promote-image.result == 'failure' && '❌ Failed' || needs.promote-image.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Deployment | ${{ needs.deploy.result == 'success' && '✅ Success' || needs.deploy.result == 'failure' && '❌ Failed' || needs.deploy.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Notifications | ${{ job.status == 'success' && '✅ Sent' || '❌ Failed' }} |
+
+          ### 📊 Key Information
+          - **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
+          - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || needs.promote-image.outputs.promoted_image_tag || 'N/A' }}\`
+          - **Commit:** \`${{ github.sha }}\`
+          - **Triggered by:** ${{ github.actor }}
+
+          EOF
+
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "**🌐 Live Application:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
+          fi
+
+          echo "---" >> \$GITHUB_STEP_SUMMARY
+          echo "*Workflow completed* \$DURATION" >> \$GITHUB_STEP_SUMMARY
