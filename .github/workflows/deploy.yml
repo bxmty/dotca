@@ -132,8 +132,8 @@ jobs:
             "main"|"production")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              # Production: always promote from staging for consistency, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ] || [ "$INFRA_CHANGED" = "true" ]; then
+              # Production: promote from staging when app changes, use staging directly for infra-only
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
@@ -141,17 +141,17 @@ jobs:
                 echo "🚀 Production deployment: will promote staging image"
               else
                 SHOULD_BUILD="false"
-                SHOULD_PROMOTE="true"  # Always promote for consistency
-                SHOULD_DEPLOY="true"   # Always deploy for consistency
-                SHOULD_TEST="false"    # Skip tests for pure infra changes
-                echo "🚀 Production deployment: will promote staging image (infra-only changes)"
+                SHOULD_PROMOTE="false"
+                SHOULD_DEPLOY="$INFRA_CHANGED"
+                SHOULD_TEST="false"
+                echo "ℹ️ Infra-only deployment: will use latest staging image"
               fi
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              # Staging: always promote from renovations for consistency, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ] || [ "$INFRA_CHANGED" = "true" ]; then
+              # Staging: promote from renovations when app changes, use renovations directly for infra-only
+              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
                 SHOULD_DEPLOY="true"
@@ -159,10 +159,10 @@ jobs:
                 echo "🚀 Staging deployment: will promote renovations image"
               else
                 SHOULD_BUILD="false"
-                SHOULD_PROMOTE="true"  # Always promote for consistency
-                SHOULD_DEPLOY="true"   # Always deploy for consistency
-                SHOULD_TEST="false"    # Skip tests for pure infra changes
-                echo "🚀 Staging deployment: will promote renovations image (infra-only changes)"
+                SHOULD_PROMOTE="false"
+                SHOULD_DEPLOY="$INFRA_CHANGED"
+                SHOULD_TEST="false"
+                echo "ℹ️ Infra-only deployment: will use latest renovations image"
               fi
               ;;
             "renovations")
@@ -435,9 +435,21 @@ jobs:
             echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
             echo "🔨 Using built image: ${{ needs.quality-and-build.outputs.image_tag }}"
           else
-            # For infra-only deployments, use current commit as fallback
-            echo "image_tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
-            echo "ℹ️ Using fallback image tag for infra-only deployment"
+            # For infra-only deployments, use the latest source image
+            case "${{ github.ref_name }}" in
+              "main")
+                echo "image_tag=staging" >> $GITHUB_OUTPUT
+                echo "ℹ️ Using latest staging image for production infra-only deployment"
+                ;;
+              "staging")
+                echo "image_tag=renovations" >> $GITHUB_OUTPUT
+                echo "ℹ️ Using latest renovations image for staging infra-only deployment"
+                ;;
+              *)
+                echo "::error::Unsupported branch for infra-only deployment: ${{ github.ref_name }}"
+                exit 1
+                ;;
+            esac
           fi
 
       - name: Deploy application
