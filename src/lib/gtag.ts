@@ -71,7 +71,11 @@ export const initGA = () => {
   // Check if gtag is already available (script might be loaded)
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
     console.log("GA script already loaded, configuring directly...");
-    configureGA();
+    try {
+      configureGA();
+    } catch (error) {
+      console.error("Error initializing Google Analytics:", error);
+    }
     return;
   }
 
@@ -89,7 +93,11 @@ export const initGA = () => {
 
   // Configure GA after a short delay to ensure script is ready
   setTimeout(() => {
-    configureGA();
+    try {
+      configureGA();
+    } catch (error) {
+      console.error("Error initializing Google Analytics:", error);
+    }
   }, 1000);
 };
 
