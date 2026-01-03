@@ -385,17 +385,17 @@ docker push ghcr.io/your_username/dotca:staging
 
 ### Initial Setup:
 
-- [ ] Set up image promotion workflow (`.github/workflows/image-promotion.yml`)
-- [ ] Configure GitHub environment protection rules for `production-promotion`
-- [ ] Set up image promotion workflow (`.github/workflows/image-promotion.yml`)
+- [ ] Verify unified deployment workflow (`.github/workflows/deploy.yml`) is configured
+- [ ] Configure GitHub environment protection rules for `production` environment
+- [ ] Set up environment-specific secrets and variables
 - [ ] Configure environment variables (`GITHUB_TOKEN`, `GITHUB_USERNAME`)
 
 ### Deployment Updates:
 
 - [ ] Update docker-compose.yml to use GHCR images
-- [ ] Modify Ansible playbooks to pull promoted images
-- [ ] Configure production deployment workflow (`.github/workflows/prod-deploy.yml`)
-- [ ] Set up notification workflows (`.github/workflows/deployment-notifications.yml`)
+- [ ] Modify Ansible playbooks to pull images from GHCR
+- [ ] Verify unified deployment workflow handles both staging and production
+- [ ] Set up notification workflows (`.github/workflows/deployment-dashboard.yml`)
 
 ### Testing and Validation:
 
@@ -428,11 +428,11 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
 
 ### Image Promotion Issues
 
-#### Promotion Workflow Not Appearing
+#### Deployment Workflow Not Appearing
 
-- Verify the `.github/workflows/image-promotion.yml` file exists
+- Verify the `.github/workflows/deploy.yml` file exists
 - Check that you have the correct permissions to run workflows
-- Ensure you're on the correct branch (usually `main`) when triggering
+- Ensure you're on the correct branch (`staging` or `main`) when triggering
 
 #### Manual Approval Not Working
 

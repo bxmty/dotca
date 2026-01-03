@@ -332,9 +332,9 @@ The actual workflow has more granular states than basic promotion steps:
 
 ### GitHub Actions Ecosystem
 
-- **docker-build.yml**: Provides staging images for promotion
-- **stg-deploy.yml**: Triggers testing completion notifications
-- **prod-deploy.yml**: Automatically triggered after successful promotion
+- **deploy.yml**: Unified workflow that builds environment-specific images
+- **deployment-dashboard.yml**: Provides deployment status and notifications
+- **deployment-metrics.yml**: Tracks deployment metrics and performance
 - **rollback.yml**: Emergency rollback capability integration
 - **deployment-notifications.yml**: Centralized notification system (reusable workflow)
 - **workflow-coordinator.yml**: Validates workflow dependencies and sequencing

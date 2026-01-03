@@ -24,11 +24,12 @@ Code Changes → Build (CI) → Staging → Image Promotion → Production
 
 ### Key Workflows
 
-- **`docker-build.yml`**: CI builds with path filtering and security scanning
-- **`stg-deploy.yml`**: Staging deployment with Terraform + Ansible + Selenium tests
-- **`image-promotion.yml`**: Manual approval gates with comprehensive validation
-- **`prod-deploy.yml`**: Production deployment using promoted images
-- **`rollback.yml`**: Emergency rollback to previous versions
+- **`deploy.yml`**: Unified deployment workflow with automatic environment detection (staging/production)
+- **`deployment-dashboard.yml`**: Status monitoring and dashboard updates
+- **`deployment-metrics.yml`**: Performance analytics and metrics collection
+- **`log-aggregation.yml`**: Centralized log management
+- **`image-cleanup.yml`**: Automated image retention and cleanup
+- **`dependency-check.yml`**: Dependency vulnerability scanning
 
 ## 📖 Quick Start Guide
 
@@ -70,22 +71,26 @@ Code Changes → Build (CI) → Staging → Image Promotion → Production
 ```mermaid
 graph TD
     A[Feature Development] --> B[Push to staging branch]
-    B --> C[CI Build: docker-build.yml]
-    C --> D[Staging Deploy: stg-deploy.yml]
-    D --> E[Selenium E2E Tests]
-    E --> F{Tests Pass?}
-    F -->|No| G[Fix Issues]
-    G --> B
-    F -->|Yes| H[Merge to main branch]
-    H --> I[Manual Promotion: image-promotion.yml]
-    I --> J[Approval Required]
-    J --> K[Production Deploy: prod-deploy.yml]
+    B --> C[Unified Deploy: deploy.yml]
+    C --> D[Auto-detect: Staging Environment]
+    D --> E[Build Staging Image]
+    E --> F[Deploy to Staging]
+    F --> G[Integration & E2E Tests]
+    G --> H{Tests Pass?}
+    H -->|No| I[Fix Issues]
+    I --> B
+    H -->|Yes| J[Merge to main branch]
+    J --> K[Unified Deploy: deploy.yml]
+    K --> L[Auto-detect: Production Environment]
+    L --> M[Build Production Image]
+    M --> N[Manual Approval Required]
+    N --> O[Deploy to Production]
 ```
 
 ### Emergency Rollback
 
-1. **Automatic**: Failed deployments trigger rollback workflows
-2. **Manual**: Use `rollback.yml` with specific image tags
+1. **Automatic**: Failed deployments trigger automatic rollback via `deploy.yml`
+2. **Manual**: Use `deploy.yml` workflow dispatch with previous image tags
 3. **Recovery**: Multiple rollback targets with timestamp validation
 
 ## 📊 Key Features
