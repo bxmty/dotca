@@ -1129,30 +1129,66 @@
 
     - name: Test HTTPS endpoint after restart
       ansible.builtin.shell: |
-        echo "Testing HTTPS endpoint..."
-        # First check what status code we actually get
-        STATUS_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
-        echo "Received HTTP status code: $STATUS_CODE"
+        echo "Testing HTTPS endpoint with health check..."
 
-        if echo "$STATUS_CODE" | grep -q "^\(200\|301\|302\)$"; then
-          echo "✅ HTTPS is working (status: $STATUS_CODE)"
-          exit 0
-        else
-          echo "❌ HTTPS test failed (status: $STATUS_CODE)"
-          # Additional debugging
-          echo "Checking if application is responding on port 3000..."
-          APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || echo "connection_failed")
-          echo "Direct app check (port 3000): $APP_STATUS"
+        # First check if the application health endpoint is responding
+        echo "Checking application health on port 3000..."
+        HEALTH_ATTEMPTS=0
+        MAX_HEALTH_ATTEMPTS=30
 
-          echo "Checking Nginx error logs..."
-          tail -10 /var/log/nginx/error.log 2>/dev/null || echo "No error logs found"
+        while [ $HEALTH_ATTEMPTS -lt $MAX_HEALTH_ATTEMPTS ]; do
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
+          echo "Health check attempt $((HEALTH_ATTEMPTS + 1)): HTTP $HEALTH_STATUS"
 
-          # Show container logs if available
+          if [ "$HEALTH_STATUS" = "200" ]; then
+            echo "✅ Application health check passed"
+            break
+          fi
+
+          HEALTH_ATTEMPTS=$((HEALTH_ATTEMPTS + 1))
+          if [ $HEALTH_ATTEMPTS -lt $MAX_HEALTH_ATTEMPTS ]; then
+            echo "Waiting for application to be ready..."
+            sleep 2
+          fi
+        done
+
+        if [ "$HEALTH_STATUS" != "200" ]; then
+          echo "❌ Application health check failed after $MAX_HEALTH_ATTEMPTS attempts"
           echo "Checking container logs..."
-          cd {{ app_dir }}/repo && docker-compose logs --tail=20 web 2>/dev/null || echo "No container logs available"
-
+          cd {{ app_dir }}/repo && docker-compose logs --tail=30 web 2>/dev/null || echo "No container logs available"
           exit 1
         fi
+
+        # Now test HTTPS proxy
+        echo "Testing HTTPS proxy..."
+        HTTPS_ATTEMPTS=0
+        MAX_HTTPS_ATTEMPTS=10
+
+        while [ $HTTPS_ATTEMPTS -lt $MAX_HTTPS_ATTEMPTS ]; do
+          HTTPS_STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
+          echo "HTTPS proxy attempt $((HTTPS_ATTEMPTS + 1)): HTTP $HTTPS_STATUS"
+
+          if echo "$HTTPS_STATUS" | grep -q "^\(200\|301\|302\)$"; then
+            echo "✅ HTTPS proxy is working (status: $HTTPS_STATUS)"
+            exit 0
+          fi
+
+          HTTPS_ATTEMPTS=$((HTTPS_ATTEMPTS + 1))
+          if [ $HTTPS_ATTEMPTS -lt $MAX_HTTPS_ATTEMPTS ]; then
+            sleep 1
+          fi
+        done
+
+        echo "❌ HTTPS proxy test failed after $MAX_HTTPS_ATTEMPTS attempts"
+        echo "Final HTTPS status: $HTTPS_STATUS"
+
+        echo "Checking Nginx error logs..."
+        tail -15 /var/log/nginx/error.log 2>/dev/null || echo "No error logs found"
+
+        echo "Checking if Nginx is running..."
+        systemctl is-active --quiet nginx && echo "✅ Nginx is running" || echo "❌ Nginx is not running"
+
+        exit 1
       register: https_endpoint_test
       changed_when: false
       when: nginx_ssl_restart is defined and nginx_ssl_restart.changed | default(false)
