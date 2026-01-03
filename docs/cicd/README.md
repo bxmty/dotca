@@ -7,7 +7,7 @@ This directory contains comprehensive documentation for the DotCA project's CI/C
 | Document                                                                         | Purpose                                         | Audience                     | Last Updated           |
 | -------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------- | ---------------------- |
 | [`cicd-architecture-comparison.md`](cicd-architecture-comparison.md)             | Pipeline architecture and deployment strategies | Architects, DevOps Engineers | Current Implementation |
-| [`DEPLOYMENT_GHCR.md`](DEPLOYMENT_GHCR.md)                                       | GitHub Container Registry deployment guide      | Developers, DevOps           | Production Ready       |
+| [`deployment-ghcr.md`](deployment-ghcr.md)                                       | GitHub Container Registry deployment guide      | Developers, DevOps           | Production Ready       |
 | [`image-promotion-workflow.md`](image-promotion-workflow.md)                     | Detailed promotion workflow with error handling | DevOps Engineers             | Comprehensive          |
 | [`image-tagging-strategy.md`](image-tagging-strategy.md)                         | Image naming, versioning, and lifecycle         | Developers, DevOps           | Complete Strategy      |
 | [`rollback-strategy-retention-policy.md`](rollback-strategy-retention-policy.md) | Rollback procedures and retention policies      | DevOps, SRE                  | Emergency Ready        |
@@ -35,7 +35,7 @@ Code Changes → Build (CI) → Staging → Image Promotion → Production
 ### For New Team Members
 
 1. **Start Here**: Read [`cicd-architecture-comparison.md`](cicd-architecture-comparison.md) to understand the pipeline philosophy
-2. **Deployment Guide**: Follow [`DEPLOYMENT_GHCR.md`](DEPLOYMENT_GHCR.md) for hands-on deployment instructions
+2. **Deployment Guide**: Follow [`deployment-ghcr.md`](deployment-ghcr.md) for hands-on deployment instructions
 3. **Emergency Procedures**: Review [`rollback-strategy-retention-policy.md`](rollback-strategy-retention-policy.md)
 
 ### For Developers

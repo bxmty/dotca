@@ -9,7 +9,7 @@ This directory contains all project documentation organized by topic area.
 Comprehensive documentation for the image promotion CI/CD pipeline.
 
 - **[Architecture Overview](./cicd/cicd-architecture-comparison.md)** - Pipeline design and deployment strategies
-- **[Deployment Guide](./cicd/DEPLOYMENT_GHCR.md)** - GitHub Container Registry deployment procedures
+- **[Deployment Guide](./cicd/deployment-ghcr.md)** - GitHub Container Registry deployment procedures
 - **[Image Promotion](./cicd/image-promotion-workflow.md)** - Detailed promotion workflow with error handling
 - **[Image Tagging](./cicd/image-tagging-strategy.md)** - Naming conventions and lifecycle management
 - **[Rollback Strategy](./cicd/rollback-strategy-retention-policy.md)** - Emergency procedures and retention policies
@@ -17,8 +17,8 @@ Comprehensive documentation for the image promotion CI/CD pipeline.
 ### 🔧 Infrastructure & Operations
 
 - **[Component Interactions](./component-interaction-diagram.md)** - System architecture and data flow
-- **[SSH Key Management](./SSH_KEY_MANAGEMENT.md)** - Secure key management and access control
-- **[Secrets Rotation Guide](./SECRETS_ROTATION_GUIDE.md)** - Comprehensive secret rotation procedures and security practices
+- **[SSH Key Management](./ssh-key-management.md)** - Secure key management and access control
+- **[Secrets Rotation Guide](./secrets-rotation-guide.md)** - Comprehensive secret rotation procedures and security practices
 
 ## 🚀 Quick Start
 
@@ -26,11 +26,11 @@ Comprehensive documentation for the image promotion CI/CD pipeline.
 
 1. **CI/CD Pipeline**: Start with the [CI/CD README](./cicd/README.md) to understand deployments
 2. **Architecture**: Read the [Component Interaction Diagram](./component-interaction-diagram.md)
-3. **Security**: Review [SSH Key Management](./SSH_KEY_MANAGEMENT.md) for access procedures
+3. **Security**: Review [SSH Key Management](./ssh-key-management.md) for access procedures
 
 ### For DevOps Engineers
 
-1. **Security First**: Review [Secrets Rotation Guide](./SECRETS_ROTATION_GUIDE.md) for security procedures
+1. **Security First**: Review [Secrets Rotation Guide](./secrets-rotation-guide.md) for security procedures
 2. **Pipeline Architecture**: Study [CI/CD Architecture](./cicd/cicd-architecture-comparison.md)
 3. **Promotion Workflows**: Master [Image Promotion](./cicd/image-promotion-workflow.md)
 4. **Emergency Procedures**: Know [Rollback Strategy](./cicd/rollback-strategy-retention-policy.md)
