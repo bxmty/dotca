@@ -132,30 +132,22 @@ jobs:
             "main"|"production")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              # Production: always promote from staging to ensure latest tested code
-              SHOULD_BUILD="false"
-              SHOULD_PROMOTE="true"
+              # Production: build fresh image with production environment variables
+              SHOULD_BUILD="true"
+              SHOULD_PROMOTE="false"
               SHOULD_DEPLOY="true"
               SHOULD_TEST="true"
-              echo "🚀 Production deployment: will promote staging image"
+              echo "🔨 Production deployment: will build fresh image with production environment"
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              # Staging: promote from renovations when app changes, use renovations directly for infra-only
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="true"
-                SHOULD_DEPLOY="true"
-                SHOULD_TEST="true"
-                echo "🚀 Staging deployment: will promote renovations image"
-              else
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"
-                SHOULD_TEST="false"
-                echo "ℹ️ Infra-only deployment: will use latest renovations image"
-              fi
+              # Staging: build fresh image with staging environment variables
+              SHOULD_BUILD="true"
+              SHOULD_PROMOTE="false"
+              SHOULD_DEPLOY="true"
+              SHOULD_TEST="true"
+              echo "🔨 Staging deployment: will build fresh image with staging environment"
               ;;
             "renovations")
               ENVIRONMENT="development"
@@ -218,12 +210,10 @@ jobs:
           | Will Build | ${{ steps.detect.outputs.should_build == 'true' && '✅ Yes' || '❌ No' }} |
           | Will Deploy | ${{ steps.detect.outputs.should_deploy == 'true' && '✅ Yes' || '❌ No' }} |
           | Will Test | ${{ steps.detect.outputs.should_test == 'true' && '✅ Yes' || '❌ No' }} |
-          | Will Promote | ${{ steps.detect.outputs.should_promote == 'true' && '✅ Yes' || '❌ No' }} |
 
           ### 🔄 Pipeline Status
           - [ ] Environment Detection ✅
           - [ ] Quality Checks & Build ${{ steps.detect.outputs.should_build == 'true' && '⏳' || '⏭️' }}
-          - [ ] Image Promotion ${{ steps.detect.outputs.should_promote == 'true' && '⏳' || '⏭️' }}
           - [ ] Deployment ${{ steps.detect.outputs.should_deploy == 'true' && '⏳' || '⏭️' }}
           - [ ] Integration Tests ${{ steps.detect.outputs.should_test == 'true' && '⏳' || '⏭️' }}
           - [ ] Notifications ⏳
@@ -351,6 +341,13 @@ jobs:
           cache-to: type=gha,mode=max,scope=build-${{ github.ref_name }}
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+            NODE_ENV=production
+            NEXT_PUBLIC_ENVIRONMENT=${{ needs.detect-environment.outputs.environment }}
+            NEXT_PUBLIC_API_URL=${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
+            NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
@@ -381,109 +378,14 @@ jobs:
           if [ "${{ steps.build.outcome }}" = "success" ] && [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
             echo "**Image Tag:** \`${{ steps.meta.outputs.tags }}\`" >> \$GITHUB_STEP_SUMMARY
             echo "**Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> \$GITHUB_STEP_SUMMARY
+            echo "**Environment:** \`${{ needs.detect-environment.outputs.environment }}\`" >> \$GITHUB_STEP_SUMMARY
           fi
-
-  # Image promotion job
-  promote-image:
-    name: Promote Image to ${{ needs.detect-environment.outputs.environment }}
-    runs-on: ubuntu-latest
-    needs: [detect-environment]
-    if: needs.detect-environment.outputs.should_promote == 'true'
-
-    outputs:
-      promoted_image_tag: ${{ steps.promotion.outputs.image_tag }}
-
-    steps:
-      - name: Log in to Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-      - name: Determine source and target images
-        id: image_info
-        run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-          case "$BRANCH_NAME" in
-            "staging")
-              # For staging, promote the latest renovations build
-              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:renovations"
-              TARGET_TAG="staging-${{ github.sha }}"
-              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
-              SOURCE_DESC="renovations"
-              ;;
-            "main")
-              # For main, promote the latest staging build
-              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging"
-              TARGET_TAG="main-${{ github.sha }}"
-              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
-              SOURCE_DESC="staging"
-              ;;
-            *)
-              echo "::error::Unsupported branch for promotion: $BRANCH_NAME"
-              exit 1
-              ;;
-          esac
-
-          echo "source_image=$SOURCE_IMAGE" >> $GITHUB_OUTPUT
-          echo "target_image=$TARGET_IMAGE" >> $GITHUB_OUTPUT
-          echo "target_tag=$TARGET_TAG" >> $GITHUB_OUTPUT
-          echo "source_desc=$SOURCE_DESC" >> $GITHUB_OUTPUT
-
-      - name: Pull source image
-        run: |
-          echo "📥 Pulling source image: ${{ steps.image_info.outputs.source_image }}"
-          docker pull ${{ steps.image_info.outputs.source_image }}
-
-      - name: Verify source image exists
-        run: |
-          if ! docker images | grep -q "${{ env.IMAGE_NAME }}.*${{ steps.image_info.outputs.source_desc }}"; then
-            echo "::error::Source image not found: ${{ steps.image_info.outputs.source_image }}"
-            echo "Available images:"
-            docker images | grep "${{ env.IMAGE_NAME }}"
-            exit 1
-          fi
-          echo "✅ Source image verified"
-
-      - name: Tag image for target environment
-        run: |
-          echo "🏷️  Tagging image for ${{ needs.detect-environment.outputs.environment }}"
-          docker tag ${{ steps.image_info.outputs.source_image }} ${{ steps.image_info.outputs.target_image }}
-          echo "✅ Image tagged"
-
-      - name: Push promoted image
-        id: push
-        run: |
-          echo "⬆️  Pushing promoted image: ${{ steps.image_info.outputs.target_image }}"
-          docker push ${{ steps.image_info.outputs.target_image }}
-          echo "✅ Image pushed successfully"
-
-      - name: Set promoted image tag output
-        id: promotion
-        run: |
-          echo "image_tag=${{ steps.image_info.outputs.target_tag }}" >> $GITHUB_OUTPUT
-          echo "🚀 Image promotion complete: ${{ steps.image_info.outputs.source_desc }} → ${{ needs.detect-environment.outputs.environment }}"
-
-      - name: Update promotion summary
-        if: always()
-        run: |
-          PROMOTION_STATUS="${{ job.status == 'success' && '✅ Success' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
-
-          cat << EOF >> \$GITHUB_STEP_SUMMARY
-
-          ### 🏷️ Image Promotion Status
-          | Component | Details |
-          |-----------|---------|
-          | Source Environment | \`${{ steps.image_info.outputs.source_desc }}\` |
-          | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
-          | Target Image Tag | \`${{ steps.image_info.outputs.target_tag }}\` |
-          | Promotion Status | \$PROMOTION_STATUS |
-
-          EOF
 
   # Deployment job
   deploy:
     name: Deploy to ${{ needs.detect-environment.outputs.deploy_target }}
     runs-on: ubuntu-latest
-    needs: [detect-environment, quality-and-build, promote-image]
+    needs: [detect-environment, quality-and-build]
     if: needs.detect-environment.outputs.should_deploy == 'true'
     environment: ${{ needs.detect-environment.outputs.environment }}
 
@@ -499,28 +401,12 @@ jobs:
       - name: Set deployment image tag
         id: image_tag
         run: |
-          if [ "${{ needs.detect-environment.outputs.should_promote }}" = "true" ]; then
-            echo "image_tag=${{ needs.promote-image.outputs.promoted_image_tag }}" >> $GITHUB_OUTPUT
-            echo "🚀 Using promoted image: ${{ needs.promote-image.outputs.promoted_image_tag }}"
-          elif [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+          if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
             echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
-            echo "🔨 Using built image: ${{ needs.quality-and-build.outputs.image_tag }}"
+            echo "🔨 Using freshly built image: ${{ needs.quality-and-build.outputs.image_tag }}"
           else
-            # For infra-only deployments, use the latest source image
-            case "${{ github.ref_name }}" in
-              "main")
-                echo "image_tag=staging" >> $GITHUB_OUTPUT
-                echo "ℹ️ Using latest staging image for production infra-only deployment"
-                ;;
-              "staging")
-                echo "image_tag=renovations" >> $GITHUB_OUTPUT
-                echo "ℹ️ Using latest renovations image for staging infra-only deployment"
-                ;;
-              *)
-                echo "::error::Unsupported branch for infra-only deployment: ${{ github.ref_name }}"
-                exit 1
-                ;;
-            esac
+            echo "::error::No image available for deployment"
+            exit 1
           fi
 
       - name: Deploy application
@@ -560,6 +446,7 @@ jobs:
           | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deploy Target | \`${{ needs.detect-environment.outputs.deploy_target }}\` |
           | Image Tag Used | \`${{ steps.image_tag.outputs.image_tag }}\` |
+          | Image Built For | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deployment Status | \$DEPLOY_STATUS |
 
           EOF
@@ -672,14 +559,13 @@ jobs:
           |-------|--------|
           | Environment Detection | ✅ Completed |
           | Quality Checks & Build | ${{ needs.quality-and-build.result == 'success' && '✅ Success' || needs.quality-and-build.result == 'failure' && '❌ Failed' || needs.quality-and-build.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
-          | Image Promotion | ${{ needs.promote-image.result == 'success' && '✅ Success' || needs.promote-image.result == 'failure' && '❌ Failed' || needs.promote-image.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Deployment | ${{ needs.deploy.result == 'success' && '✅ Success' || needs.deploy.result == 'failure' && '❌ Failed' || needs.deploy.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Notifications | ${{ job.status == 'success' && '✅ Sent' || '❌ Failed' }} |
 
           ### 📊 Key Information
           - **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
-          - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || needs.promote-image.outputs.promoted_image_tag || 'N/A' }}\`
+          - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || 'N/A' }}\`
           - **Commit:** \`${{ github.sha }}\`
           - **Triggered by:** ${{ github.actor }}
 
