@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup log aggregation
         shell: bash
@@ -113,7 +113,7 @@ jobs:
           echo "✅ Cleaned up $CLEANED_COUNT old log files"
 
       - name: Upload logs as artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: deployment-logs-${{ env.LOG_DATE }}
           path: |
