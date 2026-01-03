@@ -226,7 +226,7 @@ jobs:
           echo "  Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "  Reason: ${{ needs.rollback-safety-check.outputs.rollback_reason }}"
 
-  # Send rollback notifications
+  # Send GitHub rollback notifications
   rollback-notifications:
     name: Rollback Notifications
     runs-on: ubuntu-latest
@@ -234,7 +234,7 @@ jobs:
     if: always() # Always send notifications
 
     steps:
-      - name: Send rollback notifications
+      - name: Send GitHub rollback notifications
         uses: ./.github/actions/notify
         with:
           event_type: ${{ needs.execute-rollback.result == 'success' && 'rollback-success' || 'rollback-failed' }}
@@ -251,9 +251,6 @@ jobs:
               "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
               "trigger_type": "${{ github.event_name }}"
             }
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
 
   # Generate rollback report
   rollback-report:

@@ -1,125 +1,202 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# dotca - Enterprise IT Solutions for Small Businesses
 
-## Getting Started
+A modern Next.js application for enterprise IT solutions, built with TypeScript, Bootstrap, and deployed on DigitalOcean infrastructure.
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Docker & Docker Compose
+- Node.js 18+ (for local development)
+- Terraform & Ansible (for infrastructure deployment)
 - Git
 
-### Installation
+### Local Development Setup
 
-1. Clone the repository:
+1. **Clone and setup:**
 
 ```bash
 git clone <repository-url>
 cd dotca
+make setup
 ```
 
-2. Install dependencies:
+2. **Start development environment:**
+
+```bash
+make dev-up
+```
+
+3. **View the application:**
+   - Open [http://localhost:3000](http://localhost:3000) in your browser
+   - The app auto-reloads as you edit files
+
+### Development Commands
+
+```bash
+# Start development environment
+make dev-up
+
+# Stop development environment
+make dev-down
+
+# View logs
+make dev-logs
+
+# Restart containers
+make dev-restart
+
+# Run tests (unit + E2E)
+make dev-test
+
+# Clean development environment
+make dev-clean FORCE=true
+```
+
+### Manual Development (without Docker)
+
+If you prefer to run without Docker:
 
 ```bash
 npm install
-```
-
-3. Set up environment variables (see Environment Setup below)
-
-4. Run the development server:
-
-```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🧪 Testing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This project includes comprehensive testing:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Web Vitals Monitoring
-
-This project includes Web Vitals monitoring to track Core Web Vitals metrics:
-
-- **CLS (Cumulative Layout Shift)**: Measures visual stability
-- **FID (First Input Delay)**: Measures interactivity
-- **LCP (Largest Contentful Paint)**: Measures loading performance
-- **FCP (First Contentful Paint)**: Measures when the first content is painted
-- **TTFB (Time to First Byte)**: Measures time until first byte is received
-
-Web Vitals are automatically collected on the client side and sent to the `/api/analytics/web-vitals` endpoint. In production, you can connect this endpoint to your analytics platform of choice.
-
-### Local Development
+### Unit Tests (Jest)
 
 ```bash
-docker-compose -f docker-compose.dev.yml up
+npm run test
+npm run test:watch
+npm run test:coverage
 ```
 
-### Remote Deployment (Staging, Production)
-
-This project includes a multi-environment deployment setup for Digital Ocean:
-
-1. Environment configuration files:
-   - `.env.staging` - Staging environment variables
-   - `.env.production` - Production environment variables
-
-2. Deploy to a specific environment:
+### End-to-End Tests (Playwright)
 
 ```bash
-# Deploy to Staging
-# Use GitHub Actions: Go to Actions → stg-deploy → Run workflow
-
-# Deploy to Production
-# Use GitHub Actions: Go to Actions → prod-deploy → Run workflow
+make dev-up  # Start environment first
+npm run test:e2e
+npm run test:e2e:debug
+npm run test:e2e:ui
 ```
 
-### Manual Deployment
+## 🚀 Deployment
 
-This project uses GitHub Actions for automated deployment. To deploy manually:
+### Infrastructure Deployment
 
-1. **Staging Deployment**:
-   - Go to GitHub Actions → stg-deploy
-   - Click "Run workflow"
-   - Select staging branch and run
-
-2. **Production Deployment**:
-   - First promote an image using image-promotion workflow
-   - Then use prod-deploy workflow with the promoted image
-
-For local development only:
+This project uses infrastructure-as-code with Terraform and Ansible for DigitalOcean deployments:
 
 ```bash
-# Build the Docker image with environment-specific variables
-docker build \
-  --build-arg NODE_ENV=production \
-  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
-  --build-arg NEXT_PUBLIC_ENVIRONMENT=production \
-  -t dotca-app .
+# Validate environment setup
+make validate
 
-# Run the container
-docker run -p 3000:3000 dotca-app
+# Deploy to staging
+make deploy ENVIRONMENT=staging
+
+# Deploy to production
+make destroy ENVIRONMENT=production
+
+# Check deployment status
+make status ENVIRONMENT=staging
+
+# Clean up deployment
+make destroy ENVIRONMENT=staging
 ```
 
-The Dockerfile includes:
+### CI/CD Pipelines
 
-- Multi-stage build for optimized image size
-- Environment variable configuration
-- Health checks for monitoring
-- Next.js standalone output mode
+Automated deployment via GitHub Actions:
 
-For more deployment options, check out [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
+- **Staging**: Automatic deployment on push to `staging` branch
+- **Production**: Manual deployment after image promotion
+
+### Manual Infrastructure Deployment
+
+For advanced users or debugging:
+
+```bash
+# Terraform operations
+make terraform-plan ENVIRONMENT=staging
+make terraform-apply ENVIRONMENT=staging BACKEND=local
+
+# Ansible operations
+make ansible-ping ENVIRONMENT=staging
+make ansible-syntax
+```
+
+### Environment Configuration
+
+Required environment variables (create `.env.local` for local development):
+
+```bash
+DO_TOKEN=your_digitalocean_token
+BREVO_API_KEY=your_email_service_key
+STRIPE_SECRET_KEY=your_stripe_secret
+STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+```
+
+## 📊 Monitoring & Analytics
+
+### Web Vitals
+
+The application includes automatic Web Vitals monitoring:
+
+- **CLS (Cumulative Layout Shift)**: Visual stability
+- **FID (First Input Delay)**: Interactivity
+- **LCP (Largest Contentful Paint)**: Loading performance
+- **FCP (First Contentful Paint)**: First content paint
+- **TTFB (Time to First Byte)**: Network performance
+
+Metrics are collected and sent to `/api/analytics/web-vitals`.
+
+## 📁 Project Structure
+
+```
+├── src/                    # Next.js application source
+├── e2e/                    # End-to-end tests (Playwright)
+├── docker-compose.dev.yml  # Local development environment
+├── terraform/             # Infrastructure as code
+├── ansible/               # Configuration management
+├── scripts/               # Development and deployment scripts
+├── docs/                  # Documentation
+└── Makefile               # Development and deployment commands
+```
+
+## 🛠️ Development Guidelines
+
+### Code Quality
+
+- **Linting**: `npm run lint`
+- **Type checking**: `npm run typecheck`
+- **Testing**: `make dev-test`
+- **Pre-commit hooks**: `npm run pre-commit:install`
+
+### Commit Messages
+
+Follow conventional commit format:
+
+- `feat:` New features
+- `fix:` Bug fixes
+- `docs:` Documentation
+- `style:` Code style changes
+- `refactor:` Code refactoring
+- `test:` Testing
+- `chore:` Maintenance
+
+### Contributing
+
+1. Create a feature branch from `staging`
+2. Make your changes with tests
+3. Run `make dev-test` to ensure everything works
+4. Submit a pull request
+
+## 📚 Additional Resources
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Playwright Testing](https://playwright.dev/)
+- [Terraform Documentation](https://developer.hashicorp.com/terraform)
+- [Ansible Documentation](https://docs.ansible.com/)
+- [Local Development Setup](docs/local-development-setup.md)

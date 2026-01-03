@@ -1,7 +1,7 @@
 # Makefile for dotca local development and deployment
-# Provides high-level commands for local Terraform and Ansible operations
+# Provides high-level commands for local development, Terraform and Ansible operations
 
-.PHONY: help setup validate deploy destroy status clean test
+.PHONY: help setup validate deploy destroy status clean test dev-up dev-down dev-build dev-logs dev-restart dev-clean dev-test dev-status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -47,6 +47,14 @@ help: ## Show this help message
 	@echo "  make status ENVIRONMENT=staging    # Check environment status"
 	@echo "  make terraform-plan ENVIRONMENT=staging  # Plan terraform changes"
 	@echo "  make terraform-apply ENVIRONMENT=staging BACKEND=local  # Apply with local backend"
+	@echo
+	@echo "Local Development:"
+	@echo "  make dev-up                   # Start development environment"
+	@echo "  make dev-down                 # Stop development environment"
+	@echo "  make dev-logs                 # View development logs"
+	@echo "  make dev-restart              # Restart development containers"
+	@echo "  make dev-test                 # Run unit and E2E tests"
+	@echo "  make dev-clean FORCE=true     # Clean development environment"
 
 # Setup target - Initial environment configuration
 setup: ## Set up local development environment
@@ -275,3 +283,87 @@ ansible-syntax: ## Check Ansible playbook syntax
 			fi \
 		done
 	@echo "$(GREEN)✓ Syntax check passed$(NC)"
+
+# Development Docker Compose targets
+dev-up: ## Start local development environment with Docker Compose
+	@echo "$(BLUE)Starting local development environment...$(NC)"
+	@if [ ! -f "docker-compose.dev.yml" ]; then \
+		echo "$(RED)Error: docker-compose.dev.yml not found$(NC)"; \
+		exit 1; \
+	fi
+	@docker-compose -f docker-compose.dev.yml up --build -d
+	@echo "$(GREEN)✓ Development environment started$(NC)"
+	@echo "$(BLUE)Application available at: http://localhost:3000$(NC)"
+
+dev-down: ## Stop and remove local development environment
+	@echo "$(BLUE)Stopping local development environment...$(NC)"
+	@if [ ! -f "docker-compose.dev.yml" ]; then \
+		echo "$(RED)Error: docker-compose.dev.yml not found$(NC)"; \
+		exit 1; \
+	fi
+	@docker-compose -f docker-compose.dev.yml down
+	@echo "$(GREEN)✓ Development environment stopped$(NC)"
+
+dev-build: ## Build local development Docker images
+	@echo "$(BLUE)Building development Docker images...$(NC)"
+	@if [ ! -f "docker-compose.dev.yml" ]; then \
+		echo "$(RED)Error: docker-compose.dev.yml not found$(NC)"; \
+		exit 1; \
+	fi
+	@docker-compose -f docker-compose.dev.yml build
+	@echo "$(GREEN)✓ Development images built$(NC)"
+
+dev-logs: ## Show logs from development environment
+	@echo "$(BLUE)Showing development environment logs...$(NC)"
+	@docker-compose -f docker-compose.dev.yml logs -f
+
+dev-restart: ## Restart development environment
+	@echo "$(BLUE)Restarting development environment...$(NC)"
+	@docker-compose -f docker-compose.dev.yml restart
+	@echo "$(GREEN)✓ Development environment restarted$(NC)"
+
+dev-clean: ## Clean up development environment (remove containers, volumes, images)
+	@echo "$(RED)WARNING: This will remove all development containers, volumes, and images$(NC)"
+	@if [ "$(FORCE)" != "true" ]; then \
+		read -p "Are you sure? Type 'yes' to continue: " confirm; \
+		if [ "$$confirm" != "yes" ]; then \
+			echo "$(YELLOW)Cleanup cancelled$(NC)"; \
+			exit 0; \
+		fi \
+	fi
+	@echo "$(BLUE)Cleaning up development environment...$(NC)"
+	@docker-compose -f docker-compose.dev.yml down -v --rmi all
+	@docker system prune -f
+	@echo "$(GREEN)✓ Development environment cleaned$(NC)"
+
+dev-test: ## Run unit tests and E2E tests
+	@echo "$(BLUE)Running unit tests (Jest)...$(NC)"
+	@if command -v npm >/dev/null 2>&1; then \
+		npm test; \
+	else \
+		echo "$(RED)Error: npm not found$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Unit tests completed$(NC)"
+	@echo
+	@echo "$(BLUE)Running E2E tests (Playwright)...$(NC)"
+	@if [ ! -f "docker-compose.dev.yml" ]; then \
+		echo "$(RED)Error: docker-compose.dev.yml not found$(NC)"; \
+		exit 1; \
+	fi
+	@if docker-compose -f docker-compose.dev.yml ps | grep -q "web"; then \
+		if command -v npx >/dev/null 2>&1; then \
+			npx playwright test; \
+		else \
+			echo "$(RED)Error: npx not found$(NC)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "$(YELLOW)⚠ Development environment not running. Start with 'make dev-up' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ E2E tests completed$(NC)"
+
+dev-status: ## Show status of development containers
+	@echo "$(BLUE)Development environment status:$(NC)"
+	@docker-compose -f docker-compose.dev.yml ps

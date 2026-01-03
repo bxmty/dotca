@@ -1,32 +1,32 @@
 #!/bin/bash
-echo "=== Checking for containers using port 8080 ==="
+echo "=== Checking for containers using port 3000 ==="
 
 # Method 1: Find containers by publish filter
 echo "Method 1: Checking with publish filter..."
-CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}{% endraw %}' --filter 'publish=8080' 2>/dev/null || true)
+CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}{% endraw %}' --filter 'publish=3000' 2>/dev/null || true)
 if [ ! -z "$CONTAINERS" ]; then
-  echo "Found containers with publish=8080: $CONTAINERS"
+  echo "Found containers with publish=3000: $CONTAINERS"
   for container in $CONTAINERS; do
     echo "Stopping container: $container"
     docker stop "$container" || true
     docker rm -f "$container" || true
   done
 else
-  echo "No containers found with publish=8080"
+  echo "No containers found with publish=3000"
 fi
 
 # Method 2: Find containers by port binding in output
 echo "Method 2: Checking port bindings in container list..."
-PORT_CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}\t{{.Ports}}{% endraw %}' | grep ':8080' | cut -f1 || true)
+PORT_CONTAINERS=$(docker ps --format '{% raw %}{{.ID}}\t{{.Ports}}{% endraw %}' | grep ':3000' | cut -f1 || true)
 if [ ! -z "$PORT_CONTAINERS" ]; then
-  echo "Found containers with :8080 in ports: $PORT_CONTAINERS"
+  echo "Found containers with :3000 in ports: $PORT_CONTAINERS"
   for container in $PORT_CONTAINERS; do
     echo "Stopping container: $container"
     docker stop "$container" || true
     docker rm -f "$container" || true
   done
 else
-  echo "No containers found with :8080 in ports"
+  echo "No containers found with :3000 in ports"
 fi
 
 # Method 3: Stop all containers from this project specifically

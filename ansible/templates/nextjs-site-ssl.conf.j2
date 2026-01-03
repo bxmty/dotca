@@ -1,6 +1,6 @@
 # Upstream for load balancing (future expansion)
 upstream nextjs_backend {
-    server localhost:8080 max_fails=3 fail_timeout=30s;
+    server localhost:3000 max_fails=3 fail_timeout=30s;
 }
 
 # HTTP server - handles Let's Encrypt challenges and redirects to HTTPS
