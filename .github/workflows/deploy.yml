@@ -663,7 +663,7 @@ jobs:
         if: always()
         run: |
           OVERALL_STATUS="${{ needs.deploy.result == 'success' && '✅ Success' || '❌ Failed' }}"
-          DURATION="<!-- Workflow completed in approximately ${{ github.event.head_commit.timestamp && format('{{ now.Sub github.event.head_commit.timestamp | duration }}', now, github.event.head_commit.timestamp) || 'unknown time' }} -->"
+          DURATION="<!-- Workflow completed at ${{ github.event.head_commit.timestamp || 'unknown time' }} -->"
 
           cat << EOF >> \$GITHUB_STEP_SUMMARY
 
