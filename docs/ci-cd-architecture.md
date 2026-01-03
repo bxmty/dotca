@@ -28,7 +28,7 @@ The CI/CD pipeline has been successfully simplified from multiple complex workfl
 **✅ RESOLVED: Image Rebuilding Complexity**
 
 - **Before**: Redundant Docker builds for each environment (staging, production)
-- **After**: Single source build on renovations branch, image promotion to other environments
+- **After**: Separate builds for staging and production with correct environment variables
 - **Benefit**: 70% faster deployments, guaranteed consistency, reduced resource usage
 
 **REMAINING COMPLEXITY AREAS:**
@@ -69,11 +69,10 @@ The simplified pipeline uses a clear, automated branch-to-environment mapping st
 
 #### Branch Definitions
 
-| Branch        | Environment | Purpose                         | Deployment Behavior                      |
-| ------------- | ----------- | ------------------------------- | ---------------------------------------- |
-| `renovations` | Development | Feature development and testing | Build source image, unit tests only      |
-| `staging`     | Staging     | UAT and integration testing     | Promote renovations image + full testing |
-| `main`        | Production  | Live production environment     | Promote staging image + health checks    |
+| Branch    | Environment | Purpose                     | Deployment Behavior                    |
+| --------- | ----------- | --------------------------- | -------------------------------------- |
+| `staging` | Staging     | UAT and integration testing | Build staging image + full testing     |
+| `main`    | Production  | Live production environment | Build production image + health checks |
 
 #### Automation Rules
 
@@ -85,9 +84,8 @@ environment: ${{ github.ref == 'refs/heads/main' && 'production' || github.ref =
 
 **Deployment Triggers:**
 
-- `renovations`: Push/PR events → Build source image and unit test only (no deployment)
-- `staging`: Push events → Promote renovations image to staging + full testing
-- `main`: Push events → Promote staging image to production + health verification
+- `staging`: Push events → Build staging image with staging environment + full testing
+- `main`: Push events → Build production image with production environment + health verification
 
 **Testing Levels by Environment:**
 
@@ -115,7 +113,7 @@ environment: ${{ github.ref == 'refs/heads/main' && 'production' || github.ref =
 #### Deployment Flow
 
 ```
-Feature Branch → PR to renovations → Build source image → PR to staging → Promote to staging → PR to main → Promote to production
+Feature Branch → PR to staging → Build staging image → PR to main → Build production image
      ↓              ↓                     ↓              ↓                     ↓              ↓              ↓
   Local dev      Build & test only     Source image    Promote image        Full testing     Promote image    Health checks
   Unit tests     No deployment         Ready for      Integration tests     E2E tests        Manual review    Monitoring
@@ -211,25 +209,22 @@ graph TB
 ```mermaid
 graph TD
     A[Code Push/PR] --> B{Branch Detection}
-    B -->|renovations| C[Development Build]
-    B -->|staging| D[Staging Promotion]
-    B -->|main| E[Production Promotion]
+    B -->|staging| C[Staging Build]
+    B -->|main| D[Production Build]
 
-    C --> F[Unit Tests]
-    C --> G[Build Source Image]
-    G --> H[Push to GHCR]
+    C --> E[Unit Tests]
+    C --> F[Build Staging Image]
+    F --> G[Push to GHCR]
 
-    D --> I[Pull Source Image]
-    E --> I
-    I --> J[Tag for Environment]
-    J --> K[Push Promoted Image]
+    D --> H[Unit Tests]
+    D --> I[Build Production Image]
+    I --> J[Push to GHCR]
 
-    K --> L{Environment Check}
-    L -->|Staging| M[Deploy Promoted Image]
-    L -->|Production| N[Deploy Promoted Image]
+    G --> K[Deploy Staging Image]
+    J --> L[Deploy Production Image]
 
-    M --> O[Integration + E2E Tests]
-    N --> P[Smoke Tests]
+    K --> M[Integration + E2E Tests]
+    L --> N[Smoke Tests]
 
     O --> Q[Health Checks]
     P --> Q
@@ -678,20 +673,24 @@ The simplified pipeline integrates testing at multiple levels with environment-s
 
 #### Environment-Specific Testing Configuration
 
-**Development Environment (renovations branch):**
+**Staging Environment (staging branch):**
 
 ```yaml
-# Fast feedback loop for developers
+# Development testing environment
 test_config:
   unit_tests:
     enabled: true
     fail_fast: false
     coverage_required: 80%
   integration_tests:
-    enabled: false # Too slow for dev feedback
+    enabled: true
+    fail_fast: false
+  e2e_tests:
+    enabled: true
+    fail_fast: false
   security_scan:
     enabled: true
-    level: basic # Quick SAST scan
+    level: full
 ```
 
 **Staging Environment (staging branch):**

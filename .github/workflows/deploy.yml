@@ -6,7 +6,7 @@ name: Unified Deployment Pipeline
 on:
   # Branch-based automatic deployments
   push:
-    branches: [main, staging, renovations]
+    branches: [main, staging]
     paths:
       - "src/**"
       - "public/**"
@@ -149,27 +149,9 @@ jobs:
               SHOULD_TEST="true"
               echo "🔨 Staging deployment: will build fresh image with staging environment"
               ;;
-            "renovations")
-              ENVIRONMENT="development"
-              DEPLOY_TARGET="none"
-              # Renovations: build only (source of truth), never deploy
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="true"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="false"
-                SHOULD_TEST="true"
-                echo "🔨 Building source image on renovations branch"
-              else
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="false"
-                SHOULD_TEST="false"
-                echo "⏭️  Skipping build: no app changes detected"
-              fi
-              ;;
             *)
               echo "::error::Unsupported branch: $BRANCH_NAME"
-              echo "Supported branches: main, staging, renovations"
+              echo "Supported branches: main, staging"
               exit 1
               ;;
           esac
