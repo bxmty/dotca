@@ -406,7 +406,7 @@ echo "Current image: $CURRENT_IMAGE"
 gh api repos/bxtech/dotca/packages/container/dotca/versions | jq -r '.[].metadata.container.tags[]' | head -10
 
 # Step 4: Execute rollback via GitHub Actions
-gh workflow run rollback.yml \
+gh workflow run deploy.yml \
   --field rollback_target="main-{previous-sha}" \
   --field rollback_reason="Critical production issue - immediate rollback required"
 ```
@@ -434,7 +434,7 @@ git commit --allow-empty -m "Rollback initiated: [REASON]"
 git push origin rollback/$(date +%Y%m%d-%H%M%S)
 
 # Step 4: Execute controlled rollback
-gh workflow run rollback.yml \
+gh workflow run deploy.yml \
   --field rollback_target="v1.2.3" \
   --field rollback_reason="Performance degradation in new feature"
 ```
@@ -509,7 +509,7 @@ gh api repos/bxtech/dotca/packages/container/dotca/versions | \
   head -20
 
 # Use the most recent available tag
-gh workflow run rollback.yml --field rollback_target="main-{available-sha}"
+gh workflow run deploy.yml --field rollback_target="main-{available-sha}"
 ```
 
 #### Issue 2: Rollback Deployment Fails
