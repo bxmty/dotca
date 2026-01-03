@@ -1,4 +1,8 @@
-import { initWebVitals, type WebVitalsMetric } from "@/lib/web-vitals";
+import {
+  initWebVitals,
+  reportWebVitals,
+  type WebVitalsMetric,
+} from "@/lib/web-vitals";
 
 // Mock the dependencies
 jest.mock("@/lib/gtag", () => ({
@@ -146,6 +150,9 @@ describe("web-vitals.ts web performance tracking", () => {
       initWebVitals();
       mockFetch.mockRejectedValueOnce(new Error("API error"));
 
+      // Set to development mode so error gets logged
+      process.env.NODE_ENV = "development";
+
       const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
 
       const metric: WebVitalsMetric = {
@@ -169,7 +176,7 @@ describe("web-vitals.ts web performance tracking", () => {
     });
 
     it("does not send GA events when GA_MEASUREMENT_ID is not available", async () => {
-      // Temporarily modify the gtag import to not have GA_MEASUREMENT_ID
+      // Temporarily modify the gtag mock to not have GA_MEASUREMENT_ID
       const originalGA = jest.requireActual("@/lib/gtag");
       jest.doMock("@/lib/gtag", () => ({
         ...originalGA,
@@ -181,9 +188,11 @@ describe("web-vitals.ts web performance tracking", () => {
       jest.resetModules();
       const { initWebVitals: newInitWebVitals } = require("@/lib/web-vitals");
 
-      let reportCallback: (metric: WebVitalsMetric) => void;
-      mockOnFCP.mockImplementation((callback) => {
-        reportCallback = callback;
+      // Set up the mock to capture the callback after resetModules
+      let capturedCallback: (metric: WebVitalsMetric) => void;
+      const { onFCP: newOnFCP } = require("web-vitals");
+      newOnFCP.mockImplementation((callback) => {
+        capturedCallback = callback;
       });
 
       newInitWebVitals();
@@ -197,7 +206,7 @@ describe("web-vitals.ts web performance tracking", () => {
         navigationType: "navigate",
       };
 
-      await reportCallback(metric);
+      await capturedCallback(metric);
 
       expect(mockGaEvent).not.toHaveBeenCalled();
       expect(mockFetch).toHaveBeenCalled(); // API call should still happen
