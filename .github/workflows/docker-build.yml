@@ -41,7 +41,7 @@ jobs:
       docker: ${{ steps.changes.outputs.docker }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check for changes
         uses: dorny/paths-filter@v3
@@ -71,7 +71,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -106,7 +106,7 @@ jobs:
           echo "GA_PRODUCTION_ID exists: ${{ secrets.GA_PRODUCTION_ID != '' && 'YES' || 'NO/EMPTY' }}"
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -132,7 +132,7 @@ jobs:
 
       - name: Generate workflow summary
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const status = '${{ job.status }}';

@@ -68,7 +68,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -132,7 +132,7 @@ jobs:
             "main"|"production")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              # Production: promote from staging, never build
+              # Production: promote from staging when app changes, use staging directly for infra-only
               if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
@@ -142,15 +142,15 @@ jobs:
               else
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
+                SHOULD_DEPLOY="$INFRA_CHANGED"
                 SHOULD_TEST="false"
-                echo "⏭️  Skipping build/promotion: no app changes detected"
+                echo "ℹ️ Infra-only deployment: will use latest staging image"
               fi
               ;;
             "staging")
               ENVIRONMENT="staging"
               DEPLOY_TARGET="staging"
-              # Staging: promote from renovations, never build
+              # Staging: promote from renovations when app changes, use renovations directly for infra-only
               if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="true"
@@ -160,9 +160,9 @@ jobs:
               else
                 SHOULD_BUILD="false"
                 SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
+                SHOULD_DEPLOY="$INFRA_CHANGED"
                 SHOULD_TEST="false"
-                echo "⏭️  Skipping build/promotion: no app changes detected"
+                echo "ℹ️ Infra-only deployment: will use latest renovations image"
               fi
               ;;
             "renovations")
@@ -236,15 +236,15 @@ jobs:
 
       - name: Checkout repository
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Full history for proper tagging
 
       - name: Setup Node.js
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: "22.21.0"
+          node-version: "22.21.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -276,7 +276,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ needs.detect-environment.outputs.environment }}
           path: |
@@ -314,7 +314,7 @@ jobs:
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         # Optimized for performance: scoped caching, inline cache, fast compression
         with:
           context: .
@@ -418,12 +418,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.6.6"
+          terraform_version: "1.14.3"
 
       - name: Set deployment image tag
         id: image_tag
@@ -435,9 +435,21 @@ jobs:
             echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
             echo "🔨 Using built image: ${{ needs.quality-and-build.outputs.image_tag }}"
           else
-            # For infra-only deployments, use current commit as fallback
-            echo "image_tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
-            echo "ℹ️ Using fallback image tag for infra-only deployment"
+            # For infra-only deployments, use the latest source image
+            case "${{ github.ref_name }}" in
+              "main")
+                echo "image_tag=staging" >> $GITHUB_OUTPUT
+                echo "ℹ️ Using latest staging image for production infra-only deployment"
+                ;;
+              "staging")
+                echo "image_tag=renovations" >> $GITHUB_OUTPUT
+                echo "ℹ️ Using latest renovations image for staging infra-only deployment"
+                ;;
+              *)
+                echo "::error::Unsupported branch for infra-only deployment: ${{ github.ref_name }}"
+                exit 1
+                ;;
+            esac
           fi
 
       - name: Deploy application
@@ -473,7 +485,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run integration tests
         uses: ./.github/actions/test-runner
@@ -495,7 +507,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-results-${{ github.run_id }}
           path: |
