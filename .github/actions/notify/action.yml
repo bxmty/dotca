@@ -34,17 +34,8 @@ runs:
           echo "Deployment details provided"
         fi
 
-        # Create notification payload
-        NOTIFICATION_DATA="{
-          \"event_type\": \"${{ inputs.event_type }}\",
-          \"environment\": \"${{ inputs.environment }}\",
-          \"workflow_run_id\": \"${{ inputs.workflow_run_id }}\",
-          \"commit\": \"${{ inputs.commit }}\",
-          \"triggered_by\": \"${{ inputs.triggered_by }}\",
-          \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-          \"repository\": \"${{ github.repository }}\",
-          \"run_url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\"
-        }"
+        # Create notification payload (single line for GITHUB_ENV)
+        NOTIFICATION_DATA="{\"event_type\":\"${{ inputs.event_type }}\",\"environment\":\"${{ inputs.environment }}\",\"workflow_run_id\":\"${{ inputs.workflow_run_id }}\",\"commit\":\"${{ inputs.commit }}\",\"triggered_by\":\"${{ inputs.triggered_by }}\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"repository\":\"${{ github.repository }}\",\"run_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\"}"
 
         echo "NOTIFICATION_DATA=$NOTIFICATION_DATA" >> $GITHUB_ENV
 
