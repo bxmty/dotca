@@ -132,20 +132,12 @@ jobs:
             "main"|"production")
               ENVIRONMENT="production"
               DEPLOY_TARGET="production"
-              # Production: promote from staging when app changes, use staging directly for infra-only
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="true"
-                SHOULD_DEPLOY="true"
-                SHOULD_TEST="true"
-                echo "🚀 Production deployment: will promote staging image"
-              else
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"
-                SHOULD_TEST="false"
-                echo "ℹ️ Infra-only deployment: will use latest staging image"
-              fi
+              # Production: always promote from staging to ensure latest tested code
+              SHOULD_BUILD="false"
+              SHOULD_PROMOTE="true"
+              SHOULD_DEPLOY="true"
+              SHOULD_TEST="true"
+              echo "🚀 Production deployment: will promote staging image"
               ;;
             "staging")
               ENVIRONMENT="staging"
