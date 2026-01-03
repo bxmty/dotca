@@ -632,6 +632,9 @@ jobs:
     if: always() # Always run notifications
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Send GitHub deployment notifications
         uses: ./.github/actions/notify
         with:
