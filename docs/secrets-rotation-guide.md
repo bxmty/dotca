@@ -145,7 +145,7 @@ export TF_VAR_ssh_key_name="dotCA-Production-$(date +%Y%m%d)"
 
 ```bash
 # Test deployment with new keys
-gh workflow run prod-deploy.yml -f promoted_image_tag=main
+gh workflow run deploy.yml -f promoted_image_tag=main
 
 # Monitor deployment logs for SSH errors
 gh run watch
@@ -215,10 +215,10 @@ gh secret set SPACES_SECRET_KEY -R owner/repo --body "new_spaces_secret_key"
 
 ```bash
 # Test staging deployment first
-gh workflow run stg-deploy.yml
+gh workflow run deploy.yml
 
 # If successful, test production
-gh workflow run prod-deploy.yml -f promoted_image_tag=main
+gh workflow run deploy.yml -f promoted_image_tag=main
 ```
 
 #### 4. Update Ansible Vault (if password changed)
@@ -253,7 +253,7 @@ ansible-vault rekey ansible/vars/vault-vars.yml
    export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_new_key_here"
 
    # Deploy to staging and test
-   gh workflow run stg-deploy.yml
+   gh workflow run deploy.yml
    ```
 
 3. **Update Production**
@@ -264,7 +264,7 @@ ansible-vault rekey ansible/vars/vault-vars.yml
    gh secret set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY -R owner/repo --body "pk_live_new_key_here"
 
    # Deploy to production
-   gh workflow run prod-deploy.yml -f promoted_image_tag=main
+   gh workflow run deploy.yml -f promoted_image_tag=main
    ```
 
 4. **Disable Old Keys**
@@ -286,7 +286,7 @@ ansible-vault rekey ansible/vars/vault-vars.yml
    gh secret set BREVO_API_KEY -R owner/repo --body "new_brevo_api_key"
 
    # Test deployment
-   gh workflow run prod-deploy.yml -f promoted_image_tag=main
+   gh workflow run deploy.yml -f promoted_image_tag=main
    ```
 
 3. **Clean Up**
@@ -374,7 +374,7 @@ npm run dev
 
    ```bash
    # Test with new vault password
-   gh workflow run prod-deploy.yml -f promoted_image_tag=main
+   gh workflow run deploy.yml -f promoted_image_tag=main
    ```
 
 5. **Distribute New Password**
@@ -407,7 +407,7 @@ npm run dev
 4. **Test Infrastructure**
    ```bash
    # Test deployment with new token
-   gh workflow run prod-deploy.yml -f promoted_image_tag=main
+   gh workflow run deploy.yml -f promoted_image_tag=main
    ```
 
 ### Docker Registry Credentials
@@ -496,7 +496,7 @@ gh secret set STRIPE_SECRET_KEY -R owner/repo --body "$BACKUP_STRIPE_KEY"
 gh secret set BREVO_API_KEY -R owner/repo --body "$BACKUP_BREVO_KEY"
 
 # Deploy with backup keys
-gh workflow run prod-deploy.yml -f rollback=true
+gh workflow run deploy.yml -f rollback=true
 ```
 
 ## Validation and Testing
@@ -526,7 +526,7 @@ npm run test:integration
 gh workflow run integration-tests.yml
 
 # Test production deployment
-gh workflow run prod-deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
+gh workflow run deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
 ```
 
 #### Manual Testing Checklist

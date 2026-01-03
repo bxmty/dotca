@@ -1,42 +1,49 @@
 # CI/CD Pipeline Architecture: Current Implementation vs Traditional Approach
 
-## Current Pipeline Architecture (Image Promotion)
+## Current Pipeline Architecture (Unified Deployment)
 
-The current pipeline implements a sophisticated **image promotion strategy** where Docker images are built once in staging, thoroughly tested, and then promoted to production, ensuring complete consistency between tested and deployed code.
+The current pipeline implements a **unified deployment workflow** that automatically detects the target environment based on the branch being deployed. This approach simplifies maintenance while ensuring proper environment-specific builds and deployments.
 
 ```mermaid
 graph TD
-    A[Code Push to Staging] --> B[GitHub Actions: docker-build.yml]
-    B --> C[Build Staging Image]
-    C --> D[Push to GHCR:staging]
-    D --> E[GitHub Actions: stg-deploy.yml]
-    E --> F[Deploy to Staging Environment]
-    F --> G[Run Selenium E2E Tests]
-    G --> H{All Tests Pass?}
-    H -->|Yes| I[Merge to Main Branch]
-    H -->|No| J[Fail Pipeline - Fix Issues]
+    A[Code Push to Branch] --> B[GitHub Actions: deploy.yml]
+    B --> C[Environment Detection]
+    C --> D{Branch Type?}
 
-    I --> K[GitHub Actions: image-promotion.yml]
-    K --> L[Manual Approval Required]
-    L --> M[Validate Staging Image]
-    M --> N[Copy staging → production:main]
-    N --> O[GitHub Actions: prod-deploy.yml]
-    O --> P[Deploy Promoted Image to Production]
+    D -->|staging| E[Staging Environment]
+    D -->|main| F[Production Environment]
 
-    style C fill:#ccffcc
+    E --> G[Build Staging Image]
+    G --> H[Push to GHCR:staging]
+    H --> I[Deploy to Staging]
+    I --> J[Integration & E2E Tests]
+    J --> K{Tests Pass?}
+    K -->|No| L[Fix Issues]
+    L --> A
+    K -->|Yes| M[Ready for Production]
+
+    F --> N[Build Production Image]
+    N --> O[Push to GHCR:main]
+    O --> P[Manual Approval Required]
+    P --> Q[Deploy to Production]
+    Q --> R[Smoke Tests & Health Checks]
+
+    style G fill:#ccffcc
     style N fill:#ccffcc
-    style J fill:#ff9999
+    style L fill:#ff9999
 ```
 
 **Key Features of Current Pipeline:**
 
-- ✅ **Single Build Process**: Docker image built once, tested thoroughly, then promoted
+- ✅ **Unified Workflow**: Single `deploy.yml` workflow handles all environments
+- ✅ **Automatic Environment Detection**: Branch-based environment selection
+- ✅ **Environment-Specific Builds**: Each environment gets its own image with correct config
 - ✅ **Manual Approval Gates**: Production deployments require explicit reviewer approval
-- ✅ **Comprehensive Testing**: Selenium E2E tests + health checks before promotion
-- ✅ **Image Validation**: Integrity checks, security scanning, and metadata validation
-- ✅ **Audit Trail**: Complete logging of promotions, deployments, and rollbacks
+- ✅ **Comprehensive Testing**: Unit, integration, and E2E tests (staging) + smoke tests (production)
+- ✅ **Quality Assurance**: Linting, type checking, security scanning before build
+- ✅ **Audit Trail**: Complete logging of all deployment activities
 - ✅ **Error Recovery**: Sophisticated error handling with automatic retries
-- ✅ **Rollback Safety**: Multiple rollback targets with timestamped tags
+- ✅ **Rollback Capability**: Deploy previous image versions when needed
 
 ## Traditional Pipeline Architecture (Dual Builds)
 
@@ -72,42 +79,32 @@ graph TD
 
 ## Key Components
 
-### 1. Build & CI Workflow (`docker-build.yml`)
+### 1. Unified Deployment Workflow (`deploy.yml`)
 
-- **Trigger**: Push to `main`/`staging` branches, path-filtered for efficiency
-- **Build Process**: Multi-architecture Docker builds with security scanning
-- **Registry**: Pushes to GitHub Container Registry (GHCR)
-- **Tagging**: Branch-based and commit-specific tags
-
-### 2. Staging Deployment (`stg-deploy.yml`)
-
-- **Trigger**: Push to `staging` branch or manual dispatch
+- **Trigger**: Push to `main`/`staging` branches, manual dispatch
+- **Environment Detection**: Automatic branch-based environment selection
+- **Build Process**: Multi-architecture Docker builds with environment-specific config
+- **Quality Checks**: Linting, type checking, unit tests, security scanning
+- **Registry**: Pushes to GitHub Container Registry (GHCR) with branch-based tags
 - **Infrastructure**: Terraform-managed DigitalOcean droplets
 - **Deployment**: Ansible-based configuration management
-- **Testing**: Selenium end-to-end tests + health verification
-- **SSL**: Automated certificate management
+- **Testing**: Environment-specific test suites (E2E for staging, smoke for production)
+- **Approval**: Manual approval required for production via GitHub environments
 
-### 3. Image Promotion Workflow (`image-promotion.yml`)
+### 2. Supporting Workflows
 
-- **Trigger**: Manual dispatch with staging image tag input
-- **Security**: Requires manual approval via GitHub environment protection
-- **Validation**: Comprehensive image integrity, size, and metadata checks
-- **Promotion**: Secure image copy from staging to production registry
-- **Audit**: Complete logging and compliance tracking
+- **`deployment-dashboard.yml`**: Status monitoring and dashboard updates
+- **`deployment-metrics.yml`**: Performance analytics and metrics collection
+- **`log-aggregation.yml`**: Centralized log management
+- **`image-cleanup.yml`**: Automated image retention and cleanup
+- **`dependency-check.yml`**: Dependency vulnerability scanning
 
-### 4. Production Deployment (`prod-deploy.yml`)
+### 3. Reusable Actions
 
-- **Trigger**: Manual dispatch or automatic after image promotion
-- **Strategy**: Blue-green deployment with health verification
-- **Rollback**: Automatic rollback on deployment failures
-- **Monitoring**: Real-time health checks and performance validation
-
-### 5. Management Workflows
-
-- **Rollback** (`rollback.yml`): Emergency rollback to previous versions
-- **Environment Management**: Safe destruction and cleanup workflows
-- **Notifications**: Centralized alerting via Slack/Teams/Email
-- **Monitoring**: Deployment status dashboards and health verification
+- **`deploy/`**: Unified deployment action for all environments
+- **`health-check/`**: Health verification and smoke tests
+- **`test-runner/`**: Test orchestration (unit, integration, E2E)
+- **`notify/`**: Notification system for deployment events
 
 ## Deployment Time Comparison
 
