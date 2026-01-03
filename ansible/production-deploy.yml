@@ -230,10 +230,10 @@
         docker network prune -f
       ignore_errors: yes
 
-    - name: Stop any other containers using port 8080
+    - name: Stop any other containers using port 3000
       shell: |
-        if docker ps -q --filter publish=8080 | grep -q .; then
-          docker stop $(docker ps -q --filter publish=8080)
+        if docker ps -q --filter publish=3000 | grep -q .; then
+          docker stop $(docker ps -q --filter publish=3000)
         fi
       ignore_errors: yes
 
@@ -542,14 +542,14 @@
     - name: Verify container is actually running after startup
       ansible.builtin.shell: |
         {% raw %}echo "Checking if container is running..."
-        CONTAINER_COUNT=$(docker ps --filter "publish=8080" --format "{{.Names}}" | wc -l)
+        CONTAINER_COUNT=$(docker ps --filter "publish=3000" --format "{{.Names}}" | wc -l)
         if [ $CONTAINER_COUNT -eq 0 ]; then
-          echo "ERROR: No container running on port 8080!"
+          echo "ERROR: No container running on port 3000!"
           echo "Available containers:"
           docker ps -a
           exit 1
         fi
-        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{.Names}}")
+        CONTAINER_NAME=$(docker ps --filter "publish=3000" --format "{{.Names}}")
         echo "Container running: $CONTAINER_NAME"
         echo "Verifying restart policy..."
         RESTART_POLICY=$(docker inspect --format "{{.HostConfig.RestartPolicy.Name}}" "$CONTAINER_NAME")
@@ -589,7 +589,7 @@
         sleep 20
 
         # Test basic connectivity
-        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+        if curl -f -s http://localhost:3000 >/dev/null 2>&1; then
           echo '✅ Application is responding'
         else
           echo '❌ Application health check failed'
@@ -605,9 +605,9 @@
         {% raw %}echo "=== Final Deployment Verification ==="
         echo ""
         echo "1. Checking container is running..."
-        CONTAINER_NAME=$(docker ps --filter "publish=8080" --format "{{.Names}}" | head -1)
+        CONTAINER_NAME=$(docker ps --filter "publish=3000" --format "{{.Names}}" | head -1)
         if [ -z "$CONTAINER_NAME" ]; then
-          echo "❌ ERROR: No container running on port 8080"
+          echo "❌ ERROR: No container running on port 3000"
           exit 1
         fi
         echo "✅ Container running: $CONTAINER_NAME"
@@ -622,8 +622,8 @@
         echo "✅ Container will restart automatically"
         echo ""
         echo "3. Testing application responds..."
-        if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
-          echo "✅ Application is responding on port 8080"
+        if curl -f -s http://localhost:3000 >/dev/null 2>&1; then
+          echo "✅ Application is responding on port 3000"
         else
           echo "❌ ERROR: Application not responding"
           exit 1
@@ -667,7 +667,7 @@
           - Promoted images stored in GHCR
 
           Verification Checks Passed:
-          ✅ Container is running on port 8080
+          ✅ Container is running on port 3000
           ✅ Container has restart policy 'always'
           ✅ Application responds to HTTP requests
           ✅ Docker service enabled for automatic startup
@@ -853,7 +853,7 @@
         - 80
         - 443
         - 6080
-        - 8080
+        - 3000
       become: true
 
     - name: Disable UFW (rely on DigitalOcean firewall)
@@ -1093,7 +1093,7 @@
         {% raw %}echo "Checking Docker container status after SSL setup..."
 
         # Check if container is running
-        CONTAINER_STATUS=$(docker ps --filter "publish=8080" --format "{{.Names}}:{{.Status}}" | head -1 || echo "none")
+        CONTAINER_STATUS=$(docker ps --filter "publish=3000" --format "{{.Names}}:{{.Status}}" | head -1 || echo "none")
         echo "Container status: $CONTAINER_STATUS"
 
         if [[ "$CONTAINER_STATUS" == "none" ]] || [[ "$CONTAINER_STATUS" == *":Exited"* ]]; then
@@ -1110,7 +1110,7 @@
           sleep 10
 
           # Check status again
-          NEW_STATUS=$(docker ps --filter "publish=8080" --format "{{.Names}}:{{.Status}}" | head -1 || echo "failed")
+          NEW_STATUS=$(docker ps --filter "publish=3000" --format "{{.Names}}:{{.Status}}" | head -1 || echo "failed")
           echo "After restart: $NEW_STATUS"
 
           if [[ "$NEW_STATUS" == "failed" ]] || [[ "$NEW_STATUS" == *":Exited"* ]]; then
@@ -1140,9 +1140,9 @@
         else
           echo "❌ HTTPS test failed (status: $STATUS_CODE)"
           # Additional debugging
-          echo "Checking if application is responding on port 8080..."
-          APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null || echo "connection_failed")
-          echo "Direct app check (port 8080): $APP_STATUS"
+          echo "Checking if application is responding on port 3000..."
+          APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || echo "connection_failed")
+          echo "Direct app check (port 3000): $APP_STATUS"
 
           echo "Checking Nginx error logs..."
           tail -10 /var/log/nginx/error.log 2>/dev/null || echo "No error logs found"
