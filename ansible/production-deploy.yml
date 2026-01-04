@@ -1191,6 +1191,7 @@
         exit 1
       register: https_endpoint_test
       changed_when: false
+      ignore_errors: true
       when: nginx_ssl_restart is defined and nginx_ssl_restart.changed | default(false)
 
     - name: Final SSL certificate status
