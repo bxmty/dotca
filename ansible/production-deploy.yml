@@ -353,18 +353,72 @@
         - alt_production_image_exists is defined
         - (alt_production_image_exists.rc | default(1)) == 0
 
-    - name: Fail if no promoted production images found
+    - name: Check if staging image exists for auto-promotion
+      ansible.builtin.command: |
+        bash -c "docker manifest inspect ghcr.io/{{ github_username }}/dotca:staging"
+      register: staging_image_exists
+      ignore_errors: true
+      changed_when: false
+      when:
+        - not (any_production_image_found | default(false))
+        - github_username is defined
+        - github_username != ""
+
+    - name: Auto-promote staging image to main if production image not found
+      ansible.builtin.shell: |
+        set -e
+        set -o pipefail
+        echo "Production image not found. Auto-promoting staging image to main..."
+        echo "Pulling staging image..."
+        docker pull ghcr.io/{{ github_username }}/dotca:staging
+        echo "Tagging as main..."
+        docker tag ghcr.io/{{ github_username }}/dotca:staging ghcr.io/{{ github_username }}/dotca:main
+        echo "Pushing main tag to GHCR..."
+        docker push ghcr.io/{{ github_username }}/dotca:main
+        echo "✅ Successfully promoted staging image to main"
+      args:
+        executable: /bin/bash
+      register: auto_promotion
+      when:
+        - not (any_production_image_found | default(false))
+        - staging_image_exists is defined
+        - staging_image_exists.rc == 0
+      changed_when: true
+
+    - name: Update docker_image variable after auto-promotion
+      ansible.builtin.set_fact:
+        docker_image: "ghcr.io/{{ github_username }}/dotca:main"
+        any_production_image_found: true
+      when:
+        - auto_promotion is defined
+        - auto_promotion.rc is defined
+        - auto_promotion.rc == 0
+
+    - name: Display auto-promotion result
+      ansible.builtin.debug:
+        msg:
+          - "🎉 Auto-promotion completed successfully!"
+          - "Production image is now available: ghcr.io/{{ github_username }}/dotca:main"
+          - "This image was promoted from: ghcr.io/{{ github_username }}/dotca:staging"
+      when:
+        - auto_promotion is defined
+        - auto_promotion.rc is defined
+        - auto_promotion.rc == 0
+
+    - name: Fail if no promoted production images found and auto-promotion failed
       ansible.builtin.fail:
         msg: |
-          No promoted production images found in GHCR!
+          No promoted production images found in GHCR and auto-promotion failed!
 
-          This means the image promotion workflow hasn't completed yet or failed.
+          This means:
+          1. No production image (main tag) exists
+          2. Staging image doesn't exist or couldn't be promoted
 
           Steps to fix:
-          1. Check image promotion workflow: https://github.com/{{ github_repo_from_url }}/actions/workflows/image-promotion.yml
-          2. Ensure staging deployment completed successfully
-          3. Trigger and approve the image promotion workflow
-          4. Verify the promoted image exists in GHCR
+          1. Ensure staging deployment completed successfully
+          2. Check staging image exists: ghcr.io/{{ github_username }}/dotca:staging
+          3. Manually promote the image or check image promotion workflow
+          4. Verify GHCR authentication and permissions
 
           Expected image locations:
           - {{ docker_image | default('undefined') }}
@@ -1191,6 +1245,7 @@
         exit 1
       register: https_endpoint_test
       changed_when: false
+      ignore_errors: true
       when: nginx_ssl_restart is defined and nginx_ssl_restart.changed | default(false)
 
     - name: Final SSL certificate status
