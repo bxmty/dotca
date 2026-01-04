@@ -368,8 +368,8 @@ jobs:
             NEXT_PUBLIC_ENVIRONMENT=${{ needs.detect-environment.outputs.environment }}
             NEXT_PUBLIC_API_URL=${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_STAGING_GA_ID=${{ vars.NEXT_PUBLIC_STAGING_GA_ID }}
-            NEXT_PUBLIC_PRODUCTION_GA_ID=${{ vars.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+            NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.GA_STAGING_ID }}
+            NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.GA_PRODUCTION_ID }}
             STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
@@ -452,8 +452,8 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_STAGING_GA_ID: ${{ vars.NEXT_PUBLIC_STAGING_GA_ID }}
-          NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ vars.NEXT_PUBLIC_PRODUCTION_GA_ID }}
+          NEXT_PUBLIC_STAGING_GA_ID: ${{ secrets.GA_STAGING_ID }}
+          NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.GA_PRODUCTION_ID }}
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
