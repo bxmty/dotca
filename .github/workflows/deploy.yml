@@ -368,12 +368,12 @@ jobs:
           build-args: |
             BUILDKIT_INLINE_CACHE=1
             NODE_ENV=production
-            NEXT_PUBLIC_ENVIRONMENT=${{ needs.detect-environment.outputs.environment }}
-            NEXT_PUBLIC_API_URL=${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
-            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
-            NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
-            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            NEXT_PUBLIC_ENVIRONMENT=production
+            NEXT_PUBLIC_API_URL=https://boximity.ca/api
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=dummy_stripe_key
+            NEXT_PUBLIC_STAGING_GA_ID=dummy_staging_ga
+            NEXT_PUBLIC_PRODUCTION_GA_ID=dummy_production_ga
+            STRIPE_SECRET_KEY=dummy_stripe_secret
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
