@@ -368,7 +368,8 @@ jobs:
             NEXT_PUBLIC_ENVIRONMENT=${{ needs.detect-environment.outputs.environment }}
             NEXT_PUBLIC_API_URL=${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_GA_ID=${{ needs.detect-environment.outputs.environment == 'production' && secrets.NEXT_PUBLIC_PRODUCTION_GA_ID || secrets.NEXT_PUBLIC_STAGING_GA_ID }}
+            NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
+            NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
             STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
