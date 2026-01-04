@@ -220,7 +220,6 @@
       vars:
         node_env: production
         next_public_api_url: "{{ api_protocol }}://{{ api_host }}/api"
-        ga_id: "{{ ga_id }}"
 
     - name: Validate docker-compose.yml generation
       ansible.builtin.shell: |
