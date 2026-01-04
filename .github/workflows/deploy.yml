@@ -189,7 +189,10 @@ jobs:
           SHOULD_TEST="true"
 
           if [ "$ENVIRONMENT" = "production" ]; then
-            echo "🔨 Production deployment: will build fresh image with production environment"
+            # Production now uses image promotion logic instead of building fresh images
+            SHOULD_BUILD="false"
+            SHOULD_PROMOTE="true"
+            echo "🚀 Production deployment: will use promoted images via Ansible promotion logic"
           elif [ "$ENVIRONMENT" = "staging" ]; then
             echo "🔨 Staging deployment: will build fresh image with staging environment"
           fi
@@ -236,7 +239,7 @@ jobs:
 
           ### 🔄 Pipeline Status
           - [ ] Environment Detection ✅
-          - [ ] Quality Checks & Build ${{ steps.detect.outputs.should_build == 'true' && '⏳' || '⏭️' }}
+          - [ ] Quality Checks & Build ${{ steps.detect.outputs.should_build == 'true' && '⏳' || steps.detect.outputs.environment == 'production' && '🚀 Promotion' || '⏭️ Skipped' }}
           - [ ] Deployment ${{ steps.detect.outputs.should_deploy == 'true' && '⏳' || '⏭️' }}
           - [ ] Integration Tests ${{ steps.detect.outputs.should_test == 'true' && '⏳' || '⏭️' }}
           - [ ] Notifications ⏳
@@ -427,6 +430,11 @@ jobs:
           if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
             echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
             echo "🔨 Using freshly built image: ${{ needs.quality-and-build.outputs.image_tag }}"
+          elif [ "${{ needs.detect-environment.outputs.environment }}" = "production" ]; then
+            # Production uses promoted images via Ansible promotion logic
+            echo "image_tag=promoted-main" >> $GITHUB_OUTPUT
+            echo "🚀 Using promoted production image via Ansible promotion logic"
+            echo "The Ansible playbook will handle image promotion from staging to main if needed"
           else
             echo "::error::No image available for deployment"
             exit 1
@@ -470,7 +478,7 @@ jobs:
           | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deploy Target | \`${{ needs.detect-environment.outputs.deploy_target }}\` |
           | Image Tag Used | \`${{ steps.image_tag.outputs.image_tag }}\` |
-          | Image Built For | \`${{ needs.detect-environment.outputs.environment }}\` |
+          | Image Source | ${{ needs.detect-environment.outputs.environment == 'production' && 'Promoted via Ansible' || 'Built fresh' }} |
           | Deployment Status | \$DEPLOY_STATUS |
 
           EOF
@@ -597,6 +605,7 @@ jobs:
 
           ### 📊 Key Information
           - **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
+          - **Image Source:** ${{ needs.detect-environment.outputs.environment == 'production' && 'Promoted via Ansible' || 'Built fresh' }}
           - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || 'N/A' }}\`
           - **Commit:** \`${{ github.sha }}\`
           - **Triggered by:** ${{ github.actor }}
