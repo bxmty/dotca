@@ -30,6 +30,8 @@
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
+    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
+    ga_id: "{{ GA_STAGING_ID | default('') if next_public_environment == 'staging' else GA_PRODUCTION_ID | default('') }}"
     docker_compose_file: "{{ app_dir }}/docker-compose.yml"
     # GitHub Container Registry settings
     github_token: "{{ GITHUB_TOKEN | default('') }}"
@@ -38,8 +40,6 @@
     docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
     github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     docker_image: "{{ docker_image_override }}"
-    # Additional production GA ID for future use
-    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
 
 
   tasks:
@@ -220,6 +220,7 @@
         node_env: production
         next_public_api_url: "{{ api_protocol }}://{{ api_host }}/api"
         next_public_environment: staging
+        ga_id: "{{ ga_id }}"
 
     - name: Validate docker-compose.yml generation
       ansible.builtin.shell: |

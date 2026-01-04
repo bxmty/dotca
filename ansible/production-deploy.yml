@@ -29,6 +29,8 @@
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
+    ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
+    ga_id: "{{ GA_PRODUCTION_ID | default('') if next_public_environment == 'production' else GA_STAGING_ID | default('') }}"
     docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
     # GitHub Container Registry settings for promoted images
     github_token: "{{ GITHUB_TOKEN | default('') }}"
@@ -449,6 +451,7 @@
         node_env: production
         next_public_api_url: "{{ next_public_api_url }}"
         next_public_environment: production
+        ga_id: "{{ ga_id }}"
 
     - name: Display generated docker-compose.yml for debugging
       ansible.builtin.command: cat "{{ app_dir }}/repo/docker-compose.yml"
@@ -548,7 +551,7 @@
           - BREVO_API_KEY: {{ '✅ SET' if brevo_api_key else '❌ MISSING' }}
           - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
           - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_key else '❌ MISSING' }}
-          - GA_PRODUCTION_ID: {{ '✅ SET' if ga_production_id else '❌ MISSING' }}
+          - GA_ID: {{ '✅ SET' if ga_id else '❌ MISSING' }} ({{ next_public_environment }})
           - GITHUB_TOKEN: {{ '✅ SET' if github_token else '❌ MISSING' }}
           - GITHUB_USERNAME: {{ '✅ SET' if github_username else '❌ MISSING' }}
           - GIT_REPO_URL: {{ '✅ SET' if git_repo_url else '❌ MISSING' }}
@@ -562,7 +565,7 @@
         not brevo_api_key or
         not stripe_secret_key or
         not stripe_publishable_key or
-        not ga_production_id or
+        not ga_id or
         not github_token or
         not github_username or
         not git_repo_url
@@ -578,7 +581,7 @@
           BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          GA_PRODUCTION_ID={{ ga_production_id }}
+          NEXT_PUBLIC_GA_ID={{ ga_id }}
           GITHUB_TOKEN={{ github_token }}
           GITHUB_USERNAME={{ github_username }}
           DOCKER_IMAGE={{ docker_image }}
