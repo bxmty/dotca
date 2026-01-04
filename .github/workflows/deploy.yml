@@ -111,12 +111,67 @@ jobs:
         id: detect
         run: |
           echo "🔍 Analyzing deployment context..."
+          echo "GitHub Context:"
+          echo "  Event: ${{ github.event_name }}"
+          echo "  Ref: ${{ github.ref }}"
+          echo "  Ref Name: ${{ github.ref_name }}"
 
-          # Get branch name (handle both push and manual triggers)
-          BRANCH_NAME="${{ github.ref_name }}"
+          # Determine environment using explicit, reliable method
+          # Priority: 1. Manual override, 2. Branch reference
+          ENVIRONMENT=""
+          DEPLOY_TARGET=""
+
+          # Check for manual override first (workflow_dispatch)
           if [ -n "${{ github.event.inputs.target_environment }}" ]; then
-            BRANCH_NAME="${{ github.event.inputs.target_environment }}"
-            echo "Manual override: using branch $BRANCH_NAME"
+            MANUAL_ENV="${{ github.event.inputs.target_environment }}"
+            echo "📌 Manual override detected: $MANUAL_ENV"
+
+            # Normalize and validate manual input
+            case "$MANUAL_ENV" in
+              "production"|"prod")
+                ENVIRONMENT="production"
+                DEPLOY_TARGET="production"
+                ;;
+              "staging"|"stg")
+                ENVIRONMENT="staging"
+                DEPLOY_TARGET="staging"
+                ;;
+              *)
+                echo "::error::Invalid manual environment override: $MANUAL_ENV"
+                echo "Valid options: staging, production"
+                exit 1
+                ;;
+            esac
+          else
+            # Automatic detection from branch reference (most reliable)
+            BRANCH_REF="${{ github.ref }}"
+            BRANCH_NAME="${{ github.ref_name }}"
+
+            echo "🔍 Detecting from branch reference: $BRANCH_REF"
+            echo "🔍 Branch name: $BRANCH_NAME"
+
+            # Use explicit branch reference matching for reliability
+            if [[ "$BRANCH_REF" == "refs/heads/main" ]] || [[ "$BRANCH_NAME" == "main" ]]; then
+              ENVIRONMENT="production"
+              DEPLOY_TARGET="production"
+              echo "✅ Detected PRODUCTION from main branch"
+            elif [[ "$BRANCH_REF" == "refs/heads/staging" ]] || [[ "$BRANCH_NAME" == "staging" ]]; then
+              ENVIRONMENT="staging"
+              DEPLOY_TARGET="staging"
+              echo "✅ Detected STAGING from staging branch"
+            else
+              echo "::error::Unsupported branch for automatic deployment"
+              echo "Branch ref: $BRANCH_REF"
+              echo "Branch name: $BRANCH_NAME"
+              echo "Supported branches: main (production), staging"
+              exit 1
+            fi
+          fi
+
+          # Validate environment was determined
+          if [ -z "$ENVIRONMENT" ] || [ -z "$DEPLOY_TARGET" ]; then
+            echo "::error::Failed to determine deployment environment"
+            exit 1
           fi
 
           # Check what files have changed
@@ -127,35 +182,19 @@ jobs:
           echo "  App files changed: $APP_CHANGED"
           echo "  Infra files changed: $INFRA_CHANGED"
 
-          # Environment detection logic
-          case "$BRANCH_NAME" in
-            "main"|"production")
-              ENVIRONMENT="production"
-              DEPLOY_TARGET="production"
-              # Production: build fresh image with production environment variables
-              SHOULD_BUILD="true"
-              SHOULD_PROMOTE="false"
-              SHOULD_DEPLOY="true"
-              SHOULD_TEST="true"
-              echo "🔨 Production deployment: will build fresh image with production environment"
-              ;;
-            "staging")
-              ENVIRONMENT="staging"
-              DEPLOY_TARGET="staging"
-              # Staging: build fresh image with staging environment variables
-              SHOULD_BUILD="true"
-              SHOULD_PROMOTE="false"
-              SHOULD_DEPLOY="true"
-              SHOULD_TEST="true"
-              echo "🔨 Staging deployment: will build fresh image with staging environment"
-              ;;
-            *)
-              echo "::error::Unsupported branch: $BRANCH_NAME"
-              echo "Supported branches: main, staging"
-              exit 1
-              ;;
-          esac
+          # Set deployment flags based on environment
+          SHOULD_BUILD="true"
+          SHOULD_PROMOTE="false"
+          SHOULD_DEPLOY="true"
+          SHOULD_TEST="true"
 
+          if [ "$ENVIRONMENT" = "production" ]; then
+            echo "🔨 Production deployment: will build fresh image with production environment"
+          elif [ "$ENVIRONMENT" = "staging" ]; then
+            echo "🔨 Staging deployment: will build fresh image with staging environment"
+          fi
+
+          # Output all values
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
           echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
           echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
@@ -163,8 +202,8 @@ jobs:
           echo "should_test=$SHOULD_TEST" >> $GITHUB_OUTPUT
           echo "should_promote=$SHOULD_PROMOTE" >> $GITHUB_OUTPUT
 
-          echo "📋 Deployment Configuration:"
-          echo "  Branch: $BRANCH_NAME"
+          echo ""
+          echo "📋 Final Deployment Configuration:"
           echo "  Environment: $ENVIRONMENT"
           echo "  Deploy Target: $DEPLOY_TARGET"
           echo "  App Changed: $APP_CHANGED"
@@ -172,6 +211,8 @@ jobs:
           echo "  Build: $SHOULD_BUILD"
           echo "  Deploy: $SHOULD_DEPLOY"
           echo "  Test: $SHOULD_TEST"
+          echo ""
+          echo "✅ Environment detection completed successfully"
 
       - name: Generate deployment summary
         run: |
@@ -267,7 +308,7 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test_type: unit
-          environment: ${{ steps.detect.outputs.environment }}
+          environment: ${{ needs.detect-environment.outputs.environment }}
           collect_coverage: true
           fail_fast: false
 
@@ -411,6 +452,7 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_STAGING_GA_ID: ${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
           NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -480,6 +522,14 @@ jobs:
         if: always()
         run: |
           TEST_STATUS="${{ job.status == 'success' && '✅ Passed' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+          DETECTED_ENV="${{ needs.detect-environment.outputs.environment }}"
+
+          # Determine test URL based on detected environment
+          if [ "$DETECTED_ENV" = "production" ]; then
+            TEST_URL="https://boximity.ca"
+          else
+            TEST_URL="https://staging.boximity.ca"
+          fi
 
           cat << EOF >> \$GITHUB_STEP_SUMMARY
 
@@ -488,8 +538,8 @@ jobs:
           |-----------|--------|
           | Integration Tests | \$TEST_STATUS |
           | E2E Tests | \$TEST_STATUS |
-          | Test Environment | \`staging\` |
-          | Test URL | https://staging.boximity.ca |
+          | Test Environment | \`$DETECTED_ENV\` |
+          | Test URL | \$TEST_URL |
 
           EOF
 
