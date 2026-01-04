@@ -188,11 +188,10 @@ runs:
         export DOCKER_IMAGE="$DOCKER_IMAGE"
         # Enable colors and cleaner output
         export ANSIBLE_FORCE_COLOR=1
-        export ANSIBLE_STDOUT_CALLBACK=yaml
         # Reduce verbosity - suppress skipped hosts
         export ANSIBLE_DISPLAY_SKIPPED_HOSTS=False
-        # Enable task timing for performance monitoring
-        export ANSIBLE_CALLBACK_WHITELIST=timer
+        # Note: Callback is configured in ansible.cfg (default with yaml format)
+        # Timer callback requires ansible.posix collection, so we'll skip it for now
         # Run playbook with cleaner output
         # --diff shows only file changes (when files are modified)
         # Removed -v flag for less verbose output
