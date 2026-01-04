@@ -155,6 +155,8 @@ runs:
         docker_image=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}
         public_ip=$DROPLET_IP
         staging_domain=staging.boximity.ca
+        next_public_environment=${{ inputs.environment }}
+        next_public_api_url=${{ inputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
         brevo_api_key=${BREVO_API_KEY:-}
         stripe_secret_key=${STRIPE_SECRET_KEY:-}
         stripe_publishable_key=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}

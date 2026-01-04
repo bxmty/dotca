@@ -437,12 +437,12 @@ jobs:
             echo "**🌐 Application URL:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
           fi
 
-  # Integration testing (staging only)
+  # Integration testing
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [detect-environment, deploy]
-    if: needs.detect-environment.outputs.should_test == 'true' && needs.detect-environment.outputs.environment == 'staging' && github.event.inputs.skip_tests != 'true'
+    if: needs.detect-environment.outputs.should_test == 'true' && github.event.inputs.skip_tests != 'true'
 
     steps:
       - name: Checkout repository
@@ -452,8 +452,8 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test_type: integration
-          environment: staging
-          app_url: https://staging.boximity.ca
+          environment: ${{ needs.detect-environment.outputs.environment }}
+          app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
           fail_fast: false
           timeout_minutes: 15
 
@@ -461,8 +461,8 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test_type: e2e
-          environment: staging
-          app_url: https://staging.boximity.ca
+          environment: ${{ needs.detect-environment.outputs.environment }}
+          app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
           fail_fast: false
           timeout_minutes: 20
 
