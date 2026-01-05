@@ -148,6 +148,8 @@ runs:
 
         # Generate inventory for the deployment
         # Note: Ansible playbooks expect UPPERCASE variable names for secrets/config
+        # Debug: verify DOCKER_IMAGE environment variable
+        echo "DEBUG: DOCKER_IMAGE env var = '$DOCKER_IMAGE'"
         cat > inventory/deploy.ini << EOF
         [digitalocean]
         dotca-${{ inputs.environment }} ansible_host=$DROPLET_IP
@@ -181,6 +183,10 @@ runs:
         fi
 
         echo "Generated Ansible inventory for deployment"
+
+        # Debug: show inventory DOCKER_IMAGE line to verify expansion
+        echo "DEBUG: Inventory DOCKER_IMAGE line:"
+        grep "DOCKER_IMAGE" inventory/deploy.ini || echo "DOCKER_IMAGE not found in inventory!"
 
         # Install required Ansible Galaxy roles
         echo "📦 Installing Ansible Galaxy roles..."
