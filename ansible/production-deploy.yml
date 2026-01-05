@@ -442,6 +442,13 @@
       ansible.builtin.set_fact:
         next_public_api_url: "https://boximity.ca/api"
 
+    - name: Debug docker_image before template generation
+      ansible.builtin.debug:
+        msg:
+          - "Docker image to be used in template: {{ docker_image }}"
+          - "Docker image override: {{ docker_image_override }}"
+          - "DOCKER_IMAGE from inventory: {{ DOCKER_IMAGE | default('NOT SET') }}"
+
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
         src: docker-compose.yml.j2
@@ -449,7 +456,6 @@
         mode: '0644'
         backup: true
       vars:
-        docker_image: "{{ docker_image }}"
         node_env: production
         next_public_api_url: "{{ next_public_api_url }}"
 
