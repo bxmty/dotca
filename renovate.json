@@ -4,8 +4,12 @@
     "config:recommended"
   ],
   "rangeStrategy": "pin",
-  "baseBranches": ["upgrades"],
-  "schedule": ["at any time"],
+  "baseBranchPatterns": [
+    "upgrades"
+  ],
+  "schedule": [
+    "at any time"
+  ],
   "timezone": "America/New_York",
   "lockFileMaintenance": {
     "enabled": true,
@@ -43,7 +47,9 @@
       "automergeStrategy": "merge-commit"
     },
     {
-      "matchUpdateTypes": ["minor"],
+      "matchUpdateTypes": [
+        "minor"
+      ],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"
