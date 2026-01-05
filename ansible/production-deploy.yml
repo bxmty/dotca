@@ -37,7 +37,7 @@
     github_token: "{{ GITHUB_TOKEN | default('') }}"
     github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
     # Production image configuration - uses directly built images from GHCR
-    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:main') }}"
+    docker_image_override: "{{ DEPLOY_DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:main') }}"
     github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     # Use the image tag passed from the deployment workflow
     docker_image: "{{ docker_image_override }}"
@@ -371,7 +371,7 @@
         msg:
           - "Docker image to be used in template: {{ docker_image }}"
           - "Docker image override: {{ docker_image_override }}"
-          - "DOCKER_IMAGE from inventory: {{ DOCKER_IMAGE | default('NOT SET') }}"
+          - "DEPLOY_DOCKER_IMAGE from inventory: {{ DEPLOY_DOCKER_IMAGE | default('NOT SET') }}"
 
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
