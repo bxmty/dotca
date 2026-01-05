@@ -449,6 +449,7 @@
         mode: '0644'
         backup: true
       vars:
+        docker_image: "{{ docker_image }}"
         node_env: production
         next_public_api_url: "{{ next_public_api_url }}"
 
