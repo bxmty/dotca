@@ -55,13 +55,8 @@ runs:
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
 
-        # For production, use just the branch tag (main) not SHA tag
-        # This ensures we use the image tagged as 'main' which is stable
-        if [ "${{ inputs.environment }}" = "production" ]; then
-          echo "DOCKER_IMAGE=ghcr.io/bxmty/dotca:main" >> $GITHUB_ENV
-        else
-          echo "DOCKER_IMAGE=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}" >> $GITHUB_ENV
-        fi
+        # Use the actual built image tag for deployment
+        echo "DOCKER_IMAGE=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}" >> $GITHUB_ENV
 
         # Create temporary SSH key file for Terraform/Ansible
         mkdir -p ~/.ssh
