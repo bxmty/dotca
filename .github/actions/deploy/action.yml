@@ -160,7 +160,7 @@ runs:
         environment=${{ inputs.environment }}
         project_name=dotca-nextjs
         app_dir=/app
-        DOCKER_IMAGE=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}
+        DOCKER_IMAGE=$DOCKER_IMAGE
         public_ip=$DROPLET_IP
         staging_domain=staging.boximity.ca
         next_public_environment=${{ inputs.environment }}
