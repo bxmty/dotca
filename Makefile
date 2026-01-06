@@ -1,7 +1,7 @@
 # Makefile for dotca local development and deployment
 # Provides high-level commands for local development, Terraform and Ansible operations
 
-.PHONY: help setup validate deploy destroy status clean test dev-up dev-down dev-build dev-logs dev-restart dev-clean dev-test dev-status
+.PHONY: help setup validate deploy destroy status clean test dev-up dev-down dev-build dev-logs dev-restart dev-clean dev-test dev-status act-list act-dry-run act-run act-run-job act-validate
 
 # Default target
 .DEFAULT_GOAL := help
@@ -55,6 +55,13 @@ help: ## Show this help message
 	@echo "  make dev-restart              # Restart development containers"
 	@echo "  make dev-test                 # Run unit and E2E tests"
 	@echo "  make dev-clean FORCE=true     # Clean development environment"
+	@echo
+	@echo "GitHub Actions Testing (act):"
+	@echo "  make act-list                 # List available workflows"
+	@echo "  make act-dry-run              # Dry run workflows (recommended)"
+	@echo "  make act-run FORCE=true       # Run workflows locally"
+	@echo "  make act-run-job JOB=build    # Run specific job"
+	@echo "  make act-validate             # Validate workflow files"
 
 # Setup target - Initial environment configuration
 setup: ## Set up local development environment
@@ -367,3 +374,65 @@ dev-test: ## Run unit tests and E2E tests
 dev-status: ## Show status of development containers
 	@echo "$(BLUE)Development environment status:$(NC)"
 	@docker-compose -f docker-compose.dev.yml ps
+
+# GitHub Actions Local Testing (act) targets
+act-list: ## List available GitHub Actions workflows
+	@echo "$(BLUE)Available GitHub Actions workflows:$(NC)"
+	@if command -v act >/dev/null 2>&1; then \
+		act -l; \
+	else \
+		echo "$(RED)Error: act not found. Install from https://github.com/nektos/act$(NC)"; \
+		exit 1; \
+	fi
+
+act-dry-run: ## Dry run GitHub Actions workflows (shows what would happen)
+	@echo "$(BLUE)Performing dry run of GitHub Actions workflows...$(NC)"
+	@if command -v act >/dev/null 2>&1; then \
+		act --dry-run $(if $(VERBOSE),--verbose); \
+	else \
+		echo "$(RED)Error: act not found. Install from https://github.com/nektos/act$(NC)"; \
+		exit 1; \
+	fi
+
+act-run: ## Run GitHub Actions workflows locally
+	@echo "$(BLUE)Running GitHub Actions workflows locally...$(NC)"
+	@if command -v act >/dev/null 2>&1; then \
+		if [ "$(FORCE)" != "true" ]; then \
+			read -p "This may take time and consume resources. Continue? (y/N): " confirm; \
+			if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+				echo "$(YELLOW)Cancelled$(NC)"; \
+				exit 0; \
+			fi; \
+		fi; \
+		act $(if $(VERBOSE),--verbose); \
+	else \
+		echo "$(RED)Error: act not found. Install from https://github.com/nektos/act$(NC)"; \
+		exit 1; \
+	fi
+
+act-run-job: ## Run specific GitHub Actions job (use JOB=<job-name>)
+	@echo "$(BLUE)Running GitHub Actions job: $(JOB)$(NC)"
+	@if [ -z "$(JOB)" ]; then \
+		echo "$(RED)Error: JOB variable not set. Use: make act-run-job JOB=<job-name>$(NC)"; \
+		exit 1; \
+	fi
+	@if command -v act >/dev/null 2>&1; then \
+		act -j $(JOB) $(if $(VERBOSE),--verbose); \
+	else \
+		echo "$(RED)Error: act not found. Install from https://github.com/nektos/act$(NC)"; \
+		exit 1; \
+	fi
+
+act-validate: ## Validate GitHub Actions workflow files
+	@echo "$(BLUE)Validating GitHub Actions workflows...$(NC)"
+	@if command -v act >/dev/null 2>&1; then \
+		if act --dry-run >/dev/null 2>&1; then \
+			echo "$(GREEN)✓ GitHub Actions workflows are valid$(NC)"; \
+		else \
+			echo "$(RED)✗ GitHub Actions workflows contain errors$(NC)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "$(RED)Error: act not found. Install from https://github.com/nektos/act$(NC)"; \
+		exit 1; \
+	fi
