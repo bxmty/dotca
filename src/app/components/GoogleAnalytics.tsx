@@ -4,6 +4,14 @@ import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { initGA, pageview, GA_MEASUREMENT_ID } from "../../lib/gtag";
 
+// Helper function to mask GA ID (copied from gtag.ts for client-side use)
+const maskValue = (value: string | undefined): string => {
+  if (!value) return "NOT SET";
+  if (process.env.NODE_ENV === "development") return value; // Show full value in development
+  if (value.length <= 8) return "SET (too short to mask)";
+  return `${value.substring(0, 4)}****${value.substring(value.length - 4)}`;
+};
+
 export default function GoogleAnalytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -11,7 +19,7 @@ export default function GoogleAnalytics() {
   // Initialize GA when component mounts
   useEffect(() => {
     console.log("GoogleAnalytics component mounted, initializing GA...");
-    console.log("GA_MEASUREMENT_ID:", GA_MEASUREMENT_ID);
+    console.log("GA_MEASUREMENT_ID:", maskValue(GA_MEASUREMENT_ID));
 
     // Initialize GA immediately
     initGA();

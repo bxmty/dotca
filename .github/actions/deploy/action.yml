@@ -54,6 +54,8 @@ runs:
 
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
+
+        # Use the actual built image tag for deployment
         echo "DOCKER_IMAGE=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}" >> $GITHUB_ENV
 
         # Create temporary SSH key file for Terraform/Ansible
@@ -141,6 +143,8 @@ runs:
 
         # Generate inventory for the deployment
         # Note: Ansible playbooks expect UPPERCASE variable names for secrets/config
+        # Debug: verify DOCKER_IMAGE environment variable
+        echo "DEBUG: DEPLOY_DOCKER_IMAGE env var = '$DEPLOY_DOCKER_IMAGE'"
         cat > inventory/deploy.ini << EOF
         [digitalocean]
         dotca-${{ inputs.environment }} ansible_host=$DROPLET_IP
@@ -153,7 +157,7 @@ runs:
         environment=${{ inputs.environment }}
         project_name=dotca-nextjs
         app_dir=/app
-        DOCKER_IMAGE=ghcr.io/bxmty/dotca:${{ inputs.image_tag }}
+        DEPLOY_DOCKER_IMAGE=$DOCKER_IMAGE
         public_ip=$DROPLET_IP
         staging_domain=staging.boximity.ca
         next_public_environment=${{ inputs.environment }}
@@ -175,6 +179,10 @@ runs:
 
         echo "Generated Ansible inventory for deployment"
 
+        # Debug: show inventory DOCKER_IMAGE line to verify expansion
+        echo "DEBUG: Inventory DEPLOY_DOCKER_IMAGE line:"
+        grep "DEPLOY_DOCKER_IMAGE" inventory/deploy.ini || echo "DEPLOY_DOCKER_IMAGE not found in inventory!"
+
         # Install required Ansible Galaxy roles
         echo "📦 Installing Ansible Galaxy roles..."
         ansible-galaxy install -r requirements.yml
@@ -187,8 +195,8 @@ runs:
         fi
 
         echo "Executing Ansible playbook: $PLAYBOOK"
-        echo "DOCKER_IMAGE=$DOCKER_IMAGE"
-        export DOCKER_IMAGE="$DOCKER_IMAGE"
+        echo "DEPLOY_DOCKER_IMAGE=$DEPLOY_DOCKER_IMAGE"
+        export DEPLOY_DOCKER_IMAGE="$DOCKER_IMAGE"
         # Enable colors and cleaner output
         export ANSIBLE_FORCE_COLOR=1
         # Reduce verbosity - suppress skipped hosts
