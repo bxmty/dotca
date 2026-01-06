@@ -66,7 +66,10 @@ export const initGA = () => {
     return;
   }
 
-  console.log("Initializing Google Analytics with ID:", GA_MEASUREMENT_ID);
+  console.log(
+    "Initializing Google Analytics with ID:",
+    maskValue(GA_MEASUREMENT_ID),
+  );
 
   // Check if gtag is already available (script might be loaded)
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
