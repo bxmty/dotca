@@ -5,6 +5,9 @@ import "@testing-library/jest-dom";
 import CheckoutPage from "@/app/checkout/page";
 
 // Mock the PlanSelector component
+let mockOnPlanSelected: ((plan: unknown) => void) | null = null;
+let mockPricingPlans: unknown[] = [];
+
 jest.mock("@/app/checkout/PlanSelector", () => {
   return function MockPlanSelector({
     onPlanSelected,
@@ -13,10 +16,8 @@ jest.mock("@/app/checkout/PlanSelector", () => {
     onPlanSelected: (plan: unknown) => void;
     pricingPlans: unknown[];
   }) {
-    // Auto-select the first plan synchronously
-    React.useEffect(() => {
-      onPlanSelected(pricingPlans[0]);
-    }, [onPlanSelected, pricingPlans]);
+    mockOnPlanSelected = onPlanSelected;
+    mockPricingPlans = pricingPlans;
 
     return null;
   };
@@ -50,29 +51,24 @@ describe("CheckoutPage Component", () => {
   });
 
   it('renders "No Plan Selected" when no plan is selected', async () => {
-    // Override the mock to not select a plan
-    jest.mock("@/app/checkout/PlanSelector", () => {
-      return function MockPlanSelector() {
-        return null;
-      };
-    });
-
+    // Render without selecting a plan (don't call mockOnPlanSelected)
     render(<CheckoutPage />);
 
-    // Wait for loading to finish - this won't happen in this test because we modified the mock
-    // but we'll wait anyway to ensure the component has time to process
-    await waitFor(
-      () => {
-        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-      },
-      { timeout: 100 },
-    );
+    // The component should remain in loading state since no plan is selected
+    // Wait a short time to ensure loading state persists
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should still show loading state
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("renders checkout form with selected plan", async () => {
     render(<CheckoutPage />);
 
-    // Wait for plan to be selected (mock will auto-select the first plan)
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
+    // Wait for plan to be selected
     await waitFor(() => {
       expect(
         screen.getByRole("heading", { level: 1, name: "Join Our Waitlist" }),
@@ -105,6 +101,9 @@ describe("CheckoutPage Component", () => {
   it("updates form data when inputs change", async () => {
     render(<CheckoutPage />);
 
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
     // Wait for plan to be selected
     await waitFor(() => {
       expect(
@@ -134,6 +133,9 @@ describe("CheckoutPage Component", () => {
   it("shows payment options when purchase is selected", async () => {
     render(<CheckoutPage />);
 
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
     // Wait for plan to be selected
     await waitFor(() => {
       expect(
@@ -155,6 +157,9 @@ describe("CheckoutPage Component", () => {
 
   it("submits the form with correct data", async () => {
     render(<CheckoutPage />);
+
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
 
     // Wait for plan to be selected
     await waitFor(() => {
@@ -221,6 +226,9 @@ describe("CheckoutPage Component", () => {
   it("shows the correct total price", async () => {
     render(<CheckoutPage />);
 
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
     // Wait for plan to be selected
     await waitFor(() => {
       expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
@@ -234,6 +242,9 @@ describe("CheckoutPage Component", () => {
 
   it("validates employee count input (5-20 range)", async () => {
     render(<CheckoutPage />);
+
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
 
     // Wait for plan to be selected
     await waitFor(() => {
@@ -271,6 +282,9 @@ describe("CheckoutPage Component", () => {
   it("handles billing cycle changes (monthly vs annual)", async () => {
     render(<CheckoutPage />);
 
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
     // Wait for plan to be selected
     await waitFor(() => {
       expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
@@ -297,6 +311,9 @@ describe("CheckoutPage Component", () => {
   it("calculates total price correctly for monthly billing", async () => {
     render(<CheckoutPage />);
 
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
     // Wait for plan to be selected (Free plan)
     await waitFor(() => {
       expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
@@ -308,10 +325,10 @@ describe("CheckoutPage Component", () => {
   });
 
   it("validates required fields on form submission", async () => {
-    // Mock alert to capture validation messages
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
-
     render(<CheckoutPage />);
+
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
 
     // Wait for plan to be selected
     await waitFor(() => {
@@ -323,35 +340,33 @@ describe("CheckoutPage Component", () => {
       expect(screen.getByLabelText("First Name*")).toBeInTheDocument();
     });
 
-    // Submit form without filling required fields
-    const submitButton = screen.getByRole("button", { name: /Join Waitlist/i });
-    fireEvent.click(submitButton);
-
-    // Wait for alert to be called
-    await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringContaining("Please fill in all required fields"),
-      );
-    });
-
-    // Fill in some fields but leave others empty
+    // Fill in only first name, leave other required fields empty
     fireEvent.change(screen.getByLabelText("First Name*"), {
       target: { value: "John" },
     });
 
+    // Try to submit via the WaitlistForm button
+    const submitButton = screen.getByTestId("waitlist-button");
     fireEvent.click(submitButton);
 
-    // Wait for alert to be called again
+    // Wait for validation error to appear in WaitlistForm
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(/Name is required/)).toBeInTheDocument();
     });
 
-    // Should still show validation error for missing fields
-    expect(alertMock).toHaveBeenLastCalledWith(
-      expect.stringContaining("Please fill in all required fields"),
-    );
+    // Fill in last name but leave email empty
+    fireEvent.change(screen.getByLabelText("Last Name*"), {
+      target: { value: "Doe" },
+    });
 
-    alertMock.mockRestore();
+    fireEvent.click(submitButton);
+
+    // Should now show email validation error
+    await waitFor(() => {
+      expect(
+        screen.getByText("Email address is required."),
+      ).toBeInTheDocument();
+    });
   });
 
   it("successfully submits form with all required fields", async () => {
@@ -364,6 +379,9 @@ describe("CheckoutPage Component", () => {
       .mockReturnValue(mockWaitlistButton);
 
     render(<CheckoutPage />);
+
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
 
     // Wait for plan to be selected
     await waitFor(() => {
@@ -445,6 +463,9 @@ describe("CheckoutPage Component", () => {
   it("handles payment success callback", async () => {
     render(<CheckoutPage />);
 
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
     // Wait for plan to be selected
     await waitFor(() => {
       expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
@@ -467,20 +488,28 @@ describe("CheckoutPage Component", () => {
     // Should not show form content while loading
     expect(screen.queryByText("Customer Information")).not.toBeInTheDocument();
 
-    // Wait a bit to ensure loading state is maintained
-    await waitFor(
-      () => {
-        // Loading should eventually disappear when plan is selected
-        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-      },
-      { timeout: 2000 },
-    );
+    // Simulate plan selection to clear loading state
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
+    // Wait for loading to disappear
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
+    // Should now show form content
+    expect(screen.getByText("Customer Information")).toBeInTheDocument();
   });
 
   it("renders plan selector when loaded", async () => {
     render(<CheckoutPage />);
 
-    // Wait for loading to complete (plan selection)
+    // Initially should show loading
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
+
+    // Wait for loading to complete
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
     });
@@ -491,6 +520,9 @@ describe("CheckoutPage Component", () => {
 
   it("handles phone number input changes", async () => {
     render(<CheckoutPage />);
+
+    // Simulate plan selection
+    mockOnPlanSelected!(mockPricingPlans[0]);
 
     // Wait for plan to be selected
     await waitFor(() => {
@@ -504,18 +536,26 @@ describe("CheckoutPage Component", () => {
 
   it("handles plan deselection", async () => {
     // This test verifies the component handles the case when no plan is selected
-    // Since our mock always selects a plan, we'll test the "No Plan Selected" state
-    // by checking that the component can render without a plan
+    // We'll test the "No Plan Selected" state by not selecting a plan initially
     render(<CheckoutPage />);
 
-    // The mock will auto-select a plan, so we'll verify the component handles
-    // the loading state correctly before plan selection
-    // After plan is selected, we should see the checkout form
+    // Initially should be loading
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    // Simulate plan deselection (no plan selected)
+    mockOnPlanSelected!(null);
+
+    // Wait for loading to complete
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
     });
 
-    // Should show the checkout form after plan is selected
-    expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
+    // Should show "No Plan Selected" message
+    expect(screen.getByText("No Plan Selected")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Please select a plan from our pricing page to proceed with checkout.",
+      ),
+    ).toBeInTheDocument();
   });
 });
