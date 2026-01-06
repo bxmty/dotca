@@ -1,5 +1,5 @@
-name: "Send Notifications"
-description: "Send deployment notifications to various channels"
+name: "Send GitHub Notifications"
+description: "Send deployment notifications to GitHub"
 
 inputs:
   event_type:
@@ -34,17 +34,8 @@ runs:
           echo "Deployment details provided"
         fi
 
-        # Create notification payload
-        NOTIFICATION_DATA="{
-          \"event_type\": \"${{ inputs.event_type }}\",
-          \"environment\": \"${{ inputs.environment }}\",
-          \"workflow_run_id\": \"${{ inputs.workflow_run_id }}\",
-          \"commit\": \"${{ inputs.commit }}\",
-          \"triggered_by\": \"${{ inputs.triggered_by }}\",
-          \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-          \"repository\": \"${{ github.repository }}\",
-          \"run_url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\"
-        }"
+        # Create notification payload (single line for GITHUB_ENV)
+        NOTIFICATION_DATA="{\"event_type\":\"${{ inputs.event_type }}\",\"environment\":\"${{ inputs.environment }}\",\"workflow_run_id\":\"${{ inputs.workflow_run_id }}\",\"commit\":\"${{ inputs.commit }}\",\"triggered_by\":\"${{ inputs.triggered_by }}\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"repository\":\"${{ github.repository }}\",\"run_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\"}"
 
         echo "NOTIFICATION_DATA=$NOTIFICATION_DATA" >> $GITHUB_ENV
 
@@ -85,49 +76,6 @@ runs:
 
         echo "✅ GitHub notification sent"
 
-    - name: Send Slack notification
-      shell: bash
-      if: env.SLACK_WEBHOOK != ''
-      run: |
-        echo "💬 Sending Slack notification..."
-
-        # Create Slack message payload
-        SLACK_PAYLOAD="{
-          \"username\": \"GitHub Deploy Bot\",
-          \"icon_emoji\": \":rocket:\",
-          \"attachments\": [{
-            \"color\": \"$COLOR\",
-            \"title\": \"$TITLE - ${{ inputs.environment }}\",
-            \"title_link\": \"https://github.com/${{ github.repository }}/actions/runs/${{ inputs.workflow_run_id }}\",
-            \"fields\": [
-              {
-                \"title\": \"Environment\",
-                \"value\": \"${{ inputs.environment }}\",
-                \"short\": true
-              },
-              {
-                \"title\": \"Commit\",
-                \"value\": \"\`${{ inputs.commit }}\`\",
-                \"short\": true
-              },
-              {
-                \"title\": \"Triggered by\",
-                \"value\": \"${{ inputs.triggered_by }}\",
-                \"short\": true
-              }
-            ],
-            \"footer\": \"GitHub Actions\",
-            \"ts\": $(date +%s)
-          }]
-        }"
-
-        # Send to Slack (if webhook URL is available)
-        if [ -n "$SLACK_WEBHOOK" ]; then
-          curl -X POST -H 'Content-type: application/json' --data "$SLACK_PAYLOAD" "$SLACK_WEBHOOK"
-          echo "✅ Slack notification sent"
-        else
-          echo "⚠️ Slack webhook not configured"
-        fi
 
     - name: Log notification event
       shell: bash
@@ -139,4 +87,4 @@ runs:
         echo "  Commit: ${{ inputs.commit }}"
         echo "  Triggered by: ${{ inputs.triggered_by }}"
         echo "  Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        echo "✅ All notifications sent"
+        echo "✅ GitHub notifications sent"

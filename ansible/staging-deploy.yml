@@ -30,6 +30,9 @@
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
+    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
+    next_public_environment: staging
+    ga_id: "{{ GA_STAGING_ID | default('') }}"
     docker_compose_file: "{{ app_dir }}/docker-compose.yml"
     # GitHub Container Registry settings
     github_token: "{{ GITHUB_TOKEN | default('') }}"
@@ -38,8 +41,6 @@
     docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
     github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     docker_image: "{{ docker_image_override }}"
-    # Additional production GA ID for future use
-    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
 
 
   tasks:
@@ -219,7 +220,6 @@
       vars:
         node_env: production
         next_public_api_url: "{{ api_protocol }}://{{ api_host }}/api"
-        next_public_environment: staging
 
     - name: Validate docker-compose.yml generation
       ansible.builtin.shell: |
@@ -244,35 +244,35 @@
       ignore_errors: true
       changed_when: docker_down_result.rc == 0
 
-    - name: Stop any other containers using port 8080
+    - name: Stop any other containers using port 3000
       ansible.builtin.command: >
         bash -c "
-        if docker ps -q --filter publish=8080 | grep -q .; then
-          echo 'Found containers using port 8080, stopping them...'
-          docker ps -q --filter publish=8080 | xargs docker stop
+        if docker ps -q --filter publish=3000 | grep -q .; then
+          echo 'Found containers using port 3000, stopping them...'
+          docker ps -q --filter publish=3000 | xargs docker stop
           echo 'Containers stopped successfully'
         else
-          echo 'No containers found using port 8080'
+          echo 'No containers found using port 3000'
         fi
         "
       register: port_stop_result
       ignore_errors: true
       changed_when: false
 
-    - name: Display port 8080 cleanup results
+    - name: Display port 3000 cleanup results
       ansible.builtin.debug:
         msg: "{{ port_stop_result.stdout_lines | default(['No output']) }}"
       when: port_stop_result is defined
 
-    - name: Verify port 8080 is free
+    - name: Verify port 3000 is free
       ansible.builtin.command: >
         bash -c "
-        if lsof -i :8080 >/dev/null 2>&1; then
-          echo 'WARNING: Port 8080 is still in use by:'
-          lsof -i :8080
+        if lsof -i :3000 >/dev/null 2>&1; then
+          echo 'WARNING: Port 3000 is still in use by:'
+          lsof -i :3000
           exit 1
         else
-          echo 'SUCCESS: Port 8080 is now free'
+          echo 'SUCCESS: Port 3000 is now free'
         fi
         "
       register: port_check_result
@@ -282,22 +282,22 @@
     - name: Display port verification results
       ansible.builtin.debug:
         msg:
-          - "Port 8080 status: {{ 'FREE' if port_check_result.rc == 0 else 'STILL IN USE' }}"
+          - "Port 3000 status: {{ 'FREE' if port_check_result.rc == 0 else 'STILL IN USE' }}"
           - "Details: {{ port_check_result.stdout_lines | default(['No details available']) }}"
       when: port_check_result is defined
 
-    - name: Force stop any remaining containers on port 8080 if verification failed
+    - name: Force stop any remaining containers on port 3000 if verification failed
       ansible.builtin.command: >
         bash -c "
-        if lsof -i :8080 >/dev/null 2>&1; then
-          echo 'Force stopping remaining processes on port 8080...'
-          lsof -ti :8080 | xargs kill -9 2>/dev/null || true
+        if lsof -i :3000 >/dev/null 2>&1; then
+          echo 'Force stopping remaining processes on port 3000...'
+          lsof -ti :3000 | xargs kill -9 2>/dev/null || true
           sleep 2
-          if lsof -i :8080 >/dev/null 2>&1; then
-            echo 'Some processes may still be using port 8080'
+          if lsof -i :3000 >/dev/null 2>&1; then
+            echo 'Some processes may still be using port 3000'
             exit 1
           else
-            echo 'Successfully freed port 8080'
+            echo 'Successfully freed port 3000'
           fi
         fi
         "
@@ -622,7 +622,7 @@
         - '80'     # HTTP
         - '443'    # HTTPS
         - '6080'   # Additional app port (if needed)
-        - '8080'   # Next.js main application
+        - '3000'   # Next.js main application
       changed_when: false
 
     - name: Enable UFW with secure defaults
@@ -644,7 +644,7 @@
           - "  - Port 22 (SSH): ALLOWED"
           - "  - Port 80 (HTTP): ALLOWED"
           - "  - Port 443 (HTTPS): ALLOWED"
-          - "  - Port 8080 (Next.js App): ALLOWED"
+          - "  - Port 3000 (Next.js App): ALLOWED"
           - ""
           - "⚠️  Note: If services are still inaccessible, check:"
           - "     1. DigitalOcean Cloud Firewall (Control Panel → Networking)"
@@ -656,7 +656,7 @@
       ansible.builtin.command: |
         bash -c "
         echo '=== Port Accessibility Test ==='
-        for port in 8080; do
+        for port in 3000; do
           echo -n \"Port \$port: \"
           if nc -z localhost \$port 2>/dev/null; then
             echo '✅ OPEN (service listening)'

@@ -7,7 +7,7 @@ This directory contains comprehensive documentation for the DotCA project's CI/C
 | Document                                                                         | Purpose                                         | Audience                     | Last Updated           |
 | -------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------- | ---------------------- |
 | [`cicd-architecture-comparison.md`](cicd-architecture-comparison.md)             | Pipeline architecture and deployment strategies | Architects, DevOps Engineers | Current Implementation |
-| [`DEPLOYMENT_GHCR.md`](DEPLOYMENT_GHCR.md)                                       | GitHub Container Registry deployment guide      | Developers, DevOps           | Production Ready       |
+| [`deployment-ghcr.md`](deployment-ghcr.md)                                       | GitHub Container Registry deployment guide      | Developers, DevOps           | Production Ready       |
 | [`image-promotion-workflow.md`](image-promotion-workflow.md)                     | Detailed promotion workflow with error handling | DevOps Engineers             | Comprehensive          |
 | [`image-tagging-strategy.md`](image-tagging-strategy.md)                         | Image naming, versioning, and lifecycle         | Developers, DevOps           | Complete Strategy      |
 | [`rollback-strategy-retention-policy.md`](rollback-strategy-retention-policy.md) | Rollback procedures and retention policies      | DevOps, SRE                  | Emergency Ready        |
@@ -24,18 +24,19 @@ Code Changes → Build (CI) → Staging → Image Promotion → Production
 
 ### Key Workflows
 
-- **`docker-build.yml`**: CI builds with path filtering and security scanning
-- **`stg-deploy.yml`**: Staging deployment with Terraform + Ansible + Selenium tests
-- **`image-promotion.yml`**: Manual approval gates with comprehensive validation
-- **`prod-deploy.yml`**: Production deployment using promoted images
-- **`rollback.yml`**: Emergency rollback to previous versions
+- **`deploy.yml`**: Unified deployment workflow with automatic environment detection (staging/production)
+- **`deployment-dashboard.yml`**: Status monitoring and dashboard updates
+- **`deployment-metrics.yml`**: Performance analytics and metrics collection
+- **`log-aggregation.yml`**: Centralized log management
+- **`image-cleanup.yml`**: Automated image retention and cleanup
+- **`dependency-check.yml`**: Dependency vulnerability scanning
 
 ## 📖 Quick Start Guide
 
 ### For New Team Members
 
 1. **Start Here**: Read [`cicd-architecture-comparison.md`](cicd-architecture-comparison.md) to understand the pipeline philosophy
-2. **Deployment Guide**: Follow [`DEPLOYMENT_GHCR.md`](DEPLOYMENT_GHCR.md) for hands-on deployment instructions
+2. **Deployment Guide**: Follow [`deployment-ghcr.md`](deployment-ghcr.md) for hands-on deployment instructions
 3. **Emergency Procedures**: Review [`rollback-strategy-retention-policy.md`](rollback-strategy-retention-policy.md)
 
 ### For Developers
@@ -70,22 +71,26 @@ Code Changes → Build (CI) → Staging → Image Promotion → Production
 ```mermaid
 graph TD
     A[Feature Development] --> B[Push to staging branch]
-    B --> C[CI Build: docker-build.yml]
-    C --> D[Staging Deploy: stg-deploy.yml]
-    D --> E[Selenium E2E Tests]
-    E --> F{Tests Pass?}
-    F -->|No| G[Fix Issues]
-    G --> B
-    F -->|Yes| H[Merge to main branch]
-    H --> I[Manual Promotion: image-promotion.yml]
-    I --> J[Approval Required]
-    J --> K[Production Deploy: prod-deploy.yml]
+    B --> C[Unified Deploy: deploy.yml]
+    C --> D[Auto-detect: Staging Environment]
+    D --> E[Build Staging Image]
+    E --> F[Deploy to Staging]
+    F --> G[Integration & E2E Tests]
+    G --> H{Tests Pass?}
+    H -->|No| I[Fix Issues]
+    I --> B
+    H -->|Yes| J[Merge to main branch]
+    J --> K[Unified Deploy: deploy.yml]
+    K --> L[Auto-detect: Production Environment]
+    L --> M[Build Production Image]
+    M --> N[Manual Approval Required]
+    N --> O[Deploy to Production]
 ```
 
 ### Emergency Rollback
 
-1. **Automatic**: Failed deployments trigger rollback workflows
-2. **Manual**: Use `rollback.yml` with specific image tags
+1. **Automatic**: Failed deployments trigger automatic rollback via `deploy.yml`
+2. **Manual**: Use `deploy.yml` workflow dispatch with previous image tags
 3. **Recovery**: Multiple rollback targets with timestamp validation
 
 ## 📊 Key Features

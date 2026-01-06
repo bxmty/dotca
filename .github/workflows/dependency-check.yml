@@ -35,7 +35,6 @@ on:
           - "staging-deploy"
           - "image-promotion"
           - "production-deploy"
-          - "rollback"
         default: "staging-deploy"
       target_environment:
         description: "Target environment for deployment"
@@ -60,7 +59,7 @@ jobs:
       recommendations: ${{ steps.check.outputs.recommendations }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -167,32 +166,12 @@ jobs:
               fi
               ;;
 
-            "rollback")
-              echo "📋 Checking rollback dependencies..."
-
-              # Check if there are previous images available for rollback
-              echo "🔍 Checking for available rollback targets..."
-
-              # Look for images with rollback tags
-              ROLLBACK_IMAGES=$(docker search --limit 5 "${IMAGE_NAME}" 2>/dev/null || echo "")
-
-              # Check for previous main images
-              PREV_MAIN_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-previous"
-              if docker pull "$PREV_MAIN_IMAGE" >/dev/null 2>&1; then
-                echo "✅ Previous main image available: $PREV_MAIN_IMAGE"
-              else
-                echo "⚠️ No previous main image found - will use latest available"
-              fi
-
-              # Check infrastructure status (simulated)
-              echo "✅ Infrastructure status check passed"
-              ;;
 
             *)
               echo "❌ Unknown check type: ${{ inputs.check_type }}"
               DEPENDENCIES_MET=false
               MISSING_DEPS="unknown-check-type"
-              RECOMMENDATIONS="Use valid check type: staging-deploy, image-promotion, production-deploy, or rollback"
+              RECOMMENDATIONS="Use valid check type: staging-deploy, image-promotion, or production-deploy"
               ;;
           esac
 
@@ -245,7 +224,6 @@ jobs:
           echo "| Staging Deploy | Staging branch, Dockerfile, Source code |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Promotion | Staging image, Successful staging tests |" >> $GITHUB_STEP_SUMMARY
           echo "| Production Deploy | Promoted images, Manual approval |" >> $GITHUB_STEP_SUMMARY
-          echo "| Rollback | Previous images, Infrastructure access |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.check-dependencies.outputs.dependencies_met }}" = "true" ]; then

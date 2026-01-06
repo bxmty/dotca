@@ -6,7 +6,7 @@ name: Unified Deployment Pipeline
 on:
   # Branch-based automatic deployments
   push:
-    branches: [main, staging, renovations]
+    branches: [main, staging]
     paths:
       - "src/**"
       - "public/**"
@@ -68,7 +68,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -111,12 +111,67 @@ jobs:
         id: detect
         run: |
           echo "🔍 Analyzing deployment context..."
+          echo "GitHub Context:"
+          echo "  Event: ${{ github.event_name }}"
+          echo "  Ref: ${{ github.ref }}"
+          echo "  Ref Name: ${{ github.ref_name }}"
 
-          # Get branch name (handle both push and manual triggers)
-          BRANCH_NAME="${{ github.ref_name }}"
+          # Determine environment using explicit, reliable method
+          # Priority: 1. Manual override, 2. Branch reference
+          ENVIRONMENT=""
+          DEPLOY_TARGET=""
+
+          # Check for manual override first (workflow_dispatch)
           if [ -n "${{ github.event.inputs.target_environment }}" ]; then
-            BRANCH_NAME="${{ github.event.inputs.target_environment }}"
-            echo "Manual override: using branch $BRANCH_NAME"
+            MANUAL_ENV="${{ github.event.inputs.target_environment }}"
+            echo "📌 Manual override detected: $MANUAL_ENV"
+
+            # Normalize and validate manual input
+            case "$MANUAL_ENV" in
+              "production"|"prod")
+                ENVIRONMENT="production"
+                DEPLOY_TARGET="production"
+                ;;
+              "staging"|"stg")
+                ENVIRONMENT="staging"
+                DEPLOY_TARGET="staging"
+                ;;
+              *)
+                echo "::error::Invalid manual environment override: $MANUAL_ENV"
+                echo "Valid options: staging, production"
+                exit 1
+                ;;
+            esac
+          else
+            # Automatic detection from branch reference (most reliable)
+            BRANCH_REF="${{ github.ref }}"
+            BRANCH_NAME="${{ github.ref_name }}"
+
+            echo "🔍 Detecting from branch reference: $BRANCH_REF"
+            echo "🔍 Branch name: $BRANCH_NAME"
+
+            # Use explicit branch reference matching for reliability
+            if [[ "$BRANCH_REF" == "refs/heads/main" ]] || [[ "$BRANCH_NAME" == "main" ]]; then
+              ENVIRONMENT="production"
+              DEPLOY_TARGET="production"
+              echo "✅ Detected PRODUCTION from main branch"
+            elif [[ "$BRANCH_REF" == "refs/heads/staging" ]] || [[ "$BRANCH_NAME" == "staging" ]]; then
+              ENVIRONMENT="staging"
+              DEPLOY_TARGET="staging"
+              echo "✅ Detected STAGING from staging branch"
+            else
+              echo "::error::Unsupported branch for automatic deployment"
+              echo "Branch ref: $BRANCH_REF"
+              echo "Branch name: $BRANCH_NAME"
+              echo "Supported branches: main (production), staging"
+              exit 1
+            fi
+          fi
+
+          # Validate environment was determined
+          if [ -z "$ENVIRONMENT" ] || [ -z "$DEPLOY_TARGET" ]; then
+            echo "::error::Failed to determine deployment environment"
+            exit 1
           fi
 
           # Check what files have changed
@@ -127,69 +182,19 @@ jobs:
           echo "  App files changed: $APP_CHANGED"
           echo "  Infra files changed: $INFRA_CHANGED"
 
-          # Environment detection logic
-          case "$BRANCH_NAME" in
-            "main"|"production")
-              ENVIRONMENT="production"
-              DEPLOY_TARGET="production"
-              # Production: promote from staging, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="true"
-                SHOULD_DEPLOY="true"
-                SHOULD_TEST="true"
-                echo "🚀 Production deployment: will promote staging image"
-              else
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
-                SHOULD_TEST="false"
-                echo "⏭️  Skipping build/promotion: no app changes detected"
-              fi
-              ;;
-            "staging")
-              ENVIRONMENT="staging"
-              DEPLOY_TARGET="staging"
-              # Staging: promote from renovations, never build
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="true"
-                SHOULD_DEPLOY="true"
-                SHOULD_TEST="true"
-                echo "🚀 Staging deployment: will promote renovations image"
-              else
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="$INFRA_CHANGED"  # Deploy infra changes without rebuilding app
-                SHOULD_TEST="false"
-                echo "⏭️  Skipping build/promotion: no app changes detected"
-              fi
-              ;;
-            "renovations")
-              ENVIRONMENT="development"
-              DEPLOY_TARGET="none"
-              # Renovations: build only (source of truth), never deploy
-              if [ "$APP_CHANGED" = "true" ] || [ -n "${{ github.event.inputs.target_environment }}" ]; then
-                SHOULD_BUILD="true"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="false"
-                SHOULD_TEST="true"
-                echo "🔨 Building source image on renovations branch"
-              else
-                SHOULD_BUILD="false"
-                SHOULD_PROMOTE="false"
-                SHOULD_DEPLOY="false"
-                SHOULD_TEST="false"
-                echo "⏭️  Skipping build: no app changes detected"
-              fi
-              ;;
-            *)
-              echo "::error::Unsupported branch: $BRANCH_NAME"
-              echo "Supported branches: main, staging, renovations"
-              exit 1
-              ;;
-          esac
+          # Set deployment flags based on environment
+          SHOULD_BUILD="true"
+          SHOULD_PROMOTE="false"
+          SHOULD_DEPLOY="true"
+          SHOULD_TEST="true"
 
+          if [ "$ENVIRONMENT" = "production" ]; then
+            echo "🔨 Production deployment: will build fresh image with production environment"
+          elif [ "$ENVIRONMENT" = "staging" ]; then
+            echo "🔨 Staging deployment: will build fresh image with staging environment"
+          fi
+
+          # Output all values
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
           echo "deploy_target=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
           echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
@@ -197,8 +202,8 @@ jobs:
           echo "should_test=$SHOULD_TEST" >> $GITHUB_OUTPUT
           echo "should_promote=$SHOULD_PROMOTE" >> $GITHUB_OUTPUT
 
-          echo "📋 Deployment Configuration:"
-          echo "  Branch: $BRANCH_NAME"
+          echo ""
+          echo "📋 Final Deployment Configuration:"
           echo "  Environment: $ENVIRONMENT"
           echo "  Deploy Target: $DEPLOY_TARGET"
           echo "  App Changed: $APP_CHANGED"
@@ -206,6 +211,39 @@ jobs:
           echo "  Build: $SHOULD_BUILD"
           echo "  Deploy: $SHOULD_DEPLOY"
           echo "  Test: $SHOULD_TEST"
+          echo ""
+          echo "✅ Environment detection completed successfully"
+
+      - name: Generate deployment summary
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 🚀 Deployment Pipeline Started
+
+          **Triggered by:** ${{ github.actor }}
+          **Branch:** ${{ github.ref_name }}
+          **Commit:** `${{ github.sha }}`
+
+          ### 📊 Deployment Configuration
+          | Setting | Value |
+          |---------|-------|
+          | Environment | `${{ steps.detect.outputs.environment }}` |
+          | Deploy Target | `${{ steps.detect.outputs.deploy_target }}` |
+          | App Changes | ${{ needs.check-changes.outputs.app_changed == 'true' && '✅ Yes' || '❌ No' }} |
+          | Infra Changes | ${{ needs.check-changes.outputs.infra_changed == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Build | ${{ steps.detect.outputs.should_build == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Deploy | ${{ steps.detect.outputs.should_deploy == 'true' && '✅ Yes' || '❌ No' }} |
+          | Will Test | ${{ steps.detect.outputs.should_test == 'true' && '✅ Yes' || '❌ No' }} |
+
+          ### 🔄 Pipeline Status
+          - [ ] Environment Detection ✅
+          - [ ] Quality Checks & Build ${{ steps.detect.outputs.should_build == 'true' && '⏳' || '⏭️' }}
+          - [ ] Deployment ${{ steps.detect.outputs.should_deploy == 'true' && '⏳' || '⏭️' }}
+          - [ ] Integration Tests ${{ steps.detect.outputs.should_test == 'true' && '⏳' || '⏭️' }}
+          - [ ] Notifications ⏳
+
+          ---
+          *Workflow: `${{ github.workflow }}` | Run: #${{ github.run_number }}*
+          EOF
 
   # Quality checks and building
   quality-and-build:
@@ -236,15 +274,15 @@ jobs:
 
       - name: Checkout repository
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Full history for proper tagging
 
       - name: Setup Node.js
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: "22.21.0"
+          node-version: "22.21.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -270,7 +308,7 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test_type: unit
-          environment: ${{ steps.detect.outputs.environment }}
+          environment: ${{ needs.detect-environment.outputs.environment }}
           collect_coverage: true
           fail_fast: false
 
@@ -314,7 +352,7 @@ jobs:
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         # Optimized for performance: scoped caching, inline cache, fast compression
         with:
           context: .
@@ -326,118 +364,71 @@ jobs:
           cache-to: type=gha,mode=max,scope=build-${{ github.ref_name }}
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+            NODE_ENV=production
+            NEXT_PUBLIC_ENVIRONMENT=${{ needs.detect-environment.outputs.environment }}
+            NEXT_PUBLIC_API_URL=${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_GA_ID=${{ needs.detect-environment.outputs.environment == 'production' && secrets.NEXT_PUBLIC_PRODUCTION_GA_ID || secrets.NEXT_PUBLIC_STAGING_GA_ID }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
-  # Image promotion job
-  promote-image:
-    name: Promote Image to ${{ needs.detect-environment.outputs.environment }}
-    runs-on: ubuntu-latest
-    needs: [detect-environment]
-    if: needs.detect-environment.outputs.should_promote == 'true'
-
-    outputs:
-      promoted_image_tag: ${{ steps.promotion.outputs.image_tag }}
-
-    steps:
-      - name: Log in to Container Registry
+      - name: Update build summary
+        if: always()
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-      - name: Determine source and target images
-        id: image_info
-        run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-          case "$BRANCH_NAME" in
-            "staging")
-              # For staging, promote the latest renovations build
-              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:renovations"
-              TARGET_TAG="staging-${{ github.sha }}"
-              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
-              SOURCE_DESC="renovations"
-              ;;
-            "main")
-              # For main, promote the latest staging build
-              SOURCE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging"
-              TARGET_TAG="main-${{ github.sha }}"
-              TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TARGET_TAG"
-              SOURCE_DESC="staging"
-              ;;
-            *)
-              echo "::error::Unsupported branch for promotion: $BRANCH_NAME"
-              exit 1
-              ;;
-          esac
-
-          echo "source_image=$SOURCE_IMAGE" >> $GITHUB_OUTPUT
-          echo "target_image=$TARGET_IMAGE" >> $GITHUB_OUTPUT
-          echo "target_tag=$TARGET_TAG" >> $GITHUB_OUTPUT
-          echo "source_desc=$SOURCE_DESC" >> $GITHUB_OUTPUT
-
-      - name: Pull source image
-        run: |
-          echo "📥 Pulling source image: ${{ steps.image_info.outputs.source_image }}"
-          docker pull ${{ steps.image_info.outputs.source_image }}
-
-      - name: Verify source image exists
-        run: |
-          if ! docker images | grep -q "${{ env.IMAGE_NAME }}.*${{ steps.image_info.outputs.source_desc }}"; then
-            echo "::error::Source image not found: ${{ steps.image_info.outputs.source_image }}"
-            echo "Available images:"
-            docker images | grep "${{ env.IMAGE_NAME }}"
-            exit 1
+          if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+            BUILD_STATUS="${{ steps.build.outcome == 'success' && '✅ Success' || steps.build.outcome == 'failure' && '❌ Failed' || '⏳ Running' }}"
+            TEST_STATUS="${{ steps.test.outcome == 'success' && '✅ Passed' || steps.test.outcome == 'failure' && '❌ Failed' || steps.test.outcome == 'skipped' && '⏭️ Skipped' || '⏳ Running' }}"
+          else
+            BUILD_STATUS="⏭️ Skipped"
+            TEST_STATUS="⏭️ Skipped"
           fi
-          echo "✅ Source image verified"
 
-      - name: Tag image for target environment
-        run: |
-          echo "🏷️  Tagging image for ${{ needs.detect-environment.outputs.environment }}"
-          docker tag ${{ steps.image_info.outputs.source_image }} ${{ steps.image_info.outputs.target_image }}
-          echo "✅ Image tagged"
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
 
-      - name: Push promoted image
-        id: push
-        run: |
-          echo "⬆️  Pushing promoted image: ${{ steps.image_info.outputs.target_image }}"
-          docker push ${{ steps.image_info.outputs.target_image }}
-          echo "✅ Image pushed successfully"
+          ### 🔨 Build & Quality Status
+          | Component | Status |
+          |-----------|--------|
+          | Code Linting | ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Type Checking | ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Security Audit | ${{ steps.build.outcome == 'success' && '✅ Passed' || '⚠️ Warnings' }} |
+          | Unit Tests | \$TEST_STATUS |
+          | Docker Build | \$BUILD_STATUS |
 
-      - name: Set promoted image tag output
-        id: promotion
-        run: |
-          echo "image_tag=${{ steps.image_info.outputs.target_tag }}" >> $GITHUB_OUTPUT
-          echo "🚀 Image promotion complete: ${{ steps.image_info.outputs.source_desc }} → ${{ needs.detect-environment.outputs.environment }}"
+          EOF
+
+          if [ "${{ steps.build.outcome }}" = "success" ] && [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+            echo "**Image Tag:** \`${{ steps.meta.outputs.tags }}\`" >> \$GITHUB_STEP_SUMMARY
+            echo "**Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> \$GITHUB_STEP_SUMMARY
+            echo "**Environment:** \`${{ needs.detect-environment.outputs.environment }}\`" >> \$GITHUB_STEP_SUMMARY
+          fi
 
   # Deployment job
   deploy:
     name: Deploy to ${{ needs.detect-environment.outputs.deploy_target }}
     runs-on: ubuntu-latest
-    needs: [detect-environment, quality-and-build, promote-image]
+    needs: [detect-environment, quality-and-build]
     if: needs.detect-environment.outputs.should_deploy == 'true'
     environment: ${{ needs.detect-environment.outputs.environment }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.6.6"
+          terraform_version: "1.14.3"
 
       - name: Set deployment image tag
         id: image_tag
         run: |
-          if [ "${{ needs.detect-environment.outputs.should_promote }}" = "true" ]; then
-            echo "image_tag=${{ needs.promote-image.outputs.promoted_image_tag }}" >> $GITHUB_OUTPUT
-            echo "🚀 Using promoted image: ${{ needs.promote-image.outputs.promoted_image_tag }}"
-          elif [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
+          if [ "${{ needs.detect-environment.outputs.should_build }}" = "true" ]; then
             echo "image_tag=${{ needs.quality-and-build.outputs.image_tag }}" >> $GITHUB_OUTPUT
-            echo "🔨 Using built image: ${{ needs.quality-and-build.outputs.image_tag }}"
+            echo "🔨 Using freshly built image: ${{ needs.quality-and-build.outputs.image_tag }}"
           else
-            # For infra-only deployments, use current commit as fallback
-            echo "image_tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
-            echo "ℹ️ Using fallback image tag for infra-only deployment"
+            echo "::error::No image available for deployment"
+            exit 1
           fi
 
       - name: Deploy application
@@ -460,27 +451,50 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_STAGING_GA_ID: ${{ secrets.NEXT_PUBLIC_STAGING_GA_ID }}
           NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.NEXT_PUBLIC_PRODUCTION_GA_ID }}
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Integration testing (staging only)
+      - name: Update deployment summary
+        if: always()
+        run: |
+          DEPLOY_STATUS="${{ job.status == 'success' && '✅ Success' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ### 🚀 Deployment Status
+          | Component | Details |
+          |-----------|---------|
+          | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
+          | Deploy Target | \`${{ needs.detect-environment.outputs.deploy_target }}\` |
+          | Image Tag Used | \`${{ steps.image_tag.outputs.image_tag }}\` |
+          | Image Built For | \`${{ needs.detect-environment.outputs.environment }}\` |
+          | Deployment Status | \$DEPLOY_STATUS |
+
+          EOF
+
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "**🌐 Application URL:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
+          fi
+
+  # Integration testing
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [detect-environment, deploy]
-    if: needs.detect-environment.outputs.should_test == 'true' && needs.detect-environment.outputs.environment == 'staging' && github.event.inputs.skip_tests != 'true'
+    if: needs.detect-environment.outputs.should_test == 'true' && github.event.inputs.skip_tests != 'true'
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run integration tests
         uses: ./.github/actions/test-runner
         with:
           test_type: integration
-          environment: staging
-          app_url: https://staging.boximity.ca
+          environment: ${{ needs.detect-environment.outputs.environment }}
+          app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
           fail_fast: false
           timeout_minutes: 15
 
@@ -488,8 +502,8 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test_type: e2e
-          environment: staging
-          app_url: https://staging.boximity.ca
+          environment: ${{ needs.detect-environment.outputs.environment }}
+          app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
           fail_fast: false
           timeout_minutes: 20
 
@@ -503,6 +517,31 @@ jobs:
             playwright-report/
           retention-days: 30
 
+      - name: Update testing summary
+        if: always()
+        run: |
+          TEST_STATUS="${{ job.status == 'success' && '✅ Passed' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+          DETECTED_ENV="${{ needs.detect-environment.outputs.environment }}"
+
+          # Determine test URL based on detected environment
+          if [ "$DETECTED_ENV" = "production" ]; then
+            TEST_URL="https://boximity.ca"
+          else
+            TEST_URL="https://staging.boximity.ca"
+          fi
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ### 🧪 Integration Testing Status
+          | Test Type | Status |
+          |-----------|--------|
+          | Integration Tests | \$TEST_STATUS |
+          | E2E Tests | \$TEST_STATUS |
+          | Test Environment | \`$DETECTED_ENV\` |
+          | Test URL | \$TEST_URL |
+
+          EOF
+
   # Notifications
   notify:
     name: Send Notifications
@@ -511,7 +550,10 @@ jobs:
     if: always() # Always run notifications
 
     steps:
-      - name: Send deployment notifications
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Send GitHub deployment notifications
         uses: ./.github/actions/notify
         with:
           event_type: ${{ needs.deploy.result == 'success' && 'deployment-success' || 'deployment-failed' }}
@@ -529,6 +571,40 @@ jobs:
               "integration_tests": "${{ needs.integration-tests.result || 'skipped' }}",
               "timestamp": "${{ github.event.head_commit.timestamp }}"
             }
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
+
+      - name: Generate final workflow summary
+        if: always()
+        run: |
+          OVERALL_STATUS="${{ needs.deploy.result == 'success' && '✅ Success' || '❌ Failed' }}"
+          DURATION="<!-- Workflow completed at ${{ github.event.head_commit.timestamp || 'unknown time' }} -->"
+
+          cat << EOF >> \$GITHUB_STEP_SUMMARY
+
+          ## 📋 Final Deployment Summary
+
+          **Overall Status:** \$OVERALL_STATUS
+          **Completed:** \`${{ github.event.head_commit.timestamp }}\`
+
+          ### 🔄 Pipeline Results
+          | Stage | Result |
+          |-------|--------|
+          | Environment Detection | ✅ Completed |
+          | Quality Checks & Build | ${{ needs.quality-and-build.result == 'success' && '✅ Success' || needs.quality-and-build.result == 'failure' && '❌ Failed' || needs.quality-and-build.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Deployment | ${{ needs.deploy.result == 'success' && '✅ Success' || needs.deploy.result == 'failure' && '❌ Failed' || needs.deploy.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Notifications | ${{ job.status == 'success' && '✅ Sent' || '❌ Failed' }} |
+
+          ### 📊 Key Information
+          - **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
+          - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || 'N/A' }}\`
+          - **Commit:** \`${{ github.sha }}\`
+          - **Triggered by:** ${{ github.actor }}
+
+          EOF
+
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "**🌐 Live Application:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
+          fi
+
+          echo "---" >> \$GITHUB_STEP_SUMMARY
+          echo "*Workflow completed* \$DURATION" >> \$GITHUB_STEP_SUMMARY
