@@ -33,8 +33,34 @@ export default function ManagedITServicesOntario() {
   return (
     <>
       {/* Hero Section */}
-      <section className="py-5 py-md-7 bg-primary text-white">
-        <div className="container">
+      <section className="position-relative py-5 py-md-7 text-white">
+        <div className="position-absolute top-0 start-0 w-100 h-100">
+          <div
+            className="w-100 h-100 position-absolute"
+            style={{ zIndex: 1, backgroundColor: "rgba(0, 0, 0, 0.75)" }}
+          ></div>
+        </div>
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{ zIndex: 0 }}
+        >
+          <Image
+            src="/images/hero-background.jpg"
+            alt="Office setting with technology"
+            fill
+            priority
+            loading="eager"
+            sizes="(max-width: 768px) 100vw, 100vw"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAAGAAoDAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD+Nrw1oXhTX/hvodj4p0Pw7r99c+JvEtzfXWuaFpGuXsksVzEsE8tzq1jd3Usq28JN5dzpLdLHJ5WoSw273A/EeDckz16mNll+JzrLp4nHYqvUoxzXMstpVK1LEpVsRS9hictw8pyhCKr0L0IqrSqUuajVjyRb/wBH89zLhaGW5b/a2Gwue46ngsHhoV44XA5piqVOFbCKUIVfb4/GVFFTqTcsNW5p05QtVpTqU6cn/9k="
+            style={{
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+            quality={70}
+          />
+        </div>
+        <div className="container position-relative" style={{ zIndex: 2 }}>
           <div className="row align-items-center">
             <div className="col-lg-6">
               <h1 className="display-4 fw-light mb-4">
@@ -158,11 +184,11 @@ export default function ManagedITServicesOntario() {
       </section>
 
       {/* Trust Signals */}
-      <section className="py-4 bg-light">
+      <section className="py-4" style={{ backgroundColor: "#2b3035" }}>
         <div className="container">
           <div className="row justify-content-center text-center">
             <div className="col-auto">
-              <small className="text-muted">
+              <small style={{ color: "#f8f9fa" }}>
                 Trusted by Ontario businesses since 2020
               </small>
             </div>
@@ -897,84 +923,37 @@ export default function ManagedITServicesOntario() {
         </div>
       </section>
 
-      {/* Case Studies */}
-      <section className="py-5 py-md-7 bg-alt">
-        <div className="container">
-          <h2 className="fs-1 fw-light mb-5 text-center border-bottom pb-3">
-            Ontario Businesses Trust Our Managed IT Services
-          </h2>
-          <div className="row g-4">
-            <div className="col-md-6 col-lg-4">
-              <div className="card h-100 border-0 shadow-sm">
-                <div className="card-body">
-                  <div className="mb-3">
-                    <span className="badge bg-primary">Law Firm</span>
-                    <span className="badge bg-secondary ms-2">Toronto</span>
-                  </div>
-                  <blockquote className="blockquote mb-3">
-                    <p className="mb-0">
-                      "Since switching to Boximity's managed IT services
-                      Ontario, we've eliminated all system downtime and
-                      recovered over 40 billable hours per month that were
-                      previously spent on IT issues."
-                    </p>
-                  </blockquote>
-                  <footer className="blockquote-footer mb-0">
-                    Sarah Chen, Partner
-                    <cite title="Source Title">Toronto Law Firm</cite>
-                  </footer>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-6 col-lg-4">
-              <div className="card h-100 border-0 shadow-sm">
-                <div className="card-body">
-                  <div className="mb-3">
-                    <span className="badge bg-success">Accounting</span>
-                    <span className="badge bg-secondary ms-2">Ottawa</span>
-                  </div>
-                  <blockquote className="blockquote mb-3">
-                    <p className="mb-0">
-                      "The cybersecurity protection in their managed IT services
-                      Ontario gives us peace of mind. Tax season is stressful
-                      enough without worrying about data breaches."
-                    </p>
-                  </blockquote>
-                  <footer className="blockquote-footer mb-0">
-                    Michael Thompson, Owner
-                    <cite title="Source Title">Ottawa Accounting Firm</cite>
-                  </footer>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-6 col-lg-4">
-              <div className="card h-100 border-0 shadow-sm">
-                <div className="card-body">
-                  <div className="mb-3">
-                    <span className="badge bg-info">Consulting</span>
-                    <span className="badge bg-secondary ms-2">Hamilton</span>
-                  </div>
-                  <blockquote className="blockquote mb-3">
-                    <p className="mb-0">
-                      "Their business-first approach to managed IT services
-                      Ontario is exactly what we needed. They understand our
-                      challenges and speak our language."
-                    </p>
-                  </blockquote>
-                  <footer className="blockquote-footer mb-0">
-                    Jennifer Walsh, Managing Director
-                    <cite title="Source Title">Hamilton Consulting Group</cite>
-                  </footer>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Final CTA */}
-      <section className="py-5 py-md-7 bg-primary text-white">
-        <div className="container text-center">
+      <section className="position-relative py-5 py-md-7 text-white">
+        <div className="position-absolute top-0 start-0 w-100 h-100">
+          <div
+            className="w-100 h-100 position-absolute"
+            style={{ zIndex: 1, backgroundColor: "rgba(0, 0, 0, 0.75)" }}
+          ></div>
+        </div>
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{ zIndex: 0 }}
+        >
+          <Image
+            src="/images/hero-background.jpg"
+            alt="Office setting with technology"
+            fill
+            loading="eager"
+            sizes="(max-width: 768px) 100vw, 100vw"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAAGAAoDAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD+Nrw1oXhTX/hvodj4p0Pw7r99c+JvEtzfXWuaFpGuXsksVzEsE8tzq1jd3Usq28JN5dzpLdLHJ5WoSw273A/EeDckz16mNll+JzrLp4nHYqvUoxzXMstpVK1LEpVsRS9hictw8pyhCKr0L0IqrSqUuajVjyRb/wBH89zLhaGW5b/a2Gwue46ngsHhoV44XA5piqVOFbCKUIVfb4/GVFFTqTcsNW5p05QtVpTqU6cn/9k="
+            style={{
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+            quality={70}
+          />
+        </div>
+        <div
+          className="container position-relative text-center"
+          style={{ zIndex: 2 }}
+        >
           <h2 className="fs-1 fw-light mb-4">
             Ready to Transform Your Ontario Business with Managed IT Services?
           </h2>
