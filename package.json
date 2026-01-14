@@ -2,6 +2,7 @@
   "name": "dotca",
   "version": "1.0.0",
   "private": false,
+  "type": "module",
   "scripts": {
     "dev": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next dev -H 0.0.0.0",
     "build": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next build",
@@ -42,7 +43,7 @@
     "@types/react-dom": "19.2.3",
     "@typescript-eslint/eslint-plugin": "8.53.0",
     "@typescript-eslint/parser": "8.53.0",
-    "eslint": "9.39.2",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.5",
     "jest": "30.2.0",

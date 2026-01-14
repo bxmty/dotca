@@ -670,6 +670,7 @@ export default function Checkout() {
                     </div>
 
                     {/* Payment section is temporarily hidden while we only use waitlist */}
+                    {/* eslint-disable-next-line no-constant-binary-expression */}
                     {false && !formData.joinWaitlist && (
                       <div>
                         <div className="d-flex gap-4 mb-4">
