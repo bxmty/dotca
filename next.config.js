@@ -42,4 +42,4 @@ if (process.env.NODE_ENV === "production") {
   process.env.HOSTNAME = process.env.HOSTNAME || "0.0.0.0";
 }
 
-module.exports = nextConfig;
+export default nextConfig;

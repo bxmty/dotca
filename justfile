@@ -294,6 +294,24 @@ dev-test: _check-docker-compose-dev
     fi
     @echo "{{GREEN}}✓ E2E tests completed{{NC}}"
 
+dev-lint:
+    @echo "{{BLUE}}Running ESLint...{{NC}}"
+    @if command -v npm >/dev/null 2>&1; then \
+        npm run lint; \
+    else \
+        echo "{{RED}}Error: npm not found{{NC}}" && exit 1; \
+    fi
+    @echo "{{GREEN}}✓ ESLint completed{{NC}}"
+    @echo
+    @echo "{{BLUE}}Running TypeScript type checking...{{NC}}"
+    @if command -v npm >/dev/null 2>&1; then \
+        npm run typecheck; \
+    else \
+        echo "{{RED}}Error: npm not found{{NC}}" && exit 1; \
+    fi
+    @echo "{{GREEN}}✓ Type checking completed{{NC}}"
+    @echo "{{GREEN}}✓ All linting checks passed{{NC}}"
+
 dev-status:
     @echo "{{BLUE}}Development environment status:{{NC}}"
     @docker-compose -f docker-compose.dev.yml ps
