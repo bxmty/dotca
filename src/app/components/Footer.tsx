@@ -16,8 +16,11 @@ export default function Footer() {
           </div>
           <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
             <div className="d-flex gap-4 align-items-center">
-              <a href="/privacy-policy" className="text-secondary me-4 small">
+              <a href="/privacy-policy" className="text-secondary small">
                 Privacy Policy
+              </a>
+              <a href="/terms-of-service" className="text-secondary small">
+                Terms of Service
               </a>
               <a
                 href="https://www.linkedin.com/company/19035825/"
