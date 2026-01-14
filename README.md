@@ -2,6 +2,15 @@
 
 A modern Next.js application for enterprise IT solutions, built with TypeScript, Bootstrap, and deployed on DigitalOcean infrastructure.
 
+## ⚠️ Migration to Justfile
+
+**Important**: This project has migrated from Make to [Just](https://github.com/casey/just) as the primary command runner. Just provides a cleaner, more maintainable alternative to Makefiles with better cross-platform support and syntax.
+
+- **Old**: `make <command>`
+- **New**: `just <command>`
+
+All commands remain the same - only the tool has changed. The Makefile is deprecated and will be removed in a future version.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -18,13 +27,13 @@ A modern Next.js application for enterprise IT solutions, built with TypeScript,
 ```bash
 git clone <repository-url>
 cd dotca
-make setup
+just setup
 ```
 
 2. **Start development environment:**
 
 ```bash
-make dev-up
+just dev-up
 ```
 
 3. **View the application:**
@@ -35,22 +44,22 @@ make dev-up
 
 ```bash
 # Start development environment
-make dev-up
+just dev-up
 
 # Stop development environment
-make dev-down
+just dev-down
 
 # View logs
-make dev-logs
+just dev-logs
 
 # Restart containers
-make dev-restart
+just dev-restart
 
 # Run tests (unit + E2E)
-make dev-test
+just dev-test
 
 # Clean development environment
-make dev-clean FORCE=true
+just dev-clean FORCE=true
 ```
 
 ### Manual Development (without Docker)
@@ -77,7 +86,7 @@ npm run test:coverage
 ### End-to-End Tests (Playwright)
 
 ```bash
-make dev-up  # Start environment first
+just dev-up  # Start environment first
 npm run test:e2e
 npm run test:e2e:debug
 npm run test:e2e:ui
@@ -91,19 +100,19 @@ This project uses infrastructure-as-code with Terraform and Ansible for DigitalO
 
 ```bash
 # Validate environment setup
-make validate
+just validate
 
 # Deploy to staging
-make deploy ENVIRONMENT=staging
+just deploy ENVIRONMENT=staging
 
 # Deploy to production
-make destroy ENVIRONMENT=production
+just deploy ENVIRONMENT=production
 
 # Check deployment status
-make status ENVIRONMENT=staging
+just status ENVIRONMENT=staging
 
 # Clean up deployment
-make destroy ENVIRONMENT=staging
+just destroy ENVIRONMENT=staging
 ```
 
 ### CI/CD Pipelines
@@ -119,12 +128,12 @@ For advanced users or debugging:
 
 ```bash
 # Terraform operations
-make terraform-plan ENVIRONMENT=staging
-make terraform-apply ENVIRONMENT=staging BACKEND=local
+just terraform-plan ENVIRONMENT=staging
+just terraform-apply ENVIRONMENT=staging BACKEND=local
 
 # Ansible operations
-make ansible-ping ENVIRONMENT=staging
-make ansible-syntax
+just ansible-ping
+just ansible-syntax
 ```
 
 ### Environment Configuration
@@ -162,7 +171,8 @@ Metrics are collected and sent to `/api/analytics/web-vitals`.
 ├── ansible/               # Configuration management
 ├── scripts/               # Development and deployment scripts
 ├── docs/                  # Documentation
-└── Makefile               # Development and deployment commands
+├── justfile               # Development and deployment commands
+└── Makefile               # Deprecated - replaced by justfile
 ```
 
 ## 🛠️ Development Guidelines
@@ -171,7 +181,7 @@ Metrics are collected and sent to `/api/analytics/web-vitals`.
 
 - **Linting**: `npm run lint`
 - **Type checking**: `npm run typecheck`
-- **Testing**: `make dev-test`
+- **Testing**: `just dev-test`
 - **Pre-commit hooks**: `npm run pre-commit:install`
 
 ### Commit Messages
@@ -190,7 +200,7 @@ Follow conventional commit format:
 
 1. Create a feature branch from `staging`
 2. Make your changes with tests
-3. Run `make dev-test` to ensure everything works
+3. Run `just dev-test` to ensure everything works
 4. Submit a pull request
 
 ## 📚 Additional Resources
@@ -200,3 +210,4 @@ Follow conventional commit format:
 - [Terraform Documentation](https://developer.hashicorp.com/terraform)
 - [Ansible Documentation](https://docs.ansible.com/)
 - [Local Development Setup](docs/local-development-setup.md)
+- [Makefile to Justfile Migration](docs/makefile-to-justfile-migration.md)
