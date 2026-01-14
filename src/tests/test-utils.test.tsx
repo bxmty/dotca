@@ -228,7 +228,6 @@ describe("Test Utilities", () => {
               height: props.height?.toString(),
             };
             return (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 data-testid="mock-image"
                 {...imgProps}
