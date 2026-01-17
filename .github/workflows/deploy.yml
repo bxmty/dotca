@@ -10,6 +10,7 @@ on:
     paths:
       - "src/**"
       - "public/**"
+      - "content/**"
       - "package.json"
       - "package-lock.json"
       - "Dockerfile"
@@ -80,6 +81,7 @@ jobs:
             app:
               - 'src/**'
               - 'public/**'
+              - 'content/**'
               - 'package.json'
               - 'package-lock.json'
               - 'Dockerfile'
@@ -292,6 +294,10 @@ jobs:
       - name: Run linting
         if: needs.detect-environment.outputs.should_build == 'true'
         run: npm run lint
+
+      - name: Validate blog content
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: node scripts/validate-blog-posts.js
 
       - name: Run type checking
         if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
