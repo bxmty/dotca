@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
             <div className="fs-4 fw-semibold mb-2">boximity msp</div>
             <p className="small text-secondary mb-0">
-              © 2025 boximity msp. All rights reserved.
+              © 2026 boximity msp. All rights reserved.
             </p>
             {commitHash && (
               <p className="small text-muted mb-0 mt-1">Build: {commitHash}</p>

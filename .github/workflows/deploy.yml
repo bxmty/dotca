@@ -10,6 +10,7 @@ on:
     paths:
       - "src/**"
       - "public/**"
+      - "content/**"
       - "package.json"
       - "package-lock.json"
       - "Dockerfile"
@@ -80,6 +81,7 @@ jobs:
             app:
               - 'src/**'
               - 'public/**'
+              - 'content/**'
               - 'package.json'
               - 'package-lock.json'
               - 'Dockerfile'
@@ -282,7 +284,7 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v6
         with:
-          node-version: "24.12.0"
+          node-version: "24.13.0"
           cache: "npm"
 
       - name: Install dependencies
@@ -292,6 +294,10 @@ jobs:
       - name: Run linting
         if: needs.detect-environment.outputs.should_build == 'true'
         run: npm run lint
+
+      - name: Validate blog content
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: node scripts/validate-blog-posts.js
 
       - name: Run type checking
         if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'

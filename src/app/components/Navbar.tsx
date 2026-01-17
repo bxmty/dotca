@@ -40,6 +40,9 @@ export default function Navbar() {
           <Link href="/#process" className="text-decoration-none text-body">
             Process
           </Link>
+          <Link href="/blog" className="text-decoration-none text-body">
+            Blog
+          </Link>
           <Link href="/pricing" className="text-decoration-none text-body">
             Pricing
           </Link>
@@ -94,6 +97,13 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Process
+            </Link>
+            <Link
+              href="/blog"
+              className="text-decoration-none text-body"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Blog
             </Link>
             <Link
               href="/#contact"

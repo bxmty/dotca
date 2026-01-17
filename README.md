@@ -58,6 +58,9 @@ just dev-restart
 # Run tests (unit + E2E)
 just dev-test
 
+# Run linting and type checking
+just dev-lint
+
 # Clean development environment
 just dev-clean FORCE=true
 ```
