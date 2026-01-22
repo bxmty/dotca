@@ -24,7 +24,7 @@
     "@umami/node": "0.4.0",
     "bootstrap": "5.3.8",
     "gray-matter": "4.0.3",
-    "libphonenumber-js": "1.12.34",
+    "libphonenumber-js": "1.12.35",
     "next": "16.1.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
