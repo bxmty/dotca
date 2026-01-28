@@ -1,55 +1,35 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
+  "extends": ["config:recommended"],
   "rangeStrategy": "pin",
-  "baseBranchPatterns": [
-    "upgrades"
-  ],
-  "schedule": [
-    "at any time"
-  ],
+  "baseBranchPatterns": ["upgrades"],
+  "schedule": ["at any time"],
   "timezone": "America/New_York",
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": [
-      "before 6am on Friday"
-    ]
+    "schedule": ["before 6am on Friday"]
   },
   "packageRules": [
     {
-      "matchManagers": [
-        "npm"
-      ],
+      "matchManagers": ["npm"],
       "enabled": true
     },
     {
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "matchDepTypes": [
-        "devDependencies"
-      ],
+      "matchUpdateTypes": ["patch"],
+      "matchDepTypes": ["devDependencies"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"
     },
     {
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "matchDepTypes": [
-        "dependencies"
-      ],
+      "matchUpdateTypes": ["patch"],
+      "matchDepTypes": ["dependencies"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"
     },
     {
-      "matchUpdateTypes": [
-        "minor"
-      ],
+      "matchUpdateTypes": ["minor"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "merge-commit"
