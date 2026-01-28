@@ -1,5 +1,5 @@
 # Multi-environment Dockerfile for Next.js deployment
-FROM node:24.12.0-alpine AS builder
+FROM node:24.13.0-alpine AS builder
 
 # Install git for potential npm package dependencies that require it
 RUN apk add --no-cache git
@@ -44,7 +44,7 @@ RUN echo "Using Next.js path aliases for imports"
 RUN npm run build
 
 # Production image
-FROM node:24.12.0-alpine AS runner
+FROM node:24.13.0-alpine AS runner
 
 # Install dependencies
 RUN apk add --no-cache curl
