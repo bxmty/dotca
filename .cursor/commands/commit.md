@@ -1,9 +1,11 @@
 # Pre-Commit and Git Workflow
 
 ## Overview
+
 Run all pre-commit tasks, create logically organized commits with descriptive messages, and prepare code for review without pushing to origin.
 
 ## Context
+
 - This project uses UV for Python package management
 - All pre-commit hooks must pass before creating commits
 
@@ -37,6 +39,7 @@ Run all pre-commit tasks, create logically organized commits with descriptive me
    - Verify no changes are left unstaged
 
 ## Requirements
+
 - Do NOT push to origin/remote
 - Each commit should represent a single logical unit of work
 - Commit messages must be clear and descriptive
