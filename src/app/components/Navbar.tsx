@@ -1,127 +1,59 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+
+const navLinks = [
+  { href: "/#solutions", label: "Solutions" },
+  { href: "/#benefits", label: "Benefits" },
+  { href: "/#process", label: "Process" },
+  { href: "/blog", label: "Blog" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/#contact", label: "Contact" },
+] as const;
 
 export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
   return (
-    <header className="py-4 px-3 px-md-5">
-      <div className="d-flex align-items-center justify-content-between">
-        <div className="d-flex align-items-center">
-          <Link
-            href="/"
-            className="d-flex align-items-center fs-4 fw-semibold text-decoration-none text-body"
-          >
-            <Image
-              src="/images/logo.svg"
-              alt="Boximity MSP Logo"
-              className="me-2"
-              width={30}
-              height={30}
-              priority
-            />
-            boximity msp
-          </Link>
-        </div>
-        <nav className="d-none d-md-flex gap-4">
-          <Link href="/#solutions" className="text-decoration-none text-body">
-            Solutions
-          </Link>
-          <Link href="/#benefits" className="text-decoration-none text-body">
-            Benefits
-          </Link>
-          <Link href="/#process" className="text-decoration-none text-body">
-            Process
-          </Link>
-          <Link href="/blog" className="text-decoration-none text-body">
-            Blog
-          </Link>
-          <Link href="/pricing" className="text-decoration-none text-body">
-            Pricing
-          </Link>
-          <Link href="/#contact" className="text-decoration-none text-body">
-            Contact
-          </Link>
-        </nav>
-        <button
-          className="btn d-md-none border-0 p-0"
-          onClick={toggleMobileMenu}
-          aria-label="Toggle navigation menu"
+    <nav className="navbar navbar-expand-md py-4 px-3 px-md-5">
+      <div className="container-fluid">
+        <Link
+          href="/"
+          className="navbar-brand d-flex align-items-center fs-4 fw-semibold text-body"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            width="24"
-            height="24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
+          <Image
+            src="/images/logo.svg"
+            alt="Boximity MSP Logo"
+            className="me-2"
+            width={30}
+            height={30}
+            priority
+          />
+          boximity msp
+        </Link>
+        <button
+          className="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span className="navbar-toggler-icon" />
         </button>
-      </div>
-
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="d-md-none mt-3 py-3 border-top">
-          <nav className="d-flex flex-column gap-3">
-            <Link
-              href="/#solutions"
-              className="text-decoration-none text-body"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Solutions
-            </Link>
-            <Link
-              href="/#benefits"
-              className="text-decoration-none text-body"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Benefits
-            </Link>
-            <Link
-              href="/#process"
-              className="text-decoration-none text-body"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Process
-            </Link>
-            <Link
-              href="/blog"
-              className="text-decoration-none text-body"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Blog
-            </Link>
-            <Link
-              href="/#contact"
-              className="text-decoration-none text-body"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Contact
-            </Link>
-            <Link
-              href="/pricing"
-              className="text-decoration-none text-body"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Pricing
-            </Link>
-          </nav>
+        <div className="collapse navbar-collapse" id="navbarNav">
+          <ul className="navbar-nav ms-auto gap-2 gap-md-4">
+            {navLinks.map(({ href, label }) => (
+              <li key={href} className="nav-item">
+                <Link
+                  href={href}
+                  className="nav-link text-body fs-5 fw-semibold"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
-    </header>
+      </div>
+    </nav>
   );
 }
