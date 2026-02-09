@@ -69,12 +69,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
       - name: Check for changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v3.0.2
         id: filter
         with:
           filters: |
@@ -276,13 +276,13 @@ jobs:
 
       - name: Checkout repository
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0 # Full history for proper tagging
 
       - name: Setup Node.js
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.2.0
         with:
           node-version: "24.13.0"
           cache: "npm"
@@ -320,7 +320,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: test-results-${{ needs.detect-environment.outputs.environment }}
           path: |
@@ -343,7 +343,7 @@ jobs:
       - name: Extract metadata
         id: meta
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v5.10.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -353,12 +353,12 @@ jobs:
 
       - name: Set up Docker Buildx
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v3.12.0
 
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v6.18.0
         # Optimized for performance: scoped caching, inline cache, fast compression
         with:
           context: .
@@ -420,10 +420,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: "1.14.3"
 
@@ -494,7 +494,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
 
       - name: Run integration tests
         uses: ./.github/actions/test-runner
@@ -516,7 +516,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: e2e-results-${{ github.run_id }}
           path: |
@@ -558,7 +558,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
 
       - name: Send GitHub deployment notifications
         uses: ./.github/actions/notify
