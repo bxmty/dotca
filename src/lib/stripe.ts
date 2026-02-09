@@ -36,6 +36,6 @@ export const getServerStripe = async () => {
   // Dynamic import to avoid type errors
   const { default: Stripe } = await import("stripe");
   return new Stripe(secretKey, {
-    apiVersion: "2025-08-27.basil", // Use a valid API version
+    apiVersion: "2026-01-28.clover",
   });
 };
