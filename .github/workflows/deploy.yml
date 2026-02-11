@@ -358,7 +358,7 @@ jobs:
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v6.19.0
         # Optimized for performance: scoped caching, inline cache, fast compression
         with:
           context: .
