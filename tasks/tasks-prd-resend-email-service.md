@@ -1,6 +1,6 @@
 # Task List: Resend Email Service for Webmaster Notifications
 
-*Generated from: [prd-resend-email-service.md](./prd-resend-email-service.md)*
+_Generated from: [prd-resend-email-service.md](./prd-resend-email-service.md)_
 
 ---
 
@@ -34,11 +34,11 @@
 
 ## Tasks
 
-- [ ] 1.0 Update existing documentation where relevant (no new diagrams)
-  - [ ] 1.1 Add `RESEND_API_KEY` and `WEBMASTER_EMAIL` to `docs/secrets-rotation-guide.md` (table, rotation steps).
-  - [ ] 1.2 Add Resend env vars to `docs/local-development-setup.md`.
-  - [ ] 1.3 Update `README.md` env vars section if it lists required keys.
-  - [ ] 1.4 Update `.github/workflows/environments/README.md` to list Resend secrets.
+- [x] 1.0 Update existing documentation where relevant (no new diagrams)
+  - [x] 1.1 Add `RESEND_API_KEY` and `WEBMASTER_EMAIL` to `docs/secrets-rotation-guide.md` (table, rotation steps).
+  - [x] 1.2 Add Resend env vars to `docs/local-development-setup.md`.
+  - [x] 1.3 Update `README.md` env vars section if it lists required keys.
+  - [x] 1.4 Update `.github/workflows/environments/README.md` to list Resend secrets.
 
 - [ ] 2.0 Create Resend notification utility and add Resend SDK dependency
   - [ ] 2.1 Add `resend` package to `package.json` and run `npm install`.

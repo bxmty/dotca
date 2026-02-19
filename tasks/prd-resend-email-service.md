@@ -3,12 +3,15 @@
 ## 1. Introduction/Overview
 
 ### Problem
+
 The webmaster currently receives form submission data only through Brevo (contact lists and CRM). If Brevo experiences downtime, misconfiguration, or delivery issues, the webmaster may miss lead notifications entirely. There is no redundant notification channel.
 
 ### Solution
+
 Implement a Resend-based email service that sends a second notification to the webmaster every time someone submits a form. This provides redundancy: if Brevo fails, the webmaster still receives the lead. If Resend fails, Brevo remains the primary system and the form submission still succeeds.
 
 ### Goal
+
 Ensure the webmaster receives form submission notifications through two independent channels (Brevo + Resend) so that a single service failure does not result in lost leads.
 
 ---
@@ -98,11 +101,11 @@ Ensure the webmaster receives form submission notifications through two independ
 
 ### 6.2 Form-Specific Data
 
-| Form        | Endpoint        | Key Fields                                                                 |
-|-------------|-----------------|----------------------------------------------------------------------------|
-| Contact     | `/api/contact`  | name, email, phone, company, address, city, state, zip, plan, billingCycle, employeeCount, isWaitlist |
-| Waitlist    | `/api/contact`  | Same as Contact (distinguished by `isWaitlist: true`)                       |
-| Onboarding  | `/api/onboarding` | companyName, industry, employeeCount, contactName, contactEmail, contactPhone, address, city, state, zipCode |
+| Form       | Endpoint          | Key Fields                                                                                                   |
+| ---------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| Contact    | `/api/contact`    | name, email, phone, company, address, city, state, zip, plan, billingCycle, employeeCount, isWaitlist        |
+| Waitlist   | `/api/contact`    | Same as Contact (distinguished by `isWaitlist: true`)                                                        |
+| Onboarding | `/api/onboarding` | companyName, industry, employeeCount, contactName, contactEmail, contactPhone, address, city, state, zipCode |
 
 ---
 
@@ -157,4 +160,4 @@ Ensure the webmaster receives form submission notifications through two independ
 
 ---
 
-*Document created: 2025-02-19*
+_Document created: 2025-02-19_

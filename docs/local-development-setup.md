@@ -53,6 +53,8 @@ SSH_KEY_FINGERPRINT=your_ssh_key_fingerprint
 
 # Application Secrets
 BREVO_API_KEY=your_brevo_api_key_here
+RESEND_API_KEY=your_resend_api_key_here
+WEBMASTER_EMAIL=webmaster@example.com
 STRIPE_SECRET_KEY=your_stripe_secret_key_here
 STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
 GA_STAGING_ID=G-XXXXXXXXXX
