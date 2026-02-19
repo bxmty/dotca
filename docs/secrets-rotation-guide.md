@@ -54,7 +54,7 @@ The DotCA project uses multiple types of secrets across different systems. Prope
 
 ### 3. API Keys and Tokens
 
-- **Services**: Stripe, Brevo, Google Analytics, Umami
+- **Services**: Stripe, Brevo, Resend, Google Analytics, Umami
 - **Rotation**: Every 90 days
 - **Impact**: Affects payment processing, emails, analytics
 
@@ -165,18 +165,20 @@ After successful verification (minimum 24 hours):
 
 ### Required Secrets
 
-| Secret Name                          | Purpose                  | Rotation Impact |
-| ------------------------------------ | ------------------------ | --------------- |
-| `DO_TOKEN`                           | DigitalOcean API access  | High            |
-| `SSH_PRIVATE_KEY`                    | Server deployment access | Critical        |
-| `SSH_KEY_FINGERPRINT`                | Terraform validation     | Medium          |
-| `SPACES_ACCESS_ID`                   | Object storage access    | Medium          |
-| `SPACES_SECRET_KEY`                  | Object storage secret    | Medium          |
-| `BREVO_API_KEY`                      | Email service            | Medium          |
-| `STRIPE_SECRET_KEY`                  | Payment processing       | Critical        |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Payment forms            | Medium          |
-| `NEXT_PUBLIC_PRODUCTION_GA_ID`       | Analytics                | Low             |
-| `ANSIBLE_VAULT_PASSWORD`             | Deployment automation    | Critical        |
+| Secret Name                          | Purpose                          | Rotation Impact |
+| ------------------------------------ | -------------------------------- | --------------- |
+| `DO_TOKEN`                           | DigitalOcean API access          | High            |
+| `SSH_PRIVATE_KEY`                    | Server deployment access         | Critical        |
+| `SSH_KEY_FINGERPRINT`                | Terraform validation             | Medium          |
+| `SPACES_ACCESS_ID`                   | Object storage access            | Medium          |
+| `SPACES_SECRET_KEY`                  | Object storage secret            | Medium          |
+| `BREVO_API_KEY`                      | Email service                    | Medium          |
+| `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
+| `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
+| `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Payment forms                    | Medium          |
+| `NEXT_PUBLIC_PRODUCTION_GA_ID`       | Analytics                        | Low             |
+| `ANSIBLE_VAULT_PASSWORD`             | Deployment automation            | Critical        |
 
 ### Rotation Process
 
@@ -291,6 +293,31 @@ ansible-vault rekey ansible/vars/vault-vars.yml
 
 3. **Clean Up**
    - Delete old API key after verification
+
+### Resend API Keys
+
+1. **Generate New API Key**
+   - Log in to Resend dashboard
+   - Go to API Keys → Create API Key
+   - Create new API key with appropriate permissions (sending scope)
+
+2. **Update Secrets**
+
+   ```bash
+   # Update GitHub secret
+   gh secret set RESEND_API_KEY -R owner/repo --body "re_xxxxxxxxxxxx"
+
+   # WEBMASTER_EMAIL is not a secret; update in environment variables or Ansible vars
+   # If stored as secret, update via GitHub:
+   gh secret set WEBMASTER_EMAIL -R owner/repo --body "webmaster@example.com"
+   ```
+
+3. **Update Deployment Configuration**
+   - Update `ansible/vars/vault-vars.yml` or environment config if `WEBMASTER_EMAIL` is stored there
+   - Deploy and verify webmaster notification emails are delivered
+
+4. **Clean Up**
+   - Revoke old API key in Resend dashboard after verification
 
 ### Google Analytics
 
@@ -494,6 +521,7 @@ gh secret set SSH_KEY_FINGERPRINT -R owner/repo --body "$FINGERPRINT"
 # Restore previous API keys from backup
 gh secret set STRIPE_SECRET_KEY -R owner/repo --body "$BACKUP_STRIPE_KEY"
 gh secret set BREVO_API_KEY -R owner/repo --body "$BACKUP_BREVO_KEY"
+gh secret set RESEND_API_KEY -R owner/repo --body "$BACKUP_RESEND_KEY"
 
 # Deploy with backup keys
 gh workflow run deploy.yml -f rollback=true
@@ -534,7 +562,7 @@ gh workflow run deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
 - [ ] SSH access to production servers works
 - [ ] Deployment pipeline completes successfully
 - [ ] Payment processing works (Stripe)
-- [ ] Email delivery works (Brevo)
+- [ ] Email delivery works (Brevo, Resend webmaster notifications)
 - [ ] Analytics tracking works (GA/Umami)
 - [ ] Application loads without errors
 - [ ] Database connections work
