@@ -146,6 +146,8 @@ Required environment variables (create `.env.local` for local development):
 ```bash
 DO_TOKEN=your_digitalocean_token
 BREVO_API_KEY=your_email_service_key
+RESEND_API_KEY=your_resend_api_key
+WEBMASTER_EMAIL=webmaster@example.com
 STRIPE_SECRET_KEY=your_stripe_secret
 STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 ```
