@@ -40,12 +40,12 @@ export default function Navbar() {
           <span className="navbar-toggler-icon" />
         </button>
         <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto gap-2 gap-md-4">
+          <ul className="navbar-nav ms-auto gap-1 gap-md-2">
             {navLinks.map(({ href, label }) => (
               <li key={href} className="nav-item">
                 <Link
                   href={href}
-                  className="nav-link text-body fs-5 fw-semibold"
+                  className="nav-link text-body fs-6 fw-semibold"
                 >
                   {label}
                 </Link>
