@@ -139,4 +139,4 @@ Implementation must stay within these limits. Consider sampling or limiting inst
 
 ---
 
-*PRD created for the dotca project. Implementation should be done by a developer following this document and the official Sentry for Next.js documentation.*
+_PRD created for the dotca project. Implementation should be done by a developer following this document and the official Sentry for Next.js documentation._
