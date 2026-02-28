@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": false,
   "type": "module",
+  "engines": {
+    "node": "24.14.0"
+  },
   "scripts": {
     "dev": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next dev -H 0.0.0.0",
     "build": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next build",
@@ -24,13 +27,13 @@
     "@umami/node": "0.4.0",
     "bootstrap": "5.3.8",
     "gray-matter": "4.0.3",
-    "libphonenumber-js": "1.12.37",
+    "libphonenumber-js": "1.12.38",
     "next": "16.1.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "10.1.0",
     "react-phone-input-2": "2.15.1",
-    "stripe": "20.3.1",
+    "stripe": "20.4.0",
     "web-vitals": "5.1.0"
   },
   "devDependencies": {
@@ -40,7 +43,7 @@
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
     "@types/bootstrap": "5.2.10",
-    "@types/node": "25.3.0",
+    "@types/node": "25.3.2",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@typescript-eslint/eslint-plugin": "8.56.1",
