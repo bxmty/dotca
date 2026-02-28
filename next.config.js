@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Config options here
@@ -37,4 +39,17 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry configuration: https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+export default withSentryConfig(nextConfig, {
+  org: "boximity-inc",
+  project: "javascript-nextjs",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  webpack: {
+    automaticVercelMonitors: true,
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+});
