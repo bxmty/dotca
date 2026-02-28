@@ -21,15 +21,15 @@ The Sentry wizard will create these files automatically:
 
 ## Tasks
 
-- [ ] 1.0 Run Sentry wizard and setup basic configuration
-  - [ ] 1.1 Create Sentry account and project at [sentry.io](https://sentry.io/signup/)
-  - [ ] 1.2 Run `npx @sentry/wizard@latest -i nextjs` to automatically configure Sentry
-  - [ ] 1.3 Select desired features when prompted: Error Monitoring, Tracing, Session Replay, Logs
-  - [ ] 1.4 Review and commit the automatically generated files
-  - [ ] 1.5 Add SENTRY_AUTH_TOKEN to your CI/CD environment for source map uploads
+- [x] 1.0 Run Sentry wizard and setup basic configuration
+  - [x] 1.1 Create Sentry account and project at [sentry.io](https://sentry.io/signup/)
+  - [x] 1.2 Run `npx @sentry/wizard@latest -i nextjs` to automatically configure Sentry
+  - [x] 1.3 Select desired features when prompted: Error Monitoring, Tracing, Session Replay, Logs
+  - [x] 1.4 Review and commit the automatically generated files
+  - [x] 1.5 Add SENTRY_AUTH_TOKEN to your CI/CD environment for source map uploads
 - [ ] 2.0 Test and verify Sentry setup
-  - [ ] 2.1 Start development server with `npm run dev`
-  - [ ] 2.2 Visit `http://localhost:3000/sentry-example-page` and click "Throw Sample Error"
+  - [x] 2.1 Start development server with `npm run dev`
+  - [x] 2.2 Visit `http://localhost:3000/sentry-example-page` and click "Throw Sample Error"
   - [ ] 2.3 Verify error appears in Sentry dashboard with correct stack traces
   - [ ] 2.4 Check that performance traces are captured for page loads and API calls
   - [ ] 2.5 Confirm Session Replay recordings are working (if enabled)
