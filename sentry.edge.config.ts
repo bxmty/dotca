@@ -11,6 +11,9 @@ Sentry.init({
   // Environment tagging for better issue organization
   environment: process.env.NODE_ENV,
 
+  // Release tracking for better error grouping and deployment tracking
+  release: process.env.NEXT_PUBLIC_COMMIT_HASH,
+
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 

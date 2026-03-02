@@ -10,6 +10,9 @@ Sentry.init({
   // Environment tagging for better issue organization
   environment: process.env.NODE_ENV,
 
+  // Release tracking for better error grouping and deployment tracking
+  release: process.env.NEXT_PUBLIC_COMMIT_HASH,
+
   // Add optional integrations for additional features
   integrations: [Sentry.replayIntegration()],
 

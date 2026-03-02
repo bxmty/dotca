@@ -44,11 +44,11 @@ The Sentry wizard will create these files automatically:
   - [x] 4.1 Review existing `src/app/error.tsx` and consider integration with Sentry
   - [x] 4.2 Update error boundaries to use `Sentry.captureException()` for manual error reporting
   - [x] 4.3 Test that both automatic and manual error capture work correctly
-- [ ] 5.0 Setup release tracking and source maps
-  - [ ] 5.1 Set release identifier using `NEXT_PUBLIC_COMMIT_HASH` in Sentry configurations
-  - [ ] 5.2 Test production build with `npm run build` to verify source map uploads
-  - [ ] 5.3 Verify that error stack traces show original source code, not minified code
-  - [ ] 5.4 Ensure source map uploads respect the 1GB attachment limit
+- [x] 5.0 Setup release tracking and source maps
+  - [x] 5.1 Set release identifier using `NEXT_PUBLIC_COMMIT_HASH` in Sentry configurations
+  - [x] 5.2 Test production build with `npm run build` to verify source map uploads
+  - [x] 5.3 Verify that error stack traces show original source code, not minified code
+  - [x] 5.4 Ensure source map uploads respect the 1GB attachment limit
 - [ ] 6.0 Configure deployment pipeline for Sentry
   - [ ] 6.1 Add Sentry environment variables to `.github/workflows/deploy.yml` build-args
   - [ ] 6.2 Configure environment-specific Sentry DSNs (staging vs production projects)
