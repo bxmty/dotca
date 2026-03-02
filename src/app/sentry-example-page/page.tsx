@@ -74,6 +74,8 @@ export default function Page() {
             Sentry.logger.info(
               "User clicked the button, throwing a sample error",
             );
+            Sentry.logger.warn("This is a warning message for testing");
+            Sentry.logger.error("This is an error message for testing");
             await Sentry.startSpan(
               {
                 name: "Example Frontend/Backend Span",

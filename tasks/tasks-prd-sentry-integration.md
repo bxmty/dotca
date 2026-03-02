@@ -27,18 +27,18 @@ The Sentry wizard will create these files automatically:
   - [x] 1.3 Select desired features when prompted: Error Monitoring, Tracing, Session Replay, Logs
   - [x] 1.4 Review and commit the automatically generated files
   - [x] 1.5 Add SENTRY_AUTH_TOKEN to your CI/CD environment for source map uploads
-- [ ] 2.0 Test and verify Sentry setup
+- [x] 2.0 Test and verify Sentry setup
   - [x] 2.1 Start development server with `npm run dev`
   - [x] 2.2 Visit `http://localhost:3000/sentry-example-page` and click "Throw Sample Error"
-  - [ ] 2.3 Verify error appears in Sentry dashboard with correct stack traces
-  - [ ] 2.4 Check that performance traces are captured for page loads and API calls
-  - [ ] 2.5 Confirm Session Replay recordings are working (if enabled)
-  - [ ] 2.6 Test logging functionality with `Sentry.logger.info/warn/error()` calls
-- [ ] 3.0 Configure sampling rates and environment settings
-  - [ ] 3.1 Adjust `tracesSampleRate` in configuration files (1.0 for dev, 0.1 for prod)
-  - [ ] 3.2 Configure `replaysSessionSampleRate` and `replaysOnErrorSampleRate` (if using Session Replay)
-  - [ ] 3.3 Set environment tagging in all config files (`environment: process.env.NODE_ENV`)
-  - [ ] 3.4 Configure PII scrubbing if needed (default settings handle most cases)
+  - [x] 2.3 Verify error appears in Sentry dashboard with correct stack traces
+  - [x] 2.4 Check that performance traces are captured for page loads and API calls
+  - [x] 2.5 Confirm Session Replay recordings are working (if enabled)
+  - [x] 2.6 Test logging functionality with `Sentry.logger.info/warn/error()` calls
+- [x] 3.0 Configure sampling rates and environment settings
+  - [x] 3.1 Adjust `tracesSampleRate` in configuration files (1.0 for dev, 0.1 for prod)
+  - [x] 3.2 Configure `replaysSessionSampleRate` and `replaysOnErrorSampleRate` (if using Session Replay)
+  - [x] 3.3 Set environment tagging in all config files (`environment: process.env.NODE_ENV`)
+  - [x] 3.4 Configure PII scrubbing if needed (default settings handle most cases)
   - [ ] 3.5 Monitor usage stats and adjust rates to stay within free tier limits
 - [ ] 4.0 Update existing error boundaries (optional)
   - [ ] 4.1 Review existing `src/app/error.tsx` and consider integration with Sentry
