@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function Error({
@@ -10,6 +11,9 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Report error to Sentry for monitoring and tracking
+    Sentry.captureException(error);
+    // Also log to console for local development
     console.error(error);
   }, [error]);
 

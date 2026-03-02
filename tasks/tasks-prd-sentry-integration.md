@@ -40,10 +40,10 @@ The Sentry wizard will create these files automatically:
   - [x] 3.3 Set environment tagging in all config files (`environment: process.env.NODE_ENV`)
   - [x] 3.4 Configure PII scrubbing if needed (default settings handle most cases)
   - [ ] 3.5 Monitor usage stats and adjust rates to stay within free tier limits
-- [ ] 4.0 Update existing error boundaries (optional)
-  - [ ] 4.1 Review existing `src/app/error.tsx` and consider integration with Sentry
-  - [ ] 4.2 Update error boundaries to use `Sentry.captureException()` for manual error reporting
-  - [ ] 4.3 Test that both automatic and manual error capture work correctly
+- [x] 4.0 Update existing error boundaries (optional)
+  - [x] 4.1 Review existing `src/app/error.tsx` and consider integration with Sentry
+  - [x] 4.2 Update error boundaries to use `Sentry.captureException()` for manual error reporting
+  - [x] 4.3 Test that both automatic and manual error capture work correctly
 - [ ] 5.0 Setup release tracking and source maps
   - [ ] 5.1 Set release identifier using `NEXT_PUBLIC_COMMIT_HASH` in Sentry configurations
   - [ ] 5.2 Test production build with `npm run build` to verify source map uploads
