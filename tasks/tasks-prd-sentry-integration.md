@@ -49,13 +49,13 @@ The Sentry wizard will create these files automatically:
   - [x] 5.2 Test production build with `npm run build` to verify source map uploads
   - [x] 5.3 Verify that error stack traces show original source code, not minified code
   - [x] 5.4 Ensure source map uploads respect the 1GB attachment limit
-- [ ] 6.0 Configure deployment pipeline for Sentry
-  - [ ] 6.1 Add Sentry environment variables to `.github/workflows/deploy.yml` build-args
-  - [ ] 6.2 Configure environment-specific Sentry DSNs (staging vs production projects)
-  - [ ] 6.3 Add `SENTRY_AUTH_TOKEN` secret to GitHub repository secrets for source map uploads
-  - [ ] 6.4 Verify Sentry variables are passed to Docker build for both staging and production
-  - [ ] 6.5 Test deployment to staging and verify Sentry error capture works in deployed environment
-  - [ ] 6.6 Confirm source maps are uploaded during production builds via CI/CD
+- [x] 6.0 Configure deployment pipeline for Sentry
+  - [x] 6.1 Add Sentry environment variables to `.github/workflows/deploy.yml` build-args
+  - [x] 6.2 Configure environment-specific Sentry DSNs (staging vs production projects)
+  - [x] 6.3 Add `SENTRY_AUTH_TOKEN` secret to GitHub repository secrets for source map uploads
+  - [x] 6.4 Verify Sentry variables are passed to Docker build for both staging and production
+  - [x] 6.5 Test deployment to staging and verify Sentry error capture works in deployed environment
+  - [x] 6.6 Confirm source maps are uploaded during production builds via CI/CD
 - [ ] 7.0 Update architecture diagrams
   - [ ] 7.1 Locate existing architecture diagrams in the project (check docs/, README.md)
   - [ ] 7.2 Add Sentry SDK integration points to component and class diagrams

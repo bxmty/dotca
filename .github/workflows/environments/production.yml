@@ -61,6 +61,10 @@ secrets:
   - STRIPE_SECRET_KEY
   - ANSIBLE_VAULT_PASSWORD
 
+  # Sentry monitoring
+  - SENTRY_AUTH_TOKEN
+  - SENTRY_DSN_PRODUCTION
+
   # Umami Database
   - UMAMI_DB_PASSWORD
   - UMAMI_APP_SECRET
