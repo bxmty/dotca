@@ -296,14 +296,14 @@ sequenceDiagram
 
 ### Monitoring Components
 
-| Component              | Purpose              | Metrics                       | Alerts                      |
-| ---------------------- | -------------------- | ----------------------------- | --------------------------- |
-| **Health Checks**      | Service availability | Uptime, response time         | Service down, slow response |
-| **Deployment Metrics** | Performance tracking | Deployment time, success rate | Failed deployments          |
-| **Log Aggregation**    | Centralized logging  | Error rates, patterns         | Critical errors             |
-| **Sentry Error Monitoring** | Error tracking     | Error frequency, stack traces | New errors, regressions     |
-| **Sentry Performance Tracing** | Performance monitoring | Response times, throughput | Slow requests, bottlenecks  |
-| **Sentry Session Replay** | User session recording | User interactions, error contexts | UX issues, error reproduction |
+| Component                      | Purpose                | Metrics                           | Alerts                        |
+| ------------------------------ | ---------------------- | --------------------------------- | ----------------------------- |
+| **Health Checks**              | Service availability   | Uptime, response time             | Service down, slow response   |
+| **Deployment Metrics**         | Performance tracking   | Deployment time, success rate     | Failed deployments            |
+| **Log Aggregation**            | Centralized logging    | Error rates, patterns             | Critical errors               |
+| **Sentry Error Monitoring**    | Error tracking         | Error frequency, stack traces     | New errors, regressions       |
+| **Sentry Performance Tracing** | Performance monitoring | Response times, throughput        | Slow requests, bottlenecks    |
+| **Sentry Session Replay**      | User session recording | User interactions, error contexts | UX issues, error reproduction |
 
 ## Data Flow Patterns
 
@@ -496,11 +496,11 @@ flowchart TD
 
 The application integrates Sentry SDK across three runtime environments:
 
-| Runtime    | Config File              | Features Enabled                  |
-| ---------- | ------------------------ | --------------------------------- |
+| Runtime    | Config File                     | Features Enabled                                                        |
+| ---------- | ------------------------------- | ----------------------------------------------------------------------- |
 | **Client** | `src/instrumentation-client.ts` | Error tracking, performance tracing, session replay, structured logging |
-| **Server** | `sentry.server.config.ts` | Error tracking, performance tracing, structured logging |
-| **Edge**   | `sentry.edge.config.ts`  | Error tracking, performance tracing, structured logging |
+| **Server** | `sentry.server.config.ts`       | Error tracking, performance tracing, structured logging                 |
+| **Edge**   | `sentry.edge.config.ts`         | Error tracking, performance tracing, structured logging                 |
 
 ### Environment-Based Configuration
 
@@ -524,12 +524,12 @@ enableLogs: true
 
 ### Data Collection Points
 
-| Component          | Error Types Caught              | Performance Data Tracked        | Additional Features     |
-| ------------------ | ------------------------------- | ------------------------------- | ----------------------- |
+| Component            | Error Types Caught                              | Performance Data Tracked                  | Additional Features      |
+| -------------------- | ----------------------------------------------- | ----------------------------------------- | ------------------------ |
 | **React Components** | JavaScript errors, unhandled promise rejections | Component render times, user interactions | Session replay recording |
-| **API Routes**     | Server errors, database errors  | Request/response times, DB queries | Structured logging      |
-| **Edge Functions** | Runtime errors, network failures | Edge compute performance        | Global error tracking   |
-| **Error Boundaries** | React rendering errors         | Error recovery metrics          | User-friendly fallbacks |
+| **API Routes**       | Server errors, database errors                  | Request/response times, DB queries        | Structured logging       |
+| **Edge Functions**   | Runtime errors, network failures                | Edge compute performance                  | Global error tracking    |
+| **Error Boundaries** | React rendering errors                          | Error recovery metrics                    | User-friendly fallbacks  |
 
 ### Error Handling Strategy
 
@@ -569,9 +569,9 @@ critical_metrics:
   environment_detection_time: "< 10 seconds"
   health_check_pass_rate: "> 99%"
   image_build_time: "< 8 minutes"
-  error_rate: "< 1%"                    # Sentry error rate threshold
-  p95_response_time: "< 2000ms"         # Performance tracing metric
-  session_replay_coverage: "> 10%"      # Minimum replay coverage
+  error_rate: "< 1%" # Sentry error rate threshold
+  p95_response_time: "< 2000ms" # Performance tracing metric
+  session_replay_coverage: "> 10%" # Minimum replay coverage
 
 alerting_rules:
   - name: "High Deployment Failure Rate"
