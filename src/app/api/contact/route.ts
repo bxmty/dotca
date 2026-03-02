@@ -194,7 +194,7 @@ export async function POST(request: Request) {
         // If we can't parse the error JSON, use a generic error message
         throw new Error(
           `Failed to add contact to Brevo (Status: ${response.status})`,
-          { cause: parseError }
+          { cause: parseError },
         );
       }
     }
