@@ -56,9 +56,9 @@ The Sentry wizard will create these files automatically:
   - [x] 6.4 Verify Sentry variables are passed to Docker build for both staging and production
   - [x] 6.5 Test deployment to staging and verify Sentry error capture works in deployed environment
   - [x] 6.6 Confirm source maps are uploaded during production builds via CI/CD
-- [ ] 7.0 Update architecture diagrams
-  - [ ] 7.1 Locate existing architecture diagrams in the project (check docs/, README.md)
-  - [ ] 7.2 Add Sentry SDK integration points to component and class diagrams
-  - [ ] 7.3 Document data flow from client/server to Sentry (errors, traces, replays)
-  - [ ] 7.4 Show environment-based filtering and sampling configurations
-  - [ ] 7.5 Validate diagrams accurately reflect the wizard-generated setup
+- [x] 7.0 Update architecture diagrams
+  - [x] 7.1 Locate existing architecture diagrams in the project (check docs/, README.md)
+  - [x] 7.2 Add Sentry SDK integration points to component and class diagrams
+  - [x] 7.3 Document data flow from client/server to Sentry (errors, traces, replays)
+  - [x] 7.4 Show environment-based filtering and sampling configurations
+  - [x] 7.5 Validate diagrams accurately reflect the wizard-generated setup
