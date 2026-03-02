@@ -7,8 +7,11 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: "https://06a1dd6d538ccae5aca2f3bcb5b92b62@o4510705627824128.ingest.us.sentry.io/4510705630052352",
 
+  // Environment tagging for better issue organization
+  environment: process.env.NODE_ENV,
+
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
+  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
   // Enable logs to be sent to Sentry
   enableLogs: true,
