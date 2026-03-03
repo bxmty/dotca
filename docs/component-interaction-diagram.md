@@ -45,6 +45,9 @@ graph TB
         S[Health Checks]
         T[Deployment Metrics]
         U[Notification System]
+        V[Sentry Error Monitoring]
+        W[Sentry Performance Tracing]
+        X[Sentry Session Replay]
     end
 
     subgraph "Supporting Workflows"
@@ -66,8 +69,12 @@ graph TB
     P --> R
     N --> S
     O --> S
+    N --> V
+    O --> V
     S --> T
     T --> U
+    V --> W
+    V --> X
     E --> F
     E --> G
     E --> H
@@ -289,11 +296,14 @@ sequenceDiagram
 
 ### Monitoring Components
 
-| Component              | Purpose              | Metrics                       | Alerts                      |
-| ---------------------- | -------------------- | ----------------------------- | --------------------------- |
-| **Health Checks**      | Service availability | Uptime, response time         | Service down, slow response |
-| **Deployment Metrics** | Performance tracking | Deployment time, success rate | Failed deployments          |
-| **Log Aggregation**    | Centralized logging  | Error rates, patterns         | Critical errors             |
+| Component                      | Purpose                | Metrics                           | Alerts                        |
+| ------------------------------ | ---------------------- | --------------------------------- | ----------------------------- |
+| **Health Checks**              | Service availability   | Uptime, response time             | Service down, slow response   |
+| **Deployment Metrics**         | Performance tracking   | Deployment time, success rate     | Failed deployments            |
+| **Log Aggregation**            | Centralized logging    | Error rates, patterns             | Critical errors               |
+| **Sentry Error Monitoring**    | Error tracking         | Error frequency, stack traces     | New errors, regressions       |
+| **Sentry Performance Tracing** | Performance monitoring | Response times, throughput        | Slow requests, bottlenecks    |
+| **Sentry Session Replay**      | User session recording | User interactions, error contexts | UX issues, error reproduction |
 
 ## Data Flow Patterns
 
@@ -340,6 +350,57 @@ flowchart LR
     style F fill:#ffcc99
 ```
 
+### 4. Sentry Monitoring Data Flow
+
+```mermaid
+flowchart LR
+    subgraph "Client Application"
+        A1[React Components]
+        A2[API Calls]
+        A3[User Interactions]
+    end
+
+    subgraph "Server Application"
+        B1[API Routes]
+        B2[Server Logic]
+        B3[Database Queries]
+    end
+
+    subgraph "Sentry SDK"
+        C1[Error Boundary]
+        C2[Performance Tracing]
+        C3[Session Replay]
+        C4[Structured Logging]
+    end
+
+    subgraph "Sentry Service"
+        D1[Error Tracking]
+        D2[Performance Monitoring]
+        D3[Session Recordings]
+        D4[Log Aggregation]
+    end
+
+    A1 --> C1
+    A2 --> C2
+    A3 --> C3
+    A1 --> C4
+
+    B1 --> C1
+    B2 --> C2
+    B3 --> C2
+    B1 --> C4
+
+    C1 --> D1
+    C2 --> D2
+    C3 --> D3
+    C4 --> D4
+
+    style A1 fill:#e1f5fe
+    style B1 fill:#f3e5f5
+    style C1 fill:#fff3e0
+    style D1 fill:#e8f5e8
+```
+
 ## Integration Points
 
 ### External Systems
@@ -350,6 +411,7 @@ flowchart LR
 | **GHCR**                | Docker API         | Image storage         | Image push/pull, metadata      |
 | **DigitalOcean**        | API, SSH           | Infrastructure        | Droplet management, deployment |
 | **GitHub Environments** | API                | Deployment protection | Approval gates, secrets        |
+| **Sentry**              | SDK Integration    | Error monitoring      | Errors, traces, replays, logs  |
 
 ### Internal Dependencies
 
@@ -428,6 +490,74 @@ flowchart TD
 - **Network Security**: Secure communication between components
 - **Audit Logging**: Track all deployment activities
 
+## Sentry Error Monitoring Integration
+
+### SDK Configuration
+
+The application integrates Sentry SDK across three runtime environments:
+
+| Runtime    | Config File                     | Features Enabled                                                        |
+| ---------- | ------------------------------- | ----------------------------------------------------------------------- |
+| **Client** | `src/instrumentation-client.ts` | Error tracking, performance tracing, session replay, structured logging |
+| **Server** | `sentry.server.config.ts`       | Error tracking, performance tracing, structured logging                 |
+| **Edge**   | `sentry.edge.config.ts`         | Error tracking, performance tracing, structured logging                 |
+
+### Environment-Based Configuration
+
+```yaml
+# Development Environment (NODE_ENV=development)
+tracesSampleRate: 1.0    # 100% tracing for full visibility
+replaysSessionSampleRate: 0.1  # 10% session recording
+replaysOnErrorSampleRate: 1.0  # 100% recording on errors
+
+# Production Environment (NODE_ENV=production)
+tracesSampleRate: 0.1    # 10% tracing for performance
+replaysSessionSampleRate: 0.1  # 10% session recording
+replaysOnErrorSampleRate: 1.0  # 100% recording on errors
+
+# All Environments
+environment: process.env.NODE_ENV
+release: process.env.NEXT_PUBLIC_COMMIT_HASH
+sendDefaultPii: true
+enableLogs: true
+```
+
+### Data Collection Points
+
+| Component            | Error Types Caught                              | Performance Data Tracked                  | Additional Features      |
+| -------------------- | ----------------------------------------------- | ----------------------------------------- | ------------------------ |
+| **React Components** | JavaScript errors, unhandled promise rejections | Component render times, user interactions | Session replay recording |
+| **API Routes**       | Server errors, database errors                  | Request/response times, DB queries        | Structured logging       |
+| **Edge Functions**   | Runtime errors, network failures                | Edge compute performance                  | Global error tracking    |
+| **Error Boundaries** | React rendering errors                          | Error recovery metrics                    | User-friendly fallbacks  |
+
+### Error Handling Strategy
+
+```mermaid
+flowchart TD
+    A[Error Occurs] --> B{Error Type}
+
+    B -->|JavaScript Error| C[Sentry.captureException]
+    B -->|API Error| D[Sentry.captureException]
+    B -->|React Error| E[Error Boundary]
+    B -->|Unhandled Promise| F[Sentry.captureException]
+
+    C --> G[Stack Trace Analysis]
+    D --> G
+    E --> H[User-Friendly Fallback UI]
+    F --> G
+
+    G --> I[Issue Grouping]
+    H --> I
+
+    I --> J{Environment}
+    J -->|Development| K[Full Details, High Sampling]
+    J -->|Production| L[Filtered Data, Controlled Sampling]
+
+    K --> M[Sentry Dashboard]
+    L --> M
+```
+
 ## Monitoring and Observability
 
 ### Key Metrics
@@ -439,6 +569,9 @@ critical_metrics:
   environment_detection_time: "< 10 seconds"
   health_check_pass_rate: "> 99%"
   image_build_time: "< 8 minutes"
+  error_rate: "< 1%" # Sentry error rate threshold
+  p95_response_time: "< 2000ms" # Performance tracing metric
+  session_replay_coverage: "> 10%" # Minimum replay coverage
 
 alerting_rules:
   - name: "High Deployment Failure Rate"
@@ -452,6 +585,21 @@ alerting_rules:
   - name: "Health Check Failures"
     condition: "health_check_pass_rate < 95%"
     severity: "critical"
+
+  - name: "High Error Rate"
+    condition: "error_rate > 2%"
+    severity: "critical"
+    source: "sentry"
+
+  - name: "Performance Degradation"
+    condition: "p95_response_time > 3000ms"
+    severity: "warning"
+    source: "sentry"
+
+  - name: "New Error Patterns"
+    condition: "new_error_count > 0"
+    severity: "info"
+    source: "sentry"
 ```
 
 ### Logging Strategy

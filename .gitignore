@@ -102,3 +102,6 @@ continuous-monitoring/
 logs/
 
 .vault-pass
+
+# Sentry Config File
+.env.sentry-build-plugin

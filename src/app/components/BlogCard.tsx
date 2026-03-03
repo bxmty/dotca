@@ -53,7 +53,7 @@ export default function BlogCard({ post, featured = false }: BlogCardProps) {
         <h3 className="card-title h5 mb-2">
           <Link
             href={`/blog/${post.slug}`}
-            className="text-decoration-none text-white fw-bold"
+            className="text-decoration-none text-body fw-bold"
           >
             {post.title}
           </Link>

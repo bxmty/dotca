@@ -1,5 +1,5 @@
 # Multi-environment Dockerfile for Next.js deployment
-FROM node:24.13.0-alpine AS builder
+FROM node:24.14.0-alpine AS builder
 
 # Install git for potential npm package dependencies that require it
 RUN apk add --no-cache git
@@ -15,6 +15,8 @@ ARG STRIPE_SECRET_KEY
 ARG NEXT_PUBLIC_COMMIT_HASH
 ARG NEXT_PUBLIC_STAGING_GA_ID
 ARG NEXT_PUBLIC_PRODUCTION_GA_ID
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_DSN
 
 # Set environment variables for build
 ENV NODE_ENV=$NODE_ENV
@@ -25,6 +27,8 @@ ENV STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 ENV NEXT_PUBLIC_COMMIT_HASH=$NEXT_PUBLIC_COMMIT_HASH
 ENV NEXT_PUBLIC_STAGING_GA_ID=$NEXT_PUBLIC_STAGING_GA_ID
 ENV NEXT_PUBLIC_PRODUCTION_GA_ID=$NEXT_PUBLIC_PRODUCTION_GA_ID
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+ENV SENTRY_DSN=$SENTRY_DSN
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
@@ -44,7 +48,7 @@ RUN echo "Using Next.js path aliases for imports"
 RUN npm run build
 
 # Production image
-FROM node:24.13.0-alpine AS runner
+FROM node:24.14.0-alpine AS runner
 
 # Install dependencies
 RUN apk add --no-cache curl
@@ -60,6 +64,7 @@ ARG STRIPE_SECRET_KEY
 ARG NEXT_PUBLIC_COMMIT_HASH
 ARG NEXT_PUBLIC_STAGING_GA_ID
 ARG NEXT_PUBLIC_PRODUCTION_GA_ID
+ARG SENTRY_DSN
 
 ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
@@ -69,6 +74,7 @@ ENV STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 ENV NEXT_PUBLIC_COMMIT_HASH=$NEXT_PUBLIC_COMMIT_HASH
 ENV NEXT_PUBLIC_STAGING_GA_ID=$NEXT_PUBLIC_STAGING_GA_ID
 ENV NEXT_PUBLIC_PRODUCTION_GA_ID=$NEXT_PUBLIC_PRODUCTION_GA_ID
+ENV SENTRY_DSN=$SENTRY_DSN
 
 # Copy necessary files from builder stage
 COPY --from=builder /app/next.config.js ./
