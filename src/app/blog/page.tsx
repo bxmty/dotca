@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "Blog | Enterprise IT Solutions",
   description:
     "Insights, tips, and best practices for enterprise IT solutions and small business technology.",
+  alternates: {
+    canonical: "/blog",
+  },
 };
 
 export default function BlogPage() {
