@@ -3,6 +3,7 @@ import {
   getBlogPostSummaries,
   getFeaturedBlogPosts,
   getAllTags,
+  tagToSlug,
 } from "@/lib/blog";
 import BlogList from "@/app/components/BlogList";
 
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
   title: "Blog | Enterprise IT Solutions",
   description:
     "Insights, tips, and best practices for enterprise IT solutions and small business technology.",
+  alternates: {
+    canonical: "/blog",
+  },
 };
 
 export default function BlogPage() {
@@ -58,7 +62,7 @@ export default function BlogPage() {
               {allTags.map((tag) => (
                 <a
                   key={tag}
-                  href={`/blog/tag/${encodeURIComponent(tag.toLowerCase())}`}
+                  href={`/blog/tag/${tagToSlug(tag)}`}
                   className="btn btn-outline-primary btn-sm"
                 >
                   {tag}

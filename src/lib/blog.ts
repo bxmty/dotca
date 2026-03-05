@@ -149,9 +149,32 @@ export function getBlogPostSummaries(): BlogPostSummary[] {
 }
 
 /**
- * Get blog posts by tag
+ * Convert tag display name to URL slug (e.g. "Small Business" -> "small-business")
  */
-export function getBlogPostsByTag(tag: string): BlogPostSummary[] {
+export function tagToSlug(tag: string): string {
+  return tag
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+/**
+ * Resolve URL slug back to display tag (e.g. "small-business" -> "Small Business")
+ */
+export function getTagFromSlug(slug: string): string | null {
+  const normalizedSlug = slug.toLowerCase().replace(/\s+/g, "-");
+  const allTags = getAllTags();
+
+  const match = allTags.find((tag) => tagToSlug(tag) === normalizedSlug);
+  return match ?? null;
+}
+
+/**
+ * Get blog posts by tag (accepts display tag or slug)
+ */
+export function getBlogPostsByTag(tagOrSlug: string): BlogPostSummary[] {
+  const tag = getTagFromSlug(tagOrSlug) ?? tagOrSlug;
   const posts = getBlogPostSummaries();
   return posts.filter((post) =>
     post.tags.some((postTag) => postTag.toLowerCase() === tag.toLowerCase()),

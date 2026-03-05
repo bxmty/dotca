@@ -1,5 +1,6 @@
+import Link from "next/link";
 import type { BlogPost as BlogPostType } from "@/types/blog";
-import { formatBlogDate } from "@/lib/blog";
+import { formatBlogDate, tagToSlug } from "@/lib/blog";
 import OptimizedImage from "./OptimizedImage";
 
 interface BlogPostProps {
@@ -54,9 +55,13 @@ export default function BlogPost({ post, content }: BlogPostProps) {
         {frontmatter.tags && frontmatter.tags.length > 0 && (
           <div className="text-center mb-4">
             {frontmatter.tags.map((tag) => (
-              <span key={tag} className="badge bg-primary me-2 mb-2">
+              <Link
+                key={tag}
+                href={`/blog/tag/${tagToSlug(tag)}`}
+                className="badge bg-primary me-2 mb-2 text-decoration-none"
+              >
                 {tag}
-              </span>
+              </Link>
             ))}
           </div>
         )}
@@ -73,7 +78,20 @@ export default function BlogPost({ post, content }: BlogPostProps) {
             {frontmatter.author}
           </p>
           {frontmatter.tags && frontmatter.tags.length > 0 && (
-            <p>Tagged: {frontmatter.tags.join(", ")}</p>
+            <p>
+              Tagged:{" "}
+              {frontmatter.tags.map((tag, index) => (
+                <span key={tag}>
+                  {index > 0 && ", "}
+                  <Link
+                    href={`/blog/tag/${tagToSlug(tag)}`}
+                    className="text-muted text-decoration-none"
+                  >
+                    {tag}
+                  </Link>
+                </span>
+              ))}
+            </p>
           )}
         </div>
       </footer>

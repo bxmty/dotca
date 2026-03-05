@@ -2,6 +2,7 @@ import { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { getAllTags, tagToSlug } from "@/lib/blog";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://boximity.ca";
@@ -56,6 +57,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: post.date,
       changeFrequency: "monthly" as const,
       priority: 0.6,
+    })),
+    // Blog tag archive pages
+    ...getAllTags().map((tag) => ({
+      url: `${baseUrl}/blog/tag/${tagToSlug(tag)}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
     })),
     // Service pages
     ...servicePages.map((service) => ({
