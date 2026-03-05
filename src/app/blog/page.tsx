@@ -3,6 +3,7 @@ import {
   getBlogPostSummaries,
   getFeaturedBlogPosts,
   getAllTags,
+  tagToSlug,
 } from "@/lib/blog";
 import BlogList from "@/app/components/BlogList";
 
@@ -61,7 +62,7 @@ export default function BlogPage() {
               {allTags.map((tag) => (
                 <a
                   key={tag}
-                  href={`/blog/tag/${encodeURIComponent(tag.toLowerCase())}`}
+                  href={`/blog/tag/${tagToSlug(tag)}`}
                   className="btn btn-outline-primary btn-sm"
                 >
                   {tag}

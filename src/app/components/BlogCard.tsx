@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BlogPostSummary } from "@/types/blog";
-import { formatBlogDate } from "@/lib/blog";
+import { formatBlogDate, tagToSlug } from "@/lib/blog";
 import OptimizedImage from "./OptimizedImage";
 
 interface BlogCardProps {
@@ -38,13 +38,14 @@ export default function BlogCard({ post, featured = false }: BlogCardProps) {
           {post.tags.length > 0 && (
             <div className="mb-2">
               {post.tags.slice(0, 3).map((tag) => (
-                <span
+                <Link
                   key={tag}
-                  className="badge bg-secondary me-1 mb-1"
+                  href={`/blog/tag/${tagToSlug(tag)}`}
+                  className="badge bg-secondary me-1 mb-1 text-decoration-none"
                   style={{ fontSize: "0.75rem" }}
                 >
                   {tag}
-                </span>
+                </Link>
               ))}
             </div>
           )}
