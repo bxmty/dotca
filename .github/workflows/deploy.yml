@@ -362,7 +362,8 @@ jobs:
         # Optimized for performance: scoped caching, inline cache, fast compression
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          # Build amd64 only; DigitalOcean droplets use x86. arm64 via QEMU is slow and can timeout.
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -41,9 +41,6 @@ export const metadata: Metadata = {
     address: true,
   },
   metadataBase: new URL("https://boximity.ca"),
-  alternates: {
-    canonical: "/",
-  },
   robots: {
     index: true,
     follow: true,
