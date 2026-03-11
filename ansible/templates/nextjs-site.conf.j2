@@ -37,6 +37,14 @@ server {
         error_log /var/log/nginx/acme_error.log;
     }
 
+    # Permanent path redirects to homepage
+    location = /cloud-services-five-pack-with-microsoft-365 {
+        return 301 https://{{ canonical_domain | default('boximity.ca') }}/;
+    }
+    location = /toronto-it-services {
+        return 301 https://{{ canonical_domain | default('boximity.ca') }}/;
+    }
+
     # Redirect HTTP to HTTPS (SSL enforcement) when SSL is enabled
     {% if ssl_enabled | default(false) %}
     location / {
@@ -136,6 +144,14 @@ server {
         access_log off;
         add_header Content-Type text/plain;
         return 200 'OK';
+    }
+
+    # Permanent path redirects to homepage
+    location = /cloud-services-five-pack-with-microsoft-365 {
+        return 301 https://{{ canonical_domain | default('boximity.ca') }}/;
+    }
+    location = /toronto-it-services {
+        return 301 https://{{ canonical_domain | default('boximity.ca') }}/;
     }
 
     # Rate limiting for general requests
