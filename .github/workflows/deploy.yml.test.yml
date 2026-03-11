@@ -134,7 +134,7 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6.2.0
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: "24.14.0"
           cache: "npm"
@@ -146,10 +146,10 @@ jobs:
         run: npm run lint
 
       - name: Run type checking
-        run: npm run type-check
+        run: npm run typecheck
 
       - name: Run unit tests
-        run: npm run test:unit -- --watchAll=false
+        run: npm run test -- --watchAll=false
 
       - name: Test Docker build (without push)
         run: |

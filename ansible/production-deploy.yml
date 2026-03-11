@@ -732,7 +732,9 @@
         backup: true
       vars:
         ssl_enabled: false
-        server_name: "boximity.ca www.boximity.ca"
+        server_name: "boximity.ca"
+        redirect_www_to_canonical: true
+        canonical_domain: "boximity.ca"
 
     - name: Enable Nginx site configuration
       file:
@@ -913,7 +915,7 @@
       ansible.builtin.replace:
         path: /etc/nginx/sites-available/nextjs-app
         regexp: 'server_name _;'
-        replace: 'server_name boximity.ca www.boximity.ca;'
+        replace: 'server_name boximity.ca;'
       register: nginx_domain_update
       ignore_errors: yes
 
@@ -1040,7 +1042,9 @@
       vars:
         ssl_enabled: true
         ssl_domain: "boximity.ca"
-        server_name: "boximity.ca www.boximity.ca"
+        server_name: "boximity.ca"
+        redirect_www_to_canonical: true
+        canonical_domain: "boximity.ca"
       when: final_ssl_cert_check.stat.exists
       register: nginx_https_config
 
