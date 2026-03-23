@@ -59,7 +59,6 @@ This keyword strategy supports Boximity's website traffic and lead generation go
 
 - **Google Search Console "Queries" filter** — after 90 days, filter for queries with high impressions but low CTR; these are your fastest optimization opportunities because you're already appearing but not getting clicked
 
-
 ### ICP-Informed Keyword Selection
 
 Our keyword strategy prioritizes terms that our Ideal Customer Profile (professional services firms) actually searches:
@@ -943,7 +942,7 @@ This keyword strategy provides a clear roadmap for building organic search visib
 
 1. how much should a 10 person business spend on IT
 2. in house IT vs managed services small business
-3. IT services for accounting firms *(uncontested vertical — build page Month 2)*
+3. IT services for accounting firms _(uncontested vertical — build page Month 2)_
 4. small business cybersecurity checklist Ontario
 5. IT budget template for small business
 6. managed IT services cost Ontario
@@ -970,14 +969,14 @@ This keyword strategy provides a clear roadmap for building organic search visib
 
 ### Content Priority Matrix
 
-| Priority | Keyword Type             | Difficulty | Realistic Timeline  | Expected Results           |
-| -------- | ------------------------ | ---------- | ------------------- | -------------------------- |
-| HIGH     | Long-tail problem        | Low        | 6–12 weeks          | Early rankings, AI citation |
-| HIGH     | Uncontested verticals    | Low        | 8–14 weeks          | Niche authority, leads     |
-| HIGH     | Service + Ontario        | Low-Med    | 12–20 weeks         | Qualified leads            |
-| MEDIUM   | City + service (Toronto) | Medium     | 16–28 weeks         | Local visibility           |
-| MEDIUM   | City + service (other)   | Low-Med    | 12–20 weeks         | Regional visibility        |
-| LOW      | Head terms               | High       | 24–40 weeks         | Brand awareness            |
+| Priority | Keyword Type             | Difficulty | Realistic Timeline | Expected Results            |
+| -------- | ------------------------ | ---------- | ------------------ | --------------------------- |
+| HIGH     | Long-tail problem        | Low        | 6–12 weeks         | Early rankings, AI citation |
+| HIGH     | Uncontested verticals    | Low        | 8–14 weeks         | Niche authority, leads      |
+| HIGH     | Service + Ontario        | Low-Med    | 12–20 weeks        | Qualified leads             |
+| MEDIUM   | City + service (Toronto) | Medium     | 16–28 weeks        | Local visibility            |
+| MEDIUM   | City + service (other)   | Low-Med    | 12–20 weeks        | Regional visibility         |
+| LOW      | Head terms               | High       | 24–40 weeks        | Brand awareness             |
 
 > **Timeline note:** These are ranges for a new domain with consistent publishing. Results vary based on domain age, publishing frequency, and backlink growth. The original document's 4–8 week estimates were optimistic; plan for the upper end of these ranges.
 
