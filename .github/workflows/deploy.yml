@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for changes
-        uses: dorny/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.1
         id: filter
         with:
           filters: |
@@ -429,7 +429,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.0
         with:
-          terraform_version: "1.14.6"
+          terraform_version: "1.14.7"
 
       - name: Set deployment image tag
         id: image_tag

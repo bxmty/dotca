@@ -8,7 +8,10 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
+import JsonLd from "./components/JsonLd";
+import BreadcrumbSchema from "./components/BreadcrumbSchema";
 import { GA_MEASUREMENT_ID } from "../lib/gtag";
+import { getLocalBusinessSchema } from "../lib/schema";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -84,6 +87,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-bs-theme="auto">
+      <head>
+        <JsonLd data={getLocalBusinessSchema()} />
+        <BreadcrumbSchema />
+      </head>
       <body>
         {/* Google Analytics inline initialization script - must run immediately */}
         {GA_MEASUREMENT_ID && (
