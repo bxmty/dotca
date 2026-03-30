@@ -3,10 +3,10 @@ terraform {
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
-      version = "2.80.0"
+      version = "2.81.0"
     }
   }
-  required_version = "1.14.7"
+  required_version = "1.14.8"
 
   # Backend configuration is handled by separate backend-*.tf files
   # based on the use_local_state variable
