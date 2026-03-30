@@ -284,7 +284,7 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v6.3.0
         with:
-          node-version: "24.14.0"
+          node-version: "24.14.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -429,7 +429,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.0
         with:
-          terraform_version: "1.14.7"
+          terraform_version: "1.14.8"
 
       - name: Set deployment image tag
         id: image_tag
