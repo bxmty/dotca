@@ -421,6 +421,9 @@ jobs:
     needs: [detect-environment, quality-and-build]
     if: needs.detect-environment.outputs.should_deploy == 'true'
     environment: ${{ needs.detect-environment.outputs.environment }}
+    concurrency:
+      group: terraform-${{ needs.detect-environment.outputs.environment }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
