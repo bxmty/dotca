@@ -429,7 +429,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.16.0"
+          terraform_version: "1.15.5"
 
       - name: Set deployment image tag
         id: image_tag
