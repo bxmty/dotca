@@ -1,0 +1,142 @@
+name: Environment Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Environment to destroy"
+        required: true
+        type: choice
+        options: [staging, production]
+      confirmation:
+        description: 'Type "destroy-staging" or "destroy-production" to confirm'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-${{ github.event.inputs.target_environment }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate destroy request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate environment and confirmation
+        run: |
+          TARGET_ENV="${{ github.event.inputs.target_environment }}"
+          CONFIRMATION="${{ github.event.inputs.confirmation }}"
+          EXPECTED="destroy-${TARGET_ENV}"
+
+          case "$TARGET_ENV" in
+            staging|production)
+              echo "Target environment: $TARGET_ENV"
+              ;;
+            *)
+              echo "::error::Invalid environment: $TARGET_ENV"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$CONFIRMATION" != "$EXPECTED" ]]; then
+            echo "::error::Confirmation must be exactly: $EXPECTED"
+            exit 1
+          fi
+
+          echo "Confirmation validated for $TARGET_ENV"
+
+  destroy:
+    name: Destroy ${{ github.event.inputs.target_environment }}
+    runs-on: ubuntu-latest
+    needs: [validate]
+    environment: ${{ github.event.inputs.target_environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: "1.15.5"
+
+      - name: Configure Terraform backend
+        working-directory: terraform
+        env:
+          SPACES_ACCESS_ID: ${{ secrets.SPACES_ACCESS_ID }}
+          SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+          AWS_REGION: tor1
+          AWS_DEFAULT_REGION: tor1
+        run: |
+          echo "Configuring remote backend for ${{ github.event.inputs.target_environment }}..."
+
+          if [[ -f "backend-remote.tf.disabled" ]]; then
+            mv backend-remote.tf.disabled backend-remote.tf
+            echo "Enabled remote backend"
+          fi
+
+          if [[ -f "backend-local.tf" ]]; then
+            mv backend-local.tf backend-local.tf.disabled
+            echo "Disabled local backend"
+          fi
+
+          terraform init -reconfigure \
+            -backend-config="access_key=$SPACES_ACCESS_ID" \
+            -backend-config="secret_key=$SPACES_SECRET_KEY" \
+            -backend-config="key=dotca/terraform-${{ github.event.inputs.target_environment }}.tfstate"
+
+      - name: Terraform plan destroy
+        id: plan
+        working-directory: terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_ssh_key_fingerprint: ${{ secrets.SSH_KEY_FINGERPRINT }}
+          TF_VAR_environment: ${{ github.event.inputs.target_environment }}
+          TF_VAR_git_repo_url: ${{ github.server_url }}/${{ github.repository }}.git
+          TF_VAR_git_branch: ${{ github.event.inputs.target_environment == 'production' && 'main' || github.event.inputs.target_environment }}
+          TF_VAR_use_existing_project: "true"
+          TF_VAR_use_existing_firewall: "true"
+        run: |
+          terraform plan -destroy -out=destroy-plan -no-color
+
+      - name: Terraform apply destroy
+        working-directory: terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_ssh_key_fingerprint: ${{ secrets.SSH_KEY_FINGERPRINT }}
+          TF_VAR_environment: ${{ github.event.inputs.target_environment }}
+          TF_VAR_git_repo_url: ${{ github.server_url }}/${{ github.repository }}.git
+          TF_VAR_git_branch: ${{ github.event.inputs.target_environment == 'production' && 'main' || github.event.inputs.target_environment }}
+          TF_VAR_use_existing_project: "true"
+          TF_VAR_use_existing_firewall: "true"
+        run: |
+          terraform apply -auto-approve destroy-plan -no-color
+
+      - name: Cleanup plan files
+        if: always()
+        working-directory: terraform
+        run: |
+          rm -f destroy-plan tfplan tfdestroyplan
+
+      - name: Update workflow summary
+        if: always()
+        run: |
+          STATUS="${{ job.status == 'success' && 'Destroyed' || 'Failed' }}"
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ### Environment Destroy
+          | Field | Value |
+          |-------|-------|
+          | Environment | \`${{ github.event.inputs.target_environment }}\` |
+          | State key | \`dotca/terraform-${{ github.event.inputs.target_environment }}.tfstate\` |
+          | Status | $STATUS |
+
+          EOF
+
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "Re-deploy with the unified deployment workflow to recreate this environment." >> $GITHUB_STEP_SUMMARY
+          fi
