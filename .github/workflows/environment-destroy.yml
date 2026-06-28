@@ -56,12 +56,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.0
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.15.5"
+          terraform_version: "1.15.7"
 
       - name: Configure Terraform backend
         working-directory: terraform
