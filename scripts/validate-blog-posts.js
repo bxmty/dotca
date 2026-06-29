@@ -2,8 +2,8 @@
 
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
 import { fileURLToPath } from "url";
+import { parseFrontmatter } from "../src/lib/parseFrontmatter.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +34,7 @@ class BlogPostValidator {
 
     try {
       const content = fs.readFileSync(filePath, "utf8");
-      const { data, content: body } = matter(content);
+      const { data, content: body } = parseFrontmatter(content);
 
       // Check required frontmatter
       for (const field of REQUIRED_FRONTMATTER) {

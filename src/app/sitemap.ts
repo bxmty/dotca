@@ -1,8 +1,8 @@
 import { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
 import { getAllTags, tagToSlug } from "@/lib/blog";
+import { parseFrontmatter } from "@/lib/parseFrontmatter";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://boximity.ca";
@@ -15,10 +15,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     .map((file) => {
       const filePath = path.join(blogDir, file);
       const content = fs.readFileSync(filePath, "utf8");
-      const { data } = matter(content);
+      const { data } = parseFrontmatter<{ date?: string; published?: boolean }>(
+        content,
+      );
       return {
         slug: file.replace(".mdx", ""),
-        date: new Date(data.date),
+        date: new Date(data.date ?? file),
         published: data.published !== false, // Default to true if not specified
       };
     })

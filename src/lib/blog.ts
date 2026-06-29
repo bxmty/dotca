@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "@/lib/parseFrontmatter";
 import {
   BlogPost,
   BlogPostFrontmatter,
@@ -44,7 +44,8 @@ function getBlogPostFiles(): string[] {
 function parseBlogPost(filePath: string): BlogPost | null {
   try {
     const fileContents = fs.readFileSync(filePath, "utf8");
-    const { data, content } = matter(fileContents);
+    const { data, content } =
+      parseFrontmatter<Partial<BlogPostFrontmatter>>(fileContents);
 
     // Validate required frontmatter
     if (!data.title || !data.description || !data.date || !data.author) {
