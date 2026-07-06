@@ -377,7 +377,6 @@ jobs:
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_STAGING_GA_ID=${{ secrets.GA_STAGING_ID }}
             NEXT_PUBLIC_PRODUCTION_GA_ID=${{ secrets.GA_PRODUCTION_ID }}
-            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             NEXT_PUBLIC_COMMIT_HASH=${{ github.sha }}
             SENTRY_DSN=${{ needs.detect-environment.outputs.environment == 'production' && secrets.SENTRY_DSN_PRODUCTION || secrets.SENTRY_DSN_STAGING }}
