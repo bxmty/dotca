@@ -1,8 +1,22 @@
 import { NextResponse } from "next/server";
 import { isPossiblePhoneNumber, parsePhoneNumber } from "libphonenumber-js";
 
+function isMissingOrString(value: unknown): value is string | undefined {
+  return value === undefined || value === null || typeof value === "string";
+}
+
 export async function POST(request: Request) {
   try {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Request body must be valid JSON" },
+        { status: 400 },
+      );
+    }
+
     const {
       name,
       firstName,
@@ -18,7 +32,31 @@ export async function POST(request: Request) {
       billingCycle,
       employeeCount,
       isWaitlist,
-    } = await request.json();
+    } = body ?? {};
+
+    // Reject non-string values up front so they surface as 400s, not 500s
+    const stringFields = {
+      name,
+      firstName,
+      lastName,
+      email,
+      phone,
+      company,
+      address,
+      city,
+      state,
+      zip,
+      plan,
+      billingCycle,
+    };
+    for (const [field, value] of Object.entries(stringFields)) {
+      if (!isMissingOrString(value)) {
+        return NextResponse.json(
+          { error: `Field "${field}" must be a string` },
+          { status: 400 },
+        );
+      }
+    }
 
     // Determine full name based on input
     const fullName =
@@ -76,14 +114,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check for API key in various environments
-    const apiKey = process.env.BREVO_API_KEY;
-    const publicApiKey = process.env.NEXT_PUBLIC_BREVO_API_KEY;
-    const isProd = process.env.NODE_ENV === "production";
-
-    // In production, we must use the server-side API key
-    // In development, we can fall back to the public key if needed
-    const activeKey = isProd ? apiKey : apiKey || publicApiKey;
+    // The Brevo key is a secret: only ever read the server-side variable
+    // (a NEXT_PUBLIC_ fallback would invite bundling the key into client JS)
+    const activeKey = process.env.BREVO_API_KEY;
 
     if (!activeKey) {
       // API key is missing
@@ -91,13 +124,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Server configuration error - missing API key" },
         { status: 500 },
-      );
-    }
-
-    // For debugging in development
-    if (!isProd && !apiKey && publicApiKey) {
-      console.warn(
-        "Using fallback NEXT_PUBLIC_BREVO_API_KEY - set BREVO_API_KEY for production",
       );
     }
 
@@ -146,57 +172,56 @@ export async function POST(request: Request) {
     const response = await fetch(url, options);
 
     if (!response.ok) {
-      // Try to get error details from API response
+      // Try to get error details from the API response; keep the parse
+      // attempt isolated so errors thrown below aren't swallowed by it
+      let errorData: { code?: string; message?: string } | null = null;
       try {
-        const errorData = await response.json();
-        console.error("Brevo API error:", errorData);
+        errorData = await response.json();
+      } catch {
+        errorData = null;
+      }
+      console.error("Brevo API error:", errorData ?? response.status);
 
-        // Handle authentication errors
-        if (response.status === 401 || errorData.code === "unauthorized") {
-          console.error("Brevo API key is not valid or not enabled");
-          return NextResponse.json(
-            {
-              error:
-                "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
-            },
-            { status: 503 },
-          );
-        }
-
-        // Handle common error cases
-        if (errorData.code === "duplicate_parameter") {
-          return NextResponse.json({
-            success: true,
-            message:
-              "Your information has already been submitted. We will contact you soon.",
-          });
-        }
-
-        // Handle phone number specific errors
-        if (
-          errorData.code === "invalid_parameter" &&
-          errorData.message?.toLowerCase().includes("phone")
-        ) {
-          return NextResponse.json(
-            {
-              error:
-                "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
-            },
-            { status: 400 },
-          );
-        }
-
-        throw new Error(
-          `Brevo API error: ${errorData.message || JSON.stringify(errorData)}`,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (parseError) {
-        // If we can't parse the error JSON, use a generic error message
-        throw new Error(
-          `Failed to add contact to Brevo (Status: ${response.status})`,
-          { cause: parseError },
+      // Handle authentication errors
+      if (response.status === 401 || errorData?.code === "unauthorized") {
+        console.error("Brevo API key is not valid or not enabled");
+        return NextResponse.json(
+          {
+            error:
+              "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+          },
+          { status: 503 },
         );
       }
+
+      // Handle common error cases
+      if (errorData?.code === "duplicate_parameter") {
+        return NextResponse.json({
+          success: true,
+          message:
+            "Your information has already been submitted. We will contact you soon.",
+        });
+      }
+
+      // Handle phone number specific errors
+      if (
+        errorData?.code === "invalid_parameter" &&
+        errorData.message?.toLowerCase().includes("phone")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
+          },
+          { status: 400 },
+        );
+      }
+
+      throw new Error(
+        errorData
+          ? `Brevo API error: ${errorData.message || JSON.stringify(errorData)}`
+          : `Failed to add contact to Brevo (Status: ${response.status})`,
+      );
     }
 
     return NextResponse.json({ success: true });
