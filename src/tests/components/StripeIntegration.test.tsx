@@ -70,9 +70,8 @@ describe("Stripe Integration", () => {
       expect(screen.getByTestId("payment-element")).toBeInTheDocument();
     });
 
-    // Submit the payment using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    // Submit the payment
+    fireEvent.click(screen.getByRole("button", { name: /complete payment/i }));
 
     // Check if confirmPayment was called
     expect(mockConfirmPayment).toHaveBeenCalledWith({
@@ -106,9 +105,8 @@ describe("Stripe Integration", () => {
       expect(screen.getByTestId("payment-element")).toBeInTheDocument();
     });
 
-    // Submit the payment using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    // Submit the payment
+    fireEvent.click(screen.getByRole("button", { name: /complete payment/i }));
 
     // Should show error message
     await waitFor(() => {

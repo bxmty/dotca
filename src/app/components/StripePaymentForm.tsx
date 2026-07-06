@@ -11,6 +11,9 @@ interface StripePaymentFormProps {
   onSuccess: () => void;
 }
 
+// Rendered inside the checkout page's <form>, so this component must not
+// render a <form> of its own (nested forms are invalid HTML and dropped by
+// browsers). The payment is confirmed from the button's click handler.
 export default function StripePaymentForm({
   onSuccess,
 }: StripePaymentFormProps) {
@@ -19,9 +22,7 @@ export default function StripePaymentForm({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const handleConfirmPayment = async () => {
     if (!stripe || !elements) {
       // Stripe.js hasn't loaded yet
       return;
@@ -49,7 +50,7 @@ export default function StripePaymentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="stripe-form">
+    <div className="stripe-form">
       <PaymentElement />
 
       {errorMessage && (
@@ -57,12 +58,13 @@ export default function StripePaymentForm({
       )}
 
       <button
-        type="submit"
+        type="button"
+        onClick={handleConfirmPayment}
         disabled={!stripe || isLoading}
         className="btn btn-success w-100 py-3 mt-3 fs-5"
       >
         {isLoading ? "Processing..." : "Complete Payment"}
       </button>
-    </form>
+    </div>
   );
 }
