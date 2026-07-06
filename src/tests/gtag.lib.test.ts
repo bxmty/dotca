@@ -137,25 +137,30 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
 
-      // Remove gtag initially
-      delete window.gtag;
+      // Remove gtag initially (delete is not possible: the property is
+      // defined non-configurable in this test file)
+      window.gtag = undefined;
 
       jest.resetModules();
       const { initGA: newInitGA } = require("@/lib/gtag");
 
       newInitGA();
 
-      // Should set up dataLayer
-      expect(window.dataLayer).toEqual([]);
-
       // Should define gtag function
       expect(typeof window.gtag).toBe("function");
 
-      // Fast-forward setTimeout
-      jest.runOnlyPendingTimers();
-
-      // Should configure GA
-      expect(mockGtag).toHaveBeenCalledWith("js", expect.any(Date));
+      // Configuration is queued in the dataLayer immediately, as
+      // `arguments` objects (the only form gtag.js processes)
+      expect(window.dataLayer).toHaveLength(2);
+      expect(Array.from(window.dataLayer[0] as IArguments)).toEqual([
+        "js",
+        expect.any(Date),
+      ]);
+      expect(Array.from(window.dataLayer[1] as IArguments)).toEqual([
+        "config",
+        "GA-PRODUCTION-ID",
+        { send_page_view: false, transport_type: "beacon" },
+      ]);
     });
 
     it("configures GA with production settings", () => {
@@ -170,7 +175,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       newInitGA();
 
       expect(mockGtag).toHaveBeenCalledWith("config", "GA-PRODUCTION-ID", {
-        send_page_view: true,
+        send_page_view: false,
         transport_type: "beacon",
       });
     });
@@ -187,7 +192,7 @@ describe("gtag.ts Google Analytics utilities", () => {
       newInitGA();
 
       expect(mockGtag).toHaveBeenCalledWith("config", "GA-STAGING-ID", {
-        send_page_view: true,
+        send_page_view: false,
       });
     });
 
@@ -248,8 +253,9 @@ describe("gtag.ts Google Analytics utilities", () => {
 
       newPageview("/test-page");
 
-      expect(mockGtag).toHaveBeenCalledWith("config", "GA-PRODUCTION-ID", {
+      expect(mockGtag).toHaveBeenCalledWith("event", "page_view", {
         page_path: "/test-page",
+        page_location: `${window.location.origin}/test-page`,
       });
       expect(console.log).toHaveBeenCalledWith(
         "Tracked pageview in production: /test-page",
@@ -503,7 +509,7 @@ describe("gtag.ts Google Analytics utilities", () => {
   });
 
   describe("window.gtag function", () => {
-    it("pushes data to dataLayer", () => {
+    it("pushes arguments objects to dataLayer", () => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
 
@@ -515,11 +521,14 @@ describe("gtag.ts Google Analytics utilities", () => {
 
       newInitGA();
 
-      // Call the gtag function
+      // Call the gtag function (js + config entries are already queued)
       window.gtag("test_command", "test_target", { key: "value" });
 
-      expect(window.dataLayer).toEqual([
-        ["test_command", "test_target", { key: "value" }],
+      const lastEntry = window.dataLayer[window.dataLayer.length - 1];
+      expect(Array.from(lastEntry as IArguments)).toEqual([
+        "test_command",
+        "test_target",
+        { key: "value" },
       ]);
     });
   });
