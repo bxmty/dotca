@@ -144,12 +144,6 @@ For each environment configuration file, you need to create a corresponding GitH
 - `ANSIBLE_VAULT_PASSWORD`: Password for Ansible vault decryption
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 
-#### Environment-Specific Secrets
-
-- `UMAMI_DB_PASSWORD`: Umami analytics database password
-- `UMAMI_APP_SECRET`: Umami application secret
-- `UMAMI_ADMIN_PASSWORD`: Umami admin password
-
 ## Validation
 
 Use the validation script to ensure your environment configurations are correct:

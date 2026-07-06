@@ -56,7 +56,7 @@ describe("Stripe Integration", () => {
 
   it("integrates StripeWrapper with StripePaymentForm", async () => {
     render(
-      <StripeWrapper amount={1000}>
+      <StripeWrapper plan="Basic" employeeCount={5} billingCycle="monthly">
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -96,7 +96,7 @@ describe("Stripe Integration", () => {
     });
 
     render(
-      <StripeWrapper amount={1000}>
+      <StripeWrapper plan="Basic" employeeCount={5} billingCycle="monthly">
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -127,7 +127,7 @@ describe("Stripe Integration", () => {
     } as unknown as Response);
 
     render(
-      <StripeWrapper amount={1000}>
+      <StripeWrapper plan="Basic" employeeCount={5} billingCycle="monthly">
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -144,15 +144,9 @@ describe("Stripe Integration", () => {
     expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument();
   });
 
-  it("includes metadata in the payment intent request", async () => {
-    const testMetadata = {
-      plan: "premium",
-      customerEmail: "test@example.com",
-      employeeCount: "10",
-    };
-
+  it("sends the order details in the payment intent request", async () => {
     render(
-      <StripeWrapper amount={1000} metadata={testMetadata}>
+      <StripeWrapper plan="Premium" employeeCount={10} billingCycle="annual">
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -162,14 +156,15 @@ describe("Stripe Integration", () => {
       expect(screen.getByTestId("payment-element")).toBeInTheDocument();
     });
 
-    // Verify API call included metadata
+    // Verify API call included the order details, never an amount
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/stripe/create-payment-intent",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          amount: 1000,
-          metadata: testMetadata,
+          plan: "Premium",
+          employeeCount: 10,
+          billingCycle: "annual",
         }),
       }),
     );

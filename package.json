@@ -25,7 +25,6 @@
     "@sentry/nextjs": "10.62.0",
     "@stripe/react-stripe-js": "6.6.0",
     "@stripe/stripe-js": "9.8.0",
-    "@umami/node": "0.4.0",
     "bootstrap": "5.3.8",
     "js-yaml": "4.3.0",
     "libphonenumber-js": "1.13.7",

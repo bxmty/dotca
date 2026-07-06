@@ -506,14 +506,14 @@ The application integrates Sentry SDK across three runtime environments:
 
 ```yaml
 # Development Environment (NODE_ENV=development)
-tracesSampleRate: 1.0    # 100% tracing for full visibility
-replaysSessionSampleRate: 0.1  # 10% session recording
-replaysOnErrorSampleRate: 1.0  # 100% recording on errors
+tracesSampleRate: 1.0 # 100% tracing for full visibility
+replaysSessionSampleRate: 0.1 # 10% session recording
+replaysOnErrorSampleRate: 1.0 # 100% recording on errors
 
 # Production Environment (NODE_ENV=production)
-tracesSampleRate: 0.1    # 10% tracing for performance
-replaysSessionSampleRate: 0.1  # 10% session recording
-replaysOnErrorSampleRate: 1.0  # 100% recording on errors
+tracesSampleRate: 0.1 # 10% tracing for performance
+replaysSessionSampleRate: 0.1 # 10% session recording
+replaysOnErrorSampleRate: 1.0 # 100% recording on errors
 
 # All Environments
 environment: process.env.NODE_ENV

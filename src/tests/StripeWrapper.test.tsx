@@ -30,6 +30,12 @@ describe("StripeWrapper", () => {
     global.fetch = originalFetch;
   });
 
+  const orderProps = {
+    plan: "Basic",
+    employeeCount: 5,
+    billingCycle: "monthly",
+  };
+
   it("renders loading state initially", async () => {
     // Mock fetch to delay response
     global.fetch = jest.fn(
@@ -44,7 +50,7 @@ describe("StripeWrapper", () => {
         ),
     );
 
-    render(<StripeWrapper amount={1000}>{mockChildComponent}</StripeWrapper>);
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
 
     // Should show loading state
     expect(screen.getByText("Loading payment form...")).toBeInTheDocument();
@@ -57,7 +63,7 @@ describe("StripeWrapper", () => {
       json: () => Promise.resolve({ clientSecret: "test_secret" }),
     } as unknown as Response);
 
-    render(<StripeWrapper amount={1000}>{mockChildComponent}</StripeWrapper>);
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
 
     // Wait for API call to complete
     await waitFor(() => {
@@ -71,7 +77,11 @@ describe("StripeWrapper", () => {
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 1000, metadata: {} }),
+        body: JSON.stringify({
+          plan: "Basic",
+          employeeCount: 5,
+          billingCycle: "monthly",
+        }),
       }),
     );
 
@@ -79,17 +89,15 @@ describe("StripeWrapper", () => {
     expect(getStripe).toHaveBeenCalled();
   });
 
-  it("renders children with metadata when provided", async () => {
+  it("sends the order details for a different plan and billing cycle", async () => {
     // Mock successful API response
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ clientSecret: "test_secret" }),
     } as unknown as Response);
 
-    const testMetadata = { plan: "premium", user: "test_user" };
-
     render(
-      <StripeWrapper amount={1000} metadata={testMetadata}>
+      <StripeWrapper plan="Premium" employeeCount={12} billingCycle="annual">
         {mockChildComponent}
       </StripeWrapper>,
     );
@@ -99,12 +107,16 @@ describe("StripeWrapper", () => {
       expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
     });
 
-    // Verify API call was made with correct metadata
+    // Verify API call was made with the order details
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/stripe/create-payment-intent",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ amount: 1000, metadata: testMetadata }),
+        body: JSON.stringify({
+          plan: "Premium",
+          employeeCount: 12,
+          billingCycle: "annual",
+        }),
       }),
     );
   });
@@ -116,7 +128,7 @@ describe("StripeWrapper", () => {
       json: () => Promise.resolve({ error: "API error occurred" }),
     } as unknown as Response);
 
-    render(<StripeWrapper amount={1000}>{mockChildComponent}</StripeWrapper>);
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
 
     // Wait for error to be displayed
     await waitFor(() => {
@@ -132,7 +144,7 @@ describe("StripeWrapper", () => {
       json: () => Promise.resolve({ error: "Payment initialization failed" }),
     } as unknown as Response);
 
-    render(<StripeWrapper amount={1000}>{mockChildComponent}</StripeWrapper>);
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
 
     // Wait for error to be displayed
     await waitFor(() => {
@@ -147,7 +159,7 @@ describe("StripeWrapper", () => {
     // Mock fetch to throw error
     global.fetch = jest.fn().mockRejectedValueOnce(new Error("Network error"));
 
-    render(<StripeWrapper amount={1000}>{mockChildComponent}</StripeWrapper>);
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
 
     // Wait for error to be displayed
     await waitFor(() => {
@@ -160,7 +172,7 @@ describe("StripeWrapper", () => {
     // Mock fetch to reject with non-Error object
     global.fetch = jest.fn().mockRejectedValueOnce("Unknown error");
 
-    render(<StripeWrapper amount={1000}>{mockChildComponent}</StripeWrapper>);
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
 
     // Wait for error to be displayed
     await waitFor(() => {

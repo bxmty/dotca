@@ -25,17 +25,20 @@ jest.mock("@/app/components/StripeWrapper", () => ({
   __esModule: true,
   default: ({
     children,
-    amount,
-    metadata,
+    plan,
+    employeeCount,
+    billingCycle,
   }: {
     children: React.ReactNode;
-    amount: number;
-    metadata?: Record<string, string>;
+    plan: string;
+    employeeCount: number;
+    billingCycle: string;
   }) => (
     <div
       data-testid="stripe-wrapper"
-      data-amount={amount}
-      data-metadata={JSON.stringify(metadata)}
+      data-plan={plan}
+      data-employee-count={employeeCount}
+      data-billing-cycle={billingCycle}
     >
       {children}
     </div>

@@ -42,6 +42,14 @@ jest.mock("next/server", () => ({
   },
 }));
 
+function buildRequest(body: unknown): Request {
+  return new Request("http://localhost/api/stripe/create-payment-intent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 describe("CREATE /api/stripe/create-payment-intent", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -50,48 +58,80 @@ describe("CREATE /api/stripe/create-payment-intent", () => {
     });
   });
 
-  it("creates a payment intent with the provided amount", async () => {
-    // Prepare request
-    const request = new Request(
-      "http://localhost/api/stripe/create-payment-intent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: 1000 }),
-      },
+  it("computes the amount server-side from the order details", async () => {
+    await POST(
+      buildRequest({
+        plan: "Basic",
+        employeeCount: 5,
+        billingCycle: "monthly",
+      }),
     );
 
-    // Call the route handler
-    await POST(request);
-
-    // Verify that the correct Stripe API call was made
+    // Basic is $99.00/user/month: 9900 * 5 = 49500 cents
     expect(mockPaymentIntentsCreate).toHaveBeenCalledWith({
-      amount: 1000,
+      amount: 49500,
       currency: "usd",
-      metadata: {},
+      metadata: {
+        plan: "basic",
+        employees: "5",
+        billing_cycle: "monthly",
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+  });
+
+  it("applies the annual discount when billing cycle is annual", async () => {
+    await POST(
+      buildRequest({
+        plan: "Standard",
+        employeeCount: 10,
+        billingCycle: "annual",
+      }),
+    );
+
+    // Standard is $249.00/user/month: 24900 * 10 * 12 * 0.9 = 2689200 cents
+    expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 2689200,
+        currency: "usd",
+      }),
+    );
+  });
+
+  it("ignores a client-supplied amount, currency, and metadata", async () => {
+    await POST(
+      buildRequest({
+        plan: "Premium",
+        employeeCount: 5,
+        billingCycle: "monthly",
+        amount: 1,
+        currency: "eur",
+        metadata: { injected: "value" },
+      }),
+    );
+
+    // Premium is $449.00/user/month: 44900 * 5 = 224500 cents
+    expect(mockPaymentIntentsCreate).toHaveBeenCalledWith({
+      amount: 224500,
+      currency: "usd",
+      metadata: {
+        plan: "premium",
+        employees: "5",
+        billing_cycle: "monthly",
+      },
       automatic_payment_methods: { enabled: true },
     });
   });
 
   it("returns client secret in the response", async () => {
-    // Prepare request
-    const request = new Request(
-      "http://localhost/api/stripe/create-payment-intent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: 1000 }),
-      },
+    const response = await POST(
+      buildRequest({
+        plan: "Basic",
+        employeeCount: 5,
+        billingCycle: "monthly",
+      }),
     );
 
-    // Call the route handler
-    const response = await POST(request);
-
-    // Verify the response
     expect(NextResponse.json).toHaveBeenCalledWith({
       clientSecret: "test_client_secret",
     });
@@ -101,143 +141,95 @@ describe("CREATE /api/stripe/create-payment-intent", () => {
     });
   });
 
-  it("handles custom currency and metadata", async () => {
-    // Prepare request with custom currency and metadata
-    const request = new Request(
-      "http://localhost/api/stripe/create-payment-intent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: 1500,
-          currency: "eur",
-          metadata: {
-            orderId: "12345",
-            customerName: "Test Customer",
-          },
-        }),
-      },
+  it("rejects an unknown plan", async () => {
+    await POST(
+      buildRequest({
+        plan: "enterprise",
+        employeeCount: 5,
+        billingCycle: "monthly",
+      }),
     );
 
-    // Call the route handler
-    await POST(request);
-
-    // Verify that the correct Stripe API call was made
-    expect(mockPaymentIntentsCreate).toHaveBeenCalledWith({
-      amount: 1500,
-      currency: "eur",
-      metadata: {
-        orderId: "12345",
-        customerName: "Test Customer",
-      },
-      automatic_payment_methods: { enabled: true },
-    });
-  });
-
-  it("returns error response when amount is missing", async () => {
-    // Prepare request without amount
-    const request = new Request(
-      "http://localhost/api/stripe/create-payment-intent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ currency: "usd" }),
-      },
-    );
-
-    // Call the route handler
-    await POST(request);
-
-    // Verify the error response
     expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "A valid amount is required" },
+      { error: "Unknown plan" },
       { status: 400 },
     );
-
-    // Stripe API should not be called
     expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
   });
 
-  it("returns error response when amount is not a number", async () => {
-    // Prepare request with invalid amount
+  it("rejects the free plan", async () => {
+    await POST(
+      buildRequest({ plan: "Free", employeeCount: 5, billingCycle: "monthly" }),
+    );
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "The selected plan does not require payment" },
+      { status: 400 },
+    );
+    expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 4, 21, 5.5, "10", null, undefined])(
+    "rejects invalid employee count %p",
+    async (employeeCount) => {
+      await POST(
+        buildRequest({ plan: "Basic", employeeCount, billingCycle: "monthly" }),
+      );
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { error: "Employee count must be a whole number between 5 and 20" },
+        { status: 400 },
+      );
+      expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects an invalid billing cycle", async () => {
+    await POST(
+      buildRequest({ plan: "Basic", employeeCount: 5, billingCycle: "weekly" }),
+    );
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: 'Billing cycle must be "monthly" or "annual"' },
+      { status: 400 },
+    );
+    expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a request body that is not valid JSON", async () => {
     const request = new Request(
       "http://localhost/api/stripe/create-payment-intent",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: "not-a-number" }),
+        headers: { "Content-Type": "application/json" },
+        body: "not json",
       },
     );
 
-    // Call the route handler
     await POST(request);
 
-    // Verify the error response
     expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "A valid amount is required" },
+      { error: "Request body must be valid JSON" },
       { status: 400 },
     );
-
-    // Stripe API should not be called
     expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
   });
 
-  it("handles Stripe API errors", async () => {
-    // Mock Stripe API error
+  it("returns a generic error without leaking Stripe error details", async () => {
     mockPaymentIntentsCreate.mockRejectedValueOnce(
-      new Error("Invalid currency"),
+      new Error("sk_live_secret leaked in message"),
     );
 
-    // Prepare request
-    const request = new Request(
-      "http://localhost/api/stripe/create-payment-intent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: 1000 }),
-      },
+    await POST(
+      buildRequest({
+        plan: "Basic",
+        employeeCount: 5,
+        billingCycle: "monthly",
+      }),
     );
 
-    // Call the route handler
-    await POST(request);
-
-    // Verify the error response
     expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Invalid currency" },
-      { status: 400 },
-    );
-  });
-
-  it("handles unknown errors", async () => {
-    // Mock unknown error (not an Error instance)
-    mockPaymentIntentsCreate.mockRejectedValueOnce("Unknown error");
-
-    // Prepare request
-    const request = new Request(
-      "http://localhost/api/stripe/create-payment-intent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: 1000 }),
-      },
-    );
-
-    // Call the route handler
-    await POST(request);
-
-    // Verify the error response
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Unknown error" },
+      { error: "Unable to process the payment request" },
       { status: 500 },
     );
   });

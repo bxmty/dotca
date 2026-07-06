@@ -92,7 +92,9 @@ export default function RootLayout({
         <BreadcrumbSchema />
       </head>
       <body>
-        {/* Google Analytics inline initialization script - must run immediately */}
+        {/* Google Analytics inline initialization script - must run immediately.
+            send_page_view is disabled here: the GoogleAnalytics component sends
+            exactly one page_view per navigation (including the first load). */}
         {GA_MEASUREMENT_ID && (
           <Script
             id="gtag-init"
@@ -102,7 +104,7 @@ export default function RootLayout({
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
-                gtag('config', '${GA_MEASUREMENT_ID}');
+                gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
               `,
             }}
           />

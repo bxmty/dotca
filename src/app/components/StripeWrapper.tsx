@@ -6,14 +6,16 @@ import { getStripe } from "../../lib/stripe";
 
 interface StripeWrapperProps {
   children: ReactNode;
-  amount: number;
-  metadata?: Record<string, string>;
+  plan: string;
+  employeeCount: number;
+  billingCycle: string;
 }
 
 export default function StripeWrapper({
   children,
-  amount,
-  metadata,
+  plan,
+  employeeCount,
+  billingCycle,
 }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,12 +28,15 @@ export default function StripeWrapper({
         setLoading(true);
         setError(null);
 
+        // The server derives the charge amount from these order details;
+        // no amount is sent from the client.
         const response = await fetch("/api/stripe/create-payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: amount,
-            metadata: metadata || {},
+            plan,
+            employeeCount,
+            billingCycle,
           }),
         });
 
@@ -59,7 +64,7 @@ export default function StripeWrapper({
     };
 
     createPaymentIntent();
-  }, [amount, metadata]);
+  }, [plan, employeeCount, billingCycle]);
 
   const options = {
     clientSecret,
