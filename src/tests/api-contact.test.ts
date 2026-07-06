@@ -81,8 +81,9 @@ describe("Contact API Route", () => {
     );
   });
 
-  it("uses fallback API key in development when main key is missing", async () => {
-    // Remove the main API key but keep the public one
+  it("never falls back to the public API key", async () => {
+    // Remove the main API key but keep the public one — the public key is
+    // never a valid substitute, even in development
     delete process.env.BREVO_API_KEY;
     process.env.NODE_ENV = "development";
 
@@ -97,14 +98,27 @@ describe("Contact API Route", () => {
 
     await POST(request as unknown as Request);
 
-    // Check if fetch was called with the public API key
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://api.brevo.com/v3/contacts",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "api-key": "public-test-api-key",
-        }),
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Server configuration error - missing API key" },
+      { status: 500 },
+    );
+  });
+
+  it("returns 400 if phone is not a string", async () => {
+    const request = {
+      json: jest.fn().mockResolvedValue({
+        name: "Test User",
+        email: "test@example.com",
+        phone: 1234567890,
       }),
+    };
+
+    await POST(request as unknown as Request);
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: 'Field "phone" must be a string' },
+      { status: 400 },
     );
   });
 
@@ -227,7 +241,7 @@ describe("Contact API Route", () => {
     });
   });
 
-  it("handles exceptions during processing", async () => {
+  it("returns 400 when the request body is not valid JSON", async () => {
     // Mock request.json to throw an error
     const request = {
       json: jest.fn().mockRejectedValueOnce(new Error("JSON parsing error")),
@@ -235,7 +249,54 @@ describe("Contact API Route", () => {
 
     await POST(request as unknown as Request);
 
-    // Check if NextResponse.json was called with error message and status 500
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Request body must be valid JSON" },
+      { status: 400 },
+    );
+  });
+
+  it("returns 500 when the Brevo request fails unexpectedly", async () => {
+    (global.fetch as jest.Mock).mockRejectedValueOnce(
+      new Error("network error"),
+    );
+
+    const request = {
+      json: jest.fn().mockResolvedValue({
+        name: "Test User",
+        email: "test@example.com",
+        phone: "123-456-7890",
+      }),
+    };
+
+    await POST(request as unknown as Request);
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Failed to process contact form" },
+      { status: 500 },
+    );
+  });
+
+  it("returns 500 when Brevo returns an unrecognized error", async () => {
+    // A response that is not JSON must still surface as a 500, and the
+    // error path must not swallow the thrown error into a relabeled one
+    (global.fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 502,
+        json: () => Promise.reject(new Error("not JSON")),
+      }),
+    );
+
+    const request = {
+      json: jest.fn().mockResolvedValue({
+        name: "Test User",
+        email: "test@example.com",
+        phone: "123-456-7890",
+      }),
+    };
+
+    await POST(request as unknown as Request);
+
     expect(NextResponse.json).toHaveBeenCalledWith(
       { error: "Failed to process contact form" },
       { status: 500 },

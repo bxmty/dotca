@@ -103,11 +103,22 @@ export function getAllBlogPosts(): BlogPost[] {
 }
 
 /**
- * Get blog post by slug
+ * Get a published blog post by slug
  */
 export function getBlogPostBySlug(slug: string): BlogPost | null {
+  // Slugs are file basenames; reject anything that could traverse the filesystem
+  if (!/^[a-z0-9-]+$/i.test(slug)) {
+    return null;
+  }
+
   const filePath = path.join(BLOG_CONFIG.contentPath, `${slug}.mdx`);
-  return parseBlogPost(filePath);
+  const post = parseBlogPost(filePath);
+
+  if (!post || !post.frontmatter.published) {
+    return null;
+  }
+
+  return post;
 }
 
 /**

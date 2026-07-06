@@ -34,7 +34,7 @@ ENV SENTRY_DSN=$SENTRY_DSN
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
 # Install dependencies, including dev dependencies needed for build
-RUN npm install --frozen-lockfile
+RUN npm ci
 
 # Copy the entire project
 COPY . .
