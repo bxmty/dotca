@@ -54,7 +54,7 @@ The DotCA project uses multiple types of secrets across different systems. Prope
 
 ### 3. API Keys and Tokens
 
-- **Services**: Stripe, Brevo, Resend, Google Analytics, Umami
+- **Services**: Stripe, Brevo, Resend, Google Analytics
 - **Rotation**: Every 90 days
 - **Impact**: Affects payment processing, emails, analytics
 
@@ -563,7 +563,7 @@ gh workflow run deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
 - [ ] Deployment pipeline completes successfully
 - [ ] Payment processing works (Stripe)
 - [ ] Email delivery works (Brevo, Resend webmaster notifications)
-- [ ] Analytics tracking works (GA/Umami)
+- [ ] Analytics tracking works (GA)
 - [ ] Application loads without errors
 - [ ] Database connections work
 - [ ] File storage access works

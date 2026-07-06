@@ -32,13 +32,6 @@ variables:
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51S7c8DKZd4rSrt9n4kQU2lE9dZ9vSbpAkGRYu0qNRTMBmNvRxQvpFiYOIK2sZGkrmdQQAEaNxugOMGcXYLINRLCF00wuy1qoap
   NEXT_PUBLIC_PRODUCTION_GA_ID: G-LY1EGSWRVE
 
-  # Umami Analytics (Staging)
-  UMAMI_WEBSITE_ID: umami-website-staging-001
-  UMAMI_HOST_URL: https://umami.staging.boximity.ca
-  UMAMI_FORCE_HTTPS: true
-  UMAMI_DISABLE_TELEMETRY: true
-  UMAMI_LOG_LEVEL: info
-
   # Feature flags
   ENABLE_DEBUG_LOGGING: true
   ENABLE_PERFORMANCE_MONITORING: true
@@ -60,11 +53,6 @@ secrets:
   # Sentry monitoring
   - SENTRY_AUTH_TOKEN
   - SENTRY_DSN_STAGING
-
-  # Umami Database
-  - UMAMI_DB_PASSWORD
-  - UMAMI_APP_SECRET
-  - UMAMI_ADMIN_PASSWORD
 
   # GitHub
   - GITHUB_TOKEN
