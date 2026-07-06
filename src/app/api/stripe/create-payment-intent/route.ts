@@ -1,24 +1,43 @@
 import { NextResponse } from "next/server";
-import { getServerStripe } from "../../../../lib/stripe";
+import { getServerStripe } from "@/lib/stripe";
+import { priceOrder } from "@/lib/pricing";
 
-// Server-side Stripe API implementation
+// The amount is always computed server-side from the order details;
+// a client-supplied amount is never accepted.
 export async function POST(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    // Parse request body
-    const { amount, currency = "usd", metadata = {} } = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Request body must be valid JSON" },
+      { status: 400 },
+    );
+  }
 
-    if (!amount || isNaN(amount)) {
-      throw new Error("A valid amount is required");
-    }
+  const result = priceOrder({
+    plan: body?.plan,
+    employeeCount: body?.employeeCount,
+    billingCycle: body?.billingCycle,
+  });
 
-    // Get Stripe instance (asynchronously)
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
+
+  const { order } = result;
+
+  try {
     const stripe = await getServerStripe();
 
-    // Create a PaymentIntent with the order amount and currency
     const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency,
-      metadata,
+      amount: order.amountCents,
+      currency: order.currency,
+      metadata: {
+        plan: order.planName,
+        employees: order.employeeCount.toString(),
+        billing_cycle: order.billingCycle,
+      },
       automatic_payment_methods: {
         enabled: true,
       },
@@ -29,9 +48,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Stripe error:", error);
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Unknown error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to process the payment request" },
+      { status: 500 },
+    );
   }
 }

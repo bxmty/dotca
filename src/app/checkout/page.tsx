@@ -715,24 +715,9 @@ export default function Checkout() {
                           <div className="row g-3">
                             <div className="col-12">
                               <StripeWrapper
-                                amount={Math.round(
-                                  parseFloat(
-                                    calculateTotal(
-                                      selectedPlan?.unit_price || "0",
-                                      employeeCount,
-                                    ).replace(/[^0-9.]/g, ""),
-                                  ) * 100,
-                                )}
-                                metadata={{
-                                  plan: selectedPlan?.name || "Unknown Plan",
-                                  employees: employeeCount?.toString() || "0",
-                                  billing_cycle: billingCycle || "monthly",
-                                  customer_email: formData.email || "",
-                                  customer_name:
-                                    formData.firstName && formData.lastName
-                                      ? `${formData.firstName} ${formData.lastName}`
-                                      : "Guest Customer",
-                                }}
+                                plan={selectedPlan?.name ?? ""}
+                                employeeCount={employeeCount}
+                                billingCycle={billingCycle}
                               >
                                 <StripePaymentForm
                                   onSuccess={handlePaymentSuccess}
