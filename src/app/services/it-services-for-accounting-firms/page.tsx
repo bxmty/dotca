@@ -110,7 +110,7 @@ export default function ITForAccountingFirms() {
                   <ul className="list-unstyled">
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -122,7 +122,7 @@ export default function ITForAccountingFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -134,7 +134,7 @@ export default function ITForAccountingFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -146,7 +146,7 @@ export default function ITForAccountingFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -158,7 +158,7 @@ export default function ITForAccountingFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -227,7 +227,7 @@ export default function ITForAccountingFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Protect Client Financial Data
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Accounting firms handle sensitive financial information
                     daily. Our accounting firm cybersecurity solutions include
                     advanced data protection, secure financial document
@@ -263,7 +263,7 @@ export default function ITForAccountingFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Never Miss Tax Deadlines
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Stop wasting valuable billable time troubleshooting IT
                     issues. Our managed IT services for accounting firms ensure
                     your QuickBooks, tax software, and financial systems work
@@ -299,7 +299,7 @@ export default function ITForAccountingFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Meet Regulatory Requirements
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     CPA firms face strict regulatory requirements for data
                     security and retention. Our IT support for accounting firms
                     includes CRA compliance monitoring, secure financial data
@@ -335,7 +335,7 @@ export default function ITForAccountingFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Stay Ahead of Accounting Tech Trends
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Accounting technology evolves rapidly with new compliance
                     tools, cloud accounting platforms, and client portals. Our
                     managed IT for accountants includes regular technology
@@ -350,7 +350,7 @@ export default function ITForAccountingFirms() {
       </section>
 
       {/* What Are IT Services for Accounting Firms Section */}
-      <section className="py-5 py-md-7 bg-alt">
+      <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
@@ -465,7 +465,7 @@ export default function ITForAccountingFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -477,7 +477,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -489,7 +489,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -501,7 +501,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -520,7 +520,7 @@ export default function ITForAccountingFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -532,7 +532,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -544,7 +544,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -556,7 +556,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -575,7 +575,7 @@ export default function ITForAccountingFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -587,7 +587,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -599,7 +599,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -611,7 +611,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -630,7 +630,7 @@ export default function ITForAccountingFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -642,7 +642,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -654,7 +654,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -666,7 +666,7 @@ export default function ITForAccountingFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -720,7 +720,7 @@ export default function ITForAccountingFirms() {
                     className="accordion-collapse collapse show"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for accounting firms are specifically
                       designed for CPA practices, with deep understanding of
                       financial data security, tax deadline pressures, and
@@ -749,7 +749,7 @@ export default function ITForAccountingFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Most accounting firms can be up and running with our IT
                       services within 1-2 weeks. We begin with a comprehensive
                       financial technology assessment to understand your current
@@ -777,7 +777,7 @@ export default function ITForAccountingFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Absolutely. Our accounting firm IT support includes
                       specialized CRA compliance monitoring for data security,
                       retention requirements, and audit trails. We implement
@@ -803,7 +803,7 @@ export default function ITForAccountingFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for accounting firms include 24/7
                       proactive monitoring, which means we often detect and
                       resolve issues before they become emergencies. For
@@ -830,7 +830,7 @@ export default function ITForAccountingFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Yes, our IT support for accounting firms is designed to
                       integrate seamlessly with QuickBooks, tax preparation
                       software, and other accounting applications. During

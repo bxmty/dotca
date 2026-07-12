@@ -112,7 +112,7 @@ export default function ManagedITServicesOntario() {
                   <ul className="list-unstyled">
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -124,7 +124,7 @@ export default function ManagedITServicesOntario() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -136,7 +136,7 @@ export default function ManagedITServicesOntario() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -148,7 +148,7 @@ export default function ManagedITServicesOntario() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -160,7 +160,7 @@ export default function ManagedITServicesOntario() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -229,7 +229,7 @@ export default function ManagedITServicesOntario() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Reduce Business Risk
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Ontario businesses face unique cybersecurity threats and
                     compliance requirements. Our managed IT services Ontario
                     include advanced protection against ransomware, data
@@ -265,7 +265,7 @@ export default function ManagedITServicesOntario() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Increase Productivity
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Stop wasting valuable time troubleshooting IT issues. Our
                     managed IT services Ontario ensure your systems work
                     reliably so your team can focus on what matters most -
@@ -300,7 +300,7 @@ export default function ManagedITServicesOntario() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Control Costs
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Predictable monthly pricing with our managed IT services
                     Ontario eliminates unexpected IT expenses. Know exactly what
                     you'll pay each month without surprise repair bills or
@@ -335,7 +335,7 @@ export default function ManagedITServicesOntario() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Stay Ahead of Technology
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Technology evolves rapidly, and Ontario businesses need to
                     keep pace. Our managed IT services Ontario include regular
                     technology assessments and upgrades to ensure you always
@@ -349,7 +349,7 @@ export default function ManagedITServicesOntario() {
       </section>
 
       {/* What is Managed IT Services Section */}
-      <section className="py-5 py-md-7 bg-alt">
+      <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
@@ -462,7 +462,7 @@ export default function ManagedITServicesOntario() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -474,7 +474,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -486,7 +486,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -498,7 +498,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -517,7 +517,7 @@ export default function ManagedITServicesOntario() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -529,7 +529,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -541,7 +541,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -553,7 +553,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -572,7 +572,7 @@ export default function ManagedITServicesOntario() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -584,7 +584,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -596,7 +596,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -608,7 +608,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -627,7 +627,7 @@ export default function ManagedITServicesOntario() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -639,7 +639,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -651,7 +651,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -663,7 +663,7 @@ export default function ManagedITServicesOntario() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -692,7 +692,7 @@ export default function ManagedITServicesOntario() {
       </section>
 
       {/* Service Areas */}
-      <section className="py-5 py-md-7 bg-alt">
+      <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
         <div className="container">
           <h2 className="fs-1 fw-light mb-5 text-center border-bottom pb-3">
             Managed IT Services Ontario Coverage
@@ -707,7 +707,7 @@ export default function ManagedITServicesOntario() {
                 <div className="card-body">
                   <div className="fs-1 mb-3">🏢</div>
                   <h4 className="h5 mb-3">Toronto</h4>
-                  <p className="text-secondary small mb-3">
+                  <p className="text-body-secondary small mb-3">
                     GTA's business hub with specialized support for professional
                     services firms, financial institutions, and tech companies.
                   </p>
@@ -720,7 +720,7 @@ export default function ManagedITServicesOntario() {
                 <div className="card-body">
                   <div className="fs-1 mb-3">🏛️</div>
                   <h4 className="h5 mb-3">Ottawa</h4>
-                  <p className="text-secondary small mb-3">
+                  <p className="text-body-secondary small mb-3">
                     Government and research sector expertise with focus on
                     compliance and secure communications.
                   </p>
@@ -733,7 +733,7 @@ export default function ManagedITServicesOntario() {
                 <div className="card-body">
                   <div className="fs-1 mb-3">🏭</div>
                   <h4 className="h5 mb-3">Hamilton</h4>
-                  <p className="text-secondary small mb-3">
+                  <p className="text-body-secondary small mb-3">
                     Manufacturing and logistics support with industrial IT
                     solutions and remote monitoring capabilities.
                   </p>
@@ -747,7 +747,7 @@ export default function ManagedITServicesOntario() {
                   <div className="card-body">
                     <div className="fs-1 mb-3">🌾</div>
                     <h4 className="h5 mb-3">London</h4>
-                    <p className="text-secondary small mb-3">
+                    <p className="text-body-secondary small mb-3">
                       Agricultural and healthcare sector IT support with
                       specialized compliance and data management solutions.
                     </p>
@@ -795,7 +795,7 @@ export default function ManagedITServicesOntario() {
                     className="accordion-collapse collapse show"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our managed IT services Ontario are designed specifically
                       for small businesses, with a business-first approach that
                       prioritizes your outcomes over technical complexity. We
@@ -824,7 +824,7 @@ export default function ManagedITServicesOntario() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Most Ontario businesses can be up and running with our
                       managed IT services within 1-2 weeks. We begin with a
                       comprehensive IT assessment to understand your current
@@ -852,7 +852,7 @@ export default function ManagedITServicesOntario() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       No long-term contracts required. Our managed IT services
                       Ontario operate month-to-month, giving you the flexibility
                       to adjust or cancel services as your business needs
@@ -880,7 +880,7 @@ export default function ManagedITServicesOntario() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our managed IT services Ontario include 24/7 proactive
                       monitoring, which means we often detect and resolve issues
                       before they become emergencies. For true emergencies, we
@@ -906,7 +906,7 @@ export default function ManagedITServicesOntario() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Absolutely. Our managed IT services Ontario are designed
                       to integrate with your existing technology infrastructure.
                       We assess your current setup during the onboarding process

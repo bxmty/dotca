@@ -97,7 +97,7 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
           {submitStatus.message}
         </div>
       )}
-      <div className="bg-dark text-white p-4 rounded mb-4">
+      <div className="bg-dark text-white p-4 rounded mb-4" data-bs-theme="dark">
         <div className="d-flex align-items-center mb-3">
           <div className="bg-primary p-2 rounded-circle me-3">
             <svg

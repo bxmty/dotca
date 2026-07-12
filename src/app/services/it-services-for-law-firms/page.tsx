@@ -111,7 +111,7 @@ export default function ITForLawFirms() {
                   <ul className="list-unstyled">
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -123,7 +123,7 @@ export default function ITForLawFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -135,7 +135,7 @@ export default function ITForLawFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -147,7 +147,7 @@ export default function ITForLawFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -159,7 +159,7 @@ export default function ITForLawFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -228,7 +228,7 @@ export default function ITForLawFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Protect Client Confidentiality
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Law firms handle sensitive client information daily. Our law
                     firm cybersecurity solutions include advanced data
                     protection, secure document management, and compliance tools
@@ -264,7 +264,7 @@ export default function ITForLawFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Maximize Billable Hours
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Stop wasting valuable billable time troubleshooting IT
                     issues. Our managed IT services for law firms ensure your
                     systems work reliably so attorneys and staff can focus on
@@ -300,7 +300,7 @@ export default function ITForLawFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Meet Compliance Requirements
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Legal practices face strict regulatory requirements for data
                     security and retention. Our IT support for lawyers includes
                     compliance monitoring, secure document management, and audit
@@ -336,7 +336,7 @@ export default function ITForLawFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Stay Ahead of Legal Tech Trends
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Legal technology evolves rapidly with new case management
                     systems, e-discovery tools, and client portals. Our managed
                     IT for law firms includes regular technology assessments and
@@ -351,7 +351,7 @@ export default function ITForLawFirms() {
       </section>
 
       {/* What Are IT Services for Law Firms Section */}
-      <section className="py-5 py-md-7 bg-alt">
+      <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
@@ -465,7 +465,7 @@ export default function ITForLawFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -477,7 +477,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -489,7 +489,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -501,7 +501,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -520,7 +520,7 @@ export default function ITForLawFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -533,7 +533,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -545,7 +545,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -557,7 +557,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -576,7 +576,7 @@ export default function ITForLawFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -588,7 +588,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -600,7 +600,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -612,7 +612,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -631,7 +631,7 @@ export default function ITForLawFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -643,7 +643,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -655,7 +655,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -667,7 +667,7 @@ export default function ITForLawFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -720,7 +720,7 @@ export default function ITForLawFirms() {
                     className="accordion-collapse collapse show"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for law firms are specifically designed
                       for legal practices, with deep understanding of attorney
                       confidentiality requirements, case management workflows,
@@ -749,7 +749,7 @@ export default function ITForLawFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Most law firms can be up and running with our IT services
                       within 1-2 weeks. We begin with a comprehensive legal
                       technology assessment to understand your current setup,
@@ -776,7 +776,7 @@ export default function ITForLawFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Absolutely. Our law firm IT support includes specialized
                       compliance monitoring for PIPEDA, privacy laws, and legal
                       industry standards. We implement secure document
@@ -803,7 +803,7 @@ export default function ITForLawFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for law firms include 24/7 proactive
                       monitoring, which means we often detect and resolve issues
                       before they become emergencies. For critical situations,
@@ -830,7 +830,7 @@ export default function ITForLawFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Yes, our IT support for lawyers is designed to integrate
                       with your existing legal practice management software,
                       case management systems, and document management tools.

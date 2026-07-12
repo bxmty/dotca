@@ -58,21 +58,9 @@ describe("BootstrapClient Component", () => {
     expect(mockAddClass).toHaveBeenCalledWith("bootstrap-loaded");
   });
 
-  it("sets light theme when user prefers light mode", () => {
+  it("does not set the initial theme (handled pre-paint in layout.tsx)", () => {
     render(<BootstrapClient />);
-    expect(mockSetAttribute).toHaveBeenCalledWith("data-bs-theme", "light");
-  });
-
-  it("sets dark theme when user prefers dark mode", () => {
-    // Override matchMedia to return dark mode preference
-    window.matchMedia = jest.fn().mockImplementation(() => ({
-      matches: true,
-      addEventListener: mockAddEventListener,
-      removeEventListener: mockRemoveEventListener,
-    }));
-
-    render(<BootstrapClient />);
-    expect(mockSetAttribute).toHaveBeenCalledWith("data-bs-theme", "dark");
+    expect(mockSetAttribute).not.toHaveBeenCalled();
   });
 
   it("adds event listener for theme changes", () => {

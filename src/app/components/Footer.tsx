@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="row align-items-center">
           <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
             <div className="fs-4 fw-semibold mb-2">boximity msp</div>
-            <p className="small text-secondary mb-0">
+            <p className="small text-body-secondary mb-0">
               © 2026 boximity msp. All rights reserved.
             </p>
             {commitHash && (
@@ -16,15 +16,15 @@ export default function Footer() {
           </div>
           <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
             <div className="d-flex gap-4 align-items-center">
-              <a href="/privacy-policy" className="text-secondary small">
+              <a href="/privacy-policy" className="text-body-secondary small">
                 Privacy Policy
               </a>
-              <a href="/terms-of-service" className="text-secondary small">
+              <a href="/terms-of-service" className="text-body-secondary small">
                 Terms of Service
               </a>
               <a
                 href="https://www.linkedin.com/company/19035825/"
-                className="text-secondary"
+                className="text-body-secondary"
               >
                 <span className="visually-hidden">LinkedIn</span>
                 <svg

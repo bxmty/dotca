@@ -1,61 +1,19 @@
-/* Bootstrap custom CSS */
+/* Bootstrap custom CSS
+ *
+ * Theming model: Bootstrap 5.3 color modes only. The active theme is the
+ * data-bs-theme attribute on <html>, set before first paint by an inline
+ * script in layout.tsx and kept in sync with the OS preference by
+ * BootstrapClient. Do not add prefers-color-scheme media queries here —
+ * they bypass the attribute and break explicit theme selection.
+ */
 
 :root {
-  /* Custom variables */
-  --background: #ffffff;
-  --foreground: #212529;
-
-  /* Bootstrap theme customization */
   --bs-font-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
   --bs-border-radius: 0.25rem;
-  --bs-primary: #0d6efd;
-  --bs-secondary: #6c757d;
-  --bs-success: #198754;
-  --bs-info: #0dcaf0;
-  --bs-warning: #ffc107;
-  --bs-danger: #dc3545;
-  --bs-light: #f8f9fa;
-  --bs-dark: #212529;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #212529;
-    --foreground: #f8f9fa;
-  }
-
-  [data-bs-theme="auto"] {
-    --bs-body-color: #f8f9fa;
-    --bs-body-bg: #212529;
-    --bs-body-color-rgb: 248, 249, 250;
-    --bs-body-bg-rgb: 33, 37, 41;
-    --bs-tertiary-bg: #2b3035;
-
-    /* Bootstrap dark theme overrides */
-    --bs-primary: #0d6efd;
-    --bs-secondary: #6c757d;
-    --bs-success: #198754;
-    --bs-info: #0dcaf0;
-    --bs-warning: #ffc107;
-    --bs-danger: #dc3545;
-    --bs-light: #212529;
-    --bs-dark: #f8f9fa;
-
-    /* Default link colors for dark mode */
-    --bs-link-color: #8bb9fe;
-    --bs-link-hover-color: #a7c7fd;
-  }
 }
 
 html, body {
   height: 100%;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-weight: 400;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
 }
 
 /* Custom utility classes */
@@ -80,124 +38,34 @@ body {
   z-index: 2 !important;
 }
 
-/* Section with dark background in both light and dark modes */
+/* Dark band section, dark in both themes. Every .bg-alt element must also
+ * carry data-bs-theme="dark" so Bootstrap themes nested components (cards,
+ * accordions, borders) for the dark surface instead of the page theme. */
 .bg-alt {
-  background-color: #2b3035;
-  color: #f8f9fa;
+  --bs-body-bg: #2b3035;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
-/* Make text in bg-alt sections always light */
-.bg-alt p,
-.bg-alt .text-body,
-.bg-alt h2,
-.bg-alt h3,
-.bg-alt li,
-.bg-alt a {
-  color: #f8f9fa !important;
+/* Lift nested surfaces slightly off the band */
+.bg-alt .card:not(.bg-dark) {
+  --bs-card-bg: #343a40;
 }
 
-/* Ensure cards within dark sections have proper contrast */
-.bg-alt .card.bg-white {
-  background-color: #fff !important;
-  color: #212529 !important;
+.bg-alt .accordion {
+  --bs-accordion-bg: #343a40;
 }
 
-.bg-alt .card.bg-white h3,
-.bg-alt .card.bg-white p,
-.bg-alt .card.bg-white span:not(.text-success),
-.bg-alt .card.bg-white div {
-  color: #212529 !important;
-}
+/* Dark theme adjustments */
+[data-bs-theme="dark"] {
+  --bs-link-color: #8bb9fe;
+  --bs-link-hover-color: #a7c7fd;
 
-.bg-alt .text-secondary {
-  color: #d1d5db !important;
-}
-
-/* Small paragraph text in white cards */
-.bg-alt .card.bg-white p.small {
-  color: #6c757d !important;
-}
-
-/* Card with dark background - ensure text is visible in all modes */
-.card-body.bg-dark {
-  background-color: #343a40 !important;
-  color: #f8f9fa !important;
-}
-
-.card-body.bg-dark p {
-  color: #f8f9fa !important;
-}
-
-.card-body.bg-dark .text-secondary,
-.card-body.bg-dark p.text-secondary {
-  color: #e9ecef !important;
-}
-
-.card-body.bg-dark .text-white-50 {
-  color: rgba(255, 255, 255, 0.75) !important;
-}
-
-/* Hero section specific styles */
-.vh-75 .bg-dark.bg-opacity-75 {
-  background-color: rgba(0, 0, 0, 0.75) !important;
-}
-
-/* Gap utility (useful for flex layouts) */
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
-.gap-3 { gap: 1rem; }
-.gap-4 { gap: 1.5rem; }
-.gap-5 { gap: 3rem; }
-
-/* Dark mode specific styles */
-@media (prefers-color-scheme: dark) {
   .dark-invert {
     filter: invert(1);
   }
 
-  .text-body {
-    color: var(--foreground) !important;
-  }
-
-  .text-secondary {
-    color: #adb5bd !important;
-  }
-
-  .card-body.bg-dark {
-    color: #f8f9fa;
-  }
-
-  .card-body.bg-dark .text-secondary {
-    color: #ced4da !important;
-  }
-
-  .bg-dark {
-    background-color: #212529 !important;
-  }
-
-  .bg-dark-subtle {
-    background-color: #343a40 !important;
-  }
-}
-
-/* Bootstrap dark mode overrides */
-[data-bs-theme="dark"] {
-  --bs-body-color: #f8f9fa;
-  --bs-body-bg: #212529;
-
-  /* Card in bg-alt needs explicit bg color in dark mode */
-  .bg-alt .card.bg-white {
-    background-color: #343a40 !important;
-    color: #f8f9fa !important;
-  }
-
-  .bg-alt .card.bg-white h3,
-  .bg-alt .card.bg-white p,
-  .bg-alt .card.bg-white span:not(.text-success),
-  .bg-alt .card.bg-white div {
-    color: #f8f9fa !important;
-  }
-
+  /* Default outline-primary border/text is too dim on dark backgrounds */
   .btn-outline-primary {
     --bs-btn-color: #6ea8fe;
     --bs-btn-border-color: #6ea8fe;
@@ -205,44 +73,9 @@ body {
     --bs-btn-hover-color: #000;
   }
 
+  /* Lift cards off the page background */
   .card {
     --bs-card-bg: #2b3035;
-    --bs-card-color: #f8f9fa;
-  }
-
-  .text-secondary {
-    color: #adb5bd !important;
-  }
-
-    .bg-dark {
-    background-color: #343a40 !important;
-  }
-
-  .bg-secondary {
-    background-color: #495057 !important;
-  }
-
-  .card-body.bg-dark {
-    color: #f8f9fa;
-  }
-
-  .card-body.bg-dark .text-secondary {
-    color: #ced4da !important;
-  }
-
-  .fs-3.fw-light, .text-danger {
-    color: #ff8ba7 !important;
-  }
-
-  /* Fix Next.js Image component in dark mode */
-  img[data-nimg="fill"] {
-    opacity: 1 !important;
-    visibility: visible !important;
-  }
-
-  /* Ensure light/dark mode compatibility for .card-body.bg-dark */
-  .card-body.bg-dark {
-    color: #f8f9fa !important;
   }
 }
 
@@ -263,6 +96,34 @@ body {
   border-radius: 4px 0 0 4px;
   border: 1px solid #ced4da;
   border-right: none;
+}
+
+/* Theme-aware phone input: react-phone-input-2's stylesheet hardcodes a
+ * white background, so restate the Bootstrap form tokens at higher
+ * specificity. */
+.react-tel-input.phone-input-container .form-control {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+
+.react-tel-input.phone-input-container .form-control::placeholder {
+  color: var(--bs-secondary-color);
+}
+
+.react-tel-input.phone-input-container .flag-dropdown {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+.react-tel-input.phone-input-container .country-list {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.react-tel-input.phone-input-container .country-list .country:hover,
+.react-tel-input.phone-input-container .country-list .country.highlight {
+  background-color: var(--bs-tertiary-bg);
 }
 
 /* Dark theme styles for phone input */
