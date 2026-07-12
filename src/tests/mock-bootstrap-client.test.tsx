@@ -53,9 +53,10 @@ describe("BootstrapClient handleThemeChange Coverage Tests", () => {
     // Render the component to trigger the useEffect
     render(<BootstrapClient />);
 
-    // Verify initial setup
+    // Verify initial setup. The initial theme attribute is set by an inline
+    // script in layout.tsx before paint, not by this component.
     expect(mockAddClass).toHaveBeenCalledWith("bootstrap-loaded");
-    expect(mockSetAttribute).toHaveBeenCalledWith("data-bs-theme", "light");
+    expect(mockSetAttribute).not.toHaveBeenCalled();
     expect(mockAddEventListener).toHaveBeenCalledWith(
       "change",
       expect.any(Function),

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "./globals.css";
 import Script from "next/script";
 import { Suspense } from "react";
 import BootstrapClient from "./components/BootstrapClient";
@@ -17,7 +17,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#212529" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -86,8 +89,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-bs-theme="auto">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Set the Bootstrap color mode before first paint to avoid a flash
+            of the wrong theme. BootstrapClient keeps it in sync afterwards. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
+          }}
+        />
         <JsonLd data={getLocalBusinessSchema()} />
         <BreadcrumbSchema />
       </head>

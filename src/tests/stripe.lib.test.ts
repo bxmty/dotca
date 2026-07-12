@@ -221,7 +221,8 @@ describe("stripe.ts utility", () => {
 
     it("handles undefined environment variables", () => {
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = undefined as
-        string | undefined;
+        | string
+        | undefined;
       process.env.STRIPE_SECRET_KEY = undefined as string | undefined;
 
       const { getStripe } = require("@/lib/stripe");

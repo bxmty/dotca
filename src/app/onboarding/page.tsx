@@ -84,9 +84,9 @@ export default function OnboardingPage() {
   const prevStep = () => setStep(step - 1);
 
   return (
-    <div className="bg-light">
+    <div className="bg-body-tertiary">
       {/* Custom Header for Onboarding */}
-      <header className="bg-white shadow-sm py-3">
+      <header className="bg-body shadow-sm py-3">
         <div className="container d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center">
             <Image
@@ -97,7 +97,7 @@ export default function OnboardingPage() {
               className="dark-invert"
             />
           </div>
-          <div className="small text-secondary">
+          <div className="small text-body-secondary">
             Onboarding • Step {step} of 3
           </div>
         </div>

@@ -112,7 +112,7 @@ export default function ITForMarketingAgencies() {
                   <ul className="list-unstyled">
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -124,7 +124,7 @@ export default function ITForMarketingAgencies() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -136,7 +136,7 @@ export default function ITForMarketingAgencies() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -148,7 +148,7 @@ export default function ITForMarketingAgencies() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -160,7 +160,7 @@ export default function ITForMarketingAgencies() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -229,7 +229,7 @@ export default function ITForMarketingAgencies() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Protect Client Creative Assets
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Marketing agencies handle valuable client intellectual
                     property daily - logos, campaigns, and creative assets. Our
                     marketing agency cybersecurity solutions include advanced
@@ -266,7 +266,7 @@ export default function ITForMarketingAgencies() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Never Miss Campaign Deadlines
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Stop wasting valuable creative time troubleshooting IT
                     issues. Our managed IT services for marketing agencies
                     ensure your design software, project management tools, and
@@ -302,7 +302,7 @@ export default function ITForMarketingAgencies() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Enable Creative Collaboration
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Marketing teams thrive on collaboration, but outdated
                     technology can hinder creativity. Our IT support for
                     marketing agencies includes secure cloud collaboration
@@ -339,7 +339,7 @@ export default function ITForMarketingAgencies() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Stay Ahead of Marketing Tech Trends
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Marketing technology evolves rapidly with new social media
                     platforms, analytics tools, and content management systems.
                     Our managed IT for marketing agencies includes regular
@@ -354,7 +354,7 @@ export default function ITForMarketingAgencies() {
       </section>
 
       {/* What Are IT Services for Marketing Agencies Section */}
-      <section className="py-5 py-md-7 bg-alt">
+      <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
@@ -470,7 +470,7 @@ export default function ITForMarketingAgencies() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -482,7 +482,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -495,7 +495,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -507,7 +507,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -526,7 +526,7 @@ export default function ITForMarketingAgencies() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -539,7 +539,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -551,7 +551,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -563,7 +563,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -582,7 +582,7 @@ export default function ITForMarketingAgencies() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -594,7 +594,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -607,7 +607,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -619,7 +619,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -638,7 +638,7 @@ export default function ITForMarketingAgencies() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -650,7 +650,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -662,7 +662,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -674,7 +674,7 @@ export default function ITForMarketingAgencies() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -728,7 +728,7 @@ export default function ITForMarketingAgencies() {
                     className="accordion-collapse collapse show"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for marketing agencies are specifically
                       designed for creative firms, with deep understanding of
                       intellectual property protection, campaign deadline
@@ -757,7 +757,7 @@ export default function ITForMarketingAgencies() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Most marketing agencies can be up and running with our IT
                       services within 1-2 weeks. We begin with a comprehensive
                       creative technology assessment to understand your current
@@ -784,7 +784,7 @@ export default function ITForMarketingAgencies() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Absolutely. Our marketing agency IT support includes
                       specialized intellectual property protection for client
                       work, logos, campaigns, and creative assets. We implement
@@ -811,7 +811,7 @@ export default function ITForMarketingAgencies() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for marketing agencies include 24/7
                       proactive monitoring, which means we often detect and
                       resolve issues before they become emergencies. For
@@ -839,7 +839,7 @@ export default function ITForMarketingAgencies() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Yes, our IT support for marketing agencies is designed to
                       integrate seamlessly with Adobe Creative Suite, design
                       software, project management platforms, and other creative

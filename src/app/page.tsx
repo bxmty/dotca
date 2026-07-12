@@ -175,7 +175,11 @@ export default function Home() {
       </section>
 
       {/* Solutions Section */}
-      <section id="solutions" className="py-5 py-md-7 bg-alt">
+      <section
+        id="solutions"
+        className="py-5 py-md-7 bg-alt"
+        data-bs-theme="dark"
+      >
         <div className="container">
           <h2 className="fs-1 fw-light mb-5 border-bottom pb-3">
             Our Small Business Cloud Bundle
@@ -200,7 +204,7 @@ export default function Home() {
               </p>
             </div>
             <div className="col-md-6">
-              <div className="card shadow-sm bg-white">
+              <div className="card shadow-sm">
                 <div className="card-body">
                   <h3 className="fs-4 fw-medium mb-4">
                     Everything your 5-10 person team needs:
@@ -208,7 +212,7 @@ export default function Home() {
                   <ul className="list-unstyled">
                     <li className="d-flex mb-3">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="24"
                         height="24"
                         fill="none"
@@ -234,7 +238,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex mb-3">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="24"
                         height="24"
                         fill="none"
@@ -259,7 +263,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex mb-3">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="24"
                         height="24"
                         fill="none"
@@ -284,7 +288,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="24"
                         height="24"
                         fill="none"
@@ -374,7 +378,11 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section id="benefits" className="py-5 py-md-7 bg-alt">
+      <section
+        id="benefits"
+        className="py-5 py-md-7 bg-alt"
+        data-bs-theme="dark"
+      >
         <div className="container">
           <div className="row">
             <div className="col-md-6 mb-5 mb-md-0">
@@ -384,7 +392,7 @@ export default function Home() {
               <div className="d-flex flex-column gap-3">
                 <div className="d-flex">
                   <svg
-                    className="text-success flex-shrink-0 me-3"
+                    className="text-success-emphasis flex-shrink-0 me-3"
                     width="24"
                     height="24"
                     fill="none"
@@ -407,7 +415,7 @@ export default function Home() {
                 </div>
                 <div className="d-flex">
                   <svg
-                    className="text-success flex-shrink-0 me-3"
+                    className="text-success-emphasis flex-shrink-0 me-3"
                     width="24"
                     height="24"
                     fill="none"
@@ -428,7 +436,7 @@ export default function Home() {
                 </div>
                 <div className="d-flex">
                   <svg
-                    className="text-success flex-shrink-0 me-3"
+                    className="text-success-emphasis flex-shrink-0 me-3"
                     width="24"
                     height="24"
                     fill="none"
@@ -449,7 +457,7 @@ export default function Home() {
                 </div>
                 <div className="d-flex">
                   <svg
-                    className="text-success flex-shrink-0 me-3"
+                    className="text-success-emphasis flex-shrink-0 me-3"
                     width="24"
                     height="24"
                     fill="none"
@@ -470,7 +478,7 @@ export default function Home() {
                 </div>
                 <div className="d-flex">
                   <svg
-                    className="text-success flex-shrink-0 me-3"
+                    className="text-success-emphasis flex-shrink-0 me-3"
                     width="24"
                     height="24"
                     fill="none"
@@ -498,7 +506,10 @@ export default function Home() {
               <div className="card mb-3">
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
-                    Up to <span className="fw-bold text-danger">2 weeks</span>
+                    Up to{" "}
+                    <span className="fw-bold text-danger-emphasis">
+                      2 weeks
+                    </span>
                   </p>
                   <p className="text-white-50 mb-0">
                     of downtime after a cyber incident
@@ -509,7 +520,9 @@ export default function Home() {
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
                     Employee productivity losses of{" "}
-                    <span className="fw-bold text-danger">up to 22%</span>
+                    <span className="fw-bold text-danger-emphasis">
+                      up to 22%
+                    </span>
                   </p>
                   <p className="text-white-50 mb-0">due to technology issues</p>
                 </div>
@@ -518,7 +531,9 @@ export default function Home() {
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
                     Average data breach costs of{" "}
-                    <span className="fw-bold text-danger">$108,000</span>
+                    <span className="fw-bold text-danger-emphasis">
+                      $108,000
+                    </span>
                   </p>
                   <p className="text-white-50 mb-0">for small businesses</p>
                 </div>
@@ -526,7 +541,9 @@ export default function Home() {
               <div className="card">
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
-                    <span className="fw-bold text-danger">60% higher</span>{" "}
+                    <span className="fw-bold text-danger-emphasis">
+                      60% higher
+                    </span>{" "}
                     employee turnover
                   </p>
                   <p className="text-white-50 mb-0">
@@ -555,7 +572,7 @@ export default function Home() {
                   <ul className="list-unstyled mb-4">
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -573,7 +590,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -591,7 +608,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -609,7 +626,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -627,7 +644,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -645,7 +662,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -663,7 +680,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"
@@ -681,7 +698,7 @@ export default function Home() {
                     </li>
                     <li className="d-flex align-items-center">
                       <svg
-                        className="text-success flex-shrink-0 me-2"
+                        className="text-success-emphasis flex-shrink-0 me-2"
                         width="20"
                         height="20"
                         fill="none"

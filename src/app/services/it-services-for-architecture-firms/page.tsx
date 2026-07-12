@@ -111,7 +111,7 @@ export default function ITForArchitectureFirms() {
                   <ul className="list-unstyled">
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -123,7 +123,7 @@ export default function ITForArchitectureFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -135,7 +135,7 @@ export default function ITForArchitectureFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -147,7 +147,7 @@ export default function ITForArchitectureFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -159,7 +159,7 @@ export default function ITForArchitectureFirms() {
                     </li>
                     <li className="d-flex mb-2">
                       <svg
-                        className="text-success flex-shrink-0 me-2 mt-1"
+                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                         width="16"
                         height="16"
                         fill="currentColor"
@@ -228,7 +228,7 @@ export default function ITForArchitectureFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Protect Building Designs & Blueprints
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Architecture firms handle valuable intellectual property
                     daily - building designs, blueprints, and construction
                     documents. Our IT services for architecture firms include
@@ -265,7 +265,7 @@ export default function ITForArchitectureFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Never Miss Construction Deadlines
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Stop wasting valuable design time troubleshooting IT issues.
                     Our managed IT services for architecture firms ensure your
                     CAD software, BIM tools, and project management systems work
@@ -301,7 +301,7 @@ export default function ITForArchitectureFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Enable Design Collaboration
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Architecture projects require seamless collaboration between
                     architects, engineers, and clients. Our IT support for
                     architecture firms includes secure cloud collaboration
@@ -338,7 +338,7 @@ export default function ITForArchitectureFirms() {
                   <h3 className="fs-4 fw-medium mb-3 text-center">
                     Stay Ahead of Building Technology Trends
                   </h3>
-                  <p className="text-secondary">
+                  <p className="text-body-secondary">
                     Architecture technology evolves rapidly with new BIM
                     platforms, sustainable design tools, and construction
                     management software. Our managed IT for architecture firms
@@ -354,7 +354,7 @@ export default function ITForArchitectureFirms() {
       </section>
 
       {/* What Are IT Services for Architecture Firms Section */}
-      <section className="py-5 py-md-7 bg-alt">
+      <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
@@ -469,7 +469,7 @@ export default function ITForArchitectureFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -481,7 +481,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -493,7 +493,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -505,7 +505,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -524,7 +524,7 @@ export default function ITForArchitectureFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -536,7 +536,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -548,7 +548,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -560,7 +560,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -579,7 +579,7 @@ export default function ITForArchitectureFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -591,7 +591,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -603,7 +603,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -615,7 +615,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -634,7 +634,7 @@ export default function ITForArchitectureFirms() {
                       <ul className="list-unstyled mb-4">
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -646,7 +646,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -658,7 +658,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -670,7 +670,7 @@ export default function ITForArchitectureFirms() {
                         </li>
                         <li className="d-flex mb-2">
                           <svg
-                            className="text-success flex-shrink-0 me-2 mt-1"
+                            className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                             width="14"
                             height="14"
                             fill="currentColor"
@@ -724,7 +724,7 @@ export default function ITForArchitectureFirms() {
                     className="accordion-collapse collapse show"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for architecture firms are specifically
                       designed for architectural practices, with deep
                       understanding of building design protection, CAD software
@@ -753,7 +753,7 @@ export default function ITForArchitectureFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Most architecture firms can be up and running with our IT
                       services within 1-2 weeks. We begin with a comprehensive
                       design technology assessment to understand your current
@@ -781,7 +781,7 @@ export default function ITForArchitectureFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Absolutely. Our architecture firm IT support includes
                       specialized intellectual property protection for building
                       designs, blueprints, and CAD files. We implement advanced
@@ -809,7 +809,7 @@ export default function ITForArchitectureFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our IT services for architecture firms include 24/7
                       proactive monitoring, which means we often detect and
                       resolve issues before they become emergencies. For
@@ -837,7 +837,7 @@ export default function ITForArchitectureFirms() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Yes, our IT support for architecture firms is designed to
                       integrate seamlessly with AutoCAD, Revit, SketchUp, and
                       other BIM tools. During onboarding, we assess your current
