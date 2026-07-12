@@ -1,4 +1,9 @@
 import { loadStripe, Stripe as StripeClient } from "@stripe/stripe-js";
+import {
+  PLAN_CYCLE_LOOKUP_KEY,
+  type BillingCycle,
+  type PaidPlanName,
+} from "./pricing";
 
 /**
  * Singleton to load Stripe only once (frontend)
@@ -39,3 +44,56 @@ export const getServerStripe = async () => {
     apiVersion: "2026-06-24.dahlia",
   });
 };
+
+/**
+ * Thrown when a lookup key resolves to no active Price — meaning the §3.1
+ * catalog was never created in whichever mode STRIPE_SECRET_KEY points at.
+ */
+export class MissingStripePriceError extends Error {
+  constructor(lookupKey: string) {
+    super(
+      `No active Stripe Price found for lookup key "${lookupKey}". ` +
+        "The product catalog has not been created in the mode " +
+        "(test/live) that STRIPE_SECRET_KEY points at.",
+    );
+    this.name = "MissingStripePriceError";
+  }
+}
+
+// Prices effectively never change, so resolved IDs are cached for the life
+// of the container: one extra Stripe call per cold start, not per checkout.
+const priceIdByLookupKey = new Map<string, Promise<string>>();
+
+async function fetchPriceIdByLookupKey(lookupKey: string): Promise<string> {
+  const stripe = await getServerStripe();
+  const { data } = await stripe.prices.list({
+    lookup_keys: [lookupKey],
+    active: true,
+    limit: 1,
+  });
+  if (data.length === 0) {
+    throw new MissingStripePriceError(lookupKey);
+  }
+  return data[0].id;
+}
+
+/**
+ * Resolve a plan + billing cycle to the mode-correct Stripe Price ID.
+ */
+export function resolvePriceId({
+  plan,
+  cycle,
+}: {
+  plan: PaidPlanName;
+  cycle: BillingCycle;
+}): Promise<string> {
+  const lookupKey = PLAN_CYCLE_LOOKUP_KEY[plan][cycle];
+  let pending = priceIdByLookupKey.get(lookupKey);
+  if (!pending) {
+    pending = fetchPriceIdByLookupKey(lookupKey);
+    // Drop failures so a transient Stripe error doesn't poison the cache
+    pending.catch(() => priceIdByLookupKey.delete(lookupKey));
+    priceIdByLookupKey.set(lookupKey, pending);
+  }
+  return pending;
+}
