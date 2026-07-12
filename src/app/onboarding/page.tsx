@@ -19,6 +19,8 @@ interface FormData {
   softwareUsed: string;
   painPoints: string;
   goals: string;
+  /** Honeypot: humans never see this field; bots that fill it are dropped */
+  website: string;
 }
 
 export default function OnboardingPage() {
@@ -40,6 +42,7 @@ export default function OnboardingPage() {
     softwareUsed: "",
     painPoints: "",
     goals: "",
+    website: "",
   });
 
   const handleChange = (
@@ -117,6 +120,21 @@ export default function OnboardingPage() {
             </h1>
 
             <form onSubmit={handleSubmit}>
+              <div
+                aria-hidden="true"
+                style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+              >
+                <label htmlFor="onboarding-website">Website</label>
+                <input
+                  type="text"
+                  id="onboarding-website"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
               {/* Step 1: Company Information */}
               {step === 1 && (
                 <div className="mb-4">

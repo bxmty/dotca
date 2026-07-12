@@ -1,6 +1,10 @@
 // tests/api-contact.test.ts
 import { POST } from "@/app/api/contact/route";
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
+import { addBrevoContact } from "@/lib/brevo";
+import { sendWebmasterNotification } from "@/lib/notify";
+import { resetRateLimits } from "@/lib/rate-limit";
 
 // Mock next/server
 jest.mock("next/server", () => ({
@@ -9,112 +13,62 @@ jest.mock("next/server", () => ({
   },
 }));
 
-// Mock environment variable
-const originalEnv = process.env;
+jest.mock("@sentry/nextjs", () => ({
+  captureMessage: jest.fn(),
+}));
+
+// Mock the delivery modules; phone formatting stays real
+jest.mock("@/lib/brevo", () => ({
+  ...jest.requireActual("@/lib/brevo"),
+  addBrevoContact: jest.fn(),
+}));
+jest.mock("@/lib/notify", () => ({
+  sendWebmasterNotification: jest.fn(),
+}));
+
+const mockBrevo = addBrevoContact as jest.Mock;
+const mockNotify = sendWebmasterNotification as jest.Mock;
+
+function buildRequest(body: unknown): Request {
+  return {
+    json: jest.fn().mockResolvedValue(body),
+    headers: new Headers({ "x-forwarded-for": "203.0.113.7" }),
+  } as unknown as Request;
+}
+
+const validBody = {
+  name: "Test User",
+  email: "test@example.com",
+  phone: "123-456-7890",
+};
 
 describe("Contact API Route", () => {
   beforeEach(() => {
-    // Reset mocks before each test
     jest.clearAllMocks();
-
-    // Mock fetch globally
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      }),
-    ) as jest.Mock;
-
-    // Setup process.env with all required variables
-    process.env = {
-      ...originalEnv,
-      BREVO_API_KEY: "test-api-key",
-      NEXT_PUBLIC_BREVO_API_KEY: "public-test-api-key",
-      NODE_ENV: "test",
-    };
-  });
-
-  afterEach(() => {
-    // Restore original env
-    process.env = originalEnv;
+    resetRateLimits();
+    mockBrevo.mockResolvedValue({ ok: true });
+    mockNotify.mockResolvedValue(true);
   });
 
   it("returns 400 if email is missing", async () => {
-    // Create a mock request with missing email
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        phone: "123-456-7890",
-        // email is intentionally missing
-      }),
-    };
+    await POST(buildRequest({ name: "Test User", phone: "123-456-7890" }));
 
-    await POST(request as unknown as Request);
-
-    // Check if NextResponse.json was called with error message and status 400
     expect(NextResponse.json).toHaveBeenCalledWith(
       { error: "Email is required" },
       { status: 400 },
     );
-  });
-
-  it("returns 500 if all API keys are missing", async () => {
-    // Remove all API keys from environment
-    delete process.env.BREVO_API_KEY;
-    delete process.env.NEXT_PUBLIC_BREVO_API_KEY;
-
-    // Create a mock request
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        email: "test@example.com",
-        phone: "123-456-7890",
-      }),
-    };
-
-    await POST(request as unknown as Request);
-
-    // Check if NextResponse.json was called with error message and status 500
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Server configuration error - missing API key" },
-      { status: 500 },
-    );
-  });
-
-  it("never falls back to the public API key", async () => {
-    // Remove the main API key but keep the public one — the public key is
-    // never a valid substitute, even in development
-    delete process.env.BREVO_API_KEY;
-    process.env.NODE_ENV = "development";
-
-    // Create a mock request
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        email: "test@example.com",
-        phone: "123-456-7890",
-      }),
-    };
-
-    await POST(request as unknown as Request);
-
-    expect(global.fetch).not.toHaveBeenCalled();
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Server configuration error - missing API key" },
-      { status: 500 },
-    );
+    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockNotify).not.toHaveBeenCalled();
   });
 
   it("returns 400 if phone is not a string", async () => {
-    const request = {
-      json: jest.fn().mockResolvedValue({
+    await POST(
+      buildRequest({
         name: "Test User",
         email: "test@example.com",
         phone: 1234567890,
       }),
-    };
-
-    await POST(request as unknown as Request);
+    );
 
     expect(NextResponse.json).toHaveBeenCalledWith(
       { error: 'Field "phone" must be a string' },
@@ -122,132 +76,30 @@ describe("Contact API Route", () => {
     );
   });
 
-  it("successfully submits contact and returns success response", async () => {
-    // Create a mock request with all required fields
-    const request = {
-      json: jest.fn().mockResolvedValue({
+  it("returns 400 for an impossible phone number without contacting anyone", async () => {
+    await POST(
+      buildRequest({
         name: "Test User",
         email: "test@example.com",
-        phone: "123-456-7890",
-      }),
-    };
-
-    await POST(request as unknown as Request);
-
-    // Check if fetch was called with correct parameters
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://api.brevo.com/v3/contacts",
-      {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-          "api-key": "test-api-key",
-        },
-        body: JSON.stringify({
-          email: "test@example.com",
-          attributes: {
-            FULLNAME: "Test User",
-            FIRSTNAME: "Test",
-            LASTNAME: "User",
-            PHONE: "123-456-7890",
-            COMPANY: "",
-            ADDRESS: "",
-            CITY: "",
-            STATE: "",
-            ZIP: "",
-            PLAN_NAME: "",
-            BILLING_CYCLE: "",
-            EMPLOYEE_COUNT: "",
-            IS_WAITLIST: "No",
-            SMS: "+11234567890",
-          },
-          listIds: [9],
-          smtpBlacklistSender: undefined,
-          sms: {
-            SMS: "+11234567890",
-          },
-          updateEnabled: true,
-        }),
-      },
-    );
-
-    // Check if NextResponse.json was called with success message
-    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
-  });
-
-  it("handles API errors properly", async () => {
-    // Mock fetch to return an error
-    (global.fetch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 400,
-        json: () =>
-          Promise.resolve({
-            message: "API error message",
-            code: "api_error",
-          }),
+        phone: "123",
       }),
     );
 
-    // Create a mock request
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        email: "test@example.com",
-        phone: "123-456-7890",
-      }),
-    };
-
-    await POST(request as unknown as Request);
-
-    // Check if NextResponse.json was called with error message and status 500
     expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Failed to process contact form" },
-      { status: 500 },
+      { error: "Please enter a valid phone number" },
+      { status: 400 },
     );
-  });
-
-  it("handles duplicate contact submissions gracefully", async () => {
-    // Mock fetch to return a duplicate parameter error
-    (global.fetch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 400,
-        json: () =>
-          Promise.resolve({
-            code: "duplicate_parameter",
-            message: "Contact already exists",
-          }),
-      }),
-    );
-
-    // Create a mock request
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        email: "test@example.com",
-        phone: "123-456-7890",
-      }),
-    };
-
-    await POST(request as unknown as Request);
-
-    // Should return success with a message indicating the contact already exists
-    expect(NextResponse.json).toHaveBeenCalledWith({
-      success: true,
-      message:
-        "Your information has already been submitted. We will contact you soon.",
-    });
+    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockNotify).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the request body is not valid JSON", async () => {
-    // Mock request.json to throw an error
     const request = {
       json: jest.fn().mockRejectedValueOnce(new Error("JSON parsing error")),
-    };
+      headers: new Headers(),
+    } as unknown as Request;
 
-    await POST(request as unknown as Request);
+    await POST(request);
 
     expect(NextResponse.json).toHaveBeenCalledWith(
       { error: "Request body must be valid JSON" },
@@ -255,51 +107,134 @@ describe("Contact API Route", () => {
     );
   });
 
-  it("returns 500 when the Brevo request fails unexpectedly", async () => {
-    (global.fetch as jest.Mock).mockRejectedValueOnce(
-      new Error("network error"),
-    );
+  it("writes the lead to Brevo list 9 and emails the webmaster", async () => {
+    await POST(buildRequest(validBody));
 
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        email: "test@example.com",
-        phone: "123-456-7890",
+    expect(mockBrevo).toHaveBeenCalledWith({
+      listId: 9,
+      email: "test@example.com",
+      smsPhone: "+11234567890",
+      attributes: expect.objectContaining({
+        FULLNAME: "Test User",
+        FIRSTNAME: "Test",
+        LASTNAME: "User",
+        PHONE: "123-456-7890",
       }),
-    };
+    });
+    expect(mockNotify).toHaveBeenCalledWith({
+      formType: "Contact",
+      submitterName: "Test User",
+      fields: expect.objectContaining({
+        Name: "Test User",
+        Email: "test@example.com",
+        Phone: "+11234567890",
+      }),
+    });
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+  });
 
-    await POST(request as unknown as Request);
+  it("does not send an IS_WAITLIST attribute", async () => {
+    await POST(buildRequest(validBody));
 
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Failed to process contact form" },
-      { status: 500 },
+    const { attributes } = mockBrevo.mock.calls[0][0];
+    expect(attributes.IS_WAITLIST).toBeUndefined();
+  });
+
+  it("succeeds when Brevo fails but the webmaster email lands", async () => {
+    mockBrevo.mockResolvedValueOnce({ ok: false, status: 500 });
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("Brevo failed"),
+      "error",
     );
   });
 
-  it("returns 500 when Brevo returns an unrecognized error", async () => {
-    // A response that is not JSON must still surface as a 500, and the
-    // error path must not swallow the thrown error into a relabeled one
-    (global.fetch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 502,
-        json: () => Promise.reject(new Error("not JSON")),
-      }),
+  it("succeeds when the webmaster email fails but Brevo lands", async () => {
+    mockNotify.mockResolvedValueOnce(false);
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("webmaster email failed"),
+      "error",
     );
+  });
 
-    const request = {
-      json: jest.fn().mockResolvedValue({
-        name: "Test User",
-        email: "test@example.com",
-        phone: "123-456-7890",
-      }),
-    };
+  it("returns 503 with direct contact info when both channels fail", async () => {
+    mockBrevo.mockResolvedValueOnce({ ok: false, code: "unauthorized" });
+    mockNotify.mockResolvedValueOnce(false);
 
-    await POST(request as unknown as Request);
+    await POST(buildRequest(validBody));
 
     expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Failed to process contact form" },
-      { status: 500 },
+      {
+        error:
+          "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+      },
+      { status: 503 },
     );
+  });
+
+  it("handles duplicate contact submissions gracefully", async () => {
+    mockBrevo.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      code: "duplicate_parameter",
+      message: "Contact already exists",
+    });
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenCalledWith({
+      success: true,
+      message:
+        "Your information has already been submitted. We will contact you soon.",
+    });
+  });
+
+  it("returns 400 when Brevo rejects the phone number", async () => {
+    mockBrevo.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      code: "invalid_parameter",
+      message: "Invalid phone number",
+    });
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      {
+        error:
+          "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
+      },
+      { status: 400 },
+    );
+  });
+
+  it("silently accepts honeypot submissions without sending anything", async () => {
+    await POST(buildRequest({ ...validBody, website: "https://spam.example" }));
+
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockNotify).not.toHaveBeenCalled();
+  });
+
+  it("rate limits the sixth submission from one IP", async () => {
+    for (let i = 0; i < 5; i++) {
+      await POST(buildRequest(validBody));
+    }
+    expect(mockBrevo).toHaveBeenCalledTimes(5);
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenLastCalledWith(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 },
+    );
+    expect(mockBrevo).toHaveBeenCalledTimes(5);
   });
 });
