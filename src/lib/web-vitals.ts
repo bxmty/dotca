@@ -16,7 +16,11 @@ import * as gtag from "./gtag";
  * Interface for web vitals metric reporting
  */
 export type WebVitalsMetric =
-  CLSMetric | FCPMetric | INPMetric | LCPMetric | TTFBMetric;
+  | CLSMetric
+  | FCPMetric
+  | INPMetric
+  | LCPMetric
+  | TTFBMetric;
 
 /**
  * Report web vitals metrics to an analytics endpoint

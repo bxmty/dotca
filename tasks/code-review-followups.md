@@ -55,7 +55,7 @@ secret baked into Docker image, Umami removal.
         all silently parse as "no frontmatter".
 13. [ ] `pages/_app.tsx` re-registers all five web-vitals observers on every
         route change and duplicates GA setup; only governs pages-router
-        leftovers (404/_error) — simplify or remove.
+        leftovers (404/\_error) — simplify or remove.
 14. [ ] `/api/analytics/web-vitals` accepts and discards all data in
         production — wire it to storage or drop the client reporting.
 15. [ ] `deploy.yml` path filters watch `jest.config.js` but the file is
