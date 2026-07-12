@@ -26,7 +26,7 @@ Worth stating plainly, because two of the bugs fall straight out of it.
 
 1. `layout.tsx:89` server-renders `<html lang="en" data-bs-theme="auto">`.
 2. `BootstrapClient.tsx:15-22` runs a `useEffect` **after hydration**, reads `prefers-color-scheme`, and rewrites the attribute to `"dark"` or `"light"`.
-3. `globals.css` *also* has raw `@media (prefers-color-scheme: dark)` blocks that apply independently of the attribute.
+3. `globals.css` _also_ has raw `@media (prefers-color-scheme: dark)` blocks that apply independently of the attribute.
 
 There is **no theme toggle and no persistence** anywhere in `src/` — I grepped for `toggleTheme`, `setTheme`, `ThemeToggle`, and `localStorage` and found nothing. The site follows the OS setting only; a user cannot choose. Worth confirming that's intentional.
 
@@ -39,40 +39,46 @@ There is **no theme toggle and no persistence** anywhere in `src/` — I grepped
 `globals.css:90-97` forces every `p`, `h2`, `h3`, `li`, and `a` inside a `.bg-alt` section to `#f8f9fa`:
 
 ```css
-.bg-alt p, .bg-alt .text-body, .bg-alt h2,
-.bg-alt h3, .bg-alt li, .bg-alt a {
+.bg-alt p,
+.bg-alt .text-body,
+.bg-alt h2,
+.bg-alt h3,
+.bg-alt li,
+.bg-alt a {
   color: #f8f9fa !important;
 }
 ```
 
 These are **descendant** selectors, so they cross into nested components that have their own background. In light mode Bootstrap resolves `--bs-card-bg: var(--bs-body-bg)` → `#fff` and `--bs-accordion-bg: var(--bs-body-bg)` → `#fff` (verified in `node_modules/bootstrap/dist/css/bootstrap.min.css`). So the card stays white and its text turns near-white.
 
-| Element | Colour | Surface | Contrast | Verdict |
-|---|---|---|---|---|
-| `.bg-alt p` / `h3` / `li` / `a` | `#f8f9fa` | white card `#fff` | **1.05:1** | Invisible |
-| `.bg-alt .text-secondary` | `#d1d5db` | white accordion `#fff` | **1.47:1** | Invisible |
-| *(same colours on the actual `#2b3035` band)* | | | 12.63:1 / 9.04:1 | Fine |
+| Element                                       | Colour    | Surface                | Contrast         | Verdict   |
+| --------------------------------------------- | --------- | ---------------------- | ---------------- | --------- |
+| `.bg-alt p` / `h3` / `li` / `a`               | `#f8f9fa` | white card `#fff`      | **1.05:1**       | Invisible |
+| `.bg-alt .text-secondary`                     | `#d1d5db` | white accordion `#fff` | **1.47:1**       | Invisible |
+| _(same colours on the actual `#2b3035` band)_ |           |                        | 12.63:1 / 9.04:1 | Fine      |
 
 There's a partial patch at `globals.css:100-119` — but it's `.bg-alt .card.bg-white`, which only matches cards that carry an explicit `.bg-white` class. **A plain `.card` is already white in light mode and is not matched.**
 
 Affected — plain `.card` (no `.bg-white`, no `.bg-dark`) nested inside a `.bg-alt` section:
 
-| File | White cards in `.bg-alt` |
-|---|---|
-| `src/app/services/managed-it-services-ontario/page.tsx` | 13 |
-| `src/app/page.tsx` | 5 |
-| `src/app/services/it-services-for-accounting-firms/page.tsx` | 4 |
-| `src/app/services/it-services-for-architecture-firms/page.tsx` | 4 |
-| `src/app/services/it-services-for-law-firms/page.tsx` | 4 |
-| `src/app/services/it-services-for-marketing-agencies/page.tsx` | 4 |
+| File                                                           | White cards in `.bg-alt` |
+| -------------------------------------------------------------- | ------------------------ |
+| `src/app/services/managed-it-services-ontario/page.tsx`        | 13                       |
+| `src/app/page.tsx`                                             | 5                        |
+| `src/app/services/it-services-for-accounting-firms/page.tsx`   | 4                        |
+| `src/app/services/it-services-for-architecture-firms/page.tsx` | 4                        |
+| `src/app/services/it-services-for-law-firms/page.tsx`          | 4                        |
+| `src/app/services/it-services-for-marketing-agencies/page.tsx` | 4                        |
 
 Concrete example — `src/app/services/it-services-for-accounting-firms/page.tsx:374-388`. The card sits inside the `.bg-alt` section opened at line 353:
 
 ```jsx
 <div className="card border-primary">
   <div className="card-body">
-    <h4 className="h5 mb-3">Accounting-First Technology Approach</h4>  {/* visible: h4 not in the rule */}
-    <p className="mb-0">Unlike traditional IT companies…</p>            {/* #f8f9fa on #fff → 1.05:1 */}
+    <h4 className="h5 mb-3">Accounting-First Technology Approach</h4>{" "}
+    {/* visible: h4 not in the rule */}
+    <p className="mb-0">Unlike traditional IT companies…</p>{" "}
+    {/* #f8f9fa on #fff → 1.05:1 */}
   </div>
 </div>
 ```
@@ -83,11 +89,11 @@ Note the tell: `h4` isn't in the forced list so the heading renders normally, wh
 
 Same root cause, separate instance. `src/app/pricing/page.tsx:158` opens a `.bg-alt` section; the FAQ accordion at line 165 lives inside it. Each answer is `<div className="accordion-body text-secondary">` (lines 182, 205, 229, 252).
 
-`globals.css:112` forces `.bg-alt .text-secondary` → `#d1d5db`, and the accordion body's background stays `#fff` in light mode → **1.47:1**. All four FAQ answers on the pricing page are unreadable in light mode. The accordion *buttons* are fine (Bootstrap sets `--bs-accordion-btn-color` on the button itself, which wins), so the FAQ looks like it has questions and no answers.
+`globals.css:112` forces `.bg-alt .text-secondary` → `#d1d5db`, and the accordion body's background stays `#fff` in light mode → **1.47:1**. All four FAQ answers on the pricing page are unreadable in light mode. The accordion _buttons_ are fine (Bootstrap sets `--bs-accordion-btn-color` on the button itself, which wins), so the FAQ looks like it has questions and no answers.
 
 ### Fix for both
 
-Don't hand-force descendant colours. Bootstrap 5.3 supports **nested colour modes**: `[data-bs-theme=dark]` is a complete 1695-character token redeclaration, so it works on *any* element, not just `:root`. Mark the band as a dark region and let Bootstrap theme everything inside it — cards, accordions, borders, and muted text all flip together, and nested surfaces get dark backgrounds so their text is *correctly* light.
+Don't hand-force descendant colours. Bootstrap 5.3 supports **nested colour modes**: `[data-bs-theme=dark]` is a complete 1695-character token redeclaration, so it works on _any_ element, not just `:root`. Mark the band as a dark region and let Bootstrap theme everything inside it — cards, accordions, borders, and muted text all flip together, and nested surfaces get dark backgrounds so their text is _correctly_ light.
 
 ```jsx
 <section className="py-5 py-md-7 bg-alt" data-bs-theme="dark">
@@ -115,14 +121,14 @@ All ratios computed from the actual resolved token values.
 
 `#198754` is the same green in both themes and was never adjusted for dark surfaces:
 
-| Surface | Contrast | Verdict |
-|---|---|---|
-| `#fff` (light body) | 4.53:1 | AA (barely) |
-| `#f8f9fa` (`bg-light`) | 4.30:1 | **Fails AA** |
-| `#212529` (dark body) | 3.40:1 | **Fails AA** |
+| Surface                          | Contrast   | Verdict                           |
+| -------------------------------- | ---------- | --------------------------------- |
+| `#fff` (light body)              | 4.53:1     | AA (barely)                       |
+| `#f8f9fa` (`bg-light`)           | 4.30:1     | **Fails AA**                      |
+| `#212529` (dark body)            | 3.40:1     | **Fails AA**                      |
 | `#2b3035` (`bg-alt` / dark card) | **2.94:1** | **Fails AA and the 3:1 UI floor** |
 
-It's explicitly *exempted* from the `.bg-alt` colour forcing (`span:not(.text-success)` at `globals.css:107`), which strongly suggests someone hit this, noticed the green was wrong, and carved it out rather than fixing the colour.
+It's explicitly _exempted_ from the `.bg-alt` colour forcing (`span:not(.text-success)` at `globals.css:107`), which strongly suggests someone hit this, noticed the green was wrong, and carved it out rather than fixing the colour.
 
 These are the feature checkmarks throughout the marketing pages — e.g. `src/app/page.tsx:387-473`, inside the `.bg-alt` section opened at line 377. This is the most-repeated visual element on the site and it's the worst-contrast one.
 
@@ -132,12 +138,12 @@ These are the feature checkmarks throughout the marketing pages — e.g. `src/ap
 
 This is the main reason light-mode body copy reads as washed out. Bootstrap 5.3 has two similar-sounding utilities that are **not** interchangeable:
 
-| Class | Resolves to | On `#fff` | On `#f8f9fa` |
-|---|---|---|---|
-| `.text-secondary` *(in use)* | `#6c757d` — flat grey, **not theme-aware** | 4.69:1 | **4.45:1 — fails AA** |
-| `.text-body-secondary` *(intended)* | `rgba(33,37,41,.75)` — theme-aware | **6.73:1** | **6.58:1** |
+| Class                               | Resolves to                                | On `#fff`  | On `#f8f9fa`          |
+| ----------------------------------- | ------------------------------------------ | ---------- | --------------------- |
+| `.text-secondary` _(in use)_        | `#6c757d` — flat grey, **not theme-aware** | 4.69:1     | **4.45:1 — fails AA** |
+| `.text-body-secondary` _(intended)_ | `rgba(33,37,41,.75)` — theme-aware         | **6.73:1** | **6.58:1**            |
 
-`.text-secondary` is meant for the *secondary brand colour*, not secondary text. It scrapes past AA on pure white and **fails outright on any tinted surface** (`bg-light`, `bg-body-tertiary`). Bootstrap 5.3 deprecated `.text-muted` in favour of `.text-body-secondary` for exactly this reason — and notably the 30 `.text-muted` usages in this codebase are *fine* (7.31:1 in dark), because that class does resolve to the theme-aware token.
+`.text-secondary` is meant for the _secondary brand colour_, not secondary text. It scrapes past AA on pure white and **fails outright on any tinted surface** (`bg-light`, `bg-body-tertiary`). Bootstrap 5.3 deprecated `.text-muted` in favour of `.text-body-secondary` for exactly this reason — and notably the 30 `.text-muted` usages in this codebase are _fine_ (7.31:1 in dark), because that class does resolve to the theme-aware token.
 
 **Fix:** replace `.text-secondary` → `.text-body-secondary` sitewide. Purely mechanical, no visual redesign, and it also lets you delete the `.text-secondary` overrides at `globals.css:113, 164, 214` since the replacement is theme-aware by construction.
 
@@ -145,12 +151,12 @@ Affected: `pricing/page.tsx`, `onboarding/page.tsx`, `checkout/page.tsx`, `check
 
 ### P1-3. `text-warning` / `text-info` are unreadable as text
 
-| Class | Colour | On `#fff` |
-|---|---|---|
+| Class           | Colour    | On `#fff`  |
+| --------------- | --------- | ---------- |
 | `.text-warning` | `#ffc107` | **1.63:1** |
-| `.text-info` | `#0dcaf0` | **1.96:1** |
+| `.text-info`    | `#0dcaf0` | **1.96:1** |
 
-These are fine as *fills* (e.g. `btn-warning` with black text is 12.88:1) but never legible as text on white. Low usage — audit each occurrence and switch to `.text-warning-emphasis` / `.text-info-emphasis` where they're being used as text.
+These are fine as _fills_ (e.g. `btn-warning` with black text is 12.88:1) but never legible as text on white. Low usage — audit each occurrence and switch to `.text-warning-emphasis` / `.text-info-emphasis` where they're being used as text.
 
 ---
 
@@ -164,7 +170,7 @@ These don't produce visible bugs today, but they're why the CSS is hard to fix s
 
 A dark-mode user therefore gets a full-brightness white page for the duration of the JS load, then a flash to dark. On a marketing site this is the first thing a visitor sees.
 
-**Fix:** a small blocking inline script in `<head>` that sets `data-bs-theme` from `localStorage` ?? `matchMedia` *before* first paint. This is the standard Bootstrap 5.3 colour-mode pattern and it replaces the `useEffect` entirely.
+**Fix:** a small blocking inline script in `<head>` that sets `data-bs-theme` from `localStorage` ?? `matchMedia` _before_ first paint. This is the standard Bootstrap 5.3 colour-mode pattern and it replaces the `useEffect` entirely.
 
 ### P2-2. Dead CSS: the `[data-bs-theme="auto"]` block stops applying after hydration
 
@@ -174,7 +180,7 @@ A dark-mode user therefore gets a full-brightness white page for the duration of
 @media (prefers-color-scheme: dark) {
   [data-bs-theme="auto"] {
     --bs-tertiary-bg: #2b3035;
-    --bs-link-color: #8bb9fe;      /* 7.69:1 — good value, never applied */
+    --bs-link-color: #8bb9fe; /* 7.69:1 — good value, never applied */
     --bs-link-hover-color: #a7c7fd;
     /* … */
   }
