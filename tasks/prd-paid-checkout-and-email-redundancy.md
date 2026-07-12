@@ -257,7 +257,8 @@ STRIPE_PRICE_PREMIUM_MONTHLY=price_...
 STRIPE_PRICE_PREMIUM_ANNUAL=price_...
 ```
 
-- [ ] Add the same 10 vars to the `.env.local` template in `scripts/setup-local-dev.sh` (`:238-240`, alongside the existing Brevo/Stripe keys).
+- [ ] `.env.example` at the repo root is the committed reference for this block (added alongside this PRD; `.gitignore` now carves it out of the `.env*` rule). Keep it authoritative.
+- [ ] Replace the inline `.env.local` heredoc in `scripts/setup-local-dev.sh` (`:227-247`) with `cp .env.example .env.local` — two templates of the same file will drift, and the heredoc already drifted once (`STRIPE_PUBLISHABLE_KEY`, below).
 - [ ] Add them to the `just validate` guard in the `justfile` (`:77-84`) and to `scripts/validate-secrets.sh` / `scripts/check-secret-formats.sh` — format checks are cheap and catch paste errors: `RESEND_API_KEY` starts `re_`, `STRIPE_WEBHOOK_SECRET` starts `whsec_`, every `STRIPE_PRICE_*` starts `price_`.
 - [ ] Document the `stripe listen` loop in `docs/local-development-setup.md` — it runs on the **host**, forwarding to the published port 3000, and must be running for any webhook work.
 - [ ] Update `README.md` env table.
@@ -267,6 +268,29 @@ STRIPE_PRICE_PREMIUM_ANNUAL=price_...
 ### 9.2 Staging / production — the six hops of a secret
 
 There is no Ansible Vault in this path and no secrets file on the droplet. Every app secret rides from a **GitHub Environment secret** into a generated **Ansible inventory** and out into the container's `environment:` block. Adding one variable means touching all six hops; miss any one and it arrives as an **empty string, silently** (every hop uses `default('')` / `${VAR:-}`), which for `STRIPE_WEBHOOK_SECRET` means every webhook 400s and the "new paid signup" email simply never arrives.
+
+#### GitHub secrets to create (hop 1, the checklist)
+
+**On naming:** the deploy job runs under `environment: ${{ needs.detect-environment.outputs.environment }}` (`deploy.yml:422`), so a secret stored in the `staging` environment and one stored in the `production` environment are **already separate secrets even under the same name** — GitHub resolves whichever environment the job runs in. That's how `BREVO_API_KEY` and `STRIPE_SECRET_KEY` work today, and the new secrets follow it. The repo does carry an older pattern — suffixed names like `SENTRY_DSN_STAGING` / `SENTRY_DSN_PRODUCTION`, selected by an inline conditional in `deploy.yml:382` — but that predates the environment scoping and shouldn't be extended. **Do not create suffixed variants of the names below.** Creating `STRIPE_WEBHOOK_SECRET_STAGING` at the repo level would be invisible to hop 3, which reads `secrets.STRIPE_WEBHOOK_SECRET`.
+
+Create under **Settings → Environments → `staging` → Environment secrets**, then repeat under **`production`** with the production values:
+
+| Secret name                     | `staging` value                                            | `production` value                                  |
+| ------------------------------- | ---------------------------------------------------------- | --------------------------------------------------- |
+| `RESEND_API_KEY`                | Resend key labeled _staging_ (§3.2)                        | Resend key labeled _production_ — a different key   |
+| `RESEND_FROM_EMAIL`             | `noreply@boximity.ca`                                      | `noreply@boximity.ca`                               |
+| `WEBMASTER_EMAIL`               | `hi@boximity.ca`                                           | `hi@boximity.ca`                                    |
+| `STRIPE_WEBHOOK_SECRET`         | `whsec_…` from the **test-mode** dashboard endpoint (§3.3) | `whsec_…` from the **live-mode** dashboard endpoint |
+| `STRIPE_PRICE_BASIC_MONTHLY`    | test-mode `price_…`                                        | live-mode `price_…`                                 |
+| `STRIPE_PRICE_BASIC_ANNUAL`     | test-mode `price_…`                                        | live-mode `price_…`                                 |
+| `STRIPE_PRICE_STANDARD_MONTHLY` | test-mode `price_…`                                        | live-mode `price_…`                                 |
+| `STRIPE_PRICE_STANDARD_ANNUAL`  | test-mode `price_…`                                        | live-mode `price_…`                                 |
+| `STRIPE_PRICE_PREMIUM_MONTHLY`  | test-mode `price_…`                                        | live-mode `price_…`                                 |
+| `STRIPE_PRICE_PREMIUM_ANNUAL`   | test-mode `price_…`                                        | live-mode `price_…`                                 |
+
+`RESEND_FROM_EMAIL` and `WEBMASTER_EMAIL` happen to hold the same value in both environments, but they still live in both — there is no repo-level fallback in this pipeline, and keeping them env-scoped means staging can later point at a test inbox without touching prod.
+
+While you're in there, also verify the two pre-existing Stripe secrets both environments already require: `STRIPE_SECRET_KEY` (`sk_test_…` in staging, `sk_live_…` in production) and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_test_…` / `pk_live_…`) — see the two verification items at the end of this section.
 
 | #   | File                                                                      | What to add                                                                                                                                                                                        |
 | --- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
