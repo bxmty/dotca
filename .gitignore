@@ -108,3 +108,4 @@ logs/*
 
 # bugs
 docs/bugs/*
+.next-local/
