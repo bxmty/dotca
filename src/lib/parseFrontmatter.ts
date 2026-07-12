@@ -1,4 +1,4 @@
-import yaml from "js-yaml";
+import { load } from "js-yaml";
 
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 
@@ -16,7 +16,7 @@ export function parseFrontmatter<T extends object = Record<string, unknown>>(
     return { data: {} as T, content: fileContents };
   }
 
-  const parsedData = yaml.load(match[1]);
+  const parsedData = load(match[1]);
   const data =
     parsedData !== null && typeof parsedData === "object"
       ? (parsedData as T)
