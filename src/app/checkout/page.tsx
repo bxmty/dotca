@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PlanSelector from "./PlanSelector";
-import StripeWrapper from "../components/StripeWrapper";
+import StripeWrapper, {
+  type CheckoutCustomer,
+} from "../components/StripeWrapper";
 import StripePaymentForm from "../components/StripePaymentForm";
-import WaitlistForm from "../components/WaitlistForm";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 
@@ -17,6 +19,7 @@ interface PricingPlan {
 }
 
 export default function Checkout() {
+  const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -29,14 +32,12 @@ export default function Checkout() {
     city: "",
     state: "",
     zip: "",
-    paymentMethod: "credit",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCvc: "",
-    joinWaitlist: true, // Default to waitlist
   });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  // Snapshot of customer info taken when the user continues to payment;
+  // editing any field clears it so the subscription is created from what's
+  // on screen, never a stale copy.
+  const [confirmedCustomer, setConfirmedCustomer] =
+    useState<CheckoutCustomer | null>(null);
   const [employeeCount, setEmployeeCount] = useState(5);
   const [billingCycle, setBillingCycle] = useState("monthly");
 
@@ -103,12 +104,18 @@ export default function Checkout() {
   );
 
   const handlePlanSelected = (plan: PricingPlan | null) => {
+    // The Free plan has no payment to take; onboarding is its signup path
+    if (plan && plan.name.toLowerCase() === "free") {
+      router.replace("/onboarding");
+      return;
+    }
     setSelectedPlan(plan);
     setLoading(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
+    setConfirmedCustomer(null);
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -116,6 +123,7 @@ export default function Checkout() {
   };
 
   const handlePhoneChange = (phone: string): void => {
+    setConfirmedCustomer(null);
     setFormData((prev) => ({
       ...prev,
       phone: `+${phone}`, // Add + prefix for E.164 format
@@ -179,19 +187,20 @@ export default function Checkout() {
       return;
     }
 
-    // In a real application, you would process the payment and submit the form data
-    // For now, auto-click the waitlist button if all fields are filled
-    const waitlistButton = document.querySelector(
-      "[data-waitlist-button]",
-    ) as HTMLButtonElement;
-    if (waitlistButton) {
-      waitlistButton.click();
-    }
+    setConfirmedCustomer({
+      name: `${formData.firstName} ${formData.lastName}`,
+      email: formData.email,
+      phone: formData.phone,
+      company: formData.company,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zip: formData.zip,
+    });
   };
 
   const handlePaymentSuccess = () => {
-    setPaymentSuccess(true);
-    // You might want to redirect or show a success message
+    router.push("/checkout/confirmation?redirect_status=succeeded");
   };
 
   if (loading) {
@@ -353,7 +362,7 @@ export default function Checkout() {
         <section className="py-5 py-md-7">
           <div className="container">
             <h1 className="fs-1 fw-light mb-5 border-bottom pb-3">
-              Join Our Waitlist
+              Complete Your Purchase
             </h1>
 
             {/* Plan Summary */}
@@ -623,142 +632,45 @@ export default function Checkout() {
                 </div>
 
                 <div className="col-md-6">
-                  <h2 className="fs-4 fw-medium mb-4">Next Steps</h2>
+                  <h2 className="fs-4 fw-medium mb-4">Payment</h2>
                   <div>
-                    <div className="d-flex gap-4 mb-4">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="payNow"
-                          name="joinWaitlist"
-                          value="false"
-                          checked={!formData.joinWaitlist}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              joinWaitlist: e.target.value !== "false",
-                            })
-                          }
-                          disabled
-                        />
-                        <label
-                          className="form-check-label text-muted"
-                          htmlFor="payNow"
-                        >
-                          Complete Purchase <small>(Coming soon)</small>
-                        </label>
-                      </div>
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="joinWaitlist"
-                          name="joinWaitlist"
-                          value="true"
-                          checked={true} /* Force waitlist to be selected */
-                          onChange={() =>
-                            setFormData({ ...formData, joinWaitlist: true })
-                          }
-                        />
-                        <label
-                          className="form-check-label"
-                          htmlFor="joinWaitlist"
-                        >
-                          Join Waitlist{" "}
-                          <span className="badge bg-info ms-1">New</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Payment section is temporarily hidden while we only use waitlist */}
-                    {/* eslint-disable-next-line no-constant-binary-expression */}
-                    {false && !formData.joinWaitlist && (
-                      <div>
-                        <div className="d-flex gap-4 mb-4">
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              id="creditCard"
-                              name="paymentMethod"
-                              value="credit"
-                              checked={formData.paymentMethod === "credit"}
-                              onChange={handleInputChange}
+                    {confirmedCustomer ? (
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <StripeWrapper
+                            plan={selectedPlan.name}
+                            employeeCount={employeeCount}
+                            billingCycle={billingCycle}
+                            customer={confirmedCustomer}
+                          >
+                            <StripePaymentForm
+                              onSuccess={handlePaymentSuccess}
                             />
-                            <label
-                              className="form-check-label"
-                              htmlFor="creditCard"
-                            >
-                              Credit Card
-                            </label>
-                          </div>
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              id="invoice"
-                              name="paymentMethod"
-                              value="invoice"
-                              checked={formData.paymentMethod === "invoice"}
-                              onChange={handleInputChange}
-                              disabled
-                            />
-                            <label
-                              className="form-check-label text-muted"
-                              htmlFor="invoice"
-                            >
-                              Pay by Invoice <small>(Coming soon)</small>
-                            </label>
-                          </div>
+                          </StripeWrapper>
                         </div>
-
-                        {formData.paymentMethod === "credit" && (
-                          <div className="row g-3">
-                            <div className="col-12">
-                              <StripeWrapper
-                                plan={selectedPlan?.name ?? ""}
-                                employeeCount={employeeCount}
-                                billingCycle={billingCycle}
-                              >
-                                <StripePaymentForm
-                                  onSuccess={handlePaymentSuccess}
-                                />
-                              </StripeWrapper>
-                            </div>
-                          </div>
-                        )}
-
-                        {formData.paymentMethod === "invoice" && (
-                          <div className="alert alert-secondary">
-                            <p className="mb-0">
-                              You&apos;ll receive an invoice via email. Payment
-                              is due within 30 days of receipt.
-                            </p>
-                          </div>
-                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-body-secondary">
+                          Fill in your information, then continue to our secure
+                          payment form.
+                        </p>
+                        <button
+                          type="submit"
+                          className="btn btn-success w-100 py-3 fs-5"
+                          data-testid="continue-to-payment"
+                        >
+                          Continue to Payment
+                        </button>
                       </div>
                     )}
 
-                    {formData.joinWaitlist && (
-                      <WaitlistForm
-                        className="mt-3"
-                        planName={selectedPlan.name}
-                        billingCycle={billingCycle}
-                        employeeCount={employeeCount}
-                        customerInfo={{
-                          firstName: formData.firstName,
-                          lastName: formData.lastName,
-                          email: formData.email,
-                          company: formData.company,
-                          phone: formData.phone,
-                          address: formData.address,
-                          city: formData.city,
-                          state: formData.state,
-                          zip: formData.zip,
-                        }}
-                      />
-                    )}
+                    <p className="small text-body-secondary mt-3 mb-0">
+                      Need invoicing or a custom plan?{" "}
+                      <Link href="/#contact" className="text-decoration-none">
+                        Contact us →
+                      </Link>
+                    </p>
 
                     <div className="mt-5 pt-4 border-top">
                       <div className="d-flex justify-content-between mb-2">
@@ -815,7 +727,7 @@ export default function Checkout() {
                 <div className="col-12 mt-4">
                   <div className="alert alert-secondary mb-4">
                     <p className="mb-0 small">
-                      By joining our waitlist, you agree to our{" "}
+                      By completing your purchase, you agree to our{" "}
                       <a href="#" className="text-decoration-none">
                         Terms of Service
                       </a>{" "}

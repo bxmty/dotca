@@ -22,6 +22,17 @@ jest.mock("@stripe/react-stripe-js", () => ({
 // Import the mocked modules for direct manipulation in tests
 import { useStripe, useElements } from "@stripe/react-stripe-js";
 
+const testCustomer = {
+  name: "Test User",
+  email: "test@example.com",
+  phone: "+11234567890",
+  company: "Test Co",
+  address: "123 Test St",
+  city: "Toronto",
+  state: "ON",
+  zip: "M5V 1A1",
+};
+
 describe("Stripe Integration", () => {
   const originalFetch = global.fetch;
   let mockConfirmPayment: jest.Mock;
@@ -56,7 +67,12 @@ describe("Stripe Integration", () => {
 
   it("integrates StripeWrapper with StripePaymentForm", async () => {
     render(
-      <StripeWrapper plan="Basic" employeeCount={5} billingCycle="monthly">
+      <StripeWrapper
+        plan="Basic"
+        employeeCount={5}
+        billingCycle="monthly"
+        customer={testCustomer}
+      >
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -64,7 +80,7 @@ describe("Stripe Integration", () => {
     // Initially shows loading state
     expect(screen.getByText("Loading payment form...")).toBeInTheDocument();
 
-    // Wait for payment intent to be created
+    // Wait for the subscription to be created
     await waitFor(() => {
       expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
       expect(screen.getByTestId("payment-element")).toBeInTheDocument();
@@ -95,7 +111,12 @@ describe("Stripe Integration", () => {
     });
 
     render(
-      <StripeWrapper plan="Basic" employeeCount={5} billingCycle="monthly">
+      <StripeWrapper
+        plan="Basic"
+        employeeCount={5}
+        billingCycle="monthly"
+        customer={testCustomer}
+      >
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -117,15 +138,20 @@ describe("Stripe Integration", () => {
     expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 
-  it("handles API errors when creating payment intent", async () => {
+  it("handles API errors when creating the subscription", async () => {
     // Mock fetch to simulate API error
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
-      json: () => Promise.resolve({ error: "Unable to create payment intent" }),
+      json: () => Promise.resolve({ error: "Unable to create subscription" }),
     } as unknown as Response);
 
     render(
-      <StripeWrapper plan="Basic" employeeCount={5} billingCycle="monthly">
+      <StripeWrapper
+        plan="Basic"
+        employeeCount={5}
+        billingCycle="monthly"
+        customer={testCustomer}
+      >
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -134,7 +160,7 @@ describe("Stripe Integration", () => {
     await waitFor(() => {
       expect(screen.getByText("Something went wrong!")).toBeInTheDocument();
       expect(
-        screen.getByText("Unable to create payment intent"),
+        screen.getByText("Unable to create subscription"),
       ).toBeInTheDocument();
     });
 
@@ -142,9 +168,14 @@ describe("Stripe Integration", () => {
     expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument();
   });
 
-  it("sends the order details in the payment intent request", async () => {
+  it("sends the order details in the subscription request", async () => {
     render(
-      <StripeWrapper plan="Premium" employeeCount={10} billingCycle="annual">
+      <StripeWrapper
+        plan="Premium"
+        employeeCount={10}
+        billingCycle="annual"
+        customer={testCustomer}
+      >
         <StripePaymentForm onSuccess={mockOnSuccess} />
       </StripeWrapper>,
     );
@@ -156,15 +187,16 @@ describe("Stripe Integration", () => {
 
     // Verify API call included the order details, never an amount
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/stripe/create-payment-intent",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          plan: "Premium",
-          employeeCount: 10,
-          billingCycle: "annual",
-        }),
-      }),
+      "/api/stripe/create-subscription",
+      expect.objectContaining({ method: "POST" }),
     );
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      plan: "Premium",
+      employeeCount: 10,
+      billingCycle: "annual",
+      customer: testCustomer,
+      idempotencyKey: expect.any(String),
+    });
   });
 });
