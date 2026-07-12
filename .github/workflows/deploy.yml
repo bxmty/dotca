@@ -463,6 +463,10 @@ jobs:
           AWS_DEFAULT_REGION: tor1
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          WEBMASTER_EMAIL: ${{ secrets.WEBMASTER_EMAIL }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_STAGING_GA_ID: ${{ secrets.GA_STAGING_ID }}
           NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.GA_PRODUCTION_ID }}

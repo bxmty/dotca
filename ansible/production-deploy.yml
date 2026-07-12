@@ -28,6 +28,10 @@
     brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
+    resend_api_key: "{{ RESEND_API_KEY | default('') }}"
+    resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
+    webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     next_public_environment: production

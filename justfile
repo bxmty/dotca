@@ -80,8 +80,20 @@ validate: _check-env-file
         if [ -z "$STRIPE_SECRET_KEY" ]; then \
             echo "{{RED}}Error: STRIPE_SECRET_KEY not set in .env.local{{NC}}" && exit 1; \
         fi && \
-        if [ -z "$STRIPE_PUBLISHABLE_KEY" ]; then \
-            echo "{{RED}}Error: STRIPE_PUBLISHABLE_KEY not set in .env.local{{NC}}" && exit 1; \
+        if [ -z "$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then \
+            echo "{{RED}}Error: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY not set in .env.local{{NC}}" && exit 1; \
+        fi && \
+        if [ -z "$STRIPE_WEBHOOK_SECRET" ]; then \
+            echo "{{RED}}Error: STRIPE_WEBHOOK_SECRET not set in .env.local{{NC}}" && exit 1; \
+        fi && \
+        if [ -z "$RESEND_API_KEY" ]; then \
+            echo "{{RED}}Error: RESEND_API_KEY not set in .env.local{{NC}}" && exit 1; \
+        fi && \
+        if [ -z "$RESEND_FROM_EMAIL" ]; then \
+            echo "{{RED}}Error: RESEND_FROM_EMAIL not set in .env.local{{NC}}" && exit 1; \
+        fi && \
+        if [ -z "$WEBMASTER_EMAIL" ]; then \
+            echo "{{RED}}Error: WEBMASTER_EMAIL not set in .env.local{{NC}}" && exit 1; \
         fi && \
         echo "{{GREEN}}✓ Environment variables configured{{NC}}"
     @# Test SSH agent

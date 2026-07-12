@@ -56,6 +56,29 @@ validate_ssh_key() {
     return 0
 }
 
+# Generic format check for secrets that only need a pattern match
+validate_secret_format() {
+    local var_name="$1"
+    local value="$2"
+    local pattern="$3"
+
+    if [[ -z "$value" ]]; then
+        log_error "$var_name is empty"
+        ((FAILED++))
+        return 1
+    fi
+
+    if [[ ! "$value" =~ $pattern ]]; then
+        log_error "Invalid $var_name format"
+        ((FAILED++))
+        return 1
+    fi
+
+    log_success "$var_name format valid"
+    ((PASSED++))
+    return 0
+}
+
 validate_stripe_key() {
     local key="$1"
     local key_type="$2"
@@ -229,9 +252,19 @@ main() {
     validate_stripe_key "${STRIPE_SECRET_KEY:-}" "secret"
     validate_stripe_key "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}" "publishable"
 
+    # Stripe webhook signing secret
+    log_info "Validating Stripe webhook secret..."
+    validate_secret_format "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET:-}" '^whsec_[A-Za-z0-9]{20,}$'
+
     # Brevo API Key
     log_info "Validating Brevo API key..."
     validate_brevo_key "${BREVO_API_KEY:-}"
+
+    # Resend (email redundancy)
+    log_info "Validating Resend configuration..."
+    validate_secret_format "RESEND_API_KEY" "${RESEND_API_KEY:-}" '^re_[A-Za-z0-9_]{16,}$'
+    validate_secret_format "RESEND_FROM_EMAIL" "${RESEND_FROM_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'
+    validate_secret_format "WEBMASTER_EMAIL" "${WEBMASTER_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'
 
     # Google Analytics IDs
     log_info "Validating Google Analytics IDs..."

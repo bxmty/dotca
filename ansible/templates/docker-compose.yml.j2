@@ -24,7 +24,11 @@ services:
       - NEXT_PUBLIC_ENVIRONMENT={{ next_public_environment | default('production') }}
       - STRIPE_SECRET_KEY={{ stripe_secret_key }}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
+      - STRIPE_WEBHOOK_SECRET={{ stripe_webhook_secret }}
       - BREVO_API_KEY={{ brevo_api_key }}
+      - RESEND_API_KEY={{ resend_api_key }}
+      - RESEND_FROM_EMAIL={{ resend_from_email }}
+      - WEBMASTER_EMAIL={{ webmaster_email }}
       - NEXT_PUBLIC_GA_ID={{ ga_id | default('') }}
       - HOST=0.0.0.0
       - HOSTNAME=0.0.0.0

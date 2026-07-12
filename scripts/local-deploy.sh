@@ -153,7 +153,7 @@ load_env_vars() {
     set +a
 
     # Validate required environment variables
-    local required_vars=("DO_TOKEN" "BREVO_API_KEY" "STRIPE_SECRET_KEY" "STRIPE_PUBLISHABLE_KEY")
+    local required_vars=("DO_TOKEN" "BREVO_API_KEY" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY")
     local missing_vars=()
 
     for var in "${required_vars[@]}"; do

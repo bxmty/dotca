@@ -52,6 +52,10 @@ secrets:
   # Application secrets
   - BREVO_API_KEY
   - STRIPE_SECRET_KEY
+  - STRIPE_WEBHOOK_SECRET
+  - RESEND_API_KEY
+  - RESEND_FROM_EMAIL
+  - WEBMASTER_EMAIL
   - ANSIBLE_VAULT_PASSWORD
 
   # Sentry monitoring
