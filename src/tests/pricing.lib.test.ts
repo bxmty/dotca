@@ -1,13 +1,14 @@
 import {
-  priceOrder,
+  validateOrder,
   MIN_EMPLOYEE_COUNT,
   MAX_EMPLOYEE_COUNT,
   PAYMENT_CURRENCY,
+  PLAN_CYCLE_LOOKUP_KEY,
 } from "@/lib/pricing";
 
-describe("priceOrder", () => {
-  it("prices a monthly order as unit price times employee count", () => {
-    const result = priceOrder({
+describe("validateOrder", () => {
+  it("resolves a monthly order to its lookup key", () => {
+    const result = validateOrder({
       plan: "Basic",
       employeeCount: 5,
       billingCycle: "monthly",
@@ -18,29 +19,27 @@ describe("priceOrder", () => {
         planName: "basic",
         employeeCount: 5,
         billingCycle: "monthly",
-        amountCents: 49500,
-        currency: PAYMENT_CURRENCY,
+        lookupKey: "basic_monthly",
       },
     });
   });
 
-  it("prices an annual order with the 10% discount over 12 months", () => {
-    const result = priceOrder({
+  it("resolves an annual order to its lookup key", () => {
+    const result = validateOrder({
       plan: "Standard",
       employeeCount: 10,
       billingCycle: "annual",
     });
 
-    // 24900 * 10 * 12 * 0.9
     expect(result).toEqual(
       expect.objectContaining({
-        order: expect.objectContaining({ amountCents: 2689200 }),
+        order: expect.objectContaining({ lookupKey: "standard_annual" }),
       }),
     );
   });
 
   it("normalizes plan name case and whitespace", () => {
-    const result = priceOrder({
+    const result = validateOrder({
       plan: "  PREMIUM ",
       employeeCount: 20,
       billingCycle: "monthly",
@@ -50,7 +49,7 @@ describe("priceOrder", () => {
       expect.objectContaining({
         order: expect.objectContaining({
           planName: "premium",
-          amountCents: 44900 * 20,
+          lookupKey: "premium_monthly",
         }),
       }),
     );
@@ -58,19 +57,27 @@ describe("priceOrder", () => {
 
   it("rejects unknown plans", () => {
     expect(
-      priceOrder({ plan: "gold", employeeCount: 5, billingCycle: "monthly" }),
+      validateOrder({
+        plan: "gold",
+        employeeCount: 5,
+        billingCycle: "monthly",
+      }),
     ).toEqual({ error: "Unknown plan" });
   });
 
   it("rejects non-string plans", () => {
     expect(
-      priceOrder({ plan: 42, employeeCount: 5, billingCycle: "monthly" }),
+      validateOrder({ plan: 42, employeeCount: 5, billingCycle: "monthly" }),
     ).toEqual({ error: "Unknown plan" });
   });
 
   it("rejects the free plan as not payable", () => {
     expect(
-      priceOrder({ plan: "free", employeeCount: 5, billingCycle: "monthly" }),
+      validateOrder({
+        plan: "free",
+        employeeCount: 5,
+        billingCycle: "monthly",
+      }),
     ).toEqual({ error: "The selected plan does not require payment" });
   });
 
@@ -82,7 +89,7 @@ describe("priceOrder", () => {
     "10",
     null,
   ])("rejects employee count %p", (employeeCount) => {
-    const result = priceOrder({
+    const result = validateOrder({
       plan: "basic",
       employeeCount,
       billingCycle: "monthly",
@@ -92,7 +99,7 @@ describe("priceOrder", () => {
   });
 
   it("rejects billing cycles other than monthly and annual", () => {
-    const result = priceOrder({
+    const result = validateOrder({
       plan: "basic",
       employeeCount: 5,
       billingCycle: "weekly",
@@ -101,5 +108,16 @@ describe("priceOrder", () => {
     expect(result).toEqual({
       error: 'Billing cycle must be "monthly" or "annual"',
     });
+  });
+
+  it("charges in CAD, matching the currency of the Stripe Prices", () => {
+    expect(PAYMENT_CURRENCY).toBe("cad");
+  });
+
+  it("defines a lookup key for every paid plan and cycle", () => {
+    for (const cycles of Object.values(PLAN_CYCLE_LOOKUP_KEY)) {
+      expect(cycles.monthly).toMatch(/_monthly$/);
+      expect(cycles.annual).toMatch(/_annual$/);
+    }
   });
 });

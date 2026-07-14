@@ -174,8 +174,10 @@ After successful verification (minimum 24 hours):
 | `SPACES_SECRET_KEY`                  | Object storage secret            | Medium          |
 | `BREVO_API_KEY`                      | Email service                    | Medium          |
 | `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
+| `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
 | `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
 | `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
+| `STRIPE_WEBHOOK_SECRET`              | Webhook signature verification   | High            |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Payment forms                    | Medium          |
 | `NEXT_PUBLIC_PRODUCTION_GA_ID`       | Analytics                        | Low             |
 | `ANSIBLE_VAULT_PASSWORD`             | Deployment automation            | Critical        |
@@ -273,6 +275,33 @@ ansible-vault rekey ansible/vars/vault-vars.yml
    - Wait 7 days after successful deployment
    - Disable old keys in Stripe dashboard
    - Delete old keys after 30 days
+
+### Stripe Webhook Signing Secret
+
+`STRIPE_WEBHOOK_SECRET` is **environment-scoped**: staging holds the
+test-mode Workbench endpoint's secret, production holds the live-mode
+endpoint's, and local dev uses the one printed by `stripe listen`. Never
+copy one environment's value into another — signature verification will
+400 every webhook.
+
+1. **Roll the Endpoint Secret**
+   - Stripe Dashboard → Workbench → Webhooks → select the endpoint
+   - "Roll secret" — Stripe can keep the old secret valid for up to 24h,
+     which is the zero-downtime window
+
+2. **Update the Matching GitHub Environment Secret**
+
+   ```bash
+   # Staging (test-mode endpoint)
+   gh secret set STRIPE_WEBHOOK_SECRET -R owner/repo --env staging --body "whsec_new"
+
+   # Production (live-mode endpoint)
+   gh secret set STRIPE_WEBHOOK_SECRET -R owner/repo --env production --body "whsec_new"
+   ```
+
+3. **Redeploy and Verify**
+   - Redeploy the environment (runtime secret — no rebuild needed)
+   - Confirm webhook deliveries return 200 in Workbench → Webhooks
 
 ### Brevo (Sendinblue) API Keys
 

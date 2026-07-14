@@ -71,28 +71,20 @@ test.describe("Post-Deployment Navigation Tests", () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
 
-    // Look for mobile menu toggle (hamburger button)
-    const mobileToggle = page
-      .locator('button[aria-label*="menu"], .navbar-toggler, button:has(svg)')
-      .first();
+    // The navbar is a Bootstrap collapse: the toggler opens #navbarNav
+    const mobileToggle = page.locator(".navbar-toggler");
+    await expect(mobileToggle).toBeVisible();
+    await mobileToggle.click();
 
-    if ((await mobileToggle.count()) > 0) {
-      // Click mobile menu toggle
-      await mobileToggle.click();
+    // Verify the collapsed menu opens
+    const mobileMenu = page.locator("#navbarNav");
+    await expect(mobileMenu).toBeVisible();
 
-      // Wait for mobile menu to appear
-      const mobileMenu = page
-        .locator(".d-md-none.mt-3, .mobile-menu, nav.d-md-none")
-        .first();
-
-      // Verify mobile menu is visible
-      await expect(mobileMenu).toBeVisible();
-
-      // Test that mobile menu has navigation links
-      const mobileLinks = mobileMenu.locator("a");
-      await expect(mobileLinks.first()).toBeVisible();
-    }
+    // Test that the opened menu has navigation links
+    const mobileLinks = mobileMenu.locator("a");
+    await expect(mobileLinks.first()).toBeVisible();
   });
 
   test("Pricing page loads correctly", async ({ page }) => {

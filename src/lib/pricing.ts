@@ -1,9 +1,10 @@
 /**
- * Server-side pricing for checkout.
+ * Server-side order validation for checkout.
  *
- * This is the single source of truth for what a plan costs. The payment API
- * must never trust a client-supplied amount; it derives the charge from the
- * order details validated here.
+ * Stripe owns the prices: each paid plan+cycle maps to a lookup key that
+ * resolves to a mode-correct recurring Price at runtime (see resolvePriceId
+ * in lib/stripe.ts). No amounts and no Price IDs live in this codebase, so
+ * the mode of STRIPE_SECRET_KEY alone decides test vs live pricing.
  */
 
 export const BILLING_CYCLES = ["monthly", "annual"] as const;
@@ -11,45 +12,50 @@ export type BillingCycle = (typeof BILLING_CYCLES)[number];
 
 export const MIN_EMPLOYEE_COUNT = 5;
 export const MAX_EMPLOYEE_COUNT = 20;
-export const ANNUAL_DISCOUNT_MULTIPLIER = 0.9;
-export const PAYMENT_CURRENCY = "usd";
 
-// Per-user monthly price in cents, keyed by lowercase plan name.
-const PLAN_UNIT_PRICE_CENTS: Record<string, number> = {
-  free: 0,
-  basic: 9900,
-  standard: 24900,
-  premium: 44900,
-};
+// Must match the currency of the Stripe Prices; a mismatch is a hard Stripe
+// error at subscription create, never a silent charge in the wrong currency.
+export const PAYMENT_CURRENCY = "cad";
 
-export interface PricedOrder {
-  planName: string;
+// Lookup keys are identical in test and live mode by construction (PRD §3.1).
+export const PLAN_CYCLE_LOOKUP_KEY = {
+  basic: { monthly: "basic_monthly", annual: "basic_annual" },
+  standard: { monthly: "standard_monthly", annual: "standard_annual" },
+  premium: { monthly: "premium_monthly", annual: "premium_annual" },
+} as const;
+
+export type PaidPlanName = keyof typeof PLAN_CYCLE_LOOKUP_KEY;
+
+export interface ValidatedOrder {
+  planName: PaidPlanName;
   employeeCount: number;
   billingCycle: BillingCycle;
-  amountCents: number;
-  currency: string;
+  lookupKey: string;
 }
 
-export type PriceOrderResult = { order: PricedOrder } | { error: string };
+export type ValidateOrderResult = { order: ValidatedOrder } | { error: string };
+
+function isPaidPlanName(planName: string): planName is PaidPlanName {
+  return planName in PLAN_CYCLE_LOOKUP_KEY;
+}
 
 /**
- * Validate raw order input and compute the amount to charge.
+ * Validate raw order input from the client.
  * Returns an error message suitable for showing to the customer.
  */
-export function priceOrder(input: {
+export function validateOrder(input: {
   plan?: unknown;
   employeeCount?: unknown;
   billingCycle?: unknown;
-}): PriceOrderResult {
+}): ValidateOrderResult {
   const planName =
     typeof input.plan === "string" ? input.plan.trim().toLowerCase() : "";
-  const unitPriceCents = PLAN_UNIT_PRICE_CENTS[planName];
 
-  if (unitPriceCents === undefined) {
-    return { error: "Unknown plan" };
-  }
-  if (unitPriceCents === 0) {
+  if (planName === "free") {
     return { error: "The selected plan does not require payment" };
+  }
+  if (!isPaidPlanName(planName)) {
+    return { error: "Unknown plan" };
   }
 
   const { employeeCount, billingCycle } = input;
@@ -68,19 +74,12 @@ export function priceOrder(input: {
     return { error: 'Billing cycle must be "monthly" or "annual"' };
   }
 
-  const monthlyTotalCents = unitPriceCents * employeeCount;
-  const amountCents =
-    billingCycle === "annual"
-      ? Math.round(monthlyTotalCents * 12 * ANNUAL_DISCOUNT_MULTIPLIER)
-      : monthlyTotalCents;
-
   return {
     order: {
       planName,
       employeeCount,
       billingCycle,
-      amountCents,
-      currency: PAYMENT_CURRENCY,
+      lookupKey: PLAN_CYCLE_LOOKUP_KEY[planName][billingCycle],
     },
   };
 }

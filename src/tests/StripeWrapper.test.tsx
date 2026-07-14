@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import StripeWrapper from "@/app/components/StripeWrapper";
+import StripeWrapper, {
+  type CheckoutCustomer,
+} from "@/app/components/StripeWrapper";
 import { getStripe } from "@/lib/stripe";
 
 // Mock the stripe module
@@ -30,11 +32,28 @@ describe("StripeWrapper", () => {
     global.fetch = originalFetch;
   });
 
+  const customer: CheckoutCustomer = {
+    name: "Test User",
+    email: "test@example.com",
+    phone: "+11234567890",
+    company: "Test Co",
+    address: "123 Test St",
+    city: "Toronto",
+    state: "ON",
+    zip: "M5V 1A1",
+  };
+
   const orderProps = {
     plan: "Basic",
     employeeCount: 5,
     billingCycle: "monthly",
+    customer,
   };
+
+  function lastFetchBody(): Record<string, unknown> {
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    return JSON.parse(init.body);
+  }
 
   it("renders loading state initially", async () => {
     // Mock fetch to delay response
@@ -56,7 +75,7 @@ describe("StripeWrapper", () => {
     expect(screen.getByText("Loading payment form...")).toBeInTheDocument();
   });
 
-  it("renders children inside Stripe Elements when payment intent is created successfully", async () => {
+  it("renders children inside Stripe Elements when the subscription is created successfully", async () => {
     // Mock successful API response
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
@@ -73,17 +92,19 @@ describe("StripeWrapper", () => {
 
     // Verify API call was made with correct parameters
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/stripe/create-payment-intent",
+      "/api/stripe/create-subscription",
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: "Basic",
-          employeeCount: 5,
-          billingCycle: "monthly",
-        }),
       }),
     );
+    expect(lastFetchBody()).toEqual({
+      plan: "Basic",
+      employeeCount: 5,
+      billingCycle: "monthly",
+      customer,
+      idempotencyKey: expect.any(String),
+    });
 
     // Verify getStripe was called
     expect(getStripe).toHaveBeenCalled();
@@ -97,7 +118,12 @@ describe("StripeWrapper", () => {
     } as unknown as Response);
 
     render(
-      <StripeWrapper plan="Premium" employeeCount={12} billingCycle="annual">
+      <StripeWrapper
+        plan="Premium"
+        employeeCount={12}
+        billingCycle="annual"
+        customer={customer}
+      >
         {mockChildComponent}
       </StripeWrapper>,
     );
@@ -107,16 +133,11 @@ describe("StripeWrapper", () => {
       expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
     });
 
-    // Verify API call was made with the order details
-    expect(global.fetch).toHaveBeenCalledWith(
-      "/api/stripe/create-payment-intent",
+    expect(lastFetchBody()).toEqual(
       expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          plan: "Premium",
-          employeeCount: 12,
-          billingCycle: "annual",
-        }),
+        plan: "Premium",
+        employeeCount: 12,
+        billingCycle: "annual",
       }),
     );
   });

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { isPossiblePhoneNumber, parsePhoneNumber } from "libphonenumber-js";
+import * as Sentry from "@sentry/nextjs";
+import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
+import { sendWebmasterNotification } from "@/lib/notify";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 
 function isMissingOrString(value: unknown): value is string | undefined {
   return value === undefined || value === null || typeof value === "string";
@@ -31,8 +34,21 @@ export async function POST(request: Request) {
       plan,
       billingCycle,
       employeeCount,
-      isWaitlist,
+      website,
     } = body ?? {};
+
+    // Honeypot: the "website" field is hidden from humans. A filled value
+    // means a bot — return success and send nothing.
+    if (typeof website === "string" && website.trim() !== "") {
+      return NextResponse.json({ success: true });
+    }
+
+    if (isRateLimited(getClientIp(request))) {
+      return NextResponse.json(
+        { error: "Too many submissions. Please try again later." },
+        { status: 429 },
+      );
+    }
 
     // Reject non-string values up front so they surface as 400s, not 500s
     const stringFields = {
@@ -88,56 +104,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // More robust phone validation and formatting
-    let formattedPhone = "";
-    try {
-      // Default to US if no country code is provided
-      const phoneInput = phone.startsWith("+")
-        ? phone
-        : `+1${phone.replace(/\D/g, "")}`;
-
-      // Check if it's a valid phone number
-      if (!isPossiblePhoneNumber(phoneInput)) {
-        return NextResponse.json(
-          { error: "Please enter a valid phone number" },
-          { status: 400 },
-        );
-      }
-
-      // Format according to E.164 standard which Brevo expects
-      const parsedPhone = parsePhoneNumber(phoneInput);
-      formattedPhone = parsedPhone.format("E.164");
-    } catch {
+    const formattedPhone = formatE164Phone(phone);
+    if (!formattedPhone) {
       return NextResponse.json(
         { error: "Please enter a valid phone number" },
         { status: 400 },
       );
     }
 
-    // The Brevo key is a secret: only ever read the server-side variable
-    // (a NEXT_PUBLIC_ fallback would invite bundling the key into client JS)
-    const activeKey = process.env.BREVO_API_KEY;
-
-    if (!activeKey) {
-      // API key is missing
-      console.error("Missing BREVO_API_KEY environment variable");
-      return NextResponse.json(
-        { error: "Server configuration error - missing API key" },
-        { status: 500 },
-      );
-    }
-
-    // Use direct API endpoint for Brevo
-    const url = "https://api.brevo.com/v3/contacts";
-    const options = {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        "api-key": activeKey,
-      },
-      body: JSON.stringify({
-        email: email,
+    // Validation is done; from here on the lead exists. Brevo (CRM) and the
+    // webmaster email (Resend) fire in parallel, and the submission succeeds
+    // if either lands — see the redundancy matrix in the PRD.
+    const [brevoSettled, notifySettled] = await Promise.allSettled([
+      addBrevoContact({
+        listId: 9,
+        email,
+        smsPhone: formattedPhone,
         attributes: {
           FULLNAME: fullName,
           FIRSTNAME: firstName || fullName.split(" ")[0] || "",
@@ -155,76 +137,86 @@ export async function POST(request: Request) {
           PLAN_NAME: plan || "",
           BILLING_CYCLE: billingCycle || "",
           EMPLOYEE_COUNT: employeeCount ? employeeCount.toString() : "",
-          IS_WAITLIST: isWaitlist ? "Yes" : "No",
-          SMS: formattedPhone, // Add SMS attribute in attributes as well
         },
-        // Use list ID 9 for contact form and list ID 10 for waitlist form
-        listIds: [isWaitlist ? 10 : 9],
-        // Add SMS field for brevo to send text messages
-        smtpBlacklistSender: undefined, // Needed for SMS to work properly
-        sms: {
-          SMS: formattedPhone,
-        },
-        updateEnabled: true, // Allow updating existing contacts
       }),
-    };
+      sendWebmasterNotification({
+        formType: "Contact",
+        submitterName: fullName,
+        fields: {
+          Name: fullName,
+          Email: email,
+          Phone: formattedPhone,
+          Company: company || "",
+          Address: address || "",
+          City: city || "",
+          "Province/State": state || "",
+          "Postal code": zip || "",
+          Plan: plan || "",
+          "Billing cycle": billingCycle || "",
+          "Employee count": employeeCount ? employeeCount.toString() : "",
+        },
+      }),
+    ]);
 
-    const response = await fetch(url, options);
+    const brevoResult =
+      brevoSettled.status === "fulfilled"
+        ? brevoSettled.value
+        : { ok: false as const, code: "exception" };
+    const notifySent =
+      notifySettled.status === "fulfilled" && notifySettled.value;
 
-    if (!response.ok) {
-      // Try to get error details from the API response; keep the parse
-      // attempt isolated so errors thrown below aren't swallowed by it
-      let errorData: { code?: string; message?: string } | null = null;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = null;
-      }
-      console.error("Brevo API error:", errorData ?? response.status);
+    // A duplicate contact means the lead is already in the CRM — that's a
+    // landed submission, with its own long-standing success copy.
+    const isDuplicate = brevoResult.code === "duplicate_parameter";
+    const brevoLanded = brevoResult.ok || isDuplicate;
 
-      // Handle authentication errors
-      if (response.status === 401 || errorData?.code === "unauthorized") {
-        console.error("Brevo API key is not valid or not enabled");
-        return NextResponse.json(
-          {
-            error:
-              "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
-          },
-          { status: 503 },
-        );
-      }
-
-      // Handle common error cases
-      if (errorData?.code === "duplicate_parameter") {
-        return NextResponse.json({
-          success: true,
-          message:
-            "Your information has already been submitted. We will contact you soon.",
-        });
-      }
-
-      // Handle phone number specific errors
-      if (
-        errorData?.code === "invalid_parameter" &&
-        errorData.message?.toLowerCase().includes("phone")
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
-          },
-          { status: 400 },
-        );
-      }
-
-      throw new Error(
-        errorData
-          ? `Brevo API error: ${errorData.message || JSON.stringify(errorData)}`
-          : `Failed to add contact to Brevo (Status: ${response.status})`,
+    // Brevo rejecting the phone is a validation failure, not an outage
+    if (
+      !brevoResult.ok &&
+      brevoResult.code === "invalid_parameter" &&
+      brevoResult.message?.toLowerCase().includes("phone")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
+        },
+        { status: 400 },
       );
     }
 
-    return NextResponse.json({ success: true });
+    if (!brevoLanded || !notifySent) {
+      const detail = `Brevo ${
+        brevoLanded
+          ? "ok"
+          : `failed (${brevoResult.code ?? brevoResult.status})`
+      }, webmaster email ${notifySent ? "ok" : "failed"}`;
+      console.error(`Contact form delivery failure: ${detail}`);
+      Sentry.captureMessage(
+        `Contact form delivery failure: ${detail}`,
+        "error",
+      );
+    }
+
+    if (isDuplicate) {
+      return NextResponse.json({
+        success: true,
+        message:
+          "Your information has already been submitted. We will contact you soon.",
+      });
+    }
+
+    if (brevoLanded || notifySent) {
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+      },
+      { status: 503 },
+    );
   } catch (error) {
     // Error occurred during form submission
     console.error("Contact form submission error:", error);

@@ -200,6 +200,71 @@ describe("stripe.ts utility", () => {
     });
   });
 
+  describe("resolvePriceId", () => {
+    const pricesList = jest.fn();
+
+    beforeEach(() => {
+      pricesList.mockReset();
+      MockStripeConstructor.mockImplementation(() => ({
+        prices: { list: pricesList },
+      }));
+    });
+
+    it("resolves a plan and cycle to the active Price by lookup key", async () => {
+      const { resolvePriceId } = require("@/lib/stripe");
+      pricesList.mockResolvedValue({ data: [{ id: "price_123" }] });
+
+      const priceId = await resolvePriceId({ plan: "basic", cycle: "monthly" });
+
+      expect(priceId).toBe("price_123");
+      expect(pricesList).toHaveBeenCalledWith({
+        lookup_keys: ["basic_monthly"],
+        active: true,
+        limit: 1,
+      });
+    });
+
+    it("memoizes the resolved Price per lookup key", async () => {
+      const { resolvePriceId } = require("@/lib/stripe");
+      pricesList.mockResolvedValue({ data: [{ id: "price_123" }] });
+
+      await resolvePriceId({ plan: "basic", cycle: "monthly" });
+      await resolvePriceId({ plan: "basic", cycle: "monthly" });
+
+      expect(pricesList).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws MissingStripePriceError when no active Price matches", async () => {
+      const {
+        resolvePriceId,
+        MissingStripePriceError,
+      } = require("@/lib/stripe");
+      pricesList.mockResolvedValue({ data: [] });
+
+      await expect(
+        resolvePriceId({ plan: "premium", cycle: "annual" }),
+      ).rejects.toThrow(MissingStripePriceError);
+      await expect(
+        resolvePriceId({ plan: "premium", cycle: "annual" }),
+      ).rejects.toThrow(/premium_annual/);
+    });
+
+    it("does not cache failed lookups", async () => {
+      const { resolvePriceId } = require("@/lib/stripe");
+      pricesList.mockRejectedValueOnce(new Error("stripe down"));
+      pricesList.mockResolvedValueOnce({ data: [{ id: "price_456" }] });
+
+      await expect(
+        resolvePriceId({ plan: "standard", cycle: "monthly" }),
+      ).rejects.toThrow("stripe down");
+
+      await expect(
+        resolvePriceId({ plan: "standard", cycle: "monthly" }),
+      ).resolves.toBe("price_456");
+      expect(pricesList).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("error handling and environment variables", () => {
     it("handles missing environment variables gracefully", () => {
       // Remove all Stripe environment variables

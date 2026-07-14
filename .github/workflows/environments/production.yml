@@ -33,7 +33,9 @@ variables:
 
   # Application configuration
   NEXT_PUBLIC_APP_ENV: production
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_live_51S7c8DKZd4rSrt9nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY lives as a GitHub environment secret
+  # (pk_live_… from the Boximity Inc. account); never hardcode a key here —
+  # an earlier placeholder in this file pointed at a defunct Stripe account.
   NEXT_PUBLIC_PRODUCTION_GA_ID: G-P890DC395M
 
   # Feature flags
@@ -52,6 +54,11 @@ secrets:
   # Application secrets
   - BREVO_API_KEY
   - STRIPE_SECRET_KEY
+  - STRIPE_WEBHOOK_SECRET
+  - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  - RESEND_API_KEY
+  - RESEND_FROM_EMAIL
+  - WEBMASTER_EMAIL
   - ANSIBLE_VAULT_PASSWORD
 
   # Sentry monitoring

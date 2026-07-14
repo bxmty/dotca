@@ -54,9 +54,11 @@ SSH_KEY_FINGERPRINT=your_ssh_key_fingerprint
 # Application Secrets
 BREVO_API_KEY=your_brevo_api_key_here
 RESEND_API_KEY=your_resend_api_key_here
+RESEND_FROM_EMAIL=noreply@boximity.ca
 WEBMASTER_EMAIL=webmaster@example.com
 STRIPE_SECRET_KEY=your_stripe_secret_key_here
-STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
+STRIPE_WEBHOOK_SECRET=whsec_printed_by_stripe_listen
 GA_STAGING_ID=G-XXXXXXXXXX
 GA_PRODUCTION_ID=G-XXXXXXXXXX
 ```
@@ -99,6 +101,27 @@ make dev-clean FORCE=true
 ```
 
 The application will be available at [http://localhost:3000](http://localhost:3000) and will auto-reload as you edit files.
+
+### Stripe Webhooks (local loop)
+
+Webhook work (the "new paid signup" notification) needs Stripe events
+forwarded to your dev server. The Stripe CLI runs **on the host**, not in
+the container, and forwards to the published port 3000:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+- Keep it running in its own terminal for any webhook work.
+- It prints a `whsec_...` signing secret — that value (also available from
+  `stripe listen --print-secret`) is what goes in `.env.local` as
+  `STRIPE_WEBHOOK_SECRET`. It is **not** the same secret as the dashboard
+  webhook endpoints used by staging/production.
+- `stripe trigger invoice.payment_succeeded` fabricates a one-off invoice
+  with `billing_reason: manual`, which the webhook correctly ignores — that
+  is the gate working, not a bug. To exercise the real path, complete a
+  checkout in test mode with card `4242 4242 4242 4242` while
+  `stripe listen` is running.
 
 ### Manual Development (Without Docker)
 

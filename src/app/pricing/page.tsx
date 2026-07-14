@@ -114,7 +114,11 @@ function PricingCards() {
             </div>
             <div className="card-footer border-0 bg-transparent p-4 pt-0">
               <Link
-                href={`/checkout?plan=${plan.name}`}
+                href={
+                  plan.name === "Free"
+                    ? "/onboarding"
+                    : `/checkout?plan=${plan.name}`
+                }
                 className={`btn ${plan.highlighted ? "btn-primary" : "btn-outline-primary"} w-100`}
               >
                 {plan.cta}
