@@ -11,50 +11,53 @@
 Everything below is admin/dashboard work the implementation can't do for you.
 Items 1–2 are **go-live gates**; 3 must happen **before this deploys to staging**.
 
-1. **Stripe live-mode catalog.** The CLI's `rk_live_…` restricted key lacks
-   Products write permission, so the live half of §3.1 is not done. Grant the
-   key write access to Products in the Dashboard (or mint a fuller key), then
-   re-run the §3.1 CLI block with `--live`. Verify with
-   `stripe prices list --lookup-keys=basic_monthly --live` → exactly one
-   active Price. Nothing in deploy fails if this is skipped — the first real
-   customer's checkout does.
-2. **Webhook endpoints (Workbench → Webhooks, once per mode), per §3.3:**
-   - Test mode → `https://staging.boximity.ca/api/stripe/webhook`
-   - Live mode → `https://boximity.ca/api/stripe/webhook`
-   - Events: `invoice.payment_succeeded` (+ optionally
-     `invoice.payment_failed`, `customer.subscription.deleted` — the handler
-     already 200s and logs them). Reveal each endpoint's `whsec_…` and store
-     it as that environment's `STRIPE_WEBHOOK_SECRET` in step 4.
+1. **Stripe live-mode catalog.** Done 2026-07-12 — 3 Products + 6 CAD
+   Prices created in live mode via CLI; sanity check passes in both modes
+   (every lookup key → exactly one active Price).
+2. **Webhook endpoints.** Done 2026-07-12 — both endpoints registered in
+   Workbench per §3.3 (test mode → staging URL, live mode → production URL);
+   each endpoint's `whsec_…` stored as that environment's
+   `STRIPE_WEBHOOK_SECRET` in step 4.
 3. **Export Brevo list 10 to CSV** (§3.4). Onboarding starts writing to
    list 10 the moment this deploys; the old waitlist contacts are
    indistinguishable after that.
-4. **GitHub environment secrets** — 4 names × `staging` and `production`
-   environments (never repo-level, never suffixed; §9.2):
-   | Name | staging | production |
-   | ---- | ------- | ---------- |
-   | `RESEND_API_KEY` | staged in `.env.local` (bottom block) | staged in `.env.local` (bottom block) |
-   | `RESEND_FROM_EMAIL` | `noreply@boximity.ca` | `noreply@boximity.ca` |
-   | `WEBMASTER_EMAIL` | `hi@boximity.ca` | `hi@boximity.ca` |
-   | `STRIPE_WEBHOOK_SECRET` | test-mode endpoint's `whsec_…` (step 2) | live-mode endpoint's `whsec_…` (step 2) |
+4. **GitHub environment secrets.** Done 2026-07-12 — all 4 names
+   (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `WEBMASTER_EMAIL`,
+   `STRIPE_WEBHOOK_SECRET`) exist in both the `staging` and `production`
+   environments (verified via `gh secret list --env …`). These 4 are the
+   **only** environment-scoped secrets in the repo — every other secret is
+   repo-level, which is what makes item 5 below load-bearing. Remember to
+   **delete the staged Resend block** from the bottom of `.env.local` if it's
+   still there.
 
-   The two Resend keys (`dotca-staging`, `dotca-production`, sending-only,
-   domain-scoped) are already minted and sit commented-out at the bottom of
-   `.env.local` — copy them into GitHub, then **delete that block**.
-
-5. **Pre-existing publishable-key traps (§9.2, both bite Phase 2):**
-   - `deploy.yml` reads `secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, but
-     `environments/staging.yml` declares it under `variables:`. Confirm it
-     also exists as a real **environment secret** in staging.
-   - `environments/production.yml` carries a **placeholder**
-     `pk_live_…XXXX`; replace with the real live publishable key before
-     production takes a card.
-   - Confirm `STRIPE_SECRET_KEY` is `sk_test_…` in staging and `sk_live_…`
-     in production — with lookup keys, that one variable alone decides which
-     mode's Prices get charged.
-6. **Staging E2E before go-live:** full checkout on
-   `4242 4242 4242 4242`, confirm exactly one webmaster email per signup.
-   Locally, the same test needs `stripe listen --forward-to
-localhost:3000/api/stripe/webhook` running on the host.
+5. **Pre-existing Stripe key traps (§9.2, both bite Phase 2).** DONE
+   2026-07-13 — all three (a third was found in the process) are closed:
+   - **Trap A (publishable key):** `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` exists
+     as an environment secret in both `staging` (`pk_test_…`) and `production`
+     (`pk_live_…`), sourced from the Stripe CLI config for the correct
+     Boximity Inc. account.
+   - **Trap B (secret key):** `STRIPE_SECRET_KEY` is now env-scoped in both
+     environments (dashboard `sk_…` values, 2026-07-13); the repo-level copy
+     is deleted. No repo-level Stripe secrets remain (verified
+     `gh secret list`).
+   - **Trap C (defunct account, found 2026-07-12):** the keys previously
+     hardcoded in `environments/staging.yml` / `production.yml`
+     (`…51S7c8D…`) and the old repo-level secrets (dated 2026-01-01) belonged
+     to a **different Stripe account** than the one holding the §3.1 catalogs
+     (Boximity Inc., `acct_1R2xhnKwLW2Ci0HI`, prefix `…51R2xhn…`) — a
+     wrong-account key resolves zero lookup keys and checkout fails with
+     `MissingStripePriceError`. The hardcoded values were removed from the
+     env docs; every current secret comes from the Boximity Inc. account.
+   - **Standing defense:** `deploy.yml` fails the build if the publishable
+     key is empty or wrong-mode for the target environment, and fails the
+     deploy likewise for the secret key — a future key mixup is a red CI run,
+     not a silent wrong charge.
+   - Old unprefixed `STRIPE_PUBLISHABLE_KEY` repo secret deleted 2026-07-12
+     after verifying nothing reads it (the deploy action feeds Ansible's var
+     from the `NEXT_PUBLIC_…` name, `action.yml:191`).
+6. **UAT before go-live:** run §13 in order — local, then staging, then
+   production. The old one-liner ("staging E2E on `4242…`") is item S3
+   there.
 
 ---
 
@@ -179,7 +182,7 @@ Amounts are in cents. Annuals bake in the existing 10% discount (`unit × 12 × 
 **Nothing to record.** No IDs to copy, no secrets to paste — that's the point of the lookup keys.
 
 - [x] Test mode: 3 Products + 6 Prices, CAD, `tax_behavior=exclusive`, lookup keys as above _(done 2026-07-12 via CLI)_
-- [ ] Live mode: same again, `stripe --live` — **BLOCKED:** the CLI's `rk_live_…` restricted key lacks Products write permission. Grant it write on Products in the Dashboard (or mint a fuller key), then re-run the block above with `--live`.
+- [x] Live mode: 3 Products + 6 Prices, CAD, `tax_behavior=exclusive`, lookup keys as above _(done 2026-07-12 via CLI; needed both Products and "Plans" write on the `rk_live_…` key — Plans gates the Prices API)\_
 - [ ] Sanity check both: `stripe prices list --lookup-keys=basic_monthly` and `stripe --live prices list --lookup-keys=basic_monthly` each return exactly one active Price _(test mode passes; live pending)_
 
 **Raising prices later:** create the new Price with `transfer_lookup_key=true` and it takes the handle over from the old one. Price change, no code deploy, no secret rotation.
@@ -509,3 +512,80 @@ Live keys are the last switch flipped, and flipping them is the moment the site 
 - **Dunning / failed renewal payments.** Stripe retries on its own; nobody is currently notified when a renewal fails.
 - Auto-reply / thank-you emails to the person who submitted a form.
 - Migrating the existing Brevo list-10 waitlist contacts.
+
+---
+
+## 13. UAT — local, then staging, then production
+
+Run the tiers **in order**; don't start a tier until the one before it is
+clean. Each step lists the action and the **pass condition** — if the pass
+condition doesn't hold, stop and fix before moving on.
+
+Two traps to keep in mind throughout (details in §3.3/§10):
+
+- **Never use `stripe trigger invoice.payment_succeeded` to "verify" the
+  webhook.** It fabricates a `billing_reason: manual` invoice that the
+  `subscription_create` gate correctly ignores — it looks exactly like a
+  broken webhook. Only a real checkout exercises the real path.
+- **One webmaster email per signup, not per webhook retry.** If you ever see
+  duplicates, check the endpoint's delivery attempts in Workbench before
+  blaming the handler.
+
+### 13.1 Local (test mode, `stripe listen`)
+
+**Setup:** `.env.local` filled per §9.1 (test keys, dev Resend key), `just
+dev-up`, and on the **host**:
+`stripe listen --forward-to localhost:3000/api/stripe/webhook` — its printed
+`whsec_…` must be the one in `.env.local`.
+
+| #   | Step                                                                                           | Pass condition                                                                                                                                                                                                     |
+| --- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| L1  | Contact form: real submission with your own email                                              | 200 success in UI; contact appears in Brevo **list 9**; one webmaster email to `WEBMASTER_EMAIL`, subject `New Contact submission — <name>`                                                                        |
+| L2  | Honeypot: POST `/api/contact` with the hidden `website` field filled (curl)                    | Response is 200, but **no** Brevo contact and **no** email                                                                                                                                                         |
+| L3  | Rate limit: 6 rapid POSTs to `/api/contact` from one IP                                        | First 5 processed, 6th returns **429**                                                                                                                                                                             |
+| L4  | Onboarding form: real submission                                                               | 200; contact in Brevo **list 10** with mapped attributes (`COMPANY`, `FULLNAME`, …); one webmaster email, subject `New Onboarding submission — <name>`                                                             |
+| L5  | Checkout happy path: pricing page → paid plan → seats within 5–20 → card `4242 4242 4242 4242` | Card element mounts (proves the `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` fix); payment succeeds; test Dashboard shows **one** customer + **one** active subscription with `quantity` = seat count on the correct Price |
+| L6  | After L5, watch `stripe listen` output and your inbox                                          | `invoice.payment_succeeded` with `billing_reason: subscription_create` forwarded → 200; **exactly one** `New Paid signup submission` email; customer in Brevo list 9 with plan/cycle/seat attributes               |
+| L7  | Declined card: repeat checkout with `4000 0000 0000 0002`                                      | UI shows the decline; **no** active subscription; **no** paid-signup email (the `incomplete` subscription in the Dashboard is expected)                                                                            |
+| L8  | Double-submit: click Pay twice fast (or replay the create-subscription POST)                   | Exactly **one** subscription exists (idempotency key)                                                                                                                                                              |
+| L9  | Free plan: open `/checkout?plan=Free`                                                          | Redirects to `/onboarding`; no card form                                                                                                                                                                           |
+| L10 | Seat bounds: try 4 and 21 seats                                                                | Both rejected with the employee-count validation error                                                                                                                                                             |
+| L11 | Redundancy: set a garbage `BREVO_API_KEY`, restart, submit contact form; restore after         | Still **200** to the user; webmaster email arrives; failure logged/Sentry'd (§2 matrix row 2)                                                                                                                      |
+
+### 13.2 Staging (test mode, real deploy)
+
+**Setup:** branch deployed to staging via `deploy.yml`; §0 item 5 resolved
+(publishable key present as env secret, `STRIPE_SECRET_KEY` = `sk_test_…` for
+staging). Webhook is the **test-mode Workbench endpoint**, not `stripe
+listen`.
+
+| #   | Step                                                                     | Pass condition                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1  | Deploy-time smoke: `stripe prices list --lookup-keys=basic_monthly`      | Exactly one active test-mode Price                                                                                                                                   |
+| S2  | Contact + onboarding smoke on `staging.boximity.ca` (repeat L1, L4)      | Same pass conditions as local — proves the staging Resend key and Brevo path work from the droplet                                                                   |
+| S3  | Full checkout on `4242 4242 4242 4242` (the §0 item 6 gate)              | Payment succeeds; **exactly one** webmaster email per signup                                                                                                         |
+| S4  | Workbench (test mode) → the staging endpoint → delivery attempts         | The S3 event delivered with **200**; no accumulating failures/retries (a 400 streak here means the wrong `whsec_…` is deployed — §9.2's silent-empty-string failure) |
+| S5  | Declined card `4000 0000 0000 0002` on staging                           | Same as L7                                                                                                                                                           |
+| S6  | Waitlist is gone: check `/checkout` copy and the pricing page's Free CTA | No waitlist UI anywhere; Free CTA points at `/onboarding`                                                                                                            |
+| S7  | Sentry: check the staging project after S1–S6                            | No new errors from the checkout/webhook/notify paths                                                                                                                 |
+
+### 13.3 Production (live mode, real money)
+
+**Setup — the go-live gate, all four before the first real checkout:**
+live catalog sanity check (`stripe prices list --live
+--lookup-keys=basic_monthly` → exactly one active Price), `STRIPE_SECRET_KEY`
+= `sk_live_…` in the `production` environment, real `pk_live_…` publishable
+key, live-mode webhook endpoint's `whsec_…` deployed.
+
+**P3 charges a real card.** Use your own; you'll refund it in P5.
+
+| #   | Step                                                                                             | Pass condition                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| P1  | Go-live gate checklist above                                                                     | All four hold                                                                                                   |
+| P2  | Contact + onboarding smoke on `boximity.ca` with a real email                                    | Same pass conditions as S2, via the production Resend key                                                       |
+| P3  | One real checkout: **Basic monthly, 5 seats** (CA$495.00, the cheapest order) with your own card | Payment succeeds; live Dashboard shows one customer + one active subscription, `quantity: 5` on `basic_monthly` |
+| P4  | Live Workbench endpoint + inbox + Brevo after P3                                                 | Event delivered with 200; **exactly one** paid-signup email; contact in list 9                                  |
+| P5  | Clean up P3: cancel the subscription **and** refund the invoice's payment (Dashboard)            | Subscription canceled, charge refunded — confirm the refund shows on the payment                                |
+| P6  | Sentry (production project)                                                                      | No new errors from P2–P5                                                                                        |
+
+When P1–P6 pass, the feature is live and §0 is fully discharged.
