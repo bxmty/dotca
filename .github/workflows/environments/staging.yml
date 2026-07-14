@@ -29,7 +29,9 @@ variables:
 
   # Application configuration
   NEXT_PUBLIC_APP_ENV: staging
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51S7c8DKZd4rSrt9n4kQU2lE9dZ9vSbpAkGRYu0qNRTMBmNvRxQvpFiYOIK2sZGkrmdQQAEaNxugOMGcXYLINRLCF00wuy1qoap
+  # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY lives as a GitHub environment secret
+  # (pk_test_… from the Boximity Inc. account); never hardcode a key here —
+  # an earlier literal in this file was from a defunct Stripe account.
   NEXT_PUBLIC_PRODUCTION_GA_ID: G-LY1EGSWRVE
 
   # Feature flags
@@ -49,6 +51,7 @@ secrets:
   - BREVO_API_KEY
   - STRIPE_SECRET_KEY
   - STRIPE_WEBHOOK_SECRET
+  - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   - RESEND_API_KEY
   - RESEND_FROM_EMAIL
   - WEBMASTER_EMAIL
