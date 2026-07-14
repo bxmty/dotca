@@ -45,9 +45,7 @@ test.describe("Paid Checkout Flow", () => {
     await expect(
       page.locator('a[href="/onboarding"]', { hasText: "Choose Free" }),
     ).toBeVisible();
-    await expect(
-      page.locator('a[href="/checkout?plan=Basic"]'),
-    ).toBeVisible();
+    await expect(page.locator('a[href="/checkout?plan=Basic"]')).toBeVisible();
   });
 
   test("Checkout without a plan shows the no-plan state", async ({ page }) => {

@@ -35,7 +35,9 @@ const mockNotify = sendWebmasterNotification as jest.Mock;
 
 const originalEnv = process.env;
 
-function buildRequest({ signature = "sig_valid" }: { signature?: string | null } = {}): Request {
+function buildRequest({
+  signature = "sig_valid",
+}: { signature?: string | null } = {}): Request {
   const headers = new Headers();
   if (signature) {
     headers.set("stripe-signature", signature);
