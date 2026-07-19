@@ -209,34 +209,6 @@ validate_spaces_credentials() {
     return 0
 }
 
-validate_ansible_vault() {
-    local vault_file="$1"
-    local vault_password="$2"
-
-    if [[ ! -f "$vault_file" ]]; then
-        log_error "Ansible vault file not found: $vault_file"
-        ((FAILED++))
-        return 1
-    fi
-
-    if [[ -z "$vault_password" ]]; then
-        log_error "Ansible vault password is empty"
-        ((FAILED++))
-        return 1
-    fi
-
-    # Test if vault can be decrypted
-    if ! ansible-vault view "$vault_file" --vault-password-file <(echo "$vault_password") > /dev/null 2>&1; then
-        log_error "Cannot decrypt Ansible vault file with provided password"
-        ((FAILED++))
-        return 1
-    fi
-
-    log_success "Ansible vault file can be decrypted successfully"
-    ((PASSED++))
-    return 0
-}
-
 # Main validation logic
 main() {
     log_info "🔍 Starting secret validation for DotCA project"
@@ -279,10 +251,6 @@ main() {
     # Spaces Credentials
     log_info "Validating Spaces credentials..."
     validate_spaces_credentials "${SPACES_ACCESS_ID:-}" "${SPACES_SECRET_KEY:-}"
-
-    # Ansible Vault
-    log_info "Validating Ansible vault..."
-    validate_ansible_vault "${ANSIBLE_VAULT_FILE:-ansible/vars/vault-vars.yml}" "${ANSIBLE_VAULT_PASSWORD:-}"
 
     # Summary
     log_info "=============================================="

@@ -7,7 +7,6 @@
   hosts: digitalocean
   become: true
   gather_facts: false
-  vars_files: vars/vault-vars.yml
   tasks:
     - name: Ensure /tmp directory exists with proper permissions
       ansible.builtin.raw: |
@@ -18,7 +17,6 @@
 - name: Setup Production environment for dotca
   hosts: digitalocean
   become: true
-  vars_files: vars/vault-vars.yml
   vars:
     project_name: dotca-nextjs
     git_repo_url: "https://github.com/{{ GITHUB_REPO | default('bxmty/dotca') }}.git"
@@ -886,7 +884,6 @@
 - name: Setup Let's Encrypt SSL Certificates
   hosts: digitalocean
   become: yes
-  vars_files: vars/vault-vars.yml
   vars:
     # Certbot configuration
     certbot_install_method: package

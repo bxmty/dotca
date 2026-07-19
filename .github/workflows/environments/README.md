@@ -141,7 +141,6 @@ For each environment configuration file, you need to create a corresponding GitH
 - `RESEND_API_KEY`: Resend API key for webmaster notification emails
 - `WEBMASTER_EMAIL`: Email address for webmaster form submission notifications
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
-- `ANSIBLE_VAULT_PASSWORD`: Password for Ansible vault decryption
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 
 ## Validation

@@ -152,7 +152,6 @@ main() {
     log_info "Checking file permissions..."
     check_file_permissions "${SSH_PRIVATE_KEY_FILE:-~/.ssh/id_rsa}" "600" "SSH private key"
     check_file_permissions "${SSH_PUBLIC_KEY_FILE:-~/.ssh/id_rsa.pub}" "644" "SSH public key"
-    check_file_permissions "ansible/vars/vault-vars.yml" "600" "Ansible vault"
 
     # Environment variable format checks
     log_info "Checking environment variable formats..."
@@ -187,7 +186,6 @@ main() {
     check_github_secret_access "SSH_PRIVATE_KEY" "SSH private key"
     check_github_secret_access "STRIPE_SECRET_KEY" "Stripe secret"
     check_github_secret_access "BREVO_API_KEY" "Brevo API"
-    check_github_secret_access "ANSIBLE_VAULT_PASSWORD" "Ansible vault"
 
     # 1Password access
     log_info "Checking 1Password access..."

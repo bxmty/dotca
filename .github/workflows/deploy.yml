@@ -526,7 +526,6 @@ jobs:
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_STAGING_GA_ID: ${{ secrets.GA_STAGING_ID }}
           NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.GA_PRODUCTION_ID }}
-          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update deployment summary

@@ -59,7 +59,6 @@ secrets:
   - RESEND_API_KEY
   - RESEND_FROM_EMAIL
   - WEBMASTER_EMAIL
-  - ANSIBLE_VAULT_PASSWORD
 
   # Sentry monitoring
   - SENTRY_AUTH_TOKEN
