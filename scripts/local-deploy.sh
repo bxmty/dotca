@@ -153,7 +153,7 @@ load_env_vars() {
     set +a
 
     # Validate required environment variables
-    local required_vars=("DO_TOKEN" "BREVO_API_KEY" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY")
+    local required_vars=("DO_TOKEN" "BREVO_API_KEY" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "STRIPE_WEBHOOK_SECRET" "RESEND_API_KEY" "RESEND_FROM_EMAIL" "WEBMASTER_EMAIL")
     local missing_vars=()
 
     for var in "${required_vars[@]}"; do
@@ -410,17 +410,17 @@ run_ansible() {
     # Change to ansible directory
     cd "$ansible_dir"
 
-    # Generate local inventory if needed
-    generate_local_inventory
-
     # Set Ansible environment variables
     export DROPLET_IP="$DROPLET_IP"
     export ENVIRONMENT="$ENVIRONMENT"
     export DOCKER_IMAGE="${DOCKER_IMAGE:-ghcr.io/bxmty/dotca:$ENVIRONMENT}"
 
+    # Generate local inventory if needed
+    generate_local_inventory
+
     # Run the playbook
     log_info "Executing Ansible playbook: $playbook"
-    execute "ANSIBLE_CONFIG=ansible-local.cfg ansible-playbook --vault-password-file .vault-pass -i \"$inventory_file\" \"$playbook\""
+    execute "ANSIBLE_CONFIG=ansible-local.cfg ansible-playbook -i \"$inventory_file\" \"$playbook\""
 
     log_success "Ansible deployment completed successfully"
 
@@ -434,6 +434,8 @@ generate_local_inventory() {
 
     log_info "Generating local Ansible inventory"
 
+    # Note: Ansible playbooks expect UPPERCASE variable names for secrets/config
+    # (same contract as .github/actions/deploy/action.yml)
     cat > "$inventory_file" << EOF
 [digitalocean]
 dotca-$ENVIRONMENT ansible_host=$DROPLET_IP
@@ -445,19 +447,37 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/
 environment=$ENVIRONMENT
 project_name=dotca-nextjs
 app_dir=/app
-docker_image=$DOCKER_IMAGE
+DOCKER_IMAGE=$DOCKER_IMAGE
+DEPLOY_DOCKER_IMAGE=$DOCKER_IMAGE
 public_ip=$DROPLET_IP
+next_public_environment=$ENVIRONMENT
+BREVO_API_KEY=${BREVO_API_KEY:-}
+STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+RESEND_API_KEY=${RESEND_API_KEY:-}
+RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
+WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
+STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+GA_STAGING_ID=${GA_STAGING_ID:-}
+GA_PRODUCTION_ID=${GA_PRODUCTION_ID:-}
+GITHUB_TOKEN=${GITHUB_TOKEN:-}
+GITHUB_USERNAME=${GITHUB_USERNAME:-bxmty}
 EOF
 
     if [[ "$ENVIRONMENT" == "staging" ]]; then
         cat >> "$inventory_file" << EOF
 staging_domain=staging.boximity.ca
+next_public_api_url=https://staging.boximity.ca/api
 EOF
     else
         cat >> "$inventory_file" << EOF
 nginx_server_name=boximity.ca
+next_public_api_url=https://boximity.ca/api
 EOF
     fi
+
+    # Inventory now carries secrets - restrict access
+    chmod 600 "$inventory_file"
 
     log_success "Local inventory generated: $inventory_file"
 }
