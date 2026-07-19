@@ -110,3 +110,4 @@ logs/*
 # bugs
 docs/bugs/*
 .next-local/
+.next-verify/
