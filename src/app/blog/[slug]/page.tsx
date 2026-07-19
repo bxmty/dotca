@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBlogPostBySlug, getBlogPostSummaries } from "@/lib/blog";
+import { getArticleSchema } from "@/lib/schema";
 import BlogPost from "@/app/components/BlogPost";
+import JsonLd from "@/app/components/JsonLd";
 import ReactMarkdown from "react-markdown";
 
 interface PageProps {
@@ -72,6 +74,16 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <div className="container py-5">
+      <JsonLd
+        data={getArticleSchema({
+          title: post.frontmatter.title,
+          description: post.frontmatter.description,
+          datePublished: post.frontmatter.date,
+          author: post.frontmatter.author,
+          url: `/blog/${slug}`,
+          image: post.frontmatter.coverImage,
+        })}
+      />
       <BlogPost
         post={post}
         content={<ReactMarkdown>{post.content}</ReactMarkdown>}
