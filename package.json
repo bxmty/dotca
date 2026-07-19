@@ -33,6 +33,7 @@
     "react-dom": "19.2.7",
     "react-markdown": "10.1.0",
     "react-phone-input-2": "2.15.1",
+    "remark-gfm": "4.0.1",
     "resend": "6.17.2",
     "serialize-javascript": "7.0.7",
     "stripe": "22.3.2",

@@ -5,6 +5,7 @@ import { getArticleSchema } from "@/lib/schema";
 import BlogPost from "@/app/components/BlogPost";
 import JsonLd from "@/app/components/JsonLd";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -86,7 +87,11 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
       <BlogPost
         post={post}
-        content={<ReactMarkdown>{post.content}</ReactMarkdown>}
+        content={
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {post.content}
+          </ReactMarkdown>
+        }
       />
     </div>
   );

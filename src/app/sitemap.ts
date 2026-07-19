@@ -11,7 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const blogDir = path.join(process.cwd(), "content/blog");
   const blogPosts = fs
     .readdirSync(blogDir)
-    .filter((file) => file.endsWith(".mdx"))
+    .filter((file) => file.endsWith(".md"))
     .map((file) => {
       const filePath = path.join(blogDir, file);
       const content = fs.readFileSync(filePath, "utf8");
@@ -19,7 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         content,
       );
       return {
-        slug: file.replace(".mdx", ""),
+        slug: file.replace(".md", ""),
         date: new Date(data.date ?? file),
         published: data.published !== false, // Default to true if not specified
       };
