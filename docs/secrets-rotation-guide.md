@@ -10,7 +10,6 @@ This guide provides comprehensive procedures for rotating all secrets used in th
 - [GitHub Actions Secrets Rotation](#github-actions-secrets-rotation)
 - [API Key Rotation](#api-key-rotation)
 - [Environment Variables Rotation](#environment-variables-rotation)
-- [Ansible Vault Rotation](#ansible-vault-rotation)
 - [Infrastructure Credentials Rotation](#infrastructure-credentials-rotation)
 - [Emergency Procedures](#emergency-procedures)
 - [Validation and Testing](#validation-and-testing)
@@ -58,13 +57,7 @@ The DotCA project uses multiple types of secrets across different systems. Prope
 - **Rotation**: Every 90 days
 - **Impact**: Affects payment processing, emails, analytics
 
-### 4. Ansible Vault
-
-- **Location**: `ansible/vars/vault-vars.yml`
-- **Rotation**: Every 90 days or when team members change
-- **Impact**: Affects deployment automation
-
-### 5. Infrastructure Credentials
+### 4. Infrastructure Credentials
 
 - **Services**: DigitalOcean, Terraform, Docker Registry
 - **Rotation**: Every 90 days
@@ -180,7 +173,6 @@ After successful verification (minimum 24 hours):
 | `STRIPE_WEBHOOK_SECRET`              | Webhook signature verification   | High            |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Payment forms                    | Medium          |
 | `NEXT_PUBLIC_PRODUCTION_GA_ID`       | Analytics                        | Low             |
-| `ANSIBLE_VAULT_PASSWORD`             | Deployment automation            | Critical        |
 
 ### Rotation Process
 
@@ -194,9 +186,6 @@ After successful verification (minimum 24 hours):
 # Spaces Credentials
 # Go to DigitalOcean Console → Spaces → API → Generate New Key
 # Copy Access Key ID and Secret Key
-
-# Ansible Vault Password
-openssl rand -base64 32 > new_vault_password.txt
 ```
 
 #### 2. Update GitHub Secrets
@@ -223,13 +212,6 @@ gh workflow run deploy.yml
 
 # If successful, test production
 gh workflow run deploy.yml -f promoted_image_tag=main
-```
-
-#### 4. Update Ansible Vault (if password changed)
-
-```bash
-# Re-encrypt vault with new password
-ansible-vault rekey ansible/vars/vault-vars.yml
 ```
 
 ## API Key Rotation
@@ -336,13 +318,12 @@ copy one environment's value into another — signature verification will
    # Update GitHub secret
    gh secret set RESEND_API_KEY -R owner/repo --body "re_xxxxxxxxxxxx"
 
-   # WEBMASTER_EMAIL is not a secret; update in environment variables or Ansible vars
+   # WEBMASTER_EMAIL is not a secret; update in environment variables
    # If stored as secret, update via GitHub:
    gh secret set WEBMASTER_EMAIL -R owner/repo --body "webmaster@example.com"
    ```
 
 3. **Update Deployment Configuration**
-   - Update `ansible/vars/vault-vars.yml` or environment config if `WEBMASTER_EMAIL` is stored there
    - Deploy and verify webmaster notification emails are delivered
 
 4. **Clean Up**
@@ -381,9 +362,6 @@ cp .env.staging .env.staging.backup
 ```bash
 # Update via GitHub secrets (preferred method)
 gh secret set ENVIRONMENT_VARIABLE_NAME -R owner/repo --body "new_value"
-
-# Or update ansible vault variables
-ansible-vault edit ansible/vars/vault-vars.yml
 ```
 
 ### Local Development
@@ -395,47 +373,6 @@ cp .env.local .env.local.backup
 npm run dev
 # Test locally
 ```
-
-## Ansible Vault Rotation
-
-### Prerequisites
-
-- Ansible vault password access
-- Access to `ansible/vars/vault-vars.yml`
-
-### Process
-
-1. **Generate New Vault Password**
-
-   ```bash
-   openssl rand -base64 32 > new_ansible_vault_password.txt
-   chmod 600 new_ansible_vault_password.txt
-   ```
-
-2. **Re-encrypt Vault File**
-
-   ```bash
-   cd ansible/vars
-   ansible-vault rekey vault-vars.yml
-   # Enter old password, then new password
-   ```
-
-3. **Update GitHub Secret**
-
-   ```bash
-   gh secret set ANSIBLE_VAULT_PASSWORD -R owner/repo --body "$(cat new_ansible_vault_password.txt)"
-   ```
-
-4. **Test Deployment**
-
-   ```bash
-   # Test with new vault password
-   gh workflow run deploy.yml -f promoted_image_tag=main
-   ```
-
-5. **Distribute New Password**
-   - Share new password with authorized team members
-   - Update password manager entries
 
 ## Infrastructure Credentials Rotation
 

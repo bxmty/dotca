@@ -47,7 +47,6 @@ secrets:
   # Application secrets (test values)
   - BREVO_API_KEY
   - STRIPE_SECRET_KEY
-  - ANSIBLE_VAULT_PASSWORD
 
   # GitHub
   - GITHUB_TOKEN
