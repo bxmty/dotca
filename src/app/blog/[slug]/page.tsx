@@ -40,6 +40,8 @@ export async function generateMetadata({
     alternates: {
       canonical: `/blog/${slug}`,
     },
+    // og:image / twitter:image come from the generated opengraph-image card,
+    // which is correctly sized for social sharing (cover photos are not)
     openGraph: {
       title: frontmatter.title,
       description: frontmatter.description,
@@ -47,20 +49,11 @@ export async function generateMetadata({
       publishedTime: frontmatter.date,
       authors: [frontmatter.author],
       tags: frontmatter.tags,
-      images: frontmatter.coverImage
-        ? [
-            {
-              url: frontmatter.coverImage,
-              alt: frontmatter.title,
-            },
-          ]
-        : [],
     },
     twitter: {
       card: "summary_large_image",
       title: frontmatter.title,
       description: frontmatter.description,
-      images: frontmatter.coverImage ? [frontmatter.coverImage] : [],
     },
   };
 }

@@ -98,6 +98,12 @@ export default function RootLayout({
             __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
           }}
         />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Boximity MSP Blog"
+          href="/feed.xml"
+        />
         <JsonLd data={getLocalBusinessSchema()} />
         <BreadcrumbSchema />
       </head>
