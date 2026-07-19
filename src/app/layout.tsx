@@ -98,6 +98,12 @@ export default function RootLayout({
             __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
           }}
         />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Boximity MSP Blog"
+          href="/feed.xml"
+        />
         <JsonLd data={getLocalBusinessSchema()} />
         <BreadcrumbSchema />
       </head>
@@ -132,9 +138,14 @@ export default function RootLayout({
           <GoogleAnalytics />
         </Suspense>
         <WebVitalsReporter />
+        <a className="visually-hidden-focusable" href="#main-content">
+          Skip to main content
+        </a>
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
-          <main className="flex-grow-1">{children}</main>
+          <main id="main-content" className="flex-grow-1">
+            {children}
+          </main>
           <Footer />
         </div>
       </body>

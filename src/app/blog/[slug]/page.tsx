@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBlogPostBySlug, getBlogPostSummaries } from "@/lib/blog";
+import { getArticleSchema } from "@/lib/schema";
 import BlogPost from "@/app/components/BlogPost";
+import JsonLd from "@/app/components/JsonLd";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -37,6 +40,8 @@ export async function generateMetadata({
     alternates: {
       canonical: `/blog/${slug}`,
     },
+    // og:image / twitter:image come from the generated opengraph-image card,
+    // which is correctly sized for social sharing (cover photos are not)
     openGraph: {
       title: frontmatter.title,
       description: frontmatter.description,
@@ -44,20 +49,11 @@ export async function generateMetadata({
       publishedTime: frontmatter.date,
       authors: [frontmatter.author],
       tags: frontmatter.tags,
-      images: frontmatter.coverImage
-        ? [
-            {
-              url: frontmatter.coverImage,
-              alt: frontmatter.title,
-            },
-          ]
-        : [],
     },
     twitter: {
       card: "summary_large_image",
       title: frontmatter.title,
       description: frontmatter.description,
-      images: frontmatter.coverImage ? [frontmatter.coverImage] : [],
     },
   };
 }
@@ -72,9 +68,23 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <div className="container py-5">
+      <JsonLd
+        data={getArticleSchema({
+          title: post.frontmatter.title,
+          description: post.frontmatter.description,
+          datePublished: post.frontmatter.date,
+          author: post.frontmatter.author,
+          url: `/blog/${slug}`,
+          image: post.frontmatter.coverImage,
+        })}
+      />
       <BlogPost
         post={post}
-        content={<ReactMarkdown>{post.content}</ReactMarkdown>}
+        content={
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {post.content}
+          </ReactMarkdown>
+        }
       />
     </div>
   );
