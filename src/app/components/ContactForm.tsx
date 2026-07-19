@@ -103,6 +103,7 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
         <div className="d-flex align-items-center mb-3">
           <div className="bg-primary p-2 rounded-circle me-3">
             <svg
+              aria-hidden="true"
               width="24"
               height="24"
               fill="none"

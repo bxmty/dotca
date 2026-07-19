@@ -138,9 +138,14 @@ export default function RootLayout({
           <GoogleAnalytics />
         </Suspense>
         <WebVitalsReporter />
+        <a className="visually-hidden-focusable" href="#main-content">
+          Skip to main content
+        </a>
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
-          <main className="flex-grow-1">{children}</main>
+          <main id="main-content" className="flex-grow-1">
+            {children}
+          </main>
           <Footer />
         </div>
       </body>
