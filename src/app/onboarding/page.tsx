@@ -3,6 +3,8 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import AddressAutocomplete from "../components/AddressAutocomplete";
+import type { AddressSuggestion } from "@/lib/nominatim";
 
 interface FormData {
   companyName: string;
@@ -242,13 +244,20 @@ export default function OnboardingPage() {
                     <label htmlFor="address" className="form-label">
                       Address
                     </label>
-                    <input
-                      type="text"
+                    <AddressAutocomplete
                       id="address"
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
-                      className="form-control"
+                      onSelectAddress={(suggestion: AddressSuggestion) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          address: suggestion.addressLine,
+                          city: suggestion.city || prev.city,
+                          state: suggestion.state || prev.state,
+                          zipCode: suggestion.postalCode || prev.zipCode,
+                        }));
+                      }}
                       required
                     />
                   </div>
