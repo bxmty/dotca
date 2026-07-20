@@ -89,7 +89,13 @@ export interface ServiceLandingContent {
   };
 }
 
-function HeroBackground({ alt, priority }: { alt: string; priority?: boolean }) {
+function HeroBackground({
+  alt,
+  priority,
+}: {
+  alt: string;
+  priority?: boolean;
+}) {
   return (
     <>
       <div className="position-absolute top-0 start-0 w-100 h-100">

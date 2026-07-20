@@ -8,7 +8,8 @@
  */
 
 const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search";
-const USER_AGENT = "boximity-msp-website/1.0 (https://boximity.ca; hi@boximity.ca)";
+const USER_AGENT =
+  "boximity-msp-website/1.0 (https://boximity.ca; hi@boximity.ca)";
 const MIN_REQUEST_INTERVAL_MS = 1100;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_LIMIT = 5;

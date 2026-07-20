@@ -11,13 +11,13 @@ Specialized managed IT services designed specifically for marketing agencies wit
 [Get Free IT Assessment]
 [View Cloud 5 Pack Pricing]
 
-*Serving marketing agencies across Canada*
+_Serving marketing agencies across Canada_
 
 ### Cloud 5 Pack - $1,250/month
 
 Everything your 5-10 person marketing agency needs:
 
-*See pricing page for full details and agency sizes*
+_See pricing page for full details and agency sizes_
 
 - 24/7 Proactive Monitoring
 - Advanced Cybersecurity
@@ -27,7 +27,7 @@ Everything your 5-10 person marketing agency needs:
 
 ✓ No contracts • ✓ 30-day money-back guarantee
 
-*Trusted by marketing agencies since 2020*
+_Trusted by marketing agencies since 2020_
 
 ## Why Marketing Agencies Need Specialized IT Services
 
@@ -72,7 +72,7 @@ Unlike traditional IT companies that focus solely on technology, our IT services
 
 For 5 users • No contracts • Cancel anytime
 
-*See pricing page for full details and agency sizes*
+_See pricing page for full details and agency sizes_
 
 #### 🔒 Marketing Agency Cybersecurity
 
@@ -133,4 +133,4 @@ Join hundreds of creative agencies that have eliminated IT headaches and regaine
 [Get Free IT Assessment]
 [View All Pricing Options]
 
-*✓ No contracts • ✓ 30-day money-back guarantee*
+_✓ No contracts • ✓ 30-day money-back guarantee_

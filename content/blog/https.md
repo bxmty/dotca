@@ -161,7 +161,7 @@ Don't leave your digital front door unlocked another day. The small investment i
 
 ---
 
-*This article was prepared by Boximity, specialists in small business website security. We help non-technical business owners protect their online presence without the technical headaches.*
+_This article was prepared by Boximity, specialists in small business website security. We help non-technical business owners protect their online presence without the technical headaches._
 
 **Works Referenced:**
 

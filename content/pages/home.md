@@ -110,11 +110,11 @@ hi@boximity.ca
 
 We'll contact you to schedule your session
 
-**Name***
+**Name\***
 
-**Email***
+**Email\***
 
-**Phone***
+**Phone\***
 
 [Book Your Consult]
 

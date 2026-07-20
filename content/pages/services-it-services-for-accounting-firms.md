@@ -11,13 +11,13 @@ Specialized managed IT services designed specifically for accounting firms with 
 [Get Free IT Assessment]
 [View Cloud 5 Pack Pricing]
 
-*Serving accounting firms across Canada*
+_Serving accounting firms across Canada_
 
 ### Cloud 5 Pack - $1,250/month
 
 Everything your 5-10 person accounting firm needs:
 
-*See pricing page for full details and firm sizes*
+_See pricing page for full details and firm sizes_
 
 - 24/7 Proactive Monitoring
 - Advanced Cybersecurity
@@ -27,7 +27,7 @@ Everything your 5-10 person accounting firm needs:
 
 ✓ No contracts • ✓ 30-day money-back guarantee
 
-*Trusted by accounting firms since 2020*
+_Trusted by accounting firms since 2020_
 
 ## Why Accounting Firms Need Specialized IT Services
 
@@ -72,7 +72,7 @@ Unlike traditional IT companies that focus solely on technology, our IT services
 
 For 5 users • No contracts • Cancel anytime
 
-*See pricing page for full details and firm sizes*
+_See pricing page for full details and firm sizes_
 
 #### 🔒 Accounting Firm Cybersecurity
 
@@ -133,4 +133,4 @@ Join hundreds of CPA firms that have eliminated IT headaches and regained focus 
 [Get Free IT Assessment]
 [View All Pricing Options]
 
-*✓ No contracts • ✓ 30-day money-back guarantee*
+_✓ No contracts • ✓ 30-day money-back guarantee_

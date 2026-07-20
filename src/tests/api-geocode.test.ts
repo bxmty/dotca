@@ -1,8 +1,5 @@
 // tests/api-geocode.test.ts
-import {
-  GET,
-  resetGeocodeRateLimits,
-} from "@/app/api/geocode/route";
+import { GET, resetGeocodeRateLimits } from "@/app/api/geocode/route";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { searchAddresses } from "@/lib/nominatim";

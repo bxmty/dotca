@@ -102,4 +102,4 @@ In just 30 minutes, we'll analyze your current meeting practices and show you ex
 
 **[Schedule Your Free Teams Premium ROI Assessment →](your-landing-page-url)**
 
-*[Your Company Name] is a Microsoft-certified partner specializing in helping businesses maximize their productivity through strategic implementation of Microsoft 365 tools.*
+_[Your Company Name] is a Microsoft-certified partner specializing in helping businesses maximize their productivity through strategic implementation of Microsoft 365 tools._

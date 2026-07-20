@@ -10,12 +10,12 @@ Insights, tips, and best practices for enterprise IT solutions and small busines
 
 ## Featured Posts
 
-*(Post listings rendered dynamically — full post content lives in `content/blog/`.)*
+_(Post listings rendered dynamically — full post content lives in `content/blog/`.)_
 
 ## All Posts
 
-*(Post listings rendered dynamically — full post content lives in `content/blog/`.)*
+_(Post listings rendered dynamically — full post content lives in `content/blog/`.)_
 
 ## Explore by Topic
 
-*(Topic tags rendered dynamically from blog post frontmatter.)*
+_(Topic tags rendered dynamically from blog post frontmatter.)_

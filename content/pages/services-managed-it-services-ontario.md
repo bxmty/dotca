@@ -11,13 +11,13 @@ Professional managed IT services designed specifically for Ontario businesses. K
 [Get Free IT Assessment]
 [View Cloud 5 Pack Pricing]
 
-*Serving Toronto, Ottawa, Hamilton, London & surrounding areas*
+_Serving Toronto, Ottawa, Hamilton, London & surrounding areas_
 
 ### Cloud 5 Pack - $1,250/month
 
 Everything your 5-user team needs:
 
-*See pricing page for full details and team sizes*
+_See pricing page for full details and team sizes_
 
 - 24/7 Proactive Monitoring
 - Advanced Cybersecurity
@@ -27,7 +27,7 @@ Everything your 5-user team needs:
 
 ✓ No contracts • ✓ 30-day money-back guarantee
 
-*Trusted by Ontario businesses since 2020*
+_Trusted by Ontario businesses since 2020_
 
 ## Why Ontario Businesses Choose Managed IT Services
 
@@ -72,7 +72,7 @@ Unlike traditional IT companies that focus solely on technology, our managed IT 
 
 For 5 users • No contracts • Cancel anytime
 
-*See pricing page for full details and team sizes*
+_See pricing page for full details and team sizes_
 
 #### 🔒 Advanced Cybersecurity
 
@@ -112,25 +112,25 @@ We provide managed IT services Ontario-wide, with local expertise and rapid resp
 
 GTA's business hub with specialized support for professional services firms, financial institutions, and tech companies.
 
-*Response: < 2 hours*
+_Response: < 2 hours_
 
 ### 🏛️ Ottawa
 
 Government and research sector expertise with focus on compliance and secure communications.
 
-*Response: < 4 hours*
+_Response: < 4 hours_
 
 ### 🏭 Hamilton
 
 Manufacturing and logistics support with industrial IT solutions and remote monitoring capabilities.
 
-*Response: < 3 hours*
+_Response: < 3 hours_
 
 ### 🌾 London
 
 Agricultural and healthcare sector IT support with specialized compliance and data management solutions.
 
-*Response: < 3 hours*
+_Response: < 3 hours_
 
 Don't see your city? We serve all of Ontario with our managed IT services.
 
@@ -165,4 +165,4 @@ Join hundreds of Ontario businesses that have eliminated IT headaches and regain
 [Get Free IT Assessment]
 [View All Pricing Options]
 
-*✓ No contracts • ✓ 30-day money-back guarantee*
+_✓ No contracts • ✓ 30-day money-back guarantee_

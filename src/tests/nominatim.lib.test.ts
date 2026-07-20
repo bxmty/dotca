@@ -124,9 +124,7 @@ describe("searchAddresses", () => {
   });
 
   it("caches repeat queries and skips a second fetch", async () => {
-    (global.fetch as jest.Mock).mockReturnValue(
-      mockResponse([rawResult()]),
-    );
+    (global.fetch as jest.Mock).mockReturnValue(mockResponse([rawResult()]));
 
     const first = searchAddresses("123 main street");
     await jest.advanceTimersByTimeAsync(1200);
@@ -139,9 +137,7 @@ describe("searchAddresses", () => {
   });
 
   it("treats different countryCodes as different cache entries", async () => {
-    (global.fetch as jest.Mock).mockReturnValue(
-      mockResponse([rawResult()]),
-    );
+    (global.fetch as jest.Mock).mockReturnValue(mockResponse([rawResult()]));
 
     const first = searchAddresses("123 main street", { countryCodes: "ca" });
     await jest.advanceTimersByTimeAsync(1200);
@@ -155,9 +151,7 @@ describe("searchAddresses", () => {
   });
 
   it("expires the cache after the TTL elapses", async () => {
-    (global.fetch as jest.Mock).mockReturnValue(
-      mockResponse([rawResult()]),
-    );
+    (global.fetch as jest.Mock).mockReturnValue(mockResponse([rawResult()]));
 
     const first = searchAddresses("123 main street");
     await jest.advanceTimersByTimeAsync(1200);
@@ -172,9 +166,7 @@ describe("searchAddresses", () => {
   });
 
   it("throttles consecutive requests to at least 1.1s apart", async () => {
-    (global.fetch as jest.Mock).mockReturnValue(
-      mockResponse([rawResult()]),
-    );
+    (global.fetch as jest.Mock).mockReturnValue(mockResponse([rawResult()]));
 
     const first = searchAddresses("first query");
     const second = searchAddresses("second query");

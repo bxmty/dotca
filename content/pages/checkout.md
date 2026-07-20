@@ -18,9 +18,9 @@ Please select a plan from our pricing page to proceed with checkout.
 
 ## Your Selected Plan
 
-*{Plan Name} Plan*
+_{Plan Name} Plan_
 
-*{unit_price} per user per month*
+_{unit_price} per user per month_
 
 {Plan description}
 
@@ -31,7 +31,7 @@ Please select a plan from our pricing page to proceed with checkout.
 **Billing Cycle**
 
 - Monthly
-- Annual *(Save 10%)*
+- Annual _(Save 10%)_
 
 **Monthly Total:** / **Annual Total:**
 
@@ -82,15 +82,15 @@ Complete IT management solution for businesses requiring enterprise-grade techno
 
 ## Customer Information
 
-**First Name***
+**First Name\***
 
-**Last Name***
+**Last Name\***
 
-**Email Address***
+**Email Address\***
 
 **Company Name**
 
-**Phone Number***
+**Phone Number\***
 
 **Address**
 

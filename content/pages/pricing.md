@@ -12,7 +12,7 @@ Enterprise-grade technology solutions without enterprise-level complexity or cos
 
 **$0.00**
 
-*per user per month*
+_per user per month_
 
 Ideal for startups and freelancers looking to secure their digital assets
 
@@ -26,7 +26,7 @@ Ideal for startups and freelancers looking to secure their digital assets
 
 **$99.00**
 
-*per user per month*
+_per user per month_
 
 Perfect for small teams needing essential IT security and communication tools
 
@@ -39,11 +39,11 @@ Perfect for small teams needing essential IT security and communication tools
 
 [Choose Basic]
 
-## Standard *(Recommended)*
+## Standard _(Recommended)_
 
 **$249.00**
 
-*per user per month*
+_per user per month_
 
 Our recommended option for growing businesses needing comprehensive IT support
 
@@ -61,7 +61,7 @@ Our recommended option for growing businesses needing comprehensive IT support
 
 **$449.00**
 
-*per user per month*
+_per user per month_
 
 Complete IT management solution for businesses requiring enterprise-grade technology
 

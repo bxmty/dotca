@@ -179,7 +179,8 @@ export const ontarioContent: ServiceLandingContent = {
     ],
   },
   finalCta: {
-    heading: "Ready to Transform Your Ontario Business with Managed IT Services?",
+    heading:
+      "Ready to Transform Your Ontario Business with Managed IT Services?",
     lead: "Join hundreds of Ontario businesses that have eliminated IT headaches and regained focus on what matters most - growing their business. Start with a free IT assessment today.",
   },
 };

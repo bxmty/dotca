@@ -153,7 +153,9 @@ describe("AddressAutocomplete", () => {
 
     await typeAndDebounce("123 Main St");
 
-    fireEvent.mouseDown(screen.getByText("123 Main St, Toronto, Ontario, Canada"));
+    fireEvent.mouseDown(
+      screen.getByText("123 Main St, Toronto, Ontario, Canada"),
+    );
 
     expect(
       screen.getByText("123 Main St, Toronto, Ontario, Canada"),

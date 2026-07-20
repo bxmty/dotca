@@ -11,13 +11,13 @@ Specialized managed IT services designed specifically for architecture firms wit
 [Get Free IT Assessment]
 [View Cloud 5 Pack Pricing]
 
-*Serving architecture firms across Canada*
+_Serving architecture firms across Canada_
 
 ### Cloud 5 Pack - $1,250/month
 
 Everything your 5-10 person architecture firm needs:
 
-*See pricing page for full details and firm sizes*
+_See pricing page for full details and firm sizes_
 
 - 24/7 Proactive Monitoring
 - Advanced Cybersecurity
@@ -27,7 +27,7 @@ Everything your 5-10 person architecture firm needs:
 
 ✓ No contracts • ✓ 30-day money-back guarantee
 
-*Trusted by architecture firms since 2020*
+_Trusted by architecture firms since 2020_
 
 ## Why Architecture Firms Need Specialized IT Services
 
@@ -72,7 +72,7 @@ Unlike traditional IT companies that focus solely on technology, our IT services
 
 For 5 users • No contracts • Cancel anytime
 
-*See pricing page for full details and firm sizes*
+_See pricing page for full details and firm sizes_
 
 #### 🔒 Architecture Firm Cybersecurity
 
@@ -133,4 +133,4 @@ Join hundreds of architecture firms that have eliminated IT headaches and regain
 [Get Free IT Assessment]
 [View All Pricing Options]
 
-*✓ No contracts • ✓ 30-day money-back guarantee*
+_✓ No contracts • ✓ 30-day money-back guarantee_
