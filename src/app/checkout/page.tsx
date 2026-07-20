@@ -8,6 +8,8 @@ import StripeWrapper, {
   type CheckoutCustomer,
 } from "../components/StripeWrapper";
 import StripePaymentForm from "../components/StripePaymentForm";
+import AddressAutocomplete from "../components/AddressAutocomplete";
+import type { AddressSuggestion } from "@/lib/nominatim";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 
@@ -576,13 +578,21 @@ export default function Checkout() {
                       <label htmlFor="address" className="form-label">
                         Address
                       </label>
-                      <input
-                        type="text"
+                      <AddressAutocomplete
                         id="address"
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
-                        className="form-control"
+                        onSelectAddress={(suggestion: AddressSuggestion) => {
+                          setConfirmedCustomer(null);
+                          setFormData((prev) => ({
+                            ...prev,
+                            address: suggestion.addressLine,
+                            city: suggestion.city || prev.city,
+                            state: suggestion.state || prev.state,
+                            zip: suggestion.postalCode || prev.zip,
+                          }));
+                        }}
                         required
                       />
                     </div>

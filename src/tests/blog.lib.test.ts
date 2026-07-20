@@ -35,7 +35,7 @@ describe("getBlogPostBySlug", () => {
     expect(post).not.toBeNull();
     expect(post?.frontmatter.title).toBe("Test Post");
     expect(mockReadFileSync).toHaveBeenCalledWith(
-      expect.stringContaining("my-test-post.mdx"),
+      expect.stringContaining("my-test-post.md"),
       "utf8",
     );
   });
@@ -50,7 +50,7 @@ describe("getBlogPostBySlug", () => {
     "../secrets",
     "..%2Fsecrets",
     "post/../../etc/passwd",
-    "post.mdx",
+    "post.md",
     "",
   ])("rejects slug %p without touching the filesystem", (slug) => {
     mockPostFile({ published: true });

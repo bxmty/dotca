@@ -140,4 +140,4 @@ If technology inconsistencies are causing headaches for your team, or if you're 
 
 Contact us today at 555-5555 to schedule a free consultation. We'll help you identify the quickest wins for standardizing your IT environment and develop a roadmap that aligns with your business objectives and budget.
 
-*Your small business deserves enterprise-level efficiency without the enterprise-level complexity. IT standardization is how you get there.*
+_Your small business deserves enterprise-level efficiency without the enterprise-level complexity. IT standardization is how you get there._

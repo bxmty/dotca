@@ -81,4 +81,4 @@ If you're not sure, that's worth a conversation — not with your lawyers, but w
 
 ---
 
-*Boximity works with small professional services firms across Ontario to build IT environments that are secure, proactive, and built around how you actually work. If you'd like to talk about how your firm is handling AI, we're happy to start there.*
+_Boximity works with small professional services firms across Ontario to build IT environments that are secure, proactive, and built around how you actually work. If you'd like to talk about how your firm is handling AI, we're happy to start there._
