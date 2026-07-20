@@ -30,7 +30,7 @@ class BlogPostValidator {
    * Validate a single blog post file
    */
   validateBlogPost(filePath) {
-    const fileName = path.basename(filePath, ".mdx");
+    const fileName = path.basename(filePath, ".md");
 
     try {
       const content = fs.readFileSync(filePath, "utf8");
@@ -147,7 +147,7 @@ class BlogPostValidator {
 
     const files = fs
       .readdirSync(BLOG_DIR)
-      .filter((file) => file.endsWith(".mdx"));
+      .filter((file) => file.endsWith(".md"));
 
     if (files.length === 0) {
       console.warn("⚠️  No blog posts found in the blog directory");

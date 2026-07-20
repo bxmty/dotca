@@ -15,6 +15,8 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // Honeypot: humans never see this field; bots that fill it are dropped
+  const [website, setWebsite] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{
     type: "success" | "error" | null;
@@ -38,7 +40,7 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, phone }),
+        body: JSON.stringify({ name, email, phone, website }),
       });
 
       const responseData = await response.json().catch(() => null);
@@ -97,10 +99,11 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
           {submitStatus.message}
         </div>
       )}
-      <div className="bg-dark text-white p-4 rounded mb-4">
+      <div className="bg-dark text-white p-4 rounded mb-4" data-bs-theme="dark">
         <div className="d-flex align-items-center mb-3">
           <div className="bg-primary p-2 rounded-circle me-3">
             <svg
+              aria-hidden="true"
               width="24"
               height="24"
               fill="none"
@@ -123,6 +126,21 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
           </div>
         </div>
 
+        <div
+          aria-hidden="true"
+          style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+        >
+          <label htmlFor="contact-website">Website</label>
+          <input
+            type="text"
+            id="contact-website"
+            name="website"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+          />
+        </div>
         <div className="mb-3">
           <label htmlFor="name" className="form-label text-light">
             Name*

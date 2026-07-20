@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import CheckIcon from "./components/CheckIcon";
 import ContactForm from "./components/ContactForm";
 import { Metadata } from "next";
 
@@ -36,7 +37,7 @@ export default function Home() {
             fill
             priority
             loading="eager"
-            sizes="(max-width: 768px) 100vw, 100vw"
+            sizes="100vw"
             placeholder="blur"
             blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAAGAAoDAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD+Nrw1oXhTX/hvodj4p0Pw7r99c+JvEtzfXWuaFpGuXsksVzEsE8tzq1jd3Usq28JN5dzpLdLHJ5WoSw273A/EeDckz16mNll+JzrLp4nHYqvUoxzXMstpVK1LEpVsRS9hictw8pyhCKr0L0IqrSqUuajVjyRb/wBH89zLhaGW5b/a2Gwue46ngsHhoV44XA5piqVOFbCKUIVfb4/GVFFTqTcsNW5p05QtVpTqU6cn/9k="
             style={{
@@ -85,6 +86,7 @@ export default function Home() {
                     style={{ width: "3rem", height: "3rem" }}
                   >
                     <svg
+                      aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -116,6 +118,7 @@ export default function Home() {
                     style={{ width: "3rem", height: "3rem" }}
                   >
                     <svg
+                      aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -147,6 +150,7 @@ export default function Home() {
                     style={{ width: "3rem", height: "3rem" }}
                   >
                     <svg
+                      aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -175,7 +179,11 @@ export default function Home() {
       </section>
 
       {/* Solutions Section */}
-      <section id="solutions" className="py-5 py-md-7 bg-alt">
+      <section
+        id="solutions"
+        className="py-5 py-md-7 bg-alt"
+        data-bs-theme="dark"
+      >
         <div className="container">
           <h2 className="fs-1 fw-light mb-5 border-bottom pb-3">
             Our Small Business Cloud Bundle
@@ -200,28 +208,14 @@ export default function Home() {
               </p>
             </div>
             <div className="col-md-6">
-              <div className="card shadow-sm bg-white">
+              <div className="card shadow-sm">
                 <div className="card-body">
                   <h3 className="fs-4 fw-medium mb-4">
                     Everything your 5-10 person team needs:
                   </h3>
                   <ul className="list-unstyled">
                     <li className="d-flex mb-3">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon />
                       <div>
                         <span className="fw-medium">
                           Secure Password Management
@@ -233,21 +227,7 @@ export default function Home() {
                       </div>
                     </li>
                     <li className="d-flex mb-3">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon />
                       <div>
                         <span className="fw-medium">
                           Professional Web Hosting
@@ -258,21 +238,7 @@ export default function Home() {
                       </div>
                     </li>
                     <li className="d-flex mb-3">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon />
                       <div>
                         <span className="fw-medium">
                           Business Email Solutions
@@ -283,21 +249,7 @@ export default function Home() {
                       </div>
                     </li>
                     <li className="d-flex">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon />
                       <div>
                         <span className="fw-medium">
                           Microsoft Collaboration Tools
@@ -374,7 +326,11 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section id="benefits" className="py-5 py-md-7 bg-alt">
+      <section
+        id="benefits"
+        className="py-5 py-md-7 bg-alt"
+        data-bs-theme="dark"
+      >
         <div className="container">
           <div className="row">
             <div className="col-md-6 mb-5 mb-md-0">
@@ -383,21 +339,7 @@ export default function Home() {
               </h2>
               <div className="d-flex flex-column gap-3">
                 <div className="d-flex">
-                  <svg
-                    className="text-success flex-shrink-0 me-3"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
+                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
                   <p className="mb-0">
                     <span className="fw-medium">
                       Reduced stress and anxiety
@@ -406,84 +348,28 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="d-flex">
-                  <svg
-                    className="text-success flex-shrink-0 me-3"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
+                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
                   <p className="mb-0">
                     <span className="fw-medium">Increased productivity</span> -
                     Less time troubleshooting, more time growing your business
                   </p>
                 </div>
                 <div className="d-flex">
-                  <svg
-                    className="text-success flex-shrink-0 me-3"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
+                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
                   <p className="mb-0">
                     <span className="fw-medium">Enhanced security</span> -
                     Professional protection for your critical business data
                   </p>
                 </div>
                 <div className="d-flex">
-                  <svg
-                    className="text-success flex-shrink-0 me-3"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
+                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
                   <p className="mb-0">
                     <span className="fw-medium">Streamlined communication</span>{" "}
                     - Better tools mean better teamwork
                   </p>
                 </div>
                 <div className="d-flex">
-                  <svg
-                    className="text-success flex-shrink-0 me-3"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
+                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
                   <p className="mb-0">
                     <span className="fw-medium">Competitive advantage</span> -
                     Access to technology usually reserved for larger companies
@@ -498,7 +384,10 @@ export default function Home() {
               <div className="card mb-3">
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
-                    Up to <span className="fw-bold text-danger">2 weeks</span>
+                    Up to{" "}
+                    <span className="fw-bold text-danger-emphasis">
+                      2 weeks
+                    </span>
                   </p>
                   <p className="text-white-50 mb-0">
                     of downtime after a cyber incident
@@ -509,7 +398,9 @@ export default function Home() {
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
                     Employee productivity losses of{" "}
-                    <span className="fw-bold text-danger">up to 22%</span>
+                    <span className="fw-bold text-danger-emphasis">
+                      up to 22%
+                    </span>
                   </p>
                   <p className="text-white-50 mb-0">due to technology issues</p>
                 </div>
@@ -518,7 +409,9 @@ export default function Home() {
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
                     Average data breach costs of{" "}
-                    <span className="fw-bold text-danger">$108,000</span>
+                    <span className="fw-bold text-danger-emphasis">
+                      $108,000
+                    </span>
                   </p>
                   <p className="text-white-50 mb-0">for small businesses</p>
                 </div>
@@ -526,7 +419,9 @@ export default function Home() {
               <div className="card">
                 <div className="card-body bg-dark">
                   <p className="fs-3 fw-light mb-2 text-white">
-                    <span className="fw-bold text-danger">60% higher</span>{" "}
+                    <span className="fw-bold text-danger-emphasis">
+                      60% higher
+                    </span>{" "}
                     employee turnover
                   </p>
                   <p className="text-white-50 mb-0">
@@ -554,147 +449,35 @@ export default function Home() {
                   </h3>
                   <ul className="list-unstyled mb-4">
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Password Manager
                     </li>
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Web Hosting
                     </li>
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Business Email
                     </li>
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Microsoft Collaboration Tools
                     </li>
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Email Support
                     </li>
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Quarterly IT Assessment
                     </li>
                     <li className="d-flex align-items-center mb-2">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Reduced Web Design Rates
                     </li>
                     <li className="d-flex align-items-center">
-                      <svg
-                        className="text-success flex-shrink-0 me-2"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
+                      <CheckIcon size={20} />
                       Server Monitoring
                     </li>
                   </ul>

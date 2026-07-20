@@ -4,14 +4,6 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import OnboardingPage from "@/app/onboarding/page";
 
-// Mock useRouter
-const mockPush = jest.fn();
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}));
-
 // Mock Image component
 jest.mock("next/image", () => ({
   __esModule: true,
@@ -69,8 +61,8 @@ describe("OnboardingPage Component", () => {
     expect(screen.getByLabelText(/Phone Number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/City/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/State/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/ZIP Code/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Province\/State/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Postal Code/i)).toBeInTheDocument();
 
     // Check if Back and Next buttons are rendered
     expect(screen.getByRole("button", { name: /Back/i })).toBeInTheDocument();
@@ -134,7 +126,10 @@ describe("OnboardingPage Component", () => {
     // Fill in step 2 form
     await user.type(screen.getByLabelText(/Contact Name/i), "John Doe");
     await user.type(screen.getByLabelText(/Email/i), "john@example.com");
-    await user.type(screen.getByLabelText(/Phone Number/i), "123-456-7890");
+    fireEvent.change(
+      document.getElementById("contactPhone") as HTMLInputElement,
+      { target: { value: "12345678901" } },
+    );
 
     // Navigate to step 3
     fireEvent.click(screen.getByRole("button", { name: /Next/i }));
@@ -166,7 +161,7 @@ describe("OnboardingPage Component", () => {
     });
   });
 
-  it("submits form data and redirects on success", async () => {
+  it("submits form data and shows the success screen", async () => {
     render(<OnboardingPage />);
 
     // Navigate to step 3
@@ -178,14 +173,17 @@ describe("OnboardingPage Component", () => {
       screen.getByRole("button", { name: /Complete Onboarding/i }),
     );
 
-    // Wait for fetch and redirect
+    // Wait for fetch and the success screen
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         "/api/onboarding",
         expect.any(Object),
       );
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      expect(screen.getByText("Onboarding Complete")).toBeInTheDocument();
     });
+    expect(
+      screen.getByRole("link", { name: /Return to Home/i }),
+    ).toHaveAttribute("href", "/");
   });
 
   it("shows loading state while submitting", async () => {
@@ -229,6 +227,7 @@ describe("OnboardingPage Component", () => {
     (global.fetch as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ok: false,
+        status: 400,
         json: () => Promise.resolve({ error: "Failed to submit" }),
       }),
     );
@@ -244,11 +243,16 @@ describe("OnboardingPage Component", () => {
       screen.getByRole("button", { name: /Complete Onboarding/i }),
     );
 
-    // Wait for error handling
+    // The API error is shown to the user and the form stays on step 3
     await waitFor(() => {
-      expect(console.error).toHaveBeenCalled();
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(
+        screen.getByText(/Failed to submit\. Please try again\./i),
+      ).toBeInTheDocument();
     });
+    expect(screen.getByText("IT Environment")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Complete Onboarding/i }),
+    ).not.toBeDisabled();
 
     // Restore console.error
     console.error = originalConsoleError;

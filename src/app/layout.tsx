@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "./globals.css";
 import Script from "next/script";
 import { Suspense } from "react";
 import BootstrapClient from "./components/BootstrapClient";
@@ -17,7 +17,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#212529" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -86,13 +89,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-bs-theme="auto">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Set the Bootstrap color mode before first paint to avoid a flash
+            of the wrong theme. BootstrapClient keeps it in sync afterwards. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
+          }}
+        />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Boximity MSP Blog"
+          href="/feed.xml"
+        />
         <JsonLd data={getLocalBusinessSchema()} />
         <BreadcrumbSchema />
       </head>
       <body>
-        {/* Google Analytics inline initialization script - must run immediately */}
+        {/* Google Analytics inline initialization script - must run immediately.
+            send_page_view is disabled here: the GoogleAnalytics component sends
+            exactly one page_view per navigation (including the first load). */}
         {GA_MEASUREMENT_ID && (
           <Script
             id="gtag-init"
@@ -102,7 +120,7 @@ export default function RootLayout({
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
-                gtag('config', '${GA_MEASUREMENT_ID}');
+                gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
               `,
             }}
           />
@@ -120,9 +138,14 @@ export default function RootLayout({
           <GoogleAnalytics />
         </Suspense>
         <WebVitalsReporter />
+        <a className="visually-hidden-focusable" href="#main-content">
+          Skip to main content
+        </a>
         <div className="min-vh-100 d-flex flex-column">
           <Navbar />
-          <main className="flex-grow-1">{children}</main>
+          <main id="main-content" className="flex-grow-1">
+            {children}
+          </main>
           <Footer />
         </div>
       </body>

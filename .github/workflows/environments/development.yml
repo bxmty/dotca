@@ -31,13 +31,6 @@ variables:
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51S7c8DKZd4rSrt9n4kQU2lE9dZ9vSbpAkGRYu0qNRTMBmNvRxQvpFiYOIK2sZGkrmdQQAEaNxugOMGcXYLINRLCF00wuy1qoap
   NEXT_PUBLIC_PRODUCTION_GA_ID: G-DEV123456789
 
-  # Umami Analytics (Development - optional)
-  UMAMI_WEBSITE_ID: umami-website-dev-001
-  UMAMI_HOST_URL: https://umami.dev.boximity.ca
-  UMAMI_FORCE_HTTPS: false
-  UMAMI_DISABLE_TELEMETRY: false
-  UMAMI_LOG_LEVEL: debug
-
   # Feature flags
   ENABLE_DEBUG_LOGGING: true
   ENABLE_PERFORMANCE_MONITORING: false
@@ -54,7 +47,6 @@ secrets:
   # Application secrets (test values)
   - BREVO_API_KEY
   - STRIPE_SECRET_KEY
-  - ANSIBLE_VAULT_PASSWORD
 
   # GitHub
   - GITHUB_TOKEN

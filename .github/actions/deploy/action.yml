@@ -52,6 +52,26 @@ runs:
           exit 1
         fi
 
+        if [[ -z "${STRIPE_WEBHOOK_SECRET:-}" ]]; then
+          echo "::error::STRIPE_WEBHOOK_SECRET environment variable is required"
+          exit 1
+        fi
+
+        if [[ -z "${RESEND_API_KEY:-}" ]]; then
+          echo "::error::RESEND_API_KEY environment variable is required"
+          exit 1
+        fi
+
+        if [[ -z "${RESEND_FROM_EMAIL:-}" ]]; then
+          echo "::error::RESEND_FROM_EMAIL environment variable is required"
+          exit 1
+        fi
+
+        if [[ -z "${WEBMASTER_EMAIL:-}" ]]; then
+          echo "::error::WEBMASTER_EMAIL environment variable is required"
+          exit 1
+        fi
+
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
 
@@ -66,14 +86,6 @@ runs:
         # Configure SSH to use the key
         echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
         chmod 600 ~/.ssh/config
-
-        # Create Ansible vault password file if vault password is provided
-        if [[ -n "${ANSIBLE_VAULT_PASSWORD:-}" ]]; then
-          echo "$ANSIBLE_VAULT_PASSWORD" > ~/.ansible_vault_pass
-          chmod 600 ~/.ansible_vault_pass
-          echo "ANSIBLE_VAULT_PASSWORD_FILE=~/.ansible_vault_pass" >> $GITHUB_ENV
-          echo "✅ Ansible vault password file configured"
-        fi
 
         echo "✅ Deployment environment configured"
 
@@ -164,6 +176,10 @@ runs:
         next_public_api_url=${{ inputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
         BREVO_API_KEY=${BREVO_API_KEY:-}
         STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+        STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+        RESEND_API_KEY=${RESEND_API_KEY:-}
+        RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
+        WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
         STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         GA_PRODUCTION_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
         GA_STAGING_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}

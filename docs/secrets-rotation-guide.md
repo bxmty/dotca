@@ -10,7 +10,6 @@ This guide provides comprehensive procedures for rotating all secrets used in th
 - [GitHub Actions Secrets Rotation](#github-actions-secrets-rotation)
 - [API Key Rotation](#api-key-rotation)
 - [Environment Variables Rotation](#environment-variables-rotation)
-- [Ansible Vault Rotation](#ansible-vault-rotation)
 - [Infrastructure Credentials Rotation](#infrastructure-credentials-rotation)
 - [Emergency Procedures](#emergency-procedures)
 - [Validation and Testing](#validation-and-testing)
@@ -54,17 +53,11 @@ The DotCA project uses multiple types of secrets across different systems. Prope
 
 ### 3. API Keys and Tokens
 
-- **Services**: Stripe, Brevo, Resend, Google Analytics, Umami
+- **Services**: Stripe, Brevo, Resend, Google Analytics
 - **Rotation**: Every 90 days
 - **Impact**: Affects payment processing, emails, analytics
 
-### 4. Ansible Vault
-
-- **Location**: `ansible/vars/vault-vars.yml`
-- **Rotation**: Every 90 days or when team members change
-- **Impact**: Affects deployment automation
-
-### 5. Infrastructure Credentials
+### 4. Infrastructure Credentials
 
 - **Services**: DigitalOcean, Terraform, Docker Registry
 - **Rotation**: Every 90 days
@@ -174,11 +167,12 @@ After successful verification (minimum 24 hours):
 | `SPACES_SECRET_KEY`                  | Object storage secret            | Medium          |
 | `BREVO_API_KEY`                      | Email service                    | Medium          |
 | `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
+| `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
 | `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
 | `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
+| `STRIPE_WEBHOOK_SECRET`              | Webhook signature verification   | High            |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Payment forms                    | Medium          |
 | `NEXT_PUBLIC_PRODUCTION_GA_ID`       | Analytics                        | Low             |
-| `ANSIBLE_VAULT_PASSWORD`             | Deployment automation            | Critical        |
 
 ### Rotation Process
 
@@ -192,9 +186,6 @@ After successful verification (minimum 24 hours):
 # Spaces Credentials
 # Go to DigitalOcean Console → Spaces → API → Generate New Key
 # Copy Access Key ID and Secret Key
-
-# Ansible Vault Password
-openssl rand -base64 32 > new_vault_password.txt
 ```
 
 #### 2. Update GitHub Secrets
@@ -221,13 +212,6 @@ gh workflow run deploy.yml
 
 # If successful, test production
 gh workflow run deploy.yml -f promoted_image_tag=main
-```
-
-#### 4. Update Ansible Vault (if password changed)
-
-```bash
-# Re-encrypt vault with new password
-ansible-vault rekey ansible/vars/vault-vars.yml
 ```
 
 ## API Key Rotation
@@ -274,6 +258,33 @@ ansible-vault rekey ansible/vars/vault-vars.yml
    - Disable old keys in Stripe dashboard
    - Delete old keys after 30 days
 
+### Stripe Webhook Signing Secret
+
+`STRIPE_WEBHOOK_SECRET` is **environment-scoped**: staging holds the
+test-mode Workbench endpoint's secret, production holds the live-mode
+endpoint's, and local dev uses the one printed by `stripe listen`. Never
+copy one environment's value into another — signature verification will
+400 every webhook.
+
+1. **Roll the Endpoint Secret**
+   - Stripe Dashboard → Workbench → Webhooks → select the endpoint
+   - "Roll secret" — Stripe can keep the old secret valid for up to 24h,
+     which is the zero-downtime window
+
+2. **Update the Matching GitHub Environment Secret**
+
+   ```bash
+   # Staging (test-mode endpoint)
+   gh secret set STRIPE_WEBHOOK_SECRET -R owner/repo --env staging --body "whsec_new"
+
+   # Production (live-mode endpoint)
+   gh secret set STRIPE_WEBHOOK_SECRET -R owner/repo --env production --body "whsec_new"
+   ```
+
+3. **Redeploy and Verify**
+   - Redeploy the environment (runtime secret — no rebuild needed)
+   - Confirm webhook deliveries return 200 in Workbench → Webhooks
+
 ### Brevo (Sendinblue) API Keys
 
 1. **Generate New API Key**
@@ -307,13 +318,12 @@ ansible-vault rekey ansible/vars/vault-vars.yml
    # Update GitHub secret
    gh secret set RESEND_API_KEY -R owner/repo --body "re_xxxxxxxxxxxx"
 
-   # WEBMASTER_EMAIL is not a secret; update in environment variables or Ansible vars
+   # WEBMASTER_EMAIL is not a secret; update in environment variables
    # If stored as secret, update via GitHub:
    gh secret set WEBMASTER_EMAIL -R owner/repo --body "webmaster@example.com"
    ```
 
 3. **Update Deployment Configuration**
-   - Update `ansible/vars/vault-vars.yml` or environment config if `WEBMASTER_EMAIL` is stored there
    - Deploy and verify webmaster notification emails are delivered
 
 4. **Clean Up**
@@ -352,9 +362,6 @@ cp .env.staging .env.staging.backup
 ```bash
 # Update via GitHub secrets (preferred method)
 gh secret set ENVIRONMENT_VARIABLE_NAME -R owner/repo --body "new_value"
-
-# Or update ansible vault variables
-ansible-vault edit ansible/vars/vault-vars.yml
 ```
 
 ### Local Development
@@ -366,47 +373,6 @@ cp .env.local .env.local.backup
 npm run dev
 # Test locally
 ```
-
-## Ansible Vault Rotation
-
-### Prerequisites
-
-- Ansible vault password access
-- Access to `ansible/vars/vault-vars.yml`
-
-### Process
-
-1. **Generate New Vault Password**
-
-   ```bash
-   openssl rand -base64 32 > new_ansible_vault_password.txt
-   chmod 600 new_ansible_vault_password.txt
-   ```
-
-2. **Re-encrypt Vault File**
-
-   ```bash
-   cd ansible/vars
-   ansible-vault rekey vault-vars.yml
-   # Enter old password, then new password
-   ```
-
-3. **Update GitHub Secret**
-
-   ```bash
-   gh secret set ANSIBLE_VAULT_PASSWORD -R owner/repo --body "$(cat new_ansible_vault_password.txt)"
-   ```
-
-4. **Test Deployment**
-
-   ```bash
-   # Test with new vault password
-   gh workflow run deploy.yml -f promoted_image_tag=main
-   ```
-
-5. **Distribute New Password**
-   - Share new password with authorized team members
-   - Update password manager entries
 
 ## Infrastructure Credentials Rotation
 
@@ -563,7 +529,7 @@ gh workflow run deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
 - [ ] Deployment pipeline completes successfully
 - [ ] Payment processing works (Stripe)
 - [ ] Email delivery works (Brevo, Resend webmaster notifications)
-- [ ] Analytics tracking works (GA/Umami)
+- [ ] Analytics tracking works (GA)
 - [ ] Application loads without errors
 - [ ] Database connections work
 - [ ] File storage access works

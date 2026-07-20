@@ -83,13 +83,11 @@ Scripts expect these environment variables to be set for validation:
 - `DO_TOKEN` - DigitalOcean API token
 - `SPACES_ACCESS_ID` - DigitalOcean Spaces access ID
 - `SPACES_SECRET_KEY` - DigitalOcean Spaces secret key
-- `ANSIBLE_VAULT_PASSWORD` - Ansible vault password
 
 ### Optional File Paths
 
 - `SSH_PRIVATE_KEY_FILE` - Path to SSH private key (default: ~/.ssh/id_rsa)
 - `SSH_PUBLIC_KEY_FILE` - Path to SSH public key (default: ~/.ssh/id_rsa.pub)
-- `ANSIBLE_VAULT_FILE` - Path to Ansible vault file (default: ansible/vars/vault-vars.yml)
 
 ## Exit Codes
 

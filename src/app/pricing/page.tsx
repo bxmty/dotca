@@ -85,15 +85,15 @@ function PricingCards() {
             <div className="card-body p-4">
               <h3 className="fs-3 fw-medium mb-2">{plan.name}</h3>
               <div className="fs-2 fw-light mb-1">{plan.price}</div>
-              <p className="small fst-italic text-secondary mb-3">
+              <p className="small fst-italic text-body-secondary mb-3">
                 per user per month
               </p>
-              <p className="text-secondary mb-4">{plan.description}</p>
+              <p className="text-body-secondary mb-4">{plan.description}</p>
               <ul className="list-unstyled mb-4">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="d-flex align-items-start mb-2">
                     <svg
-                      className="text-success flex-shrink-0 me-2 mt-1"
+                      className="text-success-emphasis flex-shrink-0 me-2 mt-1"
                       width="20"
                       height="20"
                       fill="none"
@@ -114,7 +114,11 @@ function PricingCards() {
             </div>
             <div className="card-footer border-0 bg-transparent p-4 pt-0">
               <Link
-                href={`/checkout?plan=${plan.name}`}
+                href={
+                  plan.name === "Free"
+                    ? "/onboarding"
+                    : `/checkout?plan=${plan.name}`
+                }
                 className={`btn ${plan.highlighted ? "btn-primary" : "btn-outline-primary"} w-100`}
               >
                 {plan.cta}
@@ -132,7 +136,7 @@ export default function Pricing() {
   return (
     <>
       {/* Pricing Hero */}
-      <section className="py-5 py-md-7 bg-alt text-white">
+      <section className="py-5 py-md-7 bg-alt text-white" data-bs-theme="dark">
         <div className="container text-center">
           <h1 className="display-4 fw-light mb-4">
             Technology Solutions That Fit Your Budget
@@ -155,7 +159,7 @@ export default function Pricing() {
       </section>
 
       {/* FAQ Section */}
-      <section className="bg-alt py-5 py-md-7">
+      <section className="bg-alt py-5 py-md-7" data-bs-theme="dark">
         <div className="container">
           <h2 className="fs-1 fw-light mb-5 text-center">
             Frequently Asked Questions
@@ -179,7 +183,7 @@ export default function Pricing() {
                     className="accordion-collapse collapse show"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Our Password Manager includes secure credential storage,
                       password generation, multi-factor authentication, and
                       admin controls to manage team access to company accounts.
@@ -202,7 +206,7 @@ export default function Pricing() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       For most small businesses, our Basic package can be
                       implemented within 1-2 weeks, Standard within 3-5 weeks,
                       and Premium within 5-7 weeks, depending on your team size
@@ -226,7 +230,7 @@ export default function Pricing() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       Yes, all packages include the necessary licenses for the
                       specified features. There are no hidden costs or
                       additional software purchases required.
@@ -249,7 +253,7 @@ export default function Pricing() {
                     className="accordion-collapse collapse"
                     data-bs-parent="#faqAccordion"
                   >
-                    <div className="accordion-body text-secondary">
+                    <div className="accordion-body text-body-secondary">
                       You can upgrade your plan at any time. We&apos;ll prorate
                       the difference and apply any unused portion of your
                       current subscription to your new plan.
@@ -268,7 +272,7 @@ export default function Pricing() {
           <h2 className="fs-1 fw-light mb-4">
             Ready to Transform Your Business Technology?
           </h2>
-          <p className="lead text-secondary col-md-8 mx-auto mb-5">
+          <p className="lead text-body-secondary col-md-8 mx-auto mb-5">
             Take the first step today to eliminate IT headaches and focus on
             what you do best: serving your customers and growing your business.
           </p>

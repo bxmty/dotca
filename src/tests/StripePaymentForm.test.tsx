@@ -32,6 +32,10 @@ describe("StripePaymentForm", () => {
     // No need to mock location - test uses default localhost
   });
 
+  const clickPayButton = () => {
+    fireEvent.click(screen.getByRole("button"));
+  };
+
   it("renders the payment form with PaymentElement", () => {
     render(<StripePaymentForm onSuccess={mockOnSuccess} />);
 
@@ -39,6 +43,12 @@ describe("StripePaymentForm", () => {
     expect(
       screen.getByRole("button", { name: /complete payment/i }),
     ).toBeInTheDocument();
+  });
+
+  it("does not render a form element (it mounts inside the checkout form)", () => {
+    render(<StripePaymentForm onSuccess={mockOnSuccess} />);
+
+    expect(document.querySelector("form")).not.toBeInTheDocument();
   });
 
   it("disables the submit button when Stripe is not loaded", () => {
@@ -63,9 +73,7 @@ describe("StripePaymentForm", () => {
 
     render(<StripePaymentForm onSuccess={mockOnSuccess} />);
 
-    // Submit the form using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    clickPayButton();
 
     // Button should show loading state
     expect(
@@ -81,12 +89,10 @@ describe("StripePaymentForm", () => {
     });
   });
 
-  it("calls stripe.confirmPayment with correct parameters on form submission", async () => {
+  it("calls stripe.confirmPayment with correct parameters on click", async () => {
     render(<StripePaymentForm onSuccess={mockOnSuccess} />);
 
-    // Submit the form using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    clickPayButton();
 
     // Check if confirmPayment was called with correct parameters
     expect(mockConfirmPayment).toHaveBeenCalledWith({
@@ -101,9 +107,7 @@ describe("StripePaymentForm", () => {
   it("calls onSuccess callback when payment is successful", async () => {
     render(<StripePaymentForm onSuccess={mockOnSuccess} />);
 
-    // Submit the form using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    clickPayButton();
 
     // Wait for the success callback to be called
     await waitFor(() => {
@@ -119,9 +123,7 @@ describe("StripePaymentForm", () => {
 
     render(<StripePaymentForm onSuccess={mockOnSuccess} />);
 
-    // Submit the form using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    clickPayButton();
 
     // Error should be displayed
     await waitFor(() => {
@@ -132,14 +134,12 @@ describe("StripePaymentForm", () => {
     expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 
-  it("does nothing when form is submitted but Stripe is not loaded", () => {
+  it("does nothing when clicked but Stripe is not loaded", () => {
     mockUseStripe.mockReturnValue(null);
 
     render(<StripePaymentForm onSuccess={mockOnSuccess} />);
 
-    // Submit the form using the form element directly
-    const form = document.querySelector("form.stripe-form") as HTMLFormElement;
-    fireEvent.submit(form);
+    clickPayButton();
 
     // confirmPayment should not be called
     expect(mockConfirmPayment).not.toHaveBeenCalled();

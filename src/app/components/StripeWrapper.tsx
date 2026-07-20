@@ -1,37 +1,64 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { getStripe } from "../../lib/stripe";
 
+export interface CheckoutCustomer {
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
 interface StripeWrapperProps {
   children: ReactNode;
-  amount: number;
-  metadata?: Record<string, string>;
+  plan: string;
+  employeeCount: number;
+  billingCycle: string;
+  customer: CheckoutCustomer;
 }
 
 export default function StripeWrapper({
   children,
-  amount,
-  metadata,
+  plan,
+  employeeCount,
+  billingCycle,
+  customer,
 }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // One key per distinct order, so a re-render or double-fire can only
+  // replay the same subscription create, never mint a second one.
+  const idempotencyKey = useMemo(
+    () => globalThis.crypto.randomUUID(),
+    [plan, employeeCount, billingCycle, customer],
+  );
+
   useEffect(() => {
-    // Create a payment intent as soon as the page loads
-    const createPaymentIntent = async () => {
+    // Create the subscription as soon as the order details are confirmed
+    const createSubscription = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/stripe/create-payment-intent", {
+        // The server resolves the price from these order details;
+        // no amount is sent from the client.
+        const response = await fetch("/api/stripe/create-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: amount,
-            metadata: metadata || {},
+            plan,
+            employeeCount,
+            billingCycle,
+            customer,
+            idempotencyKey,
           }),
         });
 
@@ -58,8 +85,8 @@ export default function StripeWrapper({
       }
     };
 
-    createPaymentIntent();
-  }, [amount, metadata]);
+    createSubscription();
+  }, [plan, employeeCount, billingCycle, customer, idempotencyKey]);
 
   const options = {
     clientSecret,

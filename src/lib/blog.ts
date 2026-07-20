@@ -30,7 +30,7 @@ function getBlogPostFiles(): string[] {
   try {
     return fs
       .readdirSync(BLOG_CONFIG.contentPath)
-      .filter((file) => file.endsWith(".mdx"))
+      .filter((file) => file.endsWith(".md"))
       .map((file) => path.join(BLOG_CONFIG.contentPath, file));
   } catch (error) {
     console.warn("Blog content directory not found, returning empty array");
@@ -39,7 +39,7 @@ function getBlogPostFiles(): string[] {
 }
 
 /**
- * Parse frontmatter and content from MDX file
+ * Parse frontmatter and content from a markdown file
  */
 function parseBlogPost(filePath: string): BlogPost | null {
   try {
@@ -53,7 +53,7 @@ function parseBlogPost(filePath: string): BlogPost | null {
       return null;
     }
 
-    const slug = path.basename(filePath, ".mdx");
+    const slug = path.basename(filePath, ".md");
     const readingTime = data.readingTime || calculateReadingTime(content);
 
     const frontmatter: BlogPostFrontmatter = {
@@ -103,11 +103,22 @@ export function getAllBlogPosts(): BlogPost[] {
 }
 
 /**
- * Get blog post by slug
+ * Get a published blog post by slug
  */
 export function getBlogPostBySlug(slug: string): BlogPost | null {
-  const filePath = path.join(BLOG_CONFIG.contentPath, `${slug}.mdx`);
-  return parseBlogPost(filePath);
+  // Slugs are file basenames; reject anything that could traverse the filesystem
+  if (!/^[a-z0-9-]+$/i.test(slug)) {
+    return null;
+  }
+
+  const filePath = path.join(BLOG_CONFIG.contentPath, `${slug}.md`);
+  const post = parseBlogPost(filePath);
+
+  if (!post || !post.frontmatter.published) {
+    return null;
+  }
+
+  return post;
 }
 
 /**

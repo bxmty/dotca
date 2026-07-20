@@ -40,7 +40,7 @@ DOCKER_IMAGE=ghcr.io/your_username/dotca:staging
 # All your existing environment variables
 BREVO_API_KEY=your_brevo_key
 STRIPE_SECRET_KEY=your_stripe_secret
-STRIPE_PUBLISHABLE_KEY=your_stripe_publishable
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable
 GA_STAGING_ID=your_ga_staging_id
 # etc...
 ```

@@ -238,7 +238,11 @@ check_environment_variables() {
         ["DO_TOKEN"]="DigitalOcean API token"
         ["BREVO_API_KEY"]="Brevo email service API key"
         ["STRIPE_SECRET_KEY"]="Stripe payment processing secret key"
-        ["STRIPE_PUBLISHABLE_KEY"]="Stripe payment processing publishable key"
+        ["NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"]="Stripe payment processing publishable key"
+        ["STRIPE_WEBHOOK_SECRET"]="Stripe webhook signing secret"
+        ["RESEND_API_KEY"]="Resend email redundancy API key"
+        ["RESEND_FROM_EMAIL"]="Resend sending address"
+        ["WEBMASTER_EMAIL"]="Webmaster notification inbox"
     )
 
     # Optional but recommended variables
@@ -275,11 +279,32 @@ check_environment_variables() {
                         log_success "STRIPE_SECRET_KEY ✓"
                     fi
                     ;;
-                "STRIPE_PUBLISHABLE_KEY")
-                    if [[ ! "$STRIPE_PUBLISHABLE_KEY" =~ ^pk_(test|live)_ ]]; then
-                        add_issue "STRIPE_PUBLISHABLE_KEY does not match expected format"
+                "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY")
+                    if [[ ! "$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" =~ ^pk_(test|live)_ ]]; then
+                        add_issue "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY does not match expected format"
                     else
-                        log_success "STRIPE_PUBLISHABLE_KEY ✓"
+                        log_success "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ✓"
+                    fi
+                    ;;
+                "STRIPE_WEBHOOK_SECRET")
+                    if [[ ! "$STRIPE_WEBHOOK_SECRET" =~ ^whsec_ ]]; then
+                        add_issue "STRIPE_WEBHOOK_SECRET does not match expected format (should start with whsec_)"
+                    else
+                        log_success "STRIPE_WEBHOOK_SECRET ✓"
+                    fi
+                    ;;
+                "RESEND_API_KEY")
+                    if [[ ! "$RESEND_API_KEY" =~ ^re_ ]]; then
+                        add_issue "RESEND_API_KEY does not match expected format (should start with re_)"
+                    else
+                        log_success "RESEND_API_KEY ✓"
+                    fi
+                    ;;
+                "RESEND_FROM_EMAIL" | "WEBMASTER_EMAIL")
+                    if [[ ! "${!var}" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]]; then
+                        add_issue "$var does not look like an email address"
+                    else
+                        log_success "$var ✓"
                     fi
                     ;;
             esac

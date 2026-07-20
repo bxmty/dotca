@@ -56,6 +56,29 @@ validate_ssh_key() {
     return 0
 }
 
+# Generic format check for secrets that only need a pattern match
+validate_secret_format() {
+    local var_name="$1"
+    local value="$2"
+    local pattern="$3"
+
+    if [[ -z "$value" ]]; then
+        log_error "$var_name is empty"
+        ((FAILED++))
+        return 1
+    fi
+
+    if [[ ! "$value" =~ $pattern ]]; then
+        log_error "Invalid $var_name format"
+        ((FAILED++))
+        return 1
+    fi
+
+    log_success "$var_name format valid"
+    ((PASSED++))
+    return 0
+}
+
 validate_stripe_key() {
     local key="$1"
     local key_type="$2"
@@ -186,34 +209,6 @@ validate_spaces_credentials() {
     return 0
 }
 
-validate_ansible_vault() {
-    local vault_file="$1"
-    local vault_password="$2"
-
-    if [[ ! -f "$vault_file" ]]; then
-        log_error "Ansible vault file not found: $vault_file"
-        ((FAILED++))
-        return 1
-    fi
-
-    if [[ -z "$vault_password" ]]; then
-        log_error "Ansible vault password is empty"
-        ((FAILED++))
-        return 1
-    fi
-
-    # Test if vault can be decrypted
-    if ! ansible-vault view "$vault_file" --vault-password-file <(echo "$vault_password") > /dev/null 2>&1; then
-        log_error "Cannot decrypt Ansible vault file with provided password"
-        ((FAILED++))
-        return 1
-    fi
-
-    log_success "Ansible vault file can be decrypted successfully"
-    ((PASSED++))
-    return 0
-}
-
 # Main validation logic
 main() {
     log_info "🔍 Starting secret validation for DotCA project"
@@ -229,9 +224,19 @@ main() {
     validate_stripe_key "${STRIPE_SECRET_KEY:-}" "secret"
     validate_stripe_key "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}" "publishable"
 
+    # Stripe webhook signing secret
+    log_info "Validating Stripe webhook secret..."
+    validate_secret_format "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET:-}" '^whsec_[A-Za-z0-9]{20,}$'
+
     # Brevo API Key
     log_info "Validating Brevo API key..."
     validate_brevo_key "${BREVO_API_KEY:-}"
+
+    # Resend (email redundancy)
+    log_info "Validating Resend configuration..."
+    validate_secret_format "RESEND_API_KEY" "${RESEND_API_KEY:-}" '^re_[A-Za-z0-9_]{16,}$'
+    validate_secret_format "RESEND_FROM_EMAIL" "${RESEND_FROM_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'
+    validate_secret_format "WEBMASTER_EMAIL" "${WEBMASTER_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'
 
     # Google Analytics IDs
     log_info "Validating Google Analytics IDs..."
@@ -246,10 +251,6 @@ main() {
     # Spaces Credentials
     log_info "Validating Spaces credentials..."
     validate_spaces_credentials "${SPACES_ACCESS_ID:-}" "${SPACES_SECRET_KEY:-}"
-
-    # Ansible Vault
-    log_info "Validating Ansible vault..."
-    validate_ansible_vault "${ANSIBLE_VAULT_FILE:-ansible/vars/vault-vars.yml}" "${ANSIBLE_VAULT_PASSWORD:-}"
 
     # Summary
     log_info "=============================================="

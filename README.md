@@ -149,7 +149,9 @@ BREVO_API_KEY=your_email_service_key
 RESEND_API_KEY=your_resend_api_key
 WEBMASTER_EMAIL=webmaster@example.com
 STRIPE_SECRET_KEY=your_stripe_secret
-STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_from_stripe_listen
+RESEND_FROM_EMAIL=noreply@boximity.ca
 ```
 
 ## 📊 Monitoring & Analytics

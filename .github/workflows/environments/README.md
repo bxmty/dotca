@@ -141,14 +141,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `RESEND_API_KEY`: Resend API key for webmaster notification emails
 - `WEBMASTER_EMAIL`: Email address for webmaster form submission notifications
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
-- `ANSIBLE_VAULT_PASSWORD`: Password for Ansible vault decryption
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
-
-#### Environment-Specific Secrets
-
-- `UMAMI_DB_PASSWORD`: Umami analytics database password
-- `UMAMI_APP_SECRET`: Umami application secret
-- `UMAMI_ADMIN_PASSWORD`: Umami admin password
 
 ## Validation
 

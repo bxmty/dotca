@@ -5,7 +5,6 @@
 
 # Add a pre-task to fix temporary directory issues
 - name: Fix temporary directory issues
-  vars_files: vars/vault-vars.yml
   hosts: digitalocean
   become: true
   gather_facts: false
@@ -19,7 +18,6 @@
 - name: Setup Staging environment for dotca
   hosts: digitalocean
   become: true
-  vars_files: vars/vault-vars.yml
   vars:
     project_name: dotca-nextjs
     # Git variables removed - using container image from GHCR instead
@@ -29,6 +27,10 @@
     brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
+    resend_api_key: "{{ RESEND_API_KEY | default('') }}"
+    resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
+    webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     next_public_environment: staging
@@ -204,12 +206,8 @@
           Final variable values before docker-compose generation:
           ga_staging_id: "{{ ga_staging_id | default('EMPTY') }}"
           ga_production_id: "{{ ga_production_id | default('EMPTY') }}"
-          umami_website_id: "{{ umami_website_id | default('EMPTY') }}"
-          umami_host_url: "{{ umami_host_url | default('EMPTY') }}"
           GA_STAGING_ID: "{{ GA_STAGING_ID | default('EMPTY') }}"
           GA_PRODUCTION_ID: "{{ GA_PRODUCTION_ID | default('EMPTY') }}"
-          UMAMI_WEBSITE_ID: "{{ UMAMI_WEBSITE_ID | default('EMPTY') }}"
-          UMAMI_HOST_URL: "{{ UMAMI_HOST_URL | default('EMPTY') }}"
 
     - name: Generate docker-compose.yml from template
       ansible.builtin.template:
@@ -477,7 +475,7 @@
       changed_when: false
 
     - name: Verify web container environment variables
-      ansible.builtin.command: docker-compose exec -T web env | grep -E "(GA_|NEXT_PUBLIC_UMAMI_)"
+      ansible.builtin.command: docker-compose exec -T web env | grep -E "GA_"
       args:
         chdir: "{{ app_dir }}"
       register: container_env
@@ -697,7 +695,6 @@
 - name: Setup Let's Encrypt with Nginx
   hosts: digitalocean
   become: yes
-  vars_files: vars/vault-vars.yml
   vars:
     ssl_domain_name: "staging.boximity.ca"
     email_address: "matticem@boximity.ca"

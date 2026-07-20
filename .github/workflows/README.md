@@ -147,7 +147,6 @@ Environment-specific configurations in `.github/workflows/environments/`:
 - `SPACES_ACCESS_ID/SECRET_KEY` - Object storage
 - `BREVO_API_KEY` - Email service
 - `STRIPE_SECRET_KEY` - Payment processing
-- `ANSIBLE_VAULT_PASSWORD` - Ansible secrets
 - `GITHUB_TOKEN` - GitHub API access
 
 ### Security Features

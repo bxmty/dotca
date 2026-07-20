@@ -152,7 +152,6 @@ main() {
     log_info "Checking file permissions..."
     check_file_permissions "${SSH_PRIVATE_KEY_FILE:-~/.ssh/id_rsa}" "600" "SSH private key"
     check_file_permissions "${SSH_PUBLIC_KEY_FILE:-~/.ssh/id_rsa.pub}" "644" "SSH public key"
-    check_file_permissions "ansible/vars/vault-vars.yml" "600" "Ansible vault"
 
     # Environment variable format checks
     log_info "Checking environment variable formats..."
@@ -160,9 +159,15 @@ main() {
     # Stripe keys
     check_env_var_format "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY:-}" '^sk_(test|live)_[A-Za-z0-9]{20,}$' "Stripe secret key"
     check_env_var_format "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}" '^pk_(test|live)_[A-Za-z0-9]{20,}$' "Stripe publishable key"
+    check_env_var_format "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET:-}" '^whsec_[A-Za-z0-9]{20,}$' "Stripe webhook signing secret"
 
     # Brevo key
     check_env_var_format "BREVO_API_KEY" "${BREVO_API_KEY:-}" '^[A-Za-z0-9_-]{20,}$' "Brevo API key"
+
+    # Resend (email redundancy)
+    check_env_var_format "RESEND_API_KEY" "${RESEND_API_KEY:-}" '^re_[A-Za-z0-9_]{16,}$' "Resend API key"
+    check_env_var_format "RESEND_FROM_EMAIL" "${RESEND_FROM_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' "Resend from address"
+    check_env_var_format "WEBMASTER_EMAIL" "${WEBMASTER_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' "Webmaster address"
 
     # Google Analytics IDs
     check_env_var_format "NEXT_PUBLIC_PRODUCTION_GA_ID" "${NEXT_PUBLIC_PRODUCTION_GA_ID:-}" '^G-[A-Z0-9]{10}$' "Production GA ID"
@@ -181,7 +186,6 @@ main() {
     check_github_secret_access "SSH_PRIVATE_KEY" "SSH private key"
     check_github_secret_access "STRIPE_SECRET_KEY" "Stripe secret"
     check_github_secret_access "BREVO_API_KEY" "Brevo API"
-    check_github_secret_access "ANSIBLE_VAULT_PASSWORD" "Ansible vault"
 
     # 1Password access
     log_info "Checking 1Password access..."

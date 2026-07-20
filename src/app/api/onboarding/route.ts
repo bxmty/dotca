@@ -1,9 +1,40 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
+import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
+import { sendWebmasterNotification } from "@/lib/notify";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
+
+// Onboarding leads land in Brevo list 10 (vacated by the old waitlist)
+const ONBOARDING_LIST_ID = 10;
 
 export async function POST(request: Request) {
   try {
     // Parse the JSON request body
-    const data = await request.json();
+    let data;
+    try {
+      data = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Request body must be valid JSON" },
+        { status: 400 },
+      );
+    }
+
+    // Honeypot: the "website" field is hidden from humans. A filled value
+    // means a bot — return success and send nothing.
+    if (typeof data?.website === "string" && data.website.trim() !== "") {
+      return NextResponse.json({ success: true });
+    }
+
+    if (isRateLimited(getClientIp(request))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Too many submissions. Please try again later.",
+        },
+        { status: 429 },
+      );
+    }
 
     // Validate required fields
     const requiredFields = [
@@ -52,16 +83,89 @@ export async function POST(request: Request) {
       );
     }
 
-    // Here you would typically:
-    // 1. Store it in a database
-    // 2. Maybe trigger email notifications or other processes
+    // Validation is done; from here on the lead exists. Brevo (CRM) and the
+    // webmaster email (Resend) fire in parallel, and the submission succeeds
+    // if either lands — see the redundancy matrix in the PRD.
+    const smsPhone = formatE164Phone(data.contactPhone) ?? undefined;
+    const [brevoSettled, notifySettled] = await Promise.allSettled([
+      addBrevoContact({
+        listId: ONBOARDING_LIST_ID,
+        email: data.contactEmail,
+        smsPhone,
+        attributes: {
+          FULLNAME: data.contactName,
+          COMPANY: data.companyName,
+          INDUSTRY: data.industry,
+          EMPLOYEE_COUNT: String(data.employeeCount),
+          PHONE: data.contactPhone,
+          ADDRESS: data.address,
+          CITY: data.city,
+          STATE: data.state,
+          ZIP: data.zipCode,
+          CURRENT_IT_PROVIDERS: data.currentITProviders || "",
+          SOFTWARE_USED: data.softwareUsed || "",
+          PAIN_POINTS: data.painPoints || "",
+          GOALS: data.goals || "",
+        },
+      }),
+      sendWebmasterNotification({
+        formType: "Onboarding",
+        submitterName: data.contactName,
+        fields: {
+          "Contact name": data.contactName,
+          Email: data.contactEmail,
+          Phone: data.contactPhone,
+          Company: data.companyName,
+          Industry: data.industry,
+          "Employee count": String(data.employeeCount),
+          Address: data.address,
+          City: data.city,
+          "Province/State": data.state,
+          "Postal code": data.zipCode,
+          "Current IT providers": data.currentITProviders || "",
+          "Software used": data.softwareUsed || "",
+          "Pain points": data.painPoints || "",
+          Goals: data.goals || "",
+        },
+      }),
+    ]);
 
-    // For demonstration, we're just returning success
-    // In a real app, you'd store this data somewhere
-    return NextResponse.json({
-      success: true,
-      message: "Onboarding data received successfully",
-    });
+    const brevoResult =
+      brevoSettled.status === "fulfilled"
+        ? brevoSettled.value
+        : { ok: false as const, code: "exception" };
+    const notifySent =
+      notifySettled.status === "fulfilled" && notifySettled.value;
+
+    // An existing contact still counts as a landed submission
+    const brevoLanded =
+      brevoResult.ok || brevoResult.code === "duplicate_parameter";
+
+    if (!brevoLanded || !notifySent) {
+      const detail = `Brevo ${
+        brevoLanded
+          ? "ok"
+          : `failed (${brevoResult.code ?? brevoResult.status})`
+      }, webmaster email ${notifySent ? "ok" : "failed"}`;
+      console.error(`Onboarding delivery failure: ${detail}`);
+      Sentry.captureMessage(`Onboarding delivery failure: ${detail}`, "error");
+    }
+
+    if (brevoLanded || notifySent) {
+      return NextResponse.json({
+        success: true,
+        message: "Onboarding data received successfully",
+      });
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+      },
+      { status: 503 },
+    );
   } catch (error) {
     // Error processing data
     console.error("Onboarding form submission error:", error);

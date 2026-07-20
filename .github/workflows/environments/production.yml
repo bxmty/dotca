@@ -33,15 +33,10 @@ variables:
 
   # Application configuration
   NEXT_PUBLIC_APP_ENV: production
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_live_51S7c8DKZd4rSrt9nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY lives as a GitHub environment secret
+  # (pk_live_… from the Boximity Inc. account); never hardcode a key here —
+  # an earlier placeholder in this file pointed at a defunct Stripe account.
   NEXT_PUBLIC_PRODUCTION_GA_ID: G-P890DC395M
-
-  # Umami Analytics (Production)
-  UMAMI_WEBSITE_ID: umami-website-prod-001
-  UMAMI_HOST_URL: https://umami.boximity.ca
-  UMAMI_FORCE_HTTPS: true
-  UMAMI_DISABLE_TELEMETRY: true
-  UMAMI_LOG_LEVEL: warn
 
   # Feature flags
   ENABLE_DEBUG_LOGGING: false
@@ -59,16 +54,15 @@ secrets:
   # Application secrets
   - BREVO_API_KEY
   - STRIPE_SECRET_KEY
-  - ANSIBLE_VAULT_PASSWORD
+  - STRIPE_WEBHOOK_SECRET
+  - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  - RESEND_API_KEY
+  - RESEND_FROM_EMAIL
+  - WEBMASTER_EMAIL
 
   # Sentry monitoring
   - SENTRY_AUTH_TOKEN
   - SENTRY_DSN_PRODUCTION
-
-  # Umami Database
-  - UMAMI_DB_PASSWORD
-  - UMAMI_APP_SECRET
-  - UMAMI_ADMIN_PASSWORD
 
   # GitHub
   - GITHUB_TOKEN

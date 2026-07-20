@@ -2,30 +2,16 @@
  * Unified Analytics Interface
  *
  * This module provides a single, consistent API for tracking analytics events
- * regardless of which provider (Google Analytics, Umami, or both) is being used.
- *
- * Benefits:
- * - Consistent API across the application
- * - Easy to switch between analytics providers
- * - Can use multiple providers simultaneously
- * - Centralized configuration and error handling
+ * so the rest of the application never talks to a provider directly.
+ * Google Analytics is currently the only provider.
  */
 
-// Import both analytics providers
 import {
   pageview as gaPageview,
   event as gaEvent,
   initGA,
   GA_MEASUREMENT_ID,
 } from "./gtag";
-import {
-  trackPageView as umamiTrackPageView,
-  trackCustomEvent,
-  trackFormSubmission,
-  trackButtonClick as umamiTrackButtonClick,
-  trackEngagement as umamiTrackEngagement,
-  isUmamiConfigured,
-} from "./umami";
 
 // Types for unified analytics interface
 export interface UnifiedEventData {
@@ -38,14 +24,12 @@ export interface UnifiedEventData {
 
 export interface AnalyticsConfig {
   enableGoogleAnalytics: boolean;
-  enableUmami: boolean;
   debug: boolean;
 }
 
 // Default configuration - can be overridden by environment variables
 const getAnalyticsConfig = (): AnalyticsConfig => ({
   enableGoogleAnalytics: !!GA_MEASUREMENT_ID,
-  enableUmami: isUmamiConfigured(),
   debug: process.env.NODE_ENV === "development",
 });
 
@@ -79,11 +63,6 @@ export const initializeAnalytics = (): void => {
     }
   }
 
-  // Umami is initialized automatically by the UmamiAnalytics component
-  if (config.enableUmami && config.debug) {
-    console.log("✅ Umami tracking enabled (initialized by component)");
-  }
-
   isInitialized = true;
 };
 
@@ -106,9 +85,6 @@ export const trackPageView = async (
     console.log(`📊 Tracking pageview: ${url}`, title ? { title } : {});
   }
 
-  const promises: Promise<void>[] = [];
-
-  // Track with Google Analytics
   if (config.enableGoogleAnalytics) {
     try {
       gaPageview(url);
@@ -116,18 +92,6 @@ export const trackPageView = async (
       console.error("❌ GA pageview error:", error);
     }
   }
-
-  // Track with Umami (server-side)
-  if (config.enableUmami) {
-    promises.push(
-      umamiTrackPageView(url, undefined, title).catch((error) => {
-        console.error("❌ Umami pageview error:", error);
-      }),
-    );
-  }
-
-  // Wait for all async operations to complete
-  await Promise.allSettled(promises);
 };
 
 /**
@@ -147,9 +111,6 @@ export const trackEvent = async (
     console.log(`📊 Tracking event:`, eventData);
   }
 
-  const promises: Promise<void>[] = [];
-
-  // Track with Google Analytics
   if (config.enableGoogleAnalytics) {
     try {
       gaEvent({
@@ -162,43 +123,19 @@ export const trackEvent = async (
       console.error("❌ GA event error:", error);
     }
   }
-
-  // Track with Umami (server-side)
-  if (config.enableUmami) {
-    promises.push(
-      trackCustomEvent(eventData.action, eventData).catch((error) => {
-        console.error("❌ Umami event error:", error);
-      }),
-    );
-  }
-
-  // Wait for all async operations to complete
-  await Promise.allSettled(promises);
 };
 
 /**
  * Track a form submission event
  * @param formName - Name/identifier of the form
- * @param formData - Optional form data (will be sanitized)
  */
-export const trackFormSubmit = async (
-  formName: string,
-  formData?: Record<string, unknown>,
-): Promise<void> => {
+export const trackFormSubmit = async (formName: string): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (config.debug) {
     console.log(`📝 Tracking form submission: ${formName}`);
   }
 
-  // Track with Umami (includes GA-compatible event)
-  if (config.enableUmami) {
-    await trackFormSubmission(formName, formData).catch((error) => {
-      console.error("❌ Form tracking error:", error);
-    });
-  }
-
-  // Also track as a regular event for consistency
   await trackEvent({
     action: "form_submit",
     category: "forms",
@@ -224,14 +161,6 @@ export const trackButtonClick = async (
     );
   }
 
-  // Track with Umami (includes GA-compatible event)
-  if (config.enableUmami) {
-    await umamiTrackButtonClick(buttonName, buttonContext).catch((error) => {
-      console.error("❌ Button tracking error:", error);
-    });
-  }
-
-  // Also track as a regular event for consistency
   await trackEvent({
     action: "button_click",
     category: "interaction",
@@ -254,14 +183,6 @@ export const trackEngagement = async (
     console.log(`🎯 Tracking engagement: ${action}`, details);
   }
 
-  // Track with Umami (includes GA-compatible event)
-  if (config.enableUmami) {
-    await umamiTrackEngagement(action, details).catch((error) => {
-      console.error("❌ Engagement tracking error:", error);
-    });
-  }
-
-  // Also track as a regular event for consistency
   await trackEvent({
     action: `engagement_${action}`,
     category: "engagement",
@@ -273,8 +194,7 @@ export const trackEngagement = async (
  * Check if analytics tracking is properly configured
  */
 export const isAnalyticsConfigured = (): boolean => {
-  const config = getAnalyticsConfig();
-  return config.enableGoogleAnalytics || config.enableUmami;
+  return getAnalyticsConfig().enableGoogleAnalytics;
 };
 
 /**

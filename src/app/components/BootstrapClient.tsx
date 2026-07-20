@@ -11,15 +11,11 @@ export default function BootstrapClient() {
     // to make it easier to detect client-side rendering
     document.body.classList.add("bootstrap-loaded");
 
-    // Set theme based on system preference
+    // The initial theme is set before first paint by an inline script in
+    // layout.tsx; this only keeps it in sync with the OS preference.
     const darkModePreference = window.matchMedia(
       "(prefers-color-scheme: dark)",
     );
-    if (darkModePreference.matches) {
-      document.documentElement.setAttribute("data-bs-theme", "dark");
-    } else {
-      document.documentElement.setAttribute("data-bs-theme", "light");
-    }
 
     // Listen for changes in system dark mode preference
     const handleThemeChange = (e: MediaQueryListEvent) => {

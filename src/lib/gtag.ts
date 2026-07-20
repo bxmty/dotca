@@ -85,26 +85,29 @@ export const initGA = () => {
   // Add Google Analytics script to the document
   window.dataLayer = window.dataLayer || [];
 
-  // Define gtag function using the standard implementation
-  window.gtag = function (
-    command: string,
-    target: string | Date,
-    ...args: Record<string, unknown>[]
-  ) {
-    window.dataLayer.push([command, target, ...args]);
+  // Define gtag function using the standard implementation.
+  // gtag.js only processes `arguments` objects pushed to the dataLayer;
+  // pushing a plain array would be silently ignored.
+  window.gtag = function () {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments);
   };
 
-  // Configure GA after a short delay to ensure script is ready
-  setTimeout(() => {
-    try {
-      configureGA();
-    } catch (error) {
-      console.error("Error initializing Google Analytics:", error);
-    }
-  }, 1000);
+  // Commands queue in the dataLayer until the GA script loads,
+  // so it is safe to configure immediately.
+  try {
+    configureGA();
+  } catch (error) {
+    console.error("Error initializing Google Analytics:", error);
+  }
 };
 
-// Separate configuration function for reusability
+// Separate configuration function for reusability.
+// All config calls use send_page_view: false — page views are sent exactly
+// once per navigation by pageview(), so repeated config calls (inline script,
+// initGA, analytics init) can never inflate the pageview count.
+let hasConfiguredGA = false;
+
 const configureGA = () => {
   if (!window.gtag || !GA_MEASUREMENT_ID) {
     console.error(
@@ -113,25 +116,30 @@ const configureGA = () => {
     return;
   }
 
+  if (hasConfiguredGA) {
+    return;
+  }
+  hasConfiguredGA = true;
+
   window.gtag("js", new Date());
 
   // Configure with environment-specific settings
   if (isProduction) {
     console.log("Configuring GA for production");
     window.gtag("config", GA_MEASUREMENT_ID, {
-      send_page_view: true,
+      send_page_view: false,
       transport_type: "beacon",
     });
   } else if (isStaging) {
     console.log("Configuring GA for staging");
     window.gtag("config", GA_MEASUREMENT_ID, {
-      send_page_view: true,
+      send_page_view: false,
     });
   } else if (isDevelopment && GA_MEASUREMENT_ID) {
     console.log("Configuring GA for development");
     window.gtag("config", GA_MEASUREMENT_ID, {
       debug_mode: true,
-      send_page_view: false, // Optional: Disable page views in development
+      send_page_view: false,
     });
   }
 };
@@ -155,8 +163,11 @@ export const pageview = (url: string) => {
   }
 
   try {
-    window.gtag("config", GA_MEASUREMENT_ID, {
+    // Send an explicit page_view event rather than re-calling config,
+    // which would re-run configuration on every navigation.
+    window.gtag("event", "page_view", {
       page_path: url,
+      page_location: `${window.location.origin}${url}`,
     });
 
     if (isProduction) {

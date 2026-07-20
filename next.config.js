@@ -5,6 +5,13 @@ const nextConfig = {
   // Config options here
   // Only use standalone output in production
   ...(process.env.NODE_ENV === "production" && { output: "standalone" }),
+  // Allow overriding the build dir, e.g. when .next has root-owned Docker artifacts
+  ...(process.env.NEXT_DIST_DIR && { distDir: process.env.NEXT_DIST_DIR }),
+  // Dev-only (ignored in production builds): Next 16 blocks /_next/* asset
+  // requests from non-localhost origins, which breaks testing the dev server
+  // from phones/other devices on the LAN. Allow private-network origins.
+  // Patterns match hostname segments split on ".", so IPv4 needs one "*" per octet.
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
   // Enable CSS import in server components
   transpilePackages: ["bootstrap"],
   // Image optimization configuration

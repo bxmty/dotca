@@ -7,7 +7,6 @@
   hosts: digitalocean
   become: true
   gather_facts: false
-  vars_files: vars/vault-vars.yml
   tasks:
     - name: Ensure /tmp directory exists with proper permissions
       ansible.builtin.raw: |
@@ -18,7 +17,6 @@
 - name: Setup Production environment for dotca
   hosts: digitalocean
   become: true
-  vars_files: vars/vault-vars.yml
   vars:
     project_name: dotca-nextjs
     git_repo_url: "https://github.com/{{ GITHUB_REPO | default('bxmty/dotca') }}.git"
@@ -28,6 +26,10 @@
     brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
+    stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
+    resend_api_key: "{{ RESEND_API_KEY | default('') }}"
+    resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
+    webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     next_public_environment: production
@@ -882,7 +884,6 @@
 - name: Setup Let's Encrypt SSL Certificates
   hosts: digitalocean
   become: yes
-  vars_files: vars/vault-vars.yml
   vars:
     # Certbot configuration
     certbot_install_method: package
@@ -1214,106 +1215,3 @@
           3. Verify auto-renewal is working (runs daily at 3:30 AM)
 
           ============================================
-
-# SSL Certificate Setup for Umami Dashboard using geerlingguy certbot role
-- name: Setup Let's Encrypt SSL Certificate for Umami Dashboard (Production)
-  hosts: digitalocean
-  become: yes
-  vars_files: vars/vault-vars.yml
-  ignore_errors: yes
-  vars:
-    # Certbot configuration
-    certbot_install_method: package
-    certbot_auto_renew: true
-    certbot_auto_renew_user: "{{ ansible_user | default('root') }}"
-    certbot_auto_renew_hour: "3"
-    certbot_auto_renew_minute: "30"
-    certbot_auto_renew_options: "--quiet"
-
-    # Certificate generation settings - only create if needed
-    certbot_create_if_missing: "{{ cert_needs_action | default(true) }}"
-    certbot_create_method: standalone
-    certbot_testmode: false
-    certbot_hsts: true
-    certbot_admin_email: "matticem@boximity.ca"
-
-    # Domain configuration for Umami dashboard (production)
-    certbot_certs:
-      - domains:
-          - umami.boximity.ca
-        email: "matticem@boximity.ca"
-
-    # Services to stop during standalone certificate generation
-    certbot_create_standalone_stop_services:
-      - nginx
-
-  pre_tasks:
-    - name: Check if Umami certificate already exists
-      ansible.builtin.stat:
-        path: /etc/letsencrypt/live/umami.boximity.ca/cert.pem
-      register: cert_file_exists
-
-    - name: Check certificate expiration (if it exists)
-      ansible.builtin.command: |
-        bash -c "
-        if [ -f /etc/letsencrypt/live/umami.boximity.ca/cert.pem ]; then
-          # Calculate days until expiration
-          openssl x509 -enddate -noout -in /etc/letsencrypt/live/umami.boximity.ca/cert.pem | cut -d= -f2 | xargs -I {} date -d {} +%s | awk '{print int(($1 - systime()) / 86400)}'
-        else
-          echo 'certificate_missing'
-        fi
-        "
-      register: cert_expiry_check
-      changed_when: false
-      ignore_errors: true
-
-    - name: Determine if certificate action is needed
-      ansible.builtin.set_fact:
-        cert_needs_action: "{{ not cert_file_exists.stat.exists or (cert_expiry_check.stdout | default('certificate_missing') != 'certificate_missing' and (cert_expiry_check.stdout | int) < 30) }}"
-
-    - name: Log certificate check results
-      ansible.builtin.debug:
-        msg:
-          - "Certificate exists: {{ cert_file_exists.stat.exists }}"
-          - "Days until expiry: {{ cert_expiry_check.stdout | default('certificate_missing') }}"
-          - "Certificate action needed: {{ cert_needs_action }}"
-
-  roles:
-    - geerlingguy.certbot
-
-  post_tasks:
-    - name: Display certificate action taken
-      ansible.builtin.debug:
-        msg: |
-          🔍 Umami SSL Certificate Action Summary (Production):
-
-          Action was needed: {{ '✅ YES' if cert_needs_action else '❌ NO' }}
-          {% if cert_needs_action %}
-          - Certificate was {{ 'missing' if not cert_file_exists.stat.exists else 'expiring soon (' ~ cert_expiry_check.stdout ~ ' days left)' }}
-          - New certificate generated for: umami.boximity.ca
-          {% else %}
-          - Certificate is valid ({{ cert_expiry_check.stdout | default('unknown') }} days remaining)
-          {% endif %}
-
-          📋 Next Steps:
-          - Ensure DNS points umami.boximity.ca to {{ ansible_host }}
-          - Umami dashboard will be available at: https://umami.boximity.ca
-
-    - name: Log certificate generation completion
-      ansible.builtin.debug:
-        msg: "🎉 Umami SSL certificate setup completed successfully for production!"
-      when: cert_needs_action
-
-    - name: Handle Umami certificate generation failure
-      ansible.builtin.debug:
-        msg: |
-          ⚠️  Umami SSL Certificate Generation Failed (Non-Critical)
-
-          This is expected if the DNS record for umami.boximity.ca doesn't exist yet.
-
-          To fix this:
-          1. Add DNS A record: umami.boximity.ca → {{ ansible_host }}
-          2. Re-run the deployment to generate the certificate
-
-          The main application deployment was successful regardless of this failure.
-      when: ansible_failed_result is defined

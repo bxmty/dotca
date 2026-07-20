@@ -3,7 +3,7 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Checkout & Service Selection",
   description:
-    "Complete your subscription to Boximity MSP services. Select your plan, enter your information, and join our waitlist for enterprise IT solutions.",
+    "Subscribe to Boximity MSP managed IT services. Choose your plan, team size, and billing cycle, then pay securely online.",
   robots: {
     index: false,
     follow: false,

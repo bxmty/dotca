@@ -1,4 +1,14 @@
 import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import CheckoutPage from "@/app/checkout/page";
+
+// Mock next/navigation
+const mockReplace = jest.fn();
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+}));
 
 // Mock the components
 jest.mock("@/app/checkout/PlanSelector", () => ({
@@ -8,12 +18,13 @@ jest.mock("@/app/checkout/PlanSelector", () => ({
     pricingPlans,
   }: {
     onPlanSelected: (plan: Record<string, unknown>) => void;
-    pricingPlans: Array<Record<string, unknown>>;
+    pricingPlans: Array<{ name: string }>;
   }) {
-    // Simulate selecting the first plan after render
+    // Simulate selecting the Basic plan after render
     React.useEffect(() => {
-      if (pricingPlans && pricingPlans.length > 0) {
-        onPlanSelected(pricingPlans[0]);
+      const basic = pricingPlans.find((plan) => plan.name === "Basic");
+      if (basic) {
+        onPlanSelected(basic);
       }
     }, [onPlanSelected, pricingPlans]);
 
@@ -25,17 +36,20 @@ jest.mock("@/app/components/StripeWrapper", () => ({
   __esModule: true,
   default: ({
     children,
-    amount,
-    metadata,
+    plan,
+    employeeCount,
+    billingCycle,
   }: {
     children: React.ReactNode;
-    amount: number;
-    metadata?: Record<string, string>;
+    plan: string;
+    employeeCount: number;
+    billingCycle: string;
   }) => (
     <div
       data-testid="stripe-wrapper"
-      data-amount={amount}
-      data-metadata={JSON.stringify(metadata)}
+      data-plan={plan}
+      data-employee-count={employeeCount}
+      data-billing-cycle={billingCycle}
     >
       {children}
     </div>
@@ -70,37 +84,107 @@ jest.mock("next/link", () => ({
   ),
 }));
 
+async function continueToPayment() {
+  await waitFor(() => {
+    expect(screen.getByLabelText("First Name*")).toBeInTheDocument();
+  });
+
+  fireEvent.change(screen.getByLabelText("First Name*"), {
+    target: { value: "John" },
+  });
+  fireEvent.change(screen.getByLabelText("Last Name*"), {
+    target: { value: "Doe" },
+  });
+  fireEvent.change(screen.getByLabelText("Email Address*"), {
+    target: { value: "john@example.com" },
+  });
+  fireEvent.change(screen.getByLabelText("Company Name"), {
+    target: { value: "ACME Inc" },
+  });
+  fireEvent.change(screen.getByLabelText("Address"), {
+    target: { value: "123 Main St" },
+  });
+  fireEvent.change(screen.getByLabelText("City"), {
+    target: { value: "Toronto" },
+  });
+  fireEvent.change(screen.getByLabelText("Province/State"), {
+    target: { value: "ON" },
+  });
+  fireEvent.change(screen.getByLabelText("Postal Code"), {
+    target: { value: "M5V 1A1" },
+  });
+
+  await waitFor(() => {
+    expect(document.getElementById("phone")).toBeInTheDocument();
+  });
+  fireEvent.change(document.getElementById("phone") as HTMLInputElement, {
+    target: { value: "1234567890" },
+  });
+
+  const form = screen
+    .getByLabelText("First Name*")
+    .closest("form") as HTMLFormElement;
+  fireEvent.submit(form);
+
+  await waitFor(() => {
+    expect(screen.getByTestId("stripe-wrapper")).toBeInTheDocument();
+  });
+}
+
 // Tests that focus on Stripe integration in the checkout page
 describe("Checkout Page with Stripe Integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("initializes Stripe with the correct amount based on plan and employee count", async () => {
-    // This test is currently not applicable since the page defaults to waitlist mode
-    // and purchase functionality is disabled. Stripe components are only rendered
-    // when in purchase mode with credit card payment selected.
-    // TODO: Update this test when purchase functionality is re-enabled
-    expect(true).toBe(true); // Placeholder test
+  it("passes the selected order to the Stripe wrapper", async () => {
+    render(<CheckoutPage />);
+
+    await continueToPayment();
+
+    const wrapper = screen.getByTestId("stripe-wrapper");
+    expect(wrapper).toHaveAttribute("data-plan", "Basic");
+    expect(wrapper).toHaveAttribute("data-employee-count", "5");
+    expect(wrapper).toHaveAttribute("data-billing-cycle", "monthly");
   });
 
-  it("updates Stripe amount when employee count changes", async () => {
-    // This test is currently not applicable since Stripe components are not rendered in waitlist mode
-    expect(true).toBe(true); // Placeholder test
+  it("updates the order details when employee count changes", async () => {
+    render(<CheckoutPage />);
+
+    await continueToPayment();
+
+    fireEvent.change(screen.getByLabelText("Number of Employees (minimum 5)"), {
+      target: { value: "12" },
+    });
+
+    expect(screen.getByTestId("stripe-wrapper")).toHaveAttribute(
+      "data-employee-count",
+      "12",
+    );
   });
 
-  it("applies annual billing discount to Stripe amount", async () => {
-    // This test is currently not applicable since Stripe components are not rendered in waitlist mode
-    expect(true).toBe(true); // Placeholder test
+  it("passes the annual billing cycle through to Stripe", async () => {
+    render(<CheckoutPage />);
+
+    await continueToPayment();
+
+    fireEvent.click(screen.getByLabelText(/^Annual/));
+
+    expect(screen.getByTestId("stripe-wrapper")).toHaveAttribute(
+      "data-billing-cycle",
+      "annual",
+    );
   });
 
-  it("passes correct metadata to Stripe", async () => {
-    // This test is currently not applicable since Stripe components are not rendered in waitlist mode
-    expect(true).toBe(true); // Placeholder test
-  });
+  it("redirects to the confirmation page on successful payment", async () => {
+    render(<CheckoutPage />);
 
-  it("handles successful payment by setting payment success state", async () => {
-    // This test is currently not applicable since Stripe components are not rendered in waitlist mode
-    expect(true).toBe(true); // Placeholder test
+    await continueToPayment();
+
+    fireEvent.click(screen.getByTestId("mock-payment-button"));
+
+    expect(mockPush).toHaveBeenCalledWith(
+      "/checkout/confirmation?redirect_status=succeeded",
+    );
   });
 });

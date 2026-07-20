@@ -222,33 +222,13 @@ create_env_template() {
         fi
     fi
 
-    log_info "Creating .env.local template..."
+    log_info "Creating .env.local from .env.example..."
 
-    cat > "$env_file" << 'EOF'
-# DigitalOcean API Access
-# Get your token from: https://cloud.digitalocean.com/account/api/tokens
-DO_TOKEN=your_digitalocean_api_token_here
+    cp "$PROJECT_ROOT/.env.example" "$env_file"
 
-# SSH Configuration (uses SSH agent)
-# Optional: specify if you have multiple SSH keys
-SSH_KEY_FINGERPRINT=
-
-# Application Secrets
-# Get from your secret management system
-BREVO_API_KEY=your_brevo_api_key_here
-STRIPE_SECRET_KEY=your_stripe_secret_key_here
-STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
-GA_STAGING_ID=G-XXXXXXXXXX
-GA_PRODUCTION_ID=G-XXXXXXXXXX
-
-# Optional: Override defaults
-# DOCKER_IMAGE=ghcr.io/yourusername/dotca:custom-tag
-# ANSIBLE_VAULT_PASSWORD=your_vault_password_if_using_encrypted_vars
-EOF
-
-    log_success "Created .env.local template"
+    log_success "Created .env.local from .env.example"
     log_warning "IMPORTANT: Edit .env.local with your actual values before deploying!"
-    log_info "Required: DO_TOKEN, BREVO_API_KEY, STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY"
+    log_info "Required: DO_TOKEN, BREVO_API_KEY, STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
 }
 
 # Test DigitalOcean access

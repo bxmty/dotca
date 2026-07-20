@@ -33,7 +33,10 @@ describe("RootLayout Component", () => {
       </RootLayout>,
     );
     expect(markup).toContain('lang="en"');
-    expect(markup).toContain('data-bs-theme="auto"');
+    // The theme attribute is not server-rendered; an inline script in <head>
+    // sets data-bs-theme from the OS preference before first paint.
+    expect(markup).not.toContain("data-bs-theme=");
+    expect(markup).toContain('setAttribute("data-bs-theme"');
   });
 
   it("includes proper meta tags", () => {
