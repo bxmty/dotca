@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ServiceLandingContent } from "../ServiceLandingPage";
 
 export const ontarioContent: ServiceLandingContent = {
@@ -18,7 +19,6 @@ export const ontarioContent: ServiceLandingContent = {
     },
   },
   pricingNote: "See pricing page for full details and team sizes",
-  trustSignal: "Trusted by Ontario businesses since 2020",
   why: {
     heading: "Why Ontario Businesses Choose Managed IT Services",
     cards: [
@@ -100,7 +100,6 @@ export const ontarioContent: ServiceLandingContent = {
         title: "🛠️ Unlimited Help Desk Support",
         items: [
           "Phone, email, and chat support",
-          "Average 15-minute response time",
           "Remote troubleshooting",
           "User training and guidance",
         ],
@@ -109,35 +108,35 @@ export const ontarioContent: ServiceLandingContent = {
   },
   serviceAreas: {
     heading: "Managed IT Services Ontario Coverage",
-    lead: "We provide managed IT services Ontario-wide, with local expertise and rapid response times across major business centers.",
+    lead: "We provide managed IT services Ontario-wide, with local expertise across major business centers.",
     areas: [
       {
         emoji: "🏢",
         name: "Toronto",
         description:
           "GTA's business hub with specialized support for professional services firms, financial institutions, and tech companies.",
-        responseTime: "Response: < 2 hours",
+        coverageNote: "Onsite and remote support",
       },
       {
         emoji: "🏛️",
         name: "Ottawa",
         description:
           "Government and research sector expertise with focus on compliance and secure communications.",
-        responseTime: "Response: < 4 hours",
+        coverageNote: "Remote support only",
       },
       {
         emoji: "🏭",
         name: "Hamilton",
         description:
           "Manufacturing and logistics support with industrial IT solutions and remote monitoring capabilities.",
-        responseTime: "Response: < 3 hours",
+        coverageNote: "Onsite and remote support",
       },
       {
         emoji: "🌾",
         name: "London",
         description:
           "Agricultural and healthcare sector IT support with specialized compliance and data management solutions.",
-        responseTime: "Response: < 3 hours",
+        coverageNote: "Onsite and remote support",
       },
     ],
     footer:
@@ -181,6 +180,15 @@ export const ontarioContent: ServiceLandingContent = {
   finalCta: {
     heading:
       "Ready to Transform Your Ontario Business with Managed IT Services?",
-    lead: "Join hundreds of Ontario businesses that have eliminated IT headaches and regained focus on what matters most - growing their business. Start with a free IT assessment today.",
+    lead: (
+      <>
+        We&apos;re a young Ontario MSP building our client base — here&apos;s
+        exactly what that means for you:{" "}
+        <Link href="/#process" className="text-white text-decoration-underline">
+          see our approach
+        </Link>
+        . Start with a free IT assessment today.
+      </>
+    ),
   },
 };
