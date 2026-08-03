@@ -44,6 +44,26 @@ const nextConfig = {
       },
     ];
   },
+  // Retired vertical pages — preserve SEO equity by redirecting inbound links
+  async redirects() {
+    return [
+      {
+        source: "/services/it-services-for-law-firms",
+        destination: "/services/managed-it-services-ontario",
+        permanent: true,
+      },
+      {
+        source: "/services/it-services-for-accounting-firms",
+        destination: "/services/managed-it-services-ontario",
+        permanent: true,
+      },
+      {
+        source: "/services/it-services-for-marketing-agencies",
+        destination: "/services/managed-it-services-ontario",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 // Sentry configuration: https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/

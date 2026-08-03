@@ -7,11 +7,6 @@ import { getBreadcrumbSchema } from "@/lib/schema";
 const ROUTE_NAMES: Record<string, string> = {
   "/": "Home",
   "/services": "Services",
-  "/services/it-services-for-law-firms": "IT Services for Law Firms",
-  "/services/it-services-for-accounting-firms":
-    "IT Services for Accounting Firms",
-  "/services/it-services-for-marketing-agencies":
-    "IT Services for Marketing Agencies",
   "/services/it-services-for-architecture-firms":
     "IT Services for Architecture Firms",
   "/services/managed-it-services-ontario": "Managed IT Services Ontario",
