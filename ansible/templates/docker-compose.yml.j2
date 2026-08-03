@@ -4,7 +4,13 @@ services:
   # Define web service (for staging) and alias it as app (for production)
   web:
     image: "{{ docker_image }}"
-    pull_policy: always
+    # "missing" (not "always"): the deploy playbook already runs an explicit
+    # `docker-compose pull web` with a live CI-issued GHCR login right before
+    # `up`. A policy of "always" forces every *subsequent* `docker-compose up`
+    # (cron-driven recovery, a manual restart, host reboot) to re-authenticate
+    # to GHCR too — but those run long after the deploy job's GITHUB_TOKEN has
+    # expired, so the pull fails and the recreate is left with no container.
+    pull_policy: missing
     restart: always
 {% if next_public_environment == 'staging' %}
     build:
