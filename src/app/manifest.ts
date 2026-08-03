@@ -2,10 +2,10 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Boximity MSP - Enterprise IT Solutions",
+    name: "Boximity MSP — IT That Just Works",
     short_name: "Boximity MSP",
     description:
-      "Enterprise-grade technology solutions for small businesses without the complexity or cost.",
+      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

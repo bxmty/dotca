@@ -26,10 +26,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     template: "%s | Boximity MSP",
-    default: "Boximity MSP - Enterprise IT Solutions for Small Businesses",
+    default: "Boximity MSP — IT That Just Works",
   },
   description:
-    "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost. Password management, web hosting, business email, and more.",
+    "For businesses that live outside the office, Boximity MSP replaces break-fix firefighting with technology that just works — one flat price, no surprises.",
   keywords: [
     "IT Services",
     "MSP",
@@ -61,9 +61,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_CA",
     url: "https://boximity.ca",
-    title: "Boximity MSP - Enterprise IT Solutions for Small Businesses",
+    title: "Boximity MSP — IT That Just Works",
     description:
-      "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost.",
+      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
     siteName: "Boximity MSP",
     images: [
       {
@@ -76,9 +76,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Boximity MSP - Enterprise IT Solutions for Small Businesses",
+    title: "Boximity MSP — IT That Just Works",
     description:
-      "Boximity MSP provides enterprise-grade technology solutions for small businesses without the complexity or cost.",
+      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
     images: ["/images/twitter-image.jpg"],
   },
 };

@@ -1,16 +1,18 @@
 ---
 route: /
-title: "Enterprise IT Solutions for Small Businesses"
-description: "Make your whole team tech-savvy without the headache. Secure password management, web hosting, business email solutions, and Microsoft collaboration tools for small businesses."
+title: "IT That Just Works — Away From the Desk"
+description: "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises."
 ---
 
-# Make Your Whole Team Tech-Savvy Without the Headache
+# IT that just works — for businesses whose work happens away from the desk.
 
-Stop wasting time on technology management. Start focusing on what you do best. Small businesses deserve enterprise-grade solutions without the complexity or cost.
+For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.
 
-[See Pricing Options] [Get Your IT Assessment]
+[Get a Business-First IT Assessment] [See Pricing Options]
 
-## The Technology Challenge Small Businesses Face Today
+## The Reactive IT Trap
+
+Too often, technology only gets attention after it breaks — leaving you stuck reacting to security threats, wasted time, and frustrated employees instead of running the business.
 
 ### Security Threats
 
@@ -28,9 +30,9 @@ Staff turnover increases when technology consistently fails and prevents efficie
 
 Technology is advancing at an unprecedented pace, and it's completely understandable why keeping up can feel overwhelming, especially when you have a business to run.
 
-You're not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best.
+You're not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best, without really understanding the business impact — or being forced into decisions that don't fit how you actually work.
 
-With decades of experience in corporate technology solutions, we understand the rapid pace of technological advancement. Our team stays ahead of the latest developments, ensuring your business has the most effective solutions available.
+Our founder has spent 19 years running application development and support for other businesses — that background is why we understand how fast technology moves, and why we build solutions that actually fit how you work, not the other way around.
 
 ### Everything your 5-10 person team needs:
 
@@ -57,11 +59,9 @@ We'll email installation instructions for our management tool to your team, ensu
 
 ## What You'll Experience With Our Solution
 
-- **Reduced stress and anxiety** — No more worrying about security or system failures
-- **Increased productivity** — Less time troubleshooting, more time growing your business
-- **Enhanced security** — Professional protection for your critical business data
-- **Streamlined communication** — Better tools mean better teamwork
-- **Competitive advantage** — Access to technology usually reserved for larger companies
+- **Greater Confidence in Decision-Making**
+- **Peace of Mind from Proactive Protection**
+- **Enhanced Security**
 
 ## The Real Cost of Inadequate Technology
 
@@ -72,6 +72,12 @@ Employee productivity losses of **up to 22%** due to technology issues
 Average data breach costs of **$108,000** for small businesses
 
 **60% higher** employee turnover when technology consistently fails
+
+## Our Guarantees
+
+1. Every recommendation comes with a plain-language reason you can repeat back — if you can't, the conversation is free.
+2. No line item you weren't told about in advance — or that line item is free.
+3. A free written second opinion on any vendor quote or existing IT contract.
 
 ## Limited Time Offer for Small Businesses
 
