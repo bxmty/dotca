@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import CheckIcon from "@/app/components/CheckIcon";
@@ -48,7 +49,8 @@ export interface ServiceLandingContent {
   };
   /** e.g. "See pricing page for full details and firm sizes" */
   pricingNote: string;
-  trustSignal: string;
+  /** Optional trust line under the hero; omit when no verifiable claim exists */
+  trustSignal?: string;
   why: {
     heading: string;
     cards: { icon: WhyIconName; title: string; body: string }[];
@@ -74,7 +76,8 @@ export interface ServiceLandingContent {
       emoji: string;
       name: string;
       description: string;
-      responseTime: string;
+      /** Remote/onsite coverage note — never a response-time figure */
+      coverageNote: string;
     }[];
     footer: string;
     ctaLabel: string;
@@ -85,7 +88,7 @@ export interface ServiceLandingContent {
   };
   finalCta: {
     heading: string;
-    lead: string;
+    lead: ReactNode;
   };
 }
 
@@ -214,15 +217,17 @@ export default function ServiceLandingPage({
       </section>
 
       {/* Trust Signals */}
-      <section className="py-4" style={{ backgroundColor: "#2b3035" }}>
-        <div className="container">
-          <div className="row justify-content-center text-center">
-            <div className="col-auto">
-              <small style={{ color: "#f8f9fa" }}>{trustSignal}</small>
+      {trustSignal && (
+        <section className="py-4" style={{ backgroundColor: "#2b3035" }}>
+          <div className="container">
+            <div className="row justify-content-center text-center">
+              <div className="col-auto">
+                <small style={{ color: "#f8f9fa" }}>{trustSignal}</small>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Why Section */}
       <section className="py-5 py-md-7">
@@ -378,7 +383,7 @@ export default function ServiceLandingPage({
                       <p className="text-body-secondary small mb-3">
                         {area.description}
                       </p>
-                      <small className="text-muted">{area.responseTime}</small>
+                      <small className="text-muted">{area.coverageNote}</small>
                     </div>
                   </div>
                 </div>

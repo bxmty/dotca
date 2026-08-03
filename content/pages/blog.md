@@ -1,12 +1,12 @@
 ---
 route: /blog
-title: "Blog | Enterprise IT Solutions"
-description: "Insights, tips, and best practices for enterprise IT solutions and small business technology."
+title: "Blog"
+description: "Insights, tips, and best practices for managed IT and small business technology."
 ---
 
 # Blog
 
-Insights, tips, and best practices for enterprise IT solutions and small business technology.
+Insights, tips, and best practices for managed IT and small business technology.
 
 ## Featured Posts
 

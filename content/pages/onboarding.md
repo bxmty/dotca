@@ -15,11 +15,10 @@ Onboarding • Step 1–3 of 3
 **Number of Employees**
 
 - Select
-- 1-10
-- 11-50
-- 51-200
-- 201-500
-- 501+
+- 5-10
+- 11-25
+- 26-50
+- 51+
 
 [Next]
 

@@ -27,8 +27,6 @@ _See pricing page for full details and team sizes_
 
 ✓ No contracts • ✓ 30-day money-back guarantee
 
-_Trusted by Ontario businesses since 2020_
-
 ## Why Ontario Businesses Choose Managed IT Services
 
 ### Reduce Business Risk
@@ -98,7 +96,6 @@ _See pricing page for full details and team sizes_
 #### 🛠️ Unlimited Help Desk Support
 
 - Phone, email, and chat support
-- Average 15-minute response time
 - Remote troubleshooting
 - User training and guidance
 
@@ -106,31 +103,31 @@ _See pricing page for full details and team sizes_
 
 ## Managed IT Services Ontario Coverage
 
-We provide managed IT services Ontario-wide, with local expertise and rapid response times across major business centers.
+We provide managed IT services Ontario-wide, with local expertise across major business centers.
 
 ### 🏢 Toronto
 
 GTA's business hub with specialized support for professional services firms, financial institutions, and tech companies.
 
-_Response: < 2 hours_
+_Onsite and remote support_
 
 ### 🏛️ Ottawa
 
 Government and research sector expertise with focus on compliance and secure communications.
 
-_Response: < 4 hours_
+_Remote support only_
 
 ### 🏭 Hamilton
 
 Manufacturing and logistics support with industrial IT solutions and remote monitoring capabilities.
 
-_Response: < 3 hours_
+_Onsite and remote support_
 
 ### 🌾 London
 
 Agricultural and healthcare sector IT support with specialized compliance and data management solutions.
 
-_Response: < 3 hours_
+_Onsite and remote support_
 
 Don't see your city? We serve all of Ontario with our managed IT services.
 
@@ -160,7 +157,7 @@ Absolutely. Our managed IT services Ontario are designed to integrate with your 
 
 ## Ready to Transform Your Ontario Business with Managed IT Services?
 
-Join hundreds of Ontario businesses that have eliminated IT headaches and regained focus on what matters most - growing their business. Start with a free IT assessment today.
+We're a young Ontario MSP building our client base — here's exactly what that means for you: [see our approach](/#process). Start with a free IT assessment today.
 
 [Get Free IT Assessment]
 [View All Pricing Options]

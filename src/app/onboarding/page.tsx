@@ -245,11 +245,10 @@ export default function OnboardingPage() {
                           required
                         >
                           <option value="">Select</option>
-                          <option value="1-10">1-10</option>
-                          <option value="11-50">11-50</option>
-                          <option value="51-200">51-200</option>
-                          <option value="201-500">201-500</option>
-                          <option value="501+">501+</option>
+                          <option value="5-10">5-10</option>
+                          <option value="11-25">11-25</option>
+                          <option value="26-50">26-50</option>
+                          <option value="51+">51+</option>
                         </select>
                       </div>
                     </div>
