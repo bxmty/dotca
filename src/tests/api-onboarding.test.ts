@@ -32,7 +32,7 @@ const mockNotify = sendWebmasterNotification as jest.Mock;
 const validOnboardingData = {
   companyName: "Test Company",
   industry: "Technology",
-  employeeCount: "11-50",
+  employeeCount: "11-25",
   contactName: "Test User",
   contactEmail: "test@example.com",
   contactPhone: "123-456-7890",
@@ -72,7 +72,7 @@ describe("Onboarding API Route", () => {
         FULLNAME: "Test User",
         COMPANY: "Test Company",
         INDUSTRY: "Technology",
-        EMPLOYEE_COUNT: "11-50",
+        EMPLOYEE_COUNT: "11-25",
         ZIP: "12345",
       }),
     });
