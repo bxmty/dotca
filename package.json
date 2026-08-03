@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "engines": {
-    "node": "24.18.1"
+    "node": "24.19.0"
   },
   "scripts": {
     "dev": "NEXT_PUBLIC_COMMIT_HASH=$(node get-commit-hash.js) next dev -H 0.0.0.0",
