@@ -40,7 +40,7 @@
     github_token: "{{ GITHUB_TOKEN | default('') }}"
     github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
     # Try multiple possible image names based on repository
-    docker_image_override: "{{ DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
+    docker_image_override: "{{ DEPLOY_DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:staging') }}"
     github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     docker_image: "{{ docker_image_override }}"
 
@@ -441,7 +441,7 @@
       ignore_errors: true
 
     - name: Remove corrupted image if inspection fails
-      ansible.builtin.command: docker rmi "{{ docker_image }}" || true
+      ansible.builtin.command: bash -c "docker rmi '{{ docker_image }}' || true"
       when: image_inspect is failed
       changed_when: false
 
@@ -456,9 +456,11 @@
 
     - name: Clean up Docker environment before starting services
       ansible.builtin.command: |
+        bash -c "
         docker-compose down --volumes --remove-orphans || true
         docker system prune -f || true
         docker volume prune -f || true
+        "
       args:
         chdir: "{{ app_dir }}"
       changed_when: false
@@ -475,7 +477,7 @@
       changed_when: false
 
     - name: Verify web container environment variables
-      ansible.builtin.command: docker-compose exec -T web env | grep -E "GA_"
+      ansible.builtin.command: bash -c "docker-compose exec -T web env | grep -E 'GA_'"
       args:
         chdir: "{{ app_dir }}"
       register: container_env
