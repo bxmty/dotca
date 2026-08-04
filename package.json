@@ -24,7 +24,7 @@
   "dependencies": {
     "@sentry/nextjs": "10.69.0",
     "@stripe/react-stripe-js": "6.8.0",
-    "@stripe/stripe-js": "9.12.1",
+    "@stripe/stripe-js": "9.13.0",
     "bootstrap": "5.3.8",
     "js-yaml": "5.2.3",
     "libphonenumber-js": "1.13.10",
