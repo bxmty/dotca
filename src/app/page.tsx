@@ -5,14 +5,17 @@ import ContactForm from "./components/ContactForm";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Enterprise IT Solutions for Small Businesses",
+  title: "IT That Just Works — Away From the Desk",
   description:
-    "Make your whole team tech-savvy without the headache. Secure password management, web hosting, business email solutions, and Microsoft collaboration tools for small businesses.",
+    "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     url: "/",
+    title: "IT That Just Works — Away From the Desk | Boximity MSP",
+    description:
+      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
   },
 };
 
@@ -39,7 +42,7 @@ export default function Home() {
             loading="eager"
             sizes="100vw"
             placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAAGAAoDAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD+Nrw1oXhTX/hvodj4p0Pw7r99c+JvEtzfXWuaFpGuXsksVzEsE8tzq1jd3Usq28JN5dzpLdLHJ5WoSw273A/EeDckz16mNll+JzrLp4nHYqvUoxzXMstpVK1LEpVsRS9hictw8pyhCKr0L0IqrSqUuajVjyRb/wBH89zLhaGW5b/a2Gwue46ngsHhoV44XA5piqVOFbCKUIVfb4/GVFFTqTcsNW5p05QtVpTqU6cn/9k="
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAAGAAoDAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD+Nrw1oXhTX/hvodj4p0Pw7r99c+JvEtzfXWuaFpGuXsksVzEsE8tzq1jd3Usq28JN5dzpLdLHJ5WoSw273A/EeDckz16mNll+JzrLp4nHYqvUoxzXMstpVK1LEpVsRS9hictw8pyhCKr0L0IqrSqUuajVjyRb/wBH89zLhaGW5b/a2Gwue46ngsHhoV44XA5piqVOFbCKUIVfb4/GVFFTqTcsNW5p05QtVpTqU6cn/9k="
             style={{
               objectFit: "cover",
               objectPosition: "center",
@@ -51,19 +54,20 @@ export default function Home() {
           <div className="row">
             <div className="col-md-8 col-lg-6">
               <h1 className="display-4 fw-light mb-4 text-white">
-                Make Your Whole Team Tech-Savvy Without the Headache
+                IT that just works — for businesses whose work happens away from
+                the desk.
               </h1>
               <p className="lead text-white mb-4">
-                Stop wasting time on technology management. Start focusing on
-                what you do best. Small businesses deserve enterprise-grade
-                solutions without the complexity or cost.
+                For businesses that live outside the office, we replace
+                break-fix firefighting with technology that just works — one
+                flat price, no surprises.
               </p>
               <div className="d-flex flex-column flex-sm-row gap-3">
-                <Link href="/pricing" className="btn btn-light">
-                  See Pricing Options
+                <Link href="#contact" className="btn btn-light">
+                  Get a Business-First IT Assessment
                 </Link>
-                <Link href="#contact" className="btn btn-outline-light">
-                  Get Your IT Assessment
+                <Link href="/pricing" className="btn btn-outline-light">
+                  See Pricing Options
                 </Link>
               </div>
             </div>
@@ -71,12 +75,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* The Challenge Section */}
+      {/* The Reactive IT Trap */}
       <section className="py-5 py-md-7">
         <div className="container">
-          <h2 className="fs-1 fw-light mb-5 border-bottom pb-3">
-            The Technology Challenge Small Businesses Face Today
+          <h2 className="fs-1 fw-light mb-4 border-bottom pb-3">
+            The Reactive IT Trap
           </h2>
+          <p className="lead text-body-secondary mb-5 col-lg-10">
+            Too often, technology only gets attention after it breaks — leaving
+            you stuck reacting to security threats, wasted time, and frustrated
+            employees instead of running the business.
+          </p>
           <div className="row g-4">
             <div className="col-md-4">
               <div className="card h-100 border">
@@ -198,13 +207,15 @@ export default function Home() {
               <p className="mb-4">
                 You&apos;re not alone in this—many smart, capable business
                 owners seek help to manage these complexities so they can focus
-                on what they do best.
+                on what they do best, without really understanding the business
+                impact — or being forced into decisions that don&apos;t fit how
+                you actually work.
               </p>
               <p className="mb-0">
-                With decades of experience in corporate technology solutions, we
-                understand the rapid pace of technological advancement. Our team
-                stays ahead of the latest developments, ensuring your business
-                has the most effective solutions available.
+                Our founder has spent 19 years running application development
+                and support for other businesses — that background is why we
+                understand how fast technology moves, and why we build solutions
+                that actually fit how you work, not the other way around.
               </p>
             </div>
             <div className="col-md-6">
@@ -340,40 +351,19 @@ export default function Home() {
               <div className="d-flex flex-column gap-3">
                 <div className="d-flex">
                   <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
-                  <p className="mb-0">
-                    <span className="fw-medium">
-                      Reduced stress and anxiety
-                    </span>{" "}
-                    - No more worrying about security or system failures
+                  <p className="mb-0 fw-medium">
+                    Greater Confidence in Decision-Making
                   </p>
                 </div>
                 <div className="d-flex">
                   <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
-                  <p className="mb-0">
-                    <span className="fw-medium">Increased productivity</span> -
-                    Less time troubleshooting, more time growing your business
+                  <p className="mb-0 fw-medium">
+                    Peace of Mind from Proactive Protection
                   </p>
                 </div>
                 <div className="d-flex">
                   <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
-                  <p className="mb-0">
-                    <span className="fw-medium">Enhanced security</span> -
-                    Professional protection for your critical business data
-                  </p>
-                </div>
-                <div className="d-flex">
-                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
-                  <p className="mb-0">
-                    <span className="fw-medium">Streamlined communication</span>{" "}
-                    - Better tools mean better teamwork
-                  </p>
-                </div>
-                <div className="d-flex">
-                  <CheckIcon className="text-success-emphasis flex-shrink-0 me-3" />
-                  <p className="mb-0">
-                    <span className="fw-medium">Competitive advantage</span> -
-                    Access to technology usually reserved for larger companies
-                  </p>
+                  <p className="mb-0 fw-medium">Enhanced Security</p>
                 </div>
               </div>
             </div>
@@ -428,6 +418,41 @@ export default function Home() {
                     when technology consistently fails
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Guarantee Section */}
+      <section className="py-5 py-md-7">
+        <div className="container">
+          <h2 className="fs-1 fw-light mb-5 border-bottom pb-3">
+            Our Guarantees
+          </h2>
+          <div className="row g-4">
+            <div className="col-md-4">
+              <div className="h-100">
+                <p className="fs-5 fw-medium mb-0">
+                  Every recommendation comes with a plain-language reason you
+                  can repeat back — if you can&apos;t, the conversation is free.
+                </p>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="h-100">
+                <p className="fs-5 fw-medium mb-0">
+                  No line item you weren&apos;t told about in advance — or that
+                  line item is free.
+                </p>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="h-100">
+                <p className="fs-5 fw-medium mb-0">
+                  A free written second opinion on any vendor quote or existing
+                  IT contract.
+                </p>
               </div>
             </div>
           </div>

@@ -277,7 +277,7 @@ export default function Pricing() {
             what you do best: serving your customers and growing your business.
           </p>
           <Link href="/#contact" className="btn btn-secondary btn-lg px-5 py-3">
-            Get Your IT Assessment
+            Get a Business-First IT Assessment
           </Link>
         </div>
       </section>

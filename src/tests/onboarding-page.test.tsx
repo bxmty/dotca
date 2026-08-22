@@ -117,7 +117,7 @@ describe("OnboardingPage Component", () => {
     await user.type(screen.getByLabelText(/Industry/i), "Technology");
     await user.selectOptions(
       screen.getByLabelText(/Number of Employees/i),
-      "11-50",
+      "11-25",
     );
 
     // Navigate to step 2

@@ -8,9 +8,9 @@ import {
 import BlogList from "@/app/components/BlogList";
 
 export const metadata: Metadata = {
-  title: "Blog | Enterprise IT Solutions",
+  title: "Blog",
   description:
-    "Insights, tips, and best practices for enterprise IT solutions and small business technology.",
+    "Insights, tips, and best practices for managed IT and small business technology.",
   alternates: {
     canonical: "/blog",
   },

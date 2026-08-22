@@ -67,7 +67,9 @@ describe("Boximity Landing Page", () => {
 
     // Check for main heading
     expect(
-      screen.getByText("Make Your Whole Team Tech-Savvy Without the Headache"),
+      screen.getByText(
+        /IT that just works — for businesses whose work happens away from the desk/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -88,7 +90,9 @@ describe("Boximity Landing Page", () => {
 
     // Check for main heading
     expect(
-      screen.getByText("Make Your Whole Team Tech-Savvy Without the Headache"),
+      screen.getByText(
+        /IT that just works — for businesses whose work happens away from the desk/i,
+      ),
     ).toBeInTheDocument();
   });
 });

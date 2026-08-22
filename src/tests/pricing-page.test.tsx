@@ -117,7 +117,7 @@ describe("PricingPage Component", () => {
     ).toBeInTheDocument();
 
     const ctaLink = screen.getByRole("link", {
-      name: "Get Your IT Assessment",
+      name: "Get a Business-First IT Assessment",
     });
     expect(ctaLink).toBeInTheDocument();
     expect(ctaLink).toHaveAttribute("href", "/#contact");

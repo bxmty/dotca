@@ -69,12 +69,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
       - name: Check for changes
-        uses: dorny/paths-filter@v4.0.2
+        uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -276,7 +276,7 @@ jobs:
 
       - name: Checkout repository
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0 # Full history for proper tagging
 
@@ -284,7 +284,7 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.18.0"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: Install dependencies
@@ -376,12 +376,12 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,format=long
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Set up Docker Buildx
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.3.0
 
       - name: Build and push Docker image
         id: build
@@ -454,12 +454,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.15.8"
+          terraform_version: "1.15.9"
 
       - name: Set deployment image tag
         id: image_tag
@@ -559,7 +559,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Run integration tests
         uses: ./.github/actions/test-runner
@@ -623,7 +623,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Send GitHub deployment notifications
         uses: ./.github/actions/notify

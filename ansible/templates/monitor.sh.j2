@@ -33,12 +33,20 @@ if [ "$DISK_SPACE" -gt 90 ]; then
   docker system prune -af --volumes
 fi
 
-# Check Docker container status
+# Check Docker container status. Query the compose project directly rather
+# than grepping `docker ps` for "{{ project_name }}" — Compose names
+# containers after the project directory ("repo"), not this ansible var, so
+# the old "{{ project_name }}.*web" grep never matched anything and
+# force-recreated a perfectly healthy container on every single cron tick.
 cd {{ app_dir }}/repo
-if ! docker ps | grep -q "{{ project_name }}.*web"; then
+WEB_CONTAINER_ID=$(docker-compose ps -q web)
+if [ -z "$WEB_CONTAINER_ID" ] || [ "$(docker inspect -f '{% raw %}{{.State.Running}}{% endraw %}' "$WEB_CONTAINER_ID" 2>/dev/null)" != "true" ]; then
   log_message "Web container not running properly! Attempting to restart..."
-  docker-compose down web
-  docker-compose up -d web
+  # force-recreate in place instead of `down` + `up`: a full `down` tears
+  # down the network and removes the container before we know a replacement
+  # will actually start, which is what left the site with zero containers
+  # running when a later pull failed.
+  docker-compose up -d --force-recreate web
   sleep 15
 fi
 
@@ -46,7 +54,7 @@ fi
 if ! curl -s -f -o /dev/null -w "%{http_code}" $HEALTH_CHECK_URL | grep -q "200"; then
   log_message "Application not responding. Restarting services..."
   cd {{ app_dir }}/repo
-  docker-compose down --remove-orphans && docker-compose up -d web
+  docker-compose up -d --force-recreate --remove-orphans web
   sleep 5
   systemctl restart nginx
 fi
