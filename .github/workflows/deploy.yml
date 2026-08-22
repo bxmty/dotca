@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for changes
-        uses: dorny/paths-filter@v4.0.2
+        uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -284,7 +284,7 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.18.1"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: Install dependencies
@@ -381,7 +381,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.3.0
 
       - name: Build and push Docker image
         id: build
@@ -459,7 +459,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.15.8"
+          terraform_version: "1.15.9"
 
       - name: Set deployment image tag
         id: image_tag
