@@ -133,6 +133,61 @@ describe("POST /api/stripe/create-subscription", () => {
     expect(response.data).toEqual({ clientSecret: "test_client_secret" });
   });
 
+  it("threads ga_client_id and ga_session_id into subscription metadata when both are present", async () => {
+    await POST(
+      buildRequest({
+        ...validBody,
+        ga_client_id: "111111111.222222222",
+        ga_session_id: "333333333",
+      }),
+    );
+
+    const [params] = mockSubscriptionsCreate.mock.calls[0];
+    expect(params.metadata).toEqual({
+      plan: "basic",
+      billing_cycle: "monthly",
+      employee_count: "5",
+      company: "Test Co",
+      ga_client_id: "111111111.222222222",
+      ga_session_id: "333333333",
+    });
+  });
+
+  it("omits ga_client_id and ga_session_id from metadata when both are absent", async () => {
+    await POST(buildRequest(validBody));
+
+    const [params] = mockSubscriptionsCreate.mock.calls[0];
+    expect(params.metadata).not.toHaveProperty("ga_client_id");
+    expect(params.metadata).not.toHaveProperty("ga_session_id");
+  });
+
+  it("threads only the identifier that is present when just one GA cookie was available", async () => {
+    await POST(
+      buildRequest({
+        ...validBody,
+        ga_client_id: "111111111.222222222",
+      }),
+    );
+
+    const [params] = mockSubscriptionsCreate.mock.calls[0];
+    expect(params.metadata).toMatchObject({ ga_client_id: "111111111.222222222" });
+    expect(params.metadata).not.toHaveProperty("ga_session_id");
+  });
+
+  it("never lets a non-string or empty ga identifier reach Stripe metadata", async () => {
+    await POST(
+      buildRequest({
+        ...validBody,
+        ga_client_id: 12345,
+        ga_session_id: "   ",
+      }),
+    );
+
+    const [params] = mockSubscriptionsCreate.mock.calls[0];
+    expect(params.metadata).not.toHaveProperty("ga_client_id");
+    expect(params.metadata).not.toHaveProperty("ga_session_id");
+  });
+
   it("never accepts a client-supplied amount or price", async () => {
     await POST(
       buildRequest({

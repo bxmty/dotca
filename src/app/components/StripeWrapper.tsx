@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { getStripe } from "../../lib/stripe";
+import { parseGa4CookieIds } from "../../lib/ga4Cookies";
 
 export interface CheckoutCustomer {
   name: string;
@@ -48,6 +49,13 @@ export default function StripeWrapper({
         setLoading(true);
         setError(null);
 
+        // Read synchronously from document.cookie rather than the async
+        // gtag('get', ...) callback: if that callback hasn't fired by
+        // submit time, the identifier would be silently lost. Absent
+        // cookies (ad blocker, consent declined) just omit the fields below.
+        const { clientId: gaClientId, sessionId: gaSessionId } =
+          parseGa4CookieIds(document.cookie);
+
         // The server resolves the price from these order details;
         // no amount is sent from the client.
         const response = await fetch("/api/stripe/create-subscription", {
@@ -59,6 +67,8 @@ export default function StripeWrapper({
             billingCycle,
             customer,
             idempotencyKey,
+            ...(gaClientId ? { ga_client_id: gaClientId } : {}),
+            ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
           }),
         });
 

@@ -11,6 +11,13 @@ export const runtime = "nodejs";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// GA cookies are absent for ad-blocked or consent-declined visitors; treat
+// them as optional and never let a non-string or empty value reach Stripe
+// metadata, which only accepts strings.
+function parseOptionalMetadataString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 interface CustomerInput {
   name: string;
   email: string;
@@ -89,6 +96,9 @@ export async function POST(request: Request) {
       ? body.idempotencyKey
       : undefined;
 
+  const gaClientId = parseOptionalMetadataString(body?.ga_client_id);
+  const gaSessionId = parseOptionalMetadataString(body?.ga_session_id);
+
   try {
     const priceId = await resolvePriceId({
       plan: order.planName,
@@ -101,6 +111,8 @@ export async function POST(request: Request) {
       billing_cycle: order.billingCycle,
       employee_count: order.employeeCount.toString(),
       company: customer.company,
+      ...(gaClientId ? { ga_client_id: gaClientId } : {}),
+      ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
     };
 
     // Both creates share the client's idempotency key (with distinct
