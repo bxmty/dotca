@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { resetRateLimits } from "@/lib/rate-limit";
+import { sendConversionEvent } from "@/lib/ga4";
 
 // Mock next/server
 jest.mock("next/server", () => ({
@@ -25,9 +26,15 @@ jest.mock("@/lib/brevo", () => ({
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
 }));
+// Keep the real cookie parser; only the network-calling sender is mocked
+jest.mock("@/lib/ga4", () => ({
+  ...jest.requireActual("@/lib/ga4"),
+  sendConversionEvent: jest.fn(),
+}));
 
 const mockBrevo = addBrevoContact as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
+const mockSendConversionEvent = sendConversionEvent as jest.Mock;
 
 const validOnboardingData = {
   companyName: "Test Company",
@@ -46,10 +53,10 @@ const validOnboardingData = {
   goals: "Some goals",
 };
 
-function buildRequest(body: unknown): Request {
+function buildRequest(body: unknown, headers?: Record<string, string>): Request {
   return {
     json: jest.fn().mockResolvedValue(body),
-    headers: new Headers({ "x-forwarded-for": "203.0.113.9" }),
+    headers: new Headers({ "x-forwarded-for": "203.0.113.9", ...headers }),
   } as unknown as Request;
 }
 
@@ -59,6 +66,7 @@ describe("Onboarding API Route", () => {
     resetRateLimits();
     mockBrevo.mockResolvedValue({ ok: true });
     mockNotify.mockResolvedValue(true);
+    mockSendConversionEvent.mockResolvedValue(undefined);
   });
 
   it("persists the lead to Brevo list 10 and emails the webmaster", async () => {
@@ -88,6 +96,66 @@ describe("Onboarding API Route", () => {
       success: true,
       message: "Onboarding data received successfully",
     });
+  });
+
+  it("sends a sign_up conversion with no value, attributed from the request cookies", async () => {
+    const originalGaId = process.env.NEXT_PUBLIC_DEV_GA_ID;
+    process.env.NEXT_PUBLIC_DEV_GA_ID = "G-TESTID";
+
+    await POST(
+      buildRequest(validOnboardingData, {
+        cookie:
+          "_ga=GA1.1.111111111.222222222; _ga_TESTID=GS1.1.333333333.4.1.444444444.0.0.0",
+      }),
+    );
+
+    expect(mockSendConversionEvent).toHaveBeenCalledWith({
+      name: "sign_up",
+      clientId: "111111111.222222222",
+      sessionId: "333333333",
+    });
+    expect(mockSendConversionEvent.mock.calls[0][0]).not.toHaveProperty(
+      "params",
+    );
+    expect(NextResponse.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Onboarding data received successfully",
+    });
+
+    process.env.NEXT_PUBLIC_DEV_GA_ID = originalGaId;
+  });
+
+  it("still succeeds and sends no event when there are no GA cookies", async () => {
+    await POST(buildRequest(validOnboardingData));
+
+    expect(mockSendConversionEvent).toHaveBeenCalledWith({
+      name: "sign_up",
+      clientId: undefined,
+      sessionId: undefined,
+    });
+    expect(NextResponse.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Onboarding data received successfully",
+    });
+  });
+
+  it("does not fail the submission when the conversion event rejects", async () => {
+    mockSendConversionEvent.mockRejectedValueOnce(new Error("MP request failed"));
+
+    await POST(buildRequest(validOnboardingData));
+
+    expect(NextResponse.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Onboarding data received successfully",
+    });
+  });
+
+  it("sends no conversion event when validation fails", async () => {
+    await POST(
+      buildRequest({ companyName: "Test Company", industry: "Technology" }),
+    );
+
+    expect(mockSendConversionEvent).not.toHaveBeenCalled();
   });
 
   it("returns 400 when required fields are missing", async () => {
@@ -182,6 +250,7 @@ describe("Onboarding API Route", () => {
     expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
     expect(mockBrevo).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockSendConversionEvent).not.toHaveBeenCalled();
   });
 
   it("rate limits the sixth submission from one IP", async () => {

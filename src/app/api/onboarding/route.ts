@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
+import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 
 // Onboarding leads land in Brevo list 10 (vacated by the old waitlist)
 const ONBOARDING_LIST_ID = 10;
@@ -83,6 +84,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Same-origin fetch from the onboarding form carries the GA cookies
+    // automatically — no client-side change needed to attribute this signup.
+    const { clientId: gaClientId, sessionId: gaSessionId } =
+      parseGa4CookieIds(request.headers.get("cookie"));
+
     // Validation is done; from here on the lead exists. Brevo (CRM) and the
     // webmaster email (Resend) fire in parallel, and the submission succeeds
     // if either lands — see the redundancy matrix in the PRD.
@@ -127,6 +133,16 @@ export async function POST(request: Request) {
           "Pain points": data.painPoints || "",
           Goals: data.goals || "",
         },
+      }),
+      // sendConversionEvent never throws — it swallows and reports its own
+      // failures — so a Measurement Protocol outage can't affect the
+      // submission outcome below, exactly like the other two settled calls.
+      // No value param: sign_up carries no monetary value, and a placeholder
+      // would inflate Google Ads-imported conversion value.
+      sendConversionEvent({
+        name: "sign_up",
+        clientId: gaClientId,
+        sessionId: gaSessionId,
       }),
     ]);
 
