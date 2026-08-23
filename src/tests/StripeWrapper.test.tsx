@@ -26,6 +26,12 @@ describe("StripeWrapper", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    document.cookie.split(";").forEach((c) => {
+      const name = c.split("=")[0]?.trim();
+      if (name) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    });
   });
 
   afterAll(() => {
@@ -108,6 +114,71 @@ describe("StripeWrapper", () => {
 
     // Verify getStripe was called
     expect(getStripe).toHaveBeenCalled();
+  });
+
+  it("includes ga_client_id and ga_session_id when both GA cookies are present", async () => {
+    const originalEnv = process.env.NEXT_PUBLIC_DEV_GA_ID;
+    process.env.NEXT_PUBLIC_DEV_GA_ID = "G-TESTID";
+    document.cookie = "_ga=GA1.1.111111111.222222222";
+    document.cookie = "_ga_TESTID=GS1.1.333333333.4.1.444444444.0.0.0";
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+    });
+
+    expect(lastFetchBody()).toEqual(
+      expect.objectContaining({
+        ga_client_id: "111111111.222222222",
+        ga_session_id: "333333333",
+      }),
+    );
+
+    process.env.NEXT_PUBLIC_DEV_GA_ID = originalEnv;
+  });
+
+  it("omits ga_client_id and ga_session_id from the request when both GA cookies are absent", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+    });
+
+    const body = lastFetchBody();
+    expect(body).not.toHaveProperty("ga_client_id");
+    expect(body).not.toHaveProperty("ga_session_id");
+  });
+
+  it("includes only ga_client_id when the session cookie is absent", async () => {
+    document.cookie = "_ga=GA1.1.111111111.222222222";
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+    });
+
+    const body = lastFetchBody();
+    expect(body).toEqual(
+      expect.objectContaining({ ga_client_id: "111111111.222222222" }),
+    );
+    expect(body).not.toHaveProperty("ga_session_id");
   });
 
   it("sends the order details for a different plan and billing cycle", async () => {

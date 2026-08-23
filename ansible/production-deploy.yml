@@ -27,6 +27,7 @@
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
+    ga4_mp_api_secret: "{{ GA4_MP_API_SECRET | default('') }}"
     resend_api_key: "{{ RESEND_API_KEY | default('') }}"
     resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
     webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
@@ -484,6 +485,7 @@
           - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
           - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_key else '❌ MISSING' }}
           - GA_ID: {{ '✅ SET' if ga_id else '❌ MISSING' }} ({{ next_public_environment }})
+          - GA4_MP_API_SECRET: {{ '✅ SET' if ga4_mp_api_secret else '❌ MISSING' }}
           - GITHUB_TOKEN: {{ '✅ SET' if github_token else '❌ MISSING' }}
           - GITHUB_USERNAME: {{ '✅ SET' if github_username else '❌ MISSING' }}
           - GIT_REPO_URL: {{ '✅ SET' if git_repo_url else '❌ MISSING' }}
