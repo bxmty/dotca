@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
+import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 
 function isMissingOrString(value: unknown): value is string | undefined {
   return value === undefined || value === null || typeof value === "string";
@@ -112,6 +113,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Same-origin fetch from the contact form carries the GA cookies
+    // automatically — no client-side change needed to attribute this lead.
+    const { clientId: gaClientId, sessionId: gaSessionId } =
+      parseGa4CookieIds(request.headers.get("cookie"));
+
     // Validation is done; from here on the lead exists. Brevo (CRM) and the
     // webmaster email (Resend) fire in parallel, and the submission succeeds
     // if either lands — see the redundancy matrix in the PRD.
@@ -155,6 +161,14 @@ export async function POST(request: Request) {
           "Billing cycle": billingCycle || "",
           "Employee count": employeeCount ? employeeCount.toString() : "",
         },
+      }),
+      // sendConversionEvent never throws — it swallows and reports its own
+      // failures — so a Measurement Protocol outage can't affect the
+      // submission outcome below, exactly like the other two settled calls.
+      sendConversionEvent({
+        name: "generate_lead",
+        clientId: gaClientId,
+        sessionId: gaSessionId,
       }),
     ]);
 

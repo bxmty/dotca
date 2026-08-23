@@ -57,6 +57,11 @@ runs:
           exit 1
         fi
 
+        if [[ -z "${GA4_MP_API_SECRET:-}" ]]; then
+          echo "::error::GA4_MP_API_SECRET environment variable is required"
+          exit 1
+        fi
+
         if [[ -z "${RESEND_API_KEY:-}" ]]; then
           echo "::error::RESEND_API_KEY environment variable is required"
           exit 1
@@ -177,6 +182,7 @@ runs:
         BREVO_API_KEY=${BREVO_API_KEY:-}
         STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
         STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+        GA4_MP_API_SECRET=${GA4_MP_API_SECRET:-}
         RESEND_API_KEY=${RESEND_API_KEY:-}
         RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
         WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}

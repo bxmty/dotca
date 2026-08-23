@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { resetRateLimits } from "@/lib/rate-limit";
+import { sendConversionEvent } from "@/lib/ga4";
 
 // Mock next/server
 jest.mock("next/server", () => ({
@@ -25,14 +26,20 @@ jest.mock("@/lib/brevo", () => ({
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
 }));
+// Keep the real cookie parser; only the network-calling sender is mocked
+jest.mock("@/lib/ga4", () => ({
+  ...jest.requireActual("@/lib/ga4"),
+  sendConversionEvent: jest.fn(),
+}));
 
 const mockBrevo = addBrevoContact as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
+const mockSendConversionEvent = sendConversionEvent as jest.Mock;
 
-function buildRequest(body: unknown): Request {
+function buildRequest(body: unknown, headers?: Record<string, string>): Request {
   return {
     json: jest.fn().mockResolvedValue(body),
-    headers: new Headers({ "x-forwarded-for": "203.0.113.7" }),
+    headers: new Headers({ "x-forwarded-for": "203.0.113.7", ...headers }),
   } as unknown as Request;
 }
 
@@ -48,6 +55,7 @@ describe("Contact API Route", () => {
     resetRateLimits();
     mockBrevo.mockResolvedValue({ ok: true });
     mockNotify.mockResolvedValue(true);
+    mockSendConversionEvent.mockResolvedValue(undefined);
   });
 
   it("returns 400 if email is missing", async () => {
@@ -131,6 +139,52 @@ describe("Contact API Route", () => {
       }),
     });
     expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("sends a generate_lead conversion attributed from the request cookies", async () => {
+    const originalGaId = process.env.NEXT_PUBLIC_DEV_GA_ID;
+    process.env.NEXT_PUBLIC_DEV_GA_ID = "G-TESTID";
+
+    await POST(
+      buildRequest(validBody, {
+        cookie:
+          "_ga=GA1.1.111111111.222222222; _ga_TESTID=GS1.1.333333333.4.1.444444444.0.0.0",
+      }),
+    );
+
+    expect(mockSendConversionEvent).toHaveBeenCalledWith({
+      name: "generate_lead",
+      clientId: "111111111.222222222",
+      sessionId: "333333333",
+    });
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+
+    process.env.NEXT_PUBLIC_DEV_GA_ID = originalGaId;
+  });
+
+  it("still succeeds and sends no event when there are no GA cookies", async () => {
+    await POST(buildRequest(validBody));
+
+    expect(mockSendConversionEvent).toHaveBeenCalledWith({
+      name: "generate_lead",
+      clientId: undefined,
+      sessionId: undefined,
+    });
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("does not fail the submission when the conversion event rejects", async () => {
+    mockSendConversionEvent.mockRejectedValueOnce(new Error("MP request failed"));
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("sends no conversion event when validation fails", async () => {
+    await POST(buildRequest({ name: "Test User", phone: "123-456-7890" }));
+
+    expect(mockSendConversionEvent).not.toHaveBeenCalled();
   });
 
   it("does not send an IS_WAITLIST attribute", async () => {
@@ -221,6 +275,7 @@ describe("Contact API Route", () => {
     expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
     expect(mockBrevo).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockSendConversionEvent).not.toHaveBeenCalled();
   });
 
   it("rate limits the sixth submission from one IP", async () => {

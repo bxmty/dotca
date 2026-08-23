@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
+import { sendConversionEvent } from "@/lib/ga4";
 
 jest.mock("next/server", () => ({
   NextResponse: {
@@ -29,9 +30,13 @@ jest.mock("@/lib/brevo", () => ({
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
 }));
+jest.mock("@/lib/ga4", () => ({
+  sendConversionEvent: jest.fn(),
+}));
 
 const mockBrevo = addBrevoContact as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
+const mockSendConversionEvent = sendConversionEvent as jest.Mock;
 
 const originalEnv = process.env;
 
@@ -68,12 +73,26 @@ const paidInvoice = {
   },
 };
 
+const paidInvoiceWithGaIds = {
+  ...paidInvoice,
+  parent: {
+    subscription_details: {
+      metadata: {
+        ...paidInvoice.parent.subscription_details.metadata,
+        ga_client_id: "111111111.222222222",
+        ga_session_id: "333333333",
+      },
+    },
+  },
+};
+
 describe("POST /api/stripe/webhook", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv, STRIPE_WEBHOOK_SECRET: "whsec_test" };
     mockBrevo.mockResolvedValue({ ok: true });
     mockNotify.mockResolvedValue(true);
+    mockSendConversionEvent.mockResolvedValue(undefined);
     mockConstructEvent.mockReturnValue({
       type: "invoice.payment_succeeded",
       data: { object: paidInvoice },
@@ -153,6 +172,49 @@ describe("POST /api/stripe/webhook", () => {
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
 
+  it("sends a purchase conversion event carrying the GA identifiers, value, and currency", async () => {
+    mockConstructEvent.mockReturnValueOnce({
+      type: "invoice.payment_succeeded",
+      data: { object: paidInvoiceWithGaIds },
+    });
+
+    await POST(buildRequest());
+
+    expect(mockSendConversionEvent).toHaveBeenCalledWith({
+      name: "purchase",
+      clientId: "111111111.222222222",
+      sessionId: "333333333",
+      params: {
+        transaction_id: "in_123",
+        value: 495,
+        currency: "CAD",
+      },
+    });
+    expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  it("still calls the conversion sender (which no-ops and logs) when GA identifiers are absent", async () => {
+    await POST(buildRequest());
+
+    expect(mockSendConversionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: undefined,
+        sessionId: undefined,
+      }),
+    );
+    expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  it("does not fail the webhook or the other side effects when the conversion event rejects", async () => {
+    mockSendConversionEvent.mockRejectedValueOnce(new Error("MP request failed"));
+
+    await POST(buildRequest());
+
+    expect(mockBrevo).toHaveBeenCalled();
+    expect(mockNotify).toHaveBeenCalled();
+    expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+  });
+
   it("ignores renewal invoices", async () => {
     mockConstructEvent.mockReturnValueOnce({
       type: "invoice.payment_succeeded",
@@ -165,6 +227,7 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(mockBrevo).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockSendConversionEvent).not.toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
 
@@ -178,6 +241,7 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(mockBrevo).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockSendConversionEvent).not.toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
 
