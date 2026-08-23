@@ -28,6 +28,7 @@
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
+    ga4_mp_api_secret: "{{ GA4_MP_API_SECRET | default('') }}"
     resend_api_key: "{{ RESEND_API_KEY | default('') }}"
     resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
     webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
