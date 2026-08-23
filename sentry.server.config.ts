@@ -22,4 +22,13 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
+
+  // Bots/scanners probe for Next.js Server Actions with a bogus Next-Action
+  // header even though this app defines none; Next.js's fallback error
+  // handling for that case throws this pair of framework-internal errors.
+  // Not actionable, so keep them out of the issue stream.
+  ignoreErrors: [
+    /Failed to find Server Action/,
+    /Expected RSC response, got text\/plain/,
+  ],
 });
