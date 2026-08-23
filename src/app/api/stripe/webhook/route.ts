@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import { getServerStripe } from "@/lib/stripe";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
+import { sendConversionEvent } from "@/lib/ga4";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
@@ -35,7 +36,15 @@ async function handleNewPaidSubscription(
   const billingCycle = metadata.billing_cycle ?? "";
   const employeeCount = metadata.employee_count ?? "";
   const company = metadata.company ?? "";
+  const gaClientId = metadata.ga_client_id;
+  const gaSessionId = metadata.ga_session_id;
 
+  // sendConversionEvent never throws (it swallows and reports its own
+  // failures), so this settles like the other two even if the MP request
+  // fails — a conversion-tracking outage must never fail the webhook or
+  // trigger a Stripe retry. Invoice id is the transaction_id: stable across
+  // a webhook redelivery for the same invoice, so GA4 dedupes the event
+  // rather than double-counting revenue.
   const [brevoSettled, notifySettled] = await Promise.allSettled([
     email
       ? addBrevoContact({
@@ -67,6 +76,16 @@ async function handleNewPaidSubscription(
           invoice.currency ?? "cad",
         ),
         Invoice: invoice.id ?? "",
+      },
+    }),
+    sendConversionEvent({
+      name: "purchase",
+      clientId: gaClientId,
+      sessionId: gaSessionId,
+      params: {
+        transaction_id: invoice.id ?? "",
+        value: invoice.amount_paid / 100,
+        currency: (invoice.currency ?? "cad").toUpperCase(),
       },
     }),
   ]);
