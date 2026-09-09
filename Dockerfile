@@ -14,6 +14,7 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_COMMIT_HASH
 ARG NEXT_PUBLIC_STAGING_GA_ID
 ARG NEXT_PUBLIC_PRODUCTION_GA_ID
+ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_AUTH_TOKEN
 ARG SENTRY_DSN
 
@@ -28,6 +29,7 @@ ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_COMMIT_HASH=$NEXT_PUBLIC_COMMIT_HASH
 ENV NEXT_PUBLIC_STAGING_GA_ID=$NEXT_PUBLIC_STAGING_GA_ID
 ENV NEXT_PUBLIC_PRODUCTION_GA_ID=$NEXT_PUBLIC_PRODUCTION_GA_ID
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ENV SENTRY_DSN=$SENTRY_DSN
 
@@ -48,6 +50,18 @@ RUN echo "Using Next.js path aliases for imports"
 # Build the Next.js application
 RUN npm run build
 
+# Guard the failure mode from #567: the browser DSN reaches Sentry only if Next
+# inlines it into the client bundle, and when it doesn't, Sentry.init disables
+# itself silently. A unit test can pin the variable name but cannot observe the
+# inlining, so assert it here — the only place that sees the built bundle.
+RUN if [ -n "$NEXT_PUBLIC_SENTRY_DSN" ]; then \
+      grep -rqF "$NEXT_PUBLIC_SENTRY_DSN" .next/static \
+      || { echo "ERROR: NEXT_PUBLIC_SENTRY_DSN did not reach the client bundle; browser Sentry would be silently disabled." >&2; exit 1; }; \
+      echo "✅ Browser Sentry DSN inlined into the client bundle"; \
+    else \
+      echo "⚠️  No NEXT_PUBLIC_SENTRY_DSN supplied; browser error tracking will be disabled in this image"; \
+    fi
+
 # Production image
 FROM node:24.19.0-alpine AS runner
 
@@ -67,6 +81,7 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_COMMIT_HASH
 ARG NEXT_PUBLIC_STAGING_GA_ID
 ARG NEXT_PUBLIC_PRODUCTION_GA_ID
+ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_DSN
 
 ENV NODE_ENV=$NODE_ENV
@@ -76,6 +91,7 @@ ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_COMMIT_HASH=$NEXT_PUBLIC_COMMIT_HASH
 ENV NEXT_PUBLIC_STAGING_GA_ID=$NEXT_PUBLIC_STAGING_GA_ID
 ENV NEXT_PUBLIC_PRODUCTION_GA_ID=$NEXT_PUBLIC_PRODUCTION_GA_ID
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_DSN=$SENTRY_DSN
 
 # Copy necessary files from builder stage
