@@ -53,7 +53,10 @@ const validOnboardingData = {
   goals: "Some goals",
 };
 
-function buildRequest(body: unknown, headers?: Record<string, string>): Request {
+function buildRequest(
+  body: unknown,
+  headers?: Record<string, string>,
+): Request {
   return {
     json: jest.fn().mockResolvedValue(body),
     headers: new Headers({ "x-forwarded-for": "203.0.113.9", ...headers }),
@@ -140,7 +143,9 @@ describe("Onboarding API Route", () => {
   });
 
   it("does not fail the submission when the conversion event rejects", async () => {
-    mockSendConversionEvent.mockRejectedValueOnce(new Error("MP request failed"));
+    mockSendConversionEvent.mockRejectedValueOnce(
+      new Error("MP request failed"),
+    );
 
     await POST(buildRequest(validOnboardingData));
 

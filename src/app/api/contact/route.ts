@@ -115,8 +115,9 @@ export async function POST(request: Request) {
 
     // Same-origin fetch from the contact form carries the GA cookies
     // automatically — no client-side change needed to attribute this lead.
-    const { clientId: gaClientId, sessionId: gaSessionId } =
-      parseGa4CookieIds(request.headers.get("cookie"));
+    const { clientId: gaClientId, sessionId: gaSessionId } = parseGa4CookieIds(
+      request.headers.get("cookie"),
+    );
 
     // Validation is done; from here on the lead exists. Brevo (CRM) and the
     // webmaster email (Resend) fire in parallel, and the submission succeeds
