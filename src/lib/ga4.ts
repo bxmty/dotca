@@ -48,7 +48,9 @@ export async function sendConversionEvent({
   const apiSecret = process.env.GA4_MP_API_SECRET;
 
   if (!measurementId) {
-    console.error(`GA4 measurement ID missing (${environment}); dropping "${name}" conversion`);
+    console.error(
+      `GA4 measurement ID missing (${environment}); dropping "${name}" conversion`,
+    );
     return;
   }
 
@@ -70,7 +72,8 @@ export async function sendConversionEvent({
     return;
   }
 
-  const endpoint = environment === "production" ? MP_ENDPOINT : MP_DEBUG_ENDPOINT;
+  const endpoint =
+    environment === "production" ? MP_ENDPOINT : MP_DEBUG_ENDPOINT;
   const url = `${endpoint}?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`;
 
   const abortController = new AbortController();

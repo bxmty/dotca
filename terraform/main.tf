@@ -6,7 +6,7 @@ terraform {
       version = "2.100.0"
     }
   }
-  required_version = "1.15.9"
+  required_version = "1.16.2"
 
   # Backend configuration is handled by separate backend-*.tf files
   # based on the use_local_state variable
@@ -24,7 +24,7 @@ locals {
 
 # Look up existing project
 data "digitalocean_project" "existing_project" {
-  name = var.project_name
+  name  = var.project_name
   count = var.use_existing_project ? 1 : 0
 }
 
@@ -73,10 +73,10 @@ locals {
 
 # Create a new Droplet for the environment
 resource "digitalocean_droplet" "app_droplet" {
-  image    = "docker-20-04"  # Docker-ready Ubuntu image
+  image    = "docker-20-04" # Docker-ready Ubuntu image
   name     = "${var.project_name}-${var.environment}"
   region   = var.region
-  size     = "s-1vcpu-2gb"   # Small droplet with 1 CPU, 2GB RAM
+  size     = "s-1vcpu-2gb" # Small droplet with 1 CPU, 2GB RAM
   ssh_keys = [local.ssh_key_id]
   tags     = [var.environment, "nextjs", var.project_name]
 
@@ -113,7 +113,7 @@ resource "digitalocean_droplet" "app_droplet" {
 # Create a firewall
 resource "digitalocean_firewall" "app_firewall" {
   count = var.use_existing_firewall ? 0 : 1
-  name = "${var.project_name}-${var.environment}-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
+  name  = "${var.project_name}-${var.environment}-firewall-${formatdate("YYYYMMDD-HHmm", timestamp())}"
 
   # Allow SSH
   inbound_rule {

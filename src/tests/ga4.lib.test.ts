@@ -63,16 +63,17 @@ describe("parseGa4CookieIds", () => {
   });
 
   it("derives the session cookie name from the measurement ID at runtime", () => {
-    const cookieHeader =
-      "_ga_DIFFERENT=GS1.1.999999999.1.1.999999999.0.0.0";
+    const cookieHeader = "_ga_DIFFERENT=GS1.1.999999999.1.1.999999999.0.0.0";
 
     // Cookie name built from a different measurement ID than the one that
     // produced this cookie, so it should not match.
-    expect(parseGa4CookieIds(cookieHeader, measurementId).sessionId).toBeUndefined();
-
     expect(
-      parseGa4CookieIds(cookieHeader, "G-DIFFERENT").sessionId,
-    ).toBe("999999999");
+      parseGa4CookieIds(cookieHeader, measurementId).sessionId,
+    ).toBeUndefined();
+
+    expect(parseGa4CookieIds(cookieHeader, "G-DIFFERENT").sessionId).toBe(
+      "999999999",
+    );
   });
 });
 
@@ -164,7 +165,9 @@ describe("sendConversionEvent", () => {
     await sendConversionEvent({ name: "purchase", clientId: "111.222" });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("https://www.google-analytics.com/debug/mp/collect"),
+      expect.stringContaining(
+        "https://www.google-analytics.com/debug/mp/collect",
+      ),
       expect.any(Object),
     );
   });
@@ -186,7 +189,9 @@ describe("sendConversionEvent", () => {
       Promise.resolve({
         ok: true,
         json: () =>
-          Promise.resolve({ validationMessages: [{ description: "bad param" }] }),
+          Promise.resolve({
+            validationMessages: [{ description: "bad param" }],
+          }),
       }),
     ) as jest.Mock;
 
