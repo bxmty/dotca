@@ -16,10 +16,12 @@ on:
       - "Dockerfile"
       - "next.config.js"
       - "tsconfig.json"
-      - "jest.config.js"
-      - "eslint.config.mjs"
+      - "jest.config.cjs"
+      - "eslint.config.js"
       - ".github/workflows/deploy.yml"
-      - ".github/actions/deploy/action.yml"
+      # All composite actions, not just deploy: a change to the test-runner is a
+      # change to the gate itself, and must be able to trigger this workflow.
+      - ".github/actions/**"
       - "terraform/**"
       - "ansible/**"
 
@@ -261,7 +263,7 @@ jobs:
     outputs:
       image_tag: ${{ github.ref_name }}-${{ github.sha }}
       image_digest: ${{ steps.build.outputs.digest }}
-      test_results: ${{ steps.test.outputs.results }}
+      test_results: ${{ steps.test.outputs.test_results }}
       build_success: ${{ steps.build.outcome }}
 
     steps:
@@ -308,9 +310,14 @@ jobs:
         run: npm audit --audit-level moderate
         continue-on-error: true
 
+      # continue-on-error is what makes the gate below reachable, not a way to
+      # forgive failures. Without it a failing suite aborts the job here, the
+      # gate step never runs, and force_deploy cannot forgive anything. With it
+      # the step still records outcome == 'failure'; the gate decides.
       - name: Run unit tests
         id: test
         if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
+        continue-on-error: true
         uses: ./.github/actions/test-runner
         with:
           test_type: unit
@@ -334,6 +341,11 @@ jobs:
         run: |
           echo "::error::Unit tests failed and force_deploy is not enabled"
           exit 1
+
+      - name: Warn that failing tests were forced through
+        if: needs.detect-environment.outputs.should_build == 'true' && steps.test.outcome == 'failure' && github.event.inputs.force_deploy == 'true'
+        run: |
+          echo "::warning::Unit tests failed but force_deploy is enabled — deploying anyway"
 
       # NEXT_PUBLIC_* vars are baked into the client bundle at build time, so a
       # missing or wrong-mode publishable key ships a broken card element that

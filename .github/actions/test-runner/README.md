@@ -57,7 +57,7 @@ A reusable GitHub Action for running various types of tests across different env
 | `test_type`         | Type of tests to run (unit, integration, e2e, smoke) | Yes      | -           |
 | `environment`       | Target environment                                   | No       | development |
 | `app_url`           | Application URL for integration/E2E tests            | No       | -           |
-| `fail_fast`         | Stop on first test failure                           | No       | false       |
+| `fail_fast`         | Stop on first test failure (ignored for unit tests)  | No       | false       |
 | `collect_coverage`  | Collect test coverage reports                        | No       | true        |
 | `timeout_minutes`   | Test execution timeout                               | No       | 10          |
 | `working_directory` | Working directory for execution                      | No       | .           |
@@ -108,7 +108,10 @@ The action automatically collects and organizes test artifacts:
 
 ## Error Handling
 
-- Tests continue on failure by default (`fail_fast: false`)
+- Unit tests always fail the step when the suite fails, regardless of
+  `fail_fast` — the caller decides whether to forgive that (see the
+  fail-on-test-failures gate in `deploy.yml`)
+- Integration and E2E tests continue on failure by default (`fail_fast: false`)
 - Detailed error logging and result collection
 - JSON output for programmatic processing
 - Timeout protection for long-running tests
