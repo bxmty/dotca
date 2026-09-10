@@ -260,6 +260,16 @@ jobs:
     # Set the environment for this job
     environment: ${{ needs.detect-environment.outputs.environment }}
 
+    # Browser Sentry DSN, resolved once so the guard step and the image build
+    # arg below cannot drift apart. Environment-scoped under a single unsuffixed
+    # name, exactly as NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is: the job runs under
+    # `environment:` above, so GitHub resolves the right one. Deliberately has no
+    # fallback to the legacy SENTRY_DSN_* secrets — this value is inlined into
+    # the public client bundle, so a cross-environment fallback would ship the
+    # staging DSN to production browsers.
+    env:
+      BROWSER_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+
     outputs:
       image_tag: ${{ github.ref_name }}-${{ github.sha }}
       image_digest: ${{ steps.build.outputs.digest }}
@@ -375,6 +385,21 @@ jobs:
               ;;
           esac
 
+      # The failure this guards against is silent: Sentry.init with an empty DSN
+      # disables the SDK without erroring, so browser errors simply stop arriving
+      # and nothing reports it. Warn loudly rather than fail — a missing DSN
+      # degrades observability, it does not break the site.
+      - name: Check browser Sentry DSN is available for this environment
+        if: needs.detect-environment.outputs.should_build == 'true'
+        env:
+          TARGET_ENV: ${{ needs.detect-environment.outputs.environment }}
+        run: |
+          if [ -z "$BROWSER_SENTRY_DSN" ]; then
+            echo "::warning::No Sentry DSN available for the '$TARGET_ENV' environment. Browser error tracking and session replay will be silently disabled in this build. Set NEXT_PUBLIC_SENTRY_DSN as an environment secret."
+          else
+            echo "✅ Browser Sentry DSN present; client error tracking will be enabled"
+          fi
+
       - name: Log in to Container Registry
         if: needs.detect-environment.outputs.should_build == 'true'
         run: |
@@ -400,6 +425,9 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: docker/build-push-action@v7.3.0
         # Optimized for performance: scoped caching, inline cache, fast compression
+        # Next.js inlines only NEXT_PUBLIC_-prefixed values into the client
+        # bundle, so the unprefixed SENTRY_DSN reaches the server and edge
+        # runtimes only; the browser needs its own public DSN (#567).
         with:
           context: .
           # Build amd64 only; DigitalOcean droplets use x86. arm64 via QEMU is slow and can timeout.
@@ -420,6 +448,7 @@ jobs:
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             NEXT_PUBLIC_COMMIT_HASH=${{ github.sha }}
             SENTRY_DSN=${{ needs.detect-environment.outputs.environment == 'production' && secrets.SENTRY_DSN_PRODUCTION || secrets.SENTRY_DSN_STAGING }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ env.BROWSER_SENTRY_DSN }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
