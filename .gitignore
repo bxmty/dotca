@@ -17,6 +17,9 @@ test-results/
 
 # next.js
 /.next/
+# Alternate build dirs (e.g. .next-local, .next-verify). Unanchored, matching
+# the nested-path behaviour of the per-directory entries this replaced.
+.next-*/
 /out/
 
 # production
@@ -109,5 +112,3 @@ logs/*
 
 # bugs
 docs/bugs/*
-.next-local/
-.next-verify/

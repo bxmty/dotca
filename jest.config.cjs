@@ -15,7 +15,11 @@ const customJestConfig = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
-  testPathIgnorePatterns: ["<rootDir>/e2e/"],
+  // A Next.js standalone build copies src/ — tests included — into its output
+  // directory, and testMatch is unanchored, so those stale duplicates would be
+  // collected alongside the real suite. Matches .next/ and suffixed build dirs
+  // (.next-local/, .next-verify/) without swallowing a real .nextra/-style dir.
+  testPathIgnorePatterns: ["<rootDir>/e2e/", "<rootDir>/\\.next(-[^/]+)?/"],
   collectCoverage: true,
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
