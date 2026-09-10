@@ -57,12 +57,12 @@ repos:
         pass_filenames: false
         files: package-lock\.json$
 
-  # Jest tests (temporarily allowing failures while test suite is being improved)
+  # Jest tests
   - repo: local
     hooks:
       - id: test
         name: Jest Tests
-        entry: npm test -- --watchAll=false --passWithNoTests --coverage=false --testFailureExitCode=0
+        entry: npm test -- --watchAll=false --passWithNoTests --coverage=false
         language: system
         pass_filenames: false
         files: \.(js|jsx|ts|tsx)$

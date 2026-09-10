@@ -13,7 +13,9 @@ inputs:
     description: "Application URL for integration/E2E tests"
     required: false
   fail_fast:
-    description: "Stop on first test failure"
+    description: "Stop on first test failure. Ignored for unit tests — a failing
+      unit suite always fails the step, and the caller decides whether to
+      forgive it (see the fail-on-test-failures gate in deploy.yml)."
     required: false
     default: "false"
   collect_coverage:
@@ -77,20 +79,32 @@ runs:
 
         START_TIME=$(date +%s)
 
-        # Run unit tests with coverage if requested
+        # Run unit tests with coverage if requested. The exit code is captured
+        # rather than allowed to abort the step, so the result summary below is
+        # still written on a failing run — but it is re-raised at the end: a
+        # failing unit suite must surface as a failed step so the caller's
+        # fail-on-test-failures gate can see it.
+        COVERAGE_FLAG=""
         if [ "${{ inputs.collect_coverage }}" = "true" ]; then
-          npm run test -- --coverage --watchAll=false --passWithNoTests
-        else
-          npm run test -- --watchAll=false --passWithNoTests
+          COVERAGE_FLAG="--coverage"
         fi
+
+        npm run test -- $COVERAGE_FLAG --watchAll=false --passWithNoTests \
+          && TEST_PASSED=true || TEST_PASSED=false
 
         END_TIME=$(date +%s)
         DURATION=$((END_TIME - START_TIME))
 
         # Generate test results summary
-        echo "{\"type\":\"unit\",\"passed\":true,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}" > test-results/unit-results.json
+        RESULTS="{\"type\":\"unit\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}"
+        echo "$RESULTS" > test-results/unit-results.json
 
-        echo "results={\"type\":\"unit\",\"passed\":true,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}" >> $GITHUB_OUTPUT
+        echo "results=$RESULTS" >> $GITHUB_OUTPUT
+
+        if [ "$TEST_PASSED" = "false" ]; then
+          echo "::error::Unit tests failed"
+          exit 1
+        fi
 
     - name: Run integration tests
       id: integration-tests
@@ -262,9 +276,13 @@ runs:
         # Check all test result files
         for result_file in test-results/*.json; do
           if [ -f "$result_file" ]; then
-            # Extract duration and passed status
+            # Extract duration and passed status. `.passed // true` cannot be
+            # used here: jq's alternative operator treats `false` as absent, so
+            # it rewrote every failed run into a pass. Default on null only, and
+            # fall back to "false" if jq itself fails — an unreadable result
+            # file is a result we cannot vouch for, not a pass.
             DURATION=$(jq -r '.duration // 0' "$result_file" 2>/dev/null || echo "0")
-            PASSED=$(jq -r '.passed // true' "$result_file" 2>/dev/null || echo "true")
+            PASSED=$(jq -r 'if .passed == null then true else .passed end' "$result_file" 2>/dev/null || echo "false")
 
             TOTAL_DURATION=$((TOTAL_DURATION + DURATION))
 
