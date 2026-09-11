@@ -26,20 +26,24 @@ const customJestConfig = {
     "!src/**/*.d.ts",
     "!**/node_modules/**",
   ],
-  // Ratchet baseline, not a target. These numbers are the coverage the suite
+  // Ratchet floor, not a target. These numbers are the coverage the suite
   // actually produced (measured, then rounded down), so that `jest --coverage`
-  // passes on a healthy suite and fails only on a real regression. The target
-  // remains 65% branches/functions and 70% lines/statements; raise these back
-  // toward it incrementally as coverage improves, never lower them to make a
-  // failing run pass. Functions sits furthest from the target because
-  // untested route and layout modules count every exported component as an
-  // uncovered function while contributing no branches.
+  // passes on a healthy suite and fails only on a real regression. Raise them
+  // as coverage improves; never lower them to make a failing run pass.
+  //
+  // The repo's stated target was 65% branches/functions and 70%
+  // lines/statements. All four now clear it (#570), so this floor sits above
+  // the target rather than below it. Functions has the thinnest margin: an
+  // untested route or layout module counts every exported component as an
+  // uncovered function while contributing no branches, so a new page added
+  // without a test is the most likely way to trip this gate. Cover the new
+  // module rather than shaving the floor.
   coverageThreshold: {
     global: {
-      branches: 72,
-      functions: 55,
-      lines: 73,
-      statements: 71,
+      branches: 75,
+      functions: 66,
+      lines: 79,
+      statements: 77,
     },
   },
 };

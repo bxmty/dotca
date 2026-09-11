@@ -11,8 +11,9 @@ secret baked into Docker image, Umami removal.
        failed. Fixed in #569: the flag is gone from the test script and the
        pre-commit hook, `deploy.yml` runs the unit suite and its
        fail-on-test-failures gate is now reachable. Thresholds were set to
-       measured coverage in #566 as a ratchet baseline; 65/70 remains the
-       target.
+       measured coverage in #566 as a ratchet baseline; #570 covers the
+       structured-data builders, the OG image renderer and the pages-router
+       shell, which carries all four metrics past the 65/70 target.
 2. [ ] **Rotate the Stripe secret key.** Previously built images have
        `STRIPE_SECRET_KEY` recoverable via `docker inspect`. After the
        Dockerfile fix deploys, rotate the key in Stripe and update the GitHub
