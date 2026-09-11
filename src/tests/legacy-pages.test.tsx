@@ -1,10 +1,11 @@
 // tests/legacy-pages.test.tsx
 import { render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import "@testing-library/jest-dom";
 import Custom404 from "@/pages/404";
-import App from "@/pages/_app";
-// Document imports commented out as they're not directly used
-// import Document, { Html, Head, Main, NextScript } from '@/pages/_document';
+
+// The pages-router _app and _error modules are covered in pages-app.test.tsx
+// and pages-error.test.tsx, which mock the router and Sentry they depend on.
 
 // Mock next/link for 404 page
 jest.mock("next/link", () => ({
@@ -20,37 +21,26 @@ jest.mock("next/link", () => ({
   },
 }));
 
-// Mock next/navigation for _app component
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    refresh: jest.fn(),
-    pathname: "/",
-    query: {},
-    asPath: "/",
-    events: {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
-    },
-  }),
-}));
-
-// Mock Next.js document components
+// Next.js only renders these document primitives inside its own server
+// pipeline, so stand them in with plain elements and assert the shell _document
+// builds out of them.
 jest.mock("next/document", () => ({
   __esModule: true,
-  Html: ({ lang, children }: { lang: string; children: React.ReactNode }) => (
-    <html lang={lang}>{children}</html>
+  Html: ({ children, ...props }: React.ComponentProps<"html">) => (
+    <html {...props}>{children}</html>
   ),
-  Head: () => <div data-testid="document-head"></div>,
-  Main: () => <main data-testid="document-main"></main>,
-  NextScript: () => <div data-testid="next-script"></div>,
+  Head: () => <head data-testid="document-head" />,
+  Main: () => <main data-testid="document-main" />,
+  NextScript: () => <script data-testid="next-script" />,
   default: () => null,
 }));
+
+import Document from "@/pages/_document";
+
+/** The HTML shell _document builds out of the Next.js document primitives. */
+function renderDocumentMarkup(): string {
+  return renderToStaticMarkup(<Document />);
+}
 
 describe("Legacy Pages", () => {
   describe("404 Page", () => {
@@ -67,33 +57,20 @@ describe("Legacy Pages", () => {
     });
   });
 
-  describe("_app Page", () => {
-    it("renders component with pageProps", () => {
-      // Simplified test - _app component testing is complex with Next.js router
-      // The component exists and has proper structure
-      expect(typeof App).toBe("function");
-    });
-  });
-
   describe("_document Page", () => {
-    it("tests Document component existence", () => {
-      // We can't directly test the Document component as it's a special Next.js file
-      // Instead, we'll just verify that it exists and has the expected structure
+    it("renders an English document that follows the OS colour scheme", () => {
+      const markup = renderDocumentMarkup();
 
-      // Import the actual Document component directly
-      const DocumentComponent = jest.requireActual("@/pages/_document").default;
-      expect(DocumentComponent).toBeDefined();
+      expect(markup).toContain('lang="en"');
+      expect(markup).toContain('data-bs-theme="auto"');
+    });
 
-      // For coverage purposes, we'll manually test its exported elements
-      const head = document.createElement("head");
-      document.body.appendChild(head);
-      render(<div data-testid="document-head" />);
-      render(<div data-testid="document-main" />);
-      render(<div data-testid="next-script" />);
+    it("renders the head, page body and Next.js scripts", () => {
+      const markup = renderDocumentMarkup();
 
-      expect(screen.getByTestId("document-head")).toBeInTheDocument();
-      expect(screen.getByTestId("document-main")).toBeInTheDocument();
-      expect(screen.getByTestId("next-script")).toBeInTheDocument();
+      expect(markup).toContain('data-testid="document-head"');
+      expect(markup).toContain('data-testid="document-main"');
+      expect(markup).toContain('data-testid="next-script"');
     });
   });
 });
