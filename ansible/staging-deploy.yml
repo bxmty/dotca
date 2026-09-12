@@ -425,10 +425,18 @@
           - ghcr.io/{{ github_username }}/dotca:staging (if username available)
       when: not any_image_found
 
+    # Pulls the image directly rather than via `docker-compose pull`, which
+    # honours the service's `pull_policy: missing` and therefore skips any tag
+    # already present on the host. Image tags are keyed on the commit SHA, so
+    # re-deploying a commit that has been deployed before (a workflow_dispatch
+    # re-run, a retried deploy) hits a tag the host already has and silently
+    # keeps the old image — including its stale build-time NEXT_PUBLIC_* values.
+    # `docker pull` ignores the compose policy, so the tag is always resolved
+    # against the registry. The policy itself stays `missing` so that later
+    # restarts, which run long after the CI GHCR token has expired, do not try
+    # to re-authenticate.
     - name: Pull latest Docker images from GHCR
-      ansible.builtin.command: bash -c "cd {{ app_dir }} && docker-compose pull web"
-      args:
-        chdir: "{{ app_dir }}"
+      ansible.builtin.command: docker pull "{{ docker_image }}"
       register: docker_pull
       retries: 3
       delay: 10

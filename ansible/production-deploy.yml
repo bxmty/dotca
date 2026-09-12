@@ -395,10 +395,13 @@
       ansible.builtin.debug:
         msg: "{{ docker_compose_content.stdout_lines }}"
 
+    # See the matching task in staging-deploy.yml: `docker-compose pull` honours
+    # the service's `pull_policy: missing` and skips any tag already on the host,
+    # so re-deploying an already-deployed commit SHA would keep the stale image
+    # and its build-time NEXT_PUBLIC_* values. `docker pull` always resolves the
+    # tag against the registry.
     - name: Pull production image from GHCR
-      ansible.builtin.command: bash -c "cd {{ app_dir }}/repo && docker-compose pull web"
-      args:
-        chdir: "{{ app_dir }}/repo"
+      ansible.builtin.command: docker pull "{{ docker_image }}"
       register: docker_pull
       retries: 3
       delay: 10
