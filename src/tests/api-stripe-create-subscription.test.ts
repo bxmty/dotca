@@ -170,7 +170,9 @@ describe("POST /api/stripe/create-subscription", () => {
     );
 
     const [params] = mockSubscriptionsCreate.mock.calls[0];
-    expect(params.metadata).toMatchObject({ ga_client_id: "111111111.222222222" });
+    expect(params.metadata).toMatchObject({
+      ga_client_id: "111111111.222222222",
+    });
     expect(params.metadata).not.toHaveProperty("ga_session_id");
   });
 

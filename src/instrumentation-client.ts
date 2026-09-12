@@ -5,7 +5,11 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
+  // Must be NEXT_PUBLIC_-prefixed: Next.js only inlines that prefix into the
+  // client bundle, and Sentry.init with an undefined DSN disables the SDK
+  // silently. A Sentry DSN is designed to be public, so exposing it here is
+  // the intended usage. Server and edge keep reading the unprefixed SENTRY_DSN.
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   // Environment tagging for better issue organization
   environment: process.env.NEXT_PUBLIC_ENVIRONMENT,

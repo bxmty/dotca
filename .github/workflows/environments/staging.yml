@@ -58,7 +58,13 @@ secrets:
 
   # Sentry monitoring
   - SENTRY_AUTH_TOKEN
+  # Server/edge DSN (legacy suffixed name)
   - SENTRY_DSN_STAGING
+  # Browser DSN, inlined into the client bundle at image build time.
+  # Unsuffixed and environment-scoped, like NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+  # Must be set per environment: there is no fallback, and without it
+  # browser error tracking is disabled (the build warns).
+  - NEXT_PUBLIC_SENTRY_DSN
 
   # GitHub
   - GITHUB_TOKEN

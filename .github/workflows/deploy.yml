@@ -16,10 +16,12 @@ on:
       - "Dockerfile"
       - "next.config.js"
       - "tsconfig.json"
-      - "jest.config.js"
-      - "eslint.config.mjs"
+      - "jest.config.cjs"
+      - "eslint.config.js"
       - ".github/workflows/deploy.yml"
-      - ".github/actions/deploy/action.yml"
+      # All composite actions, not just deploy: a change to the test-runner is a
+      # change to the gate itself, and must be able to trigger this workflow.
+      - ".github/actions/**"
       - "terraform/**"
       - "ansible/**"
 
@@ -258,10 +260,20 @@ jobs:
     # Set the environment for this job
     environment: ${{ needs.detect-environment.outputs.environment }}
 
+    # Browser Sentry DSN, resolved once so the guard step and the image build
+    # arg below cannot drift apart. Environment-scoped under a single unsuffixed
+    # name, exactly as NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is: the job runs under
+    # `environment:` above, so GitHub resolves the right one. Deliberately has no
+    # fallback to the legacy SENTRY_DSN_* secrets — this value is inlined into
+    # the public client bundle, so a cross-environment fallback would ship the
+    # staging DSN to production browsers.
+    env:
+      BROWSER_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+
     outputs:
       image_tag: ${{ github.ref_name }}-${{ github.sha }}
       image_digest: ${{ steps.build.outputs.digest }}
-      test_results: ${{ steps.test.outputs.results }}
+      test_results: ${{ steps.test.outputs.test_results }}
       build_success: ${{ steps.build.outcome }}
 
     steps:
@@ -284,7 +296,7 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.19.0"
+          node-version: "24.21.0"
           cache: "npm"
 
       - name: Install dependencies
@@ -308,9 +320,14 @@ jobs:
         run: npm audit --audit-level moderate
         continue-on-error: true
 
+      # continue-on-error is what makes the gate below reachable, not a way to
+      # forgive failures. Without it a failing suite aborts the job here, the
+      # gate step never runs, and force_deploy cannot forgive anything. With it
+      # the step still records outcome == 'failure'; the gate decides.
       - name: Run unit tests
         id: test
         if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
+        continue-on-error: true
         uses: ./.github/actions/test-runner
         with:
           test_type: unit
@@ -334,6 +351,11 @@ jobs:
         run: |
           echo "::error::Unit tests failed and force_deploy is not enabled"
           exit 1
+
+      - name: Warn that failing tests were forced through
+        if: needs.detect-environment.outputs.should_build == 'true' && steps.test.outcome == 'failure' && github.event.inputs.force_deploy == 'true'
+        run: |
+          echo "::warning::Unit tests failed but force_deploy is enabled — deploying anyway"
 
       # NEXT_PUBLIC_* vars are baked into the client bundle at build time, so a
       # missing or wrong-mode publishable key ships a broken card element that
@@ -363,6 +385,21 @@ jobs:
               ;;
           esac
 
+      # The failure this guards against is silent: Sentry.init with an empty DSN
+      # disables the SDK without erroring, so browser errors simply stop arriving
+      # and nothing reports it. Warn loudly rather than fail — a missing DSN
+      # degrades observability, it does not break the site.
+      - name: Check browser Sentry DSN is available for this environment
+        if: needs.detect-environment.outputs.should_build == 'true'
+        env:
+          TARGET_ENV: ${{ needs.detect-environment.outputs.environment }}
+        run: |
+          if [ -z "$BROWSER_SENTRY_DSN" ]; then
+            echo "::warning::No Sentry DSN available for the '$TARGET_ENV' environment. Browser error tracking and session replay will be silently disabled in this build. Set NEXT_PUBLIC_SENTRY_DSN as an environment secret."
+          else
+            echo "✅ Browser Sentry DSN present; client error tracking will be enabled"
+          fi
+
       - name: Log in to Container Registry
         if: needs.detect-environment.outputs.should_build == 'true'
         run: |
@@ -388,6 +425,9 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: docker/build-push-action@v7.3.0
         # Optimized for performance: scoped caching, inline cache, fast compression
+        # Next.js inlines only NEXT_PUBLIC_-prefixed values into the client
+        # bundle, so the unprefixed SENTRY_DSN reaches the server and edge
+        # runtimes only; the browser needs its own public DSN (#567).
         with:
           context: .
           # Build amd64 only; DigitalOcean droplets use x86. arm64 via QEMU is slow and can timeout.
@@ -408,6 +448,7 @@ jobs:
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             NEXT_PUBLIC_COMMIT_HASH=${{ github.sha }}
             SENTRY_DSN=${{ needs.detect-environment.outputs.environment == 'production' && secrets.SENTRY_DSN_PRODUCTION || secrets.SENTRY_DSN_STAGING }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ env.BROWSER_SENTRY_DSN }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
@@ -459,7 +500,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.15.9"
+          terraform_version: "1.16.2"
 
       - name: Set deployment image tag
         id: image_tag

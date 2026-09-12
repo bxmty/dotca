@@ -206,7 +206,9 @@ describe("POST /api/stripe/webhook", () => {
   });
 
   it("does not fail the webhook or the other side effects when the conversion event rejects", async () => {
-    mockSendConversionEvent.mockRejectedValueOnce(new Error("MP request failed"));
+    mockSendConversionEvent.mockRejectedValueOnce(
+      new Error("MP request failed"),
+    );
 
     await POST(buildRequest());
 
