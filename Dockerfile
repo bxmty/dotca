@@ -62,6 +62,18 @@ RUN if [ -n "$NEXT_PUBLIC_SENTRY_DSN" ]; then \
       echo "⚠️  No NEXT_PUBLIC_SENTRY_DSN supplied; browser error tracking will be disabled in this image"; \
     fi
 
+# Same failure shape for the release tag: the build script used to overwrite
+# NEXT_PUBLIC_COMMIT_HASH with `git rev-parse`, which cannot work here because
+# .dockerignore excludes .git — so every image silently shipped release
+# "unknown" and Sentry could not tie an error to a deploy.
+RUN if [ -n "$NEXT_PUBLIC_COMMIT_HASH" ]; then \
+      grep -rqF "$NEXT_PUBLIC_COMMIT_HASH" .next/static \
+      || { echo "ERROR: NEXT_PUBLIC_COMMIT_HASH did not reach the client bundle; Sentry releases would be untraceable." >&2; exit 1; }; \
+      echo "✅ Commit hash inlined into the client bundle"; \
+    else \
+      echo "⚠️  No NEXT_PUBLIC_COMMIT_HASH supplied; this image will report release \"unknown\""; \
+    fi
+
 # Production image
 FROM node:24.21.0-alpine AS runner
 
