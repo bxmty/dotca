@@ -198,6 +198,19 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
         <p className="small text-light mt-3 text-center">
           We&apos;ll reach out within 24 hours to schedule your consultation.
         </p>
+        <p className="small text-light mb-0 text-center">
+          Prefer to pick a time yourself?{" "}
+          <a
+            href="/book"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white"
+            data-testid="contact-book-link"
+          >
+            Book a time now
+          </a>
+          .
+        </p>
       </div>
     </form>
   );
