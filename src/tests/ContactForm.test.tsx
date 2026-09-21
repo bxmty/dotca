@@ -25,6 +25,15 @@ describe("ContactForm Component", () => {
     jest.clearAllMocks();
   });
 
+  it("links to the /book redirect for self-serve scheduling", () => {
+    render(<ContactForm />);
+
+    const link = screen.getByTestId("contact-book-link");
+    expect(link).toHaveAttribute("href", "/book");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  });
+
   it("updates input values on change", async () => {
     render(<ContactForm />);
     const user = userEvent.setup();
