@@ -149,7 +149,7 @@ describe("stripe.ts utility", () => {
       const result = await getServerStripe();
 
       expect(mockStripeConstructor).toHaveBeenCalledWith("sk_test_456", {
-        apiVersion: "2026-08-26.dahlia",
+        apiVersion: "2026-09-30.endive",
       });
       expect(result).toBe(mockStripeInstance);
     });
