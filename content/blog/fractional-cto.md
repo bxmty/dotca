@@ -239,6 +239,4 @@ Most business owners discover they're losing 2-3x more than they thought on tech
 
 Stop spending your valuable time managing technology. Let's build a strategy that works.
 
-[Schedule Free Technology Strategy Consultation]
-
 Get in touch with us at hi@boximity.ca

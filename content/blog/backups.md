@@ -132,6 +132,4 @@ Because the next ransomware attack is coming. And if your backups fail, you're l
 
 Don't wait for the attack to discover your backups are worthless.
 
-[Schedule Your Free Backup Assessment]
-
 hi@boximity.ca | Let's make sure you're actually protected.

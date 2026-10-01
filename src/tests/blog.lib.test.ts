@@ -5,7 +5,13 @@ jest.mock("fs");
 
 const mockReadFileSync = fs.readFileSync as jest.Mock;
 
-function mockPostFile({ published }: { published: boolean }) {
+function mockPostFile({
+  published,
+  ctaLines = [],
+}: {
+  published: boolean;
+  ctaLines?: string[];
+}) {
   mockReadFileSync.mockReturnValue(
     [
       "---",
@@ -14,6 +20,7 @@ function mockPostFile({ published }: { published: boolean }) {
       "date: 2026-01-01",
       "author: Test Author",
       `published: ${published}`,
+      ...ctaLines,
       "---",
       "",
       "Post body content.",
@@ -57,6 +64,41 @@ describe("getBlogPostBySlug", () => {
 
     expect(getBlogPostBySlug(slug)).toBeNull();
     expect(mockReadFileSync).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: "assessment",
+      ctaLines: ["cta:", "  type: assessment"],
+      expected: { type: "assessment" },
+    },
+    {
+      name: "none",
+      ctaLines: ["cta:", "  type: none"],
+      expected: { type: "none" },
+    },
+    {
+      name: "lead-magnet",
+      ctaLines: ["cta:", "  type: lead-magnet", "  slug: example-guide"],
+      expected: { type: "lead-magnet", slug: "example-guide" },
+    },
+  ])("preserves a $name cta from frontmatter", ({ ctaLines, expected }) => {
+    mockPostFile({ published: true, ctaLines });
+
+    expect(getBlogPostBySlug("my-test-post")?.frontmatter.cta).toEqual(
+      expected,
+    );
+  });
+
+  it("hides a lead-magnet cta that has no slug", () => {
+    mockPostFile({
+      published: true,
+      ctaLines: ["cta:", "  type: lead-magnet"],
+    });
+
+    expect(getBlogPostBySlug("my-test-post")?.frontmatter.cta).toEqual({
+      type: "none",
+    });
   });
 
   it("returns null when the post file does not exist", () => {
