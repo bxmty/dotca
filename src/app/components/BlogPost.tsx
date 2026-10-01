@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { BlogPost as BlogPostType } from "@/types/blog";
 import { formatBlogDate, tagToSlug } from "@/lib/blog";
+import BlogCta from "./BlogCta";
 import OptimizedImage from "./OptimizedImage";
 
 interface BlogPostProps {
@@ -69,6 +70,8 @@ export default function BlogPost({ post, content }: BlogPostProps) {
 
       {/* Content */}
       <div className="blog-content prose prose-lg mx-auto">{content}</div>
+
+      <BlogCta cta={frontmatter.cta} />
 
       {/* Footer */}
       <footer className="mt-5 pt-4 border-top">

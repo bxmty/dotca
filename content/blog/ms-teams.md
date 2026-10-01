@@ -100,6 +100,4 @@ Not sure if the upgrade makes financial sense for your specific needs? We're off
 
 In just 30 minutes, we'll analyze your current meeting practices and show you exactly how much time and money Teams Premium could save your organization.
 
-**[Schedule Your Free Teams Premium ROI Assessment →](your-landing-page-url)**
-
 _[Your Company Name] is a Microsoft-certified partner specializing in helping businesses maximize their productivity through strategic implementation of Microsoft 365 tools._

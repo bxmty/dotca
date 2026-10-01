@@ -3,6 +3,7 @@ import path from "path";
 import { parseFrontmatter } from "@/lib/parseFrontmatter";
 import {
   BlogPost,
+  BlogPostCta,
   BlogPostFrontmatter,
   BlogPostSummary,
   BlogConfig,
@@ -38,6 +39,33 @@ function getBlogPostFiles(): string[] {
   }
 }
 
+function parseBlogPostCta(value: unknown): BlogPostCta | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value === "object") {
+    const candidate = value as { type?: unknown; slug?: unknown };
+
+    if (candidate.type === "assessment" || candidate.type === "none") {
+      return { type: candidate.type };
+    }
+
+    if (
+      candidate.type === "lead-magnet" &&
+      typeof candidate.slug === "string" &&
+      candidate.slug.length > 0
+    ) {
+      return { type: "lead-magnet", slug: candidate.slug };
+    }
+  }
+
+  // A present but unusable cta must not fall through to the assessment
+  // default, which would advertise the wrong offer.
+  console.warn("Blog post cta is present but invalid; hiding the CTA");
+  return { type: "none" };
+}
+
 /**
  * Parse frontmatter and content from a markdown file
  */
@@ -67,6 +95,7 @@ function parseBlogPost(filePath: string): BlogPost | null {
       readingTime,
       coverImage: data.coverImage,
       slug,
+      cta: parseBlogPostCta(data.cta),
     };
 
     return {

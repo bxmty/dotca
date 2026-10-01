@@ -1,3 +1,8 @@
+export type BlogPostCta =
+  | { type: "assessment" }
+  | { type: "lead-magnet"; slug: string }
+  | { type: "none" };
+
 export interface BlogPostFrontmatter {
   title: string;
   description: string;
@@ -9,6 +14,7 @@ export interface BlogPostFrontmatter {
   readingTime?: number;
   coverImage?: string;
   slug: string;
+  cta?: BlogPostCta;
 }
 
 export interface BlogPost {

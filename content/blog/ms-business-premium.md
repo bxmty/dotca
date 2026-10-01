@@ -62,5 +62,3 @@ That's IT that works the way it should—quietly, in the background, while you f
 Microsoft 365 Business Premium gives Ontario professional services firms enterprise-grade security and collaboration in a single, integrated platform. The Cloud 5 Pack ensures you're actually getting the value you're paying for—configured correctly, monitored continuously, and managed proactively so technology stops being a distraction and starts being a foundation.
 
 **Ready to see what a properly configured Microsoft 365 environment looks like for your firm?** Book a free 30-minute Technology Alignment Session. We'll focus on your business goals first—and show you exactly what technology can do to support them.
-
-[Book Your Free Technology Alignment Session →]
