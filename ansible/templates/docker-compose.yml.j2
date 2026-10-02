@@ -5,7 +5,7 @@ services:
   web:
     image: "{{ docker_image }}"
     # "missing" (not "always"): the deploy playbook already runs an explicit
-    # `docker-compose pull web` with a live CI-issued GHCR login right before
+    # `docker pull` of this image with a live CI-issued GHCR login right before
     # `up`. A policy of "always" forces every *subsequent* `docker-compose up`
     # (cron-driven recovery, a manual restart, host reboot) to re-authenticate
     # to GHCR too — but those run long after the deploy job's GITHUB_TOKEN has

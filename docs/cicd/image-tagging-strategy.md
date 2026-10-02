@@ -4,19 +4,43 @@
 
 This document defines the image tagging strategy for the CI/CD pipeline, ensuring clear identification of images across staging and production environments, and enabling reliable image promotion and rollback capabilities.
 
+## Build identity (what `deploy.yml` pushes)
+
+A deploy tag names one build. The commit SHA is not enough: rebuilding that commit with a different secret or build arg produces a different image. `scripts/build-image-tag.cjs` names the image
+
+```text
+<branch>-<full commit sha>-<run id>-<run attempt>
+```
+
+for example `staging-03f064a1b2c3d4e5f678901234567890abcdef01-18473920123-1`. The workflow run id changes on every run, including `workflow_dispatch`. The run attempt changes when failed jobs are re-run. Both environments use this tag. `staging` / `main` (and `latest` on the default branch) remain moving pointers to the newest push; they are not rollback targets.
+
+The Actions summary of the deploy run records that tag and the image digest. On the host, the running container's image name is that tag, and `docker image inspect --format '{{.RepoDigests}}' ghcr.io/bxmty/dotca:<tag>` is the digest. Those two together are one artifact.
+
+### Rollback
+
+Re-running the workflow builds a new image under a new run id. That is a new deploy, not a return to an earlier one.
+
+To roll back, deploy the earlier build's tag. The playbooks read it from `DEPLOY_DOCKER_IMAGE`:
+
+```bash
+DEPLOY_DOCKER_IMAGE=ghcr.io/bxmty/dotca:staging-03f064a1b2c3d4e5f678901234567890abcdef01-18473920123-1 \
+  ansible-playbook -i inventory/deploy.ini staging-deploy.yml
+```
+
+Production uses the same variable with `production-deploy.yml` and a `main-…` tag. Take the tag from the summary of the run you are returning to. The playbook's `docker pull` re-resolves that tag against the registry, including when the host already has it.
+
 ## Registry Organization
 
 ### GitHub Container Registry (GHCR) Structure
 
 ```
-ghcr.io/bxtech/dotca/
-├── :staging          # Latest staging build
-├── :staging-{sha}   # Specific staging commit
-├── :main            # Latest production build (promoted)
-├── :main-{sha}      # Specific production commit
+ghcr.io/bxmty/dotca/
+├── :staging          # Latest staging build (moving pointer)
+├── :staging-{sha}-{run id}-{run attempt}   # One staging build
+├── :main            # Latest production build (moving pointer)
+├── :main-{sha}-{run id}-{run attempt}      # One production build
 ├── :latest          # Latest stable release
-├── :v{major}.{minor}.{patch}  # Semantic version tags
-└── :rollback-{timestamp}      # Rollback targets
+└── :v{major}.{minor}.{patch}  # Semantic version tags
 ```
 
 ### Registry Access Control
@@ -33,17 +57,16 @@ ghcr.io/bxtech/dotca/
 
 #### Staging Environment
 
-- **Primary Tag**: `:staging`
-- **Commit Tags**: `:staging-{short-sha}` (e.g., `:staging-a1b2c3d`)
+- **Primary Tag**: `:staging` (moving pointer, not a rollback target)
+- **Build identity tag**: `:staging-{full-sha}-{run id}-{run attempt}` (one build; this is what deploy pushes)
 - **Branch Tags**: `:staging-{branch-name}` (e.g., `:staging-feature-auth`)
-- **Build Tags**: `:staging-build-{build-number}` (e.g., `:staging-build-123`)
+- **Numbered build tags**: `:staging-build-{build-number}` (e.g., `:staging-build-123`)
 
 #### Production Environment
 
-- **Primary Tag**: `:main`
-- **Commit Tags**: `:main-{short-sha}` (e.g., `:main-a1b2c3d`)
+- **Primary Tag**: `:main` (moving pointer, not a rollback target)
+- **Build identity tag**: `:main-{full-sha}-{run id}-{run attempt}` (one build; this is what deploy pushes)
 - **Release Tags**: `:v{major}.{minor}.{patch}` (e.g., `:v1.2.3`)
-- **Rollback Tags**: `:rollback-{timestamp}` (e.g., `:rollback-20241201-143022`)
 
 ### 2. Semantic Versioning Tags
 
@@ -101,22 +124,21 @@ docker push ghcr.io/bxtech/dotca:v1.2.3
 
 ### Staging Images
 
-| Tag Type             | Retention Policy         | Cleanup Schedule |
-| -------------------- | ------------------------ | ---------------- |
-| `:staging`           | Keep latest 5            | Daily            |
-| `:staging-{sha}`     | Keep latest 20           | Weekly           |
-| `:staging-{branch}`  | Keep latest 3 per branch | Weekly           |
-| `:staging-build-{n}` | Keep latest 10           | Daily            |
+| Tag Type                         | Retention Policy         | Cleanup Schedule |
+| -------------------------------- | ------------------------ | ---------------- |
+| `:staging`                       | Keep latest 5            | Daily            |
+| `:staging-{sha}-{run}-{attempt}` | Keep latest 20           | Weekly           |
+| `:staging-{branch}`              | Keep latest 3 per branch | Weekly           |
+| `:staging-build-{n}`             | Keep latest 10           | Daily            |
 
 ### Production Images
 
-| Tag Type                    | Retention Policy | Cleanup Schedule  |
-| --------------------------- | ---------------- | ----------------- |
-| `:main`                     | Keep latest 3    | Weekly            |
-| `:main-{sha}`               | Keep latest 10   | Monthly           |
-| `:v{major}.{minor}.{patch}` | Keep all         | Never (immutable) |
-| `:rollback-{timestamp}`     | Keep latest 5    | Weekly            |
-| `:latest`                   | Keep latest 2    | Weekly            |
+| Tag Type                      | Retention Policy | Cleanup Schedule  |
+| ----------------------------- | ---------------- | ----------------- |
+| `:main`                       | Keep latest 3    | Weekly            |
+| `:main-{sha}-{run}-{attempt}` | Keep latest 10   | Monthly           |
+| `:v{major}.{minor}.{patch}`   | Keep all         | Never (immutable) |
+| `:latest`                     | Keep latest 2    | Weekly            |
 
 ### Cleanup Scripts
 
@@ -162,23 +184,11 @@ validation_rules:
 
 ## Rollback Strategy
 
-### Rollback Tag Naming
+Roll back by redeploying an earlier build-identity tag, as described under [Build identity](#build-identity-what-deployyml-pushes). Do not mint a separate `:rollback-*` tag: the original tag already names that build, and a second name would be another thing to keep in sync.
 
-```
-:rollback-{YYYYMMDD}-{HHMMSS}-{reason}
-Examples:
-:rollback-20241201-143022-deployment-failure
-:rollback-20241201-150045-health-check-failure
-:rollback-20241201-160012-user-reported-issue
-```
-
-### Rollback Process
-
-1. **Identify Rollback Target**: Find the last known good image
-2. **Create Rollback Tag**: Tag the target image with rollback identifier
-3. **Deploy Rollback Image**: Update production to use rollback image
-4. **Verify Rollback**: Run health checks and validation
-5. **Document Rollback**: Log reason, timestamp, and outcome
+1. **Identify the target**: Copy the image tag and digest from the Actions summary of the last good run.
+2. **Deploy that tag**: Set `DEPLOY_DOCKER_IMAGE` and run the environment's playbook.
+3. **Verify**: The running container's image is that tag, and its repo digest matches the summary.
 
 ## Implementation in GitHub Actions
 

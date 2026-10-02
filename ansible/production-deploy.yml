@@ -395,11 +395,13 @@
       ansible.builtin.debug:
         msg: "{{ docker_compose_content.stdout_lines }}"
 
-    # See the matching task in staging-deploy.yml: `docker-compose pull` honours
-    # the service's `pull_policy: missing` and skips any tag already on the host,
-    # so re-deploying an already-deployed commit SHA would keep the stale image
-    # and its build-time NEXT_PUBLIC_* values. `docker pull` always resolves the
-    # tag against the registry.
+    # Same decision as staging-deploy.yml. The image tag names one build
+    # (`<branch>-<commit>-<run id>-<run attempt>`), so a first deploy is absent
+    # locally and `pull_policy: missing` would fetch it. This `docker pull`
+    # stays on purpose: a retry or a rollback repeats a tag the host may
+    # already have, and a GHCR tag can still be overwritten, so the host
+    # re-resolves it against the registry. `pull_policy` stays `missing` so
+    # later restarts do not re-authenticate after the CI token expires.
     - name: Pull production image from GHCR
       ansible.builtin.command: docker pull "{{ docker_image }}"
       register: docker_pull
@@ -660,7 +662,7 @@
 
           Deployment Details:
           - Image built directly from GitHub Actions workflow
-          - Deployed using SHA-based image tag for traceability
+          - Deployed using build-identity image tag <branch>-<commit>-<run id>-<run attempt>
 
           Verification Checks Passed:
           ✅ Container is running on port 3000
