@@ -19,6 +19,7 @@ on:
       - "jest.config.cjs"
       - "eslint.config.js"
       - ".github/workflows/deploy.yml"
+      - "scripts/build-image-tag.cjs"
       # All composite actions, not just deploy: a change to the test-runner is a
       # change to the gate itself, and must be able to trigger this workflow.
       - ".github/actions/**"
@@ -96,6 +97,7 @@ jobs:
               - 'ansible/**'
               - '.github/workflows/**'
               - '.github/actions/**'
+              - 'scripts/build-image-tag.cjs'
 
   # Environment detection and setup
   detect-environment:
@@ -271,7 +273,10 @@ jobs:
       BROWSER_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
 
     outputs:
-      image_tag: ${{ github.ref_name }}-${{ github.sha }}
+      # <branch>-<full sha>-<run id>-<run attempt>, from scripts/build-image-tag.cjs.
+      # A commit SHA alone is not a build: the same commit rebuilt later (new
+      # secret, rotated key, changed build arg) must not reuse the tag (#586).
+      image_tag: ${{ steps.image_identity.outputs.image_tag }}
       image_digest: ${{ steps.build.outputs.digest }}
       test_results: ${{ steps.test.outputs.test_results }}
       build_success: ${{ steps.build.outcome }}
@@ -291,6 +296,18 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0 # Full history for proper tagging
+
+      - name: Name this build
+        id: image_identity
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: |
+          tag="$(node scripts/build-image-tag.cjs \
+            --branch "${{ github.ref_name }}" \
+            --commit-sha "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}")"
+          echo "image_tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Build identity tag: ${tag}"
 
       - name: Setup Node.js
         if: needs.detect-environment.outputs.should_build == 'true'
@@ -411,19 +428,22 @@ jobs:
         uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Branch (`staging` / `main`) and `latest` stay moving pointers.
+          # The raw tag is the one deploy uses. A tag of only the commit SHA
+          # is not: a rebuild of that commit overwrites it (#586).
           tags: |
             type=ref,event=branch
-            type=sha,prefix={{branch}}-,format=long
+            type=raw,value=${{ steps.image_identity.outputs.image_tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Set up Docker Buildx
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v4.3.0
+        uses: docker/setup-buildx-action@v4.4.1
 
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         # Optimized for performance: scoped caching, inline cache, fast compression
         # Next.js inlines only NEXT_PUBLIC_-prefixed values into the client
         # bundle, so the unprefixed SENTRY_DSN reaches the server and edge
@@ -500,7 +520,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.16.2"
+          terraform_version: "1.16.4"
 
       - name: Set deployment image tag
         id: image_tag
@@ -583,6 +603,7 @@ jobs:
           | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deploy Target | \`${{ needs.detect-environment.outputs.deploy_target }}\` |
           | Image Tag Used | \`${{ steps.image_tag.outputs.image_tag }}\` |
+          | Image Digest | \`${{ needs.quality-and-build.outputs.image_digest }}\` |
           | Image Built For | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deployment Status | \$DEPLOY_STATUS |
 
@@ -711,6 +732,7 @@ jobs:
           ### 📊 Key Information
           - **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
           - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || 'N/A' }}\`
+          - **Image digest:** \`${{ needs.quality-and-build.outputs.image_digest }}\`
           - **Commit:** \`${{ github.sha }}\`
           - **Triggered by:** ${{ github.actor }}
 

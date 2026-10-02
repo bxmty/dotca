@@ -108,6 +108,4 @@ Most law firm partners discover they're losing 2-3x more than they estimated. Fi
 
 Let's put your time back where it belongs: practicing law, not troubleshooting IT.
 
-**[Schedule Free IT Assessment]**
-
 Get in touch with us at hi@boximity.ca
