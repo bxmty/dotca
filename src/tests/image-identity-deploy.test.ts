@@ -24,6 +24,12 @@ const SHA_TAG = `staging-${COMMIT_SHA}`;
 const LABEL = "com.boximity.build-input";
 const FIRST_BUILD_INPUT = "dsn-from-first-build";
 const SECOND_BUILD_INPUT = "dsn-from-second-build";
+const REGISTRY_READY_TIMEOUT_MS = 30_000;
+const REGISTRY_POLL_INTERVAL_MS = 500;
+const REGISTRY_START_TIMEOUT_MS = 120_000;
+const DEPLOY_TEST_TIMEOUT_MS = 180_000;
+const COMPOSE_PROJECT_NAME_SUFFIX_LENGTH = 24;
+const CONTAINER_SLEEP_SECONDS = "120";
 
 const scriptPath = join(
   __dirname,
@@ -97,24 +103,54 @@ function readLocalBuildInput(tag: string): string | undefined {
   if (result.status !== 0) {
     return undefined;
   }
-  const value = result.stdout.trim();
-  return value === "" || value === "<no value>" ? undefined : value;
+  const buildInputLabel = result.stdout.trim();
+  return buildInputLabel === "" || buildInputLabel === "<no value>"
+    ? undefined
+    : buildInputLabel;
 }
 
 /**
- * Compose `pull_policy: missing`: a tag already on the host is not pulled.
+ * The deploy playbook starts the service from a compose file whose pull
+ * policy is `missing`. This runs that policy; it does not reimplement it.
  */
 function deployWithMissingPullPolicy(tag: string): string {
-  const alreadyPresent = readLocalBuildInput(tag);
-  if (alreadyPresent !== undefined) {
-    return alreadyPresent;
+  const projectDir = mkdtempSync(join(tmpdir(), "dotca-compose-"));
+  const projectName =
+    `dotca${tag.replace(/[^a-z0-9]/gi, "").slice(-COMPOSE_PROJECT_NAME_SUFFIX_LENGTH)}`.toLowerCase();
+  const composeFile = join(projectDir, "compose.yml");
+  writeFileSync(
+    composeFile,
+    [
+      "services:",
+      "  web:",
+      `    image: ${REPOSITORY}:${tag}`,
+      "    pull_policy: missing",
+      `    command: ["sleep", "${CONTAINER_SLEEP_SECONDS}"]`,
+      "",
+    ].join("\n"),
+  );
+
+  const composeArguments = ["compose", "-f", composeFile, "-p", projectName];
+  try {
+    runProcess("docker", [...composeArguments, "up", "-d"]);
+    const containerId = runProcess("docker", [
+      ...composeArguments,
+      "ps",
+      "-q",
+      "web",
+    ]);
+    return runProcess("docker", [
+      "inspect",
+      "--format",
+      `{{ index .Config.Labels "${LABEL}" }}`,
+      containerId,
+    ]);
+  } finally {
+    spawnSync("docker", [...composeArguments, "down", "--remove-orphans"], {
+      encoding: "utf8",
+    });
+    rmSync(projectDir, { recursive: true, force: true });
   }
-  runProcess("docker", ["pull", `${REPOSITORY}:${tag}`]);
-  const pulled = readLocalBuildInput(tag);
-  if (pulled === undefined) {
-    throw new Error(`pull succeeded but ${tag} has no local image`);
-  }
-  return pulled;
 }
 
 function copyRegistryTag(sourceTag: string, destinationTag: string): void {
@@ -122,7 +158,7 @@ function copyRegistryTag(sourceTag: string, destinationTag: string): void {
   // index moves the registry tag without retagging the image the host already
   // has, which is what a second CI runner does when it pushes the same tag.
   const manifestPath = "/tmp/dotca-image-identity-manifest";
-  const listed = spawnSync(
+  const manifestResponse = spawnSync(
     "curl",
     [
       "-sS",
@@ -131,27 +167,29 @@ function copyRegistryTag(sourceTag: string, destinationTag: string): void {
       "-o",
       manifestPath,
       "-H",
-      "Accept: application/vnd.oci.image.index.v1+json",
+      "Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json",
       `http://127.0.0.1:${REGISTRY_PORT}/v2/dotca/manifests/${sourceTag}`,
     ],
     { encoding: "utf8" },
   );
-  if (listed.status !== 0) {
+  if (manifestResponse.status !== 0) {
     throw new Error(
-      `failed to read manifest for ${sourceTag}\n${listed.stderr}`,
+      `failed to read manifest for ${sourceTag}\n${manifestResponse.stderr}`,
     );
   }
-  const statusLine = listed.stdout.split("\n")[0] ?? "";
+  const statusLine = manifestResponse.stdout.split("\n")[0] ?? "";
   if (!statusLine.includes("200")) {
     throw new Error(
-      `registry did not return the manifest for ${sourceTag}:\n${listed.stdout}`,
+      `registry did not return the manifest for ${sourceTag}:\n${manifestResponse.stdout}`,
     );
   }
-  const contentType = listed.stdout
+  const contentType = manifestResponse.stdout
     .match(/^content-type:\s*([^;\r]+)/im)?.[1]
     ?.trim();
   if (!contentType) {
-    throw new Error(`registry response had no content-type:\n${listed.stdout}`);
+    throw new Error(
+      `registry response had no content-type:\n${manifestResponse.stdout}`,
+    );
   }
   runProcess("curl", [
     "-sS",
@@ -182,20 +220,22 @@ describe("deploying a rebuild of the same commit", () => {
       "registry:2.8.3",
     ]);
 
-    const deadline = Date.now() + 30_000;
+    const deadline = Date.now() + REGISTRY_READY_TIMEOUT_MS;
     while (Date.now() < deadline) {
-      const ready = spawnSync(
+      const registryProbe = spawnSync(
         "curl",
         ["-sf", `http://127.0.0.1:${REGISTRY_PORT}/v2/`],
         { encoding: "utf8" },
       );
-      if (ready.status === 0) {
+      if (registryProbe.status === 0) {
         return;
       }
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) =>
+        setTimeout(resolve, REGISTRY_POLL_INTERVAL_MS),
+      );
     }
     throw new Error("local registry did not become ready");
-  }, 120_000);
+  }, REGISTRY_START_TIMEOUT_MS);
 
   afterAll(() => {
     spawnSync("docker", ["rm", "-f", REGISTRY_CONTAINER], { encoding: "utf8" });
@@ -207,27 +247,35 @@ describe("deploying a rebuild of the same commit", () => {
     rmSync("/tmp/dotca-image-identity-manifest", { force: true });
   });
 
-  it("keeps the previous artifact when the tag is only the commit SHA", () => {
-    buildAndPush(SHA_TAG, FIRST_BUILD_INPUT);
-    buildAndPush("build-new", SECOND_BUILD_INPUT);
-    copyRegistryTag("build-new", SHA_TAG);
-    runProcess("docker", ["rmi", "-f", `${REPOSITORY}:build-new`]);
+  it(
+    "keeps the previous artifact when the tag is only the commit SHA",
+    () => {
+      buildAndPush(SHA_TAG, FIRST_BUILD_INPUT);
+      buildAndPush("build-new", SECOND_BUILD_INPUT);
+      copyRegistryTag("build-new", SHA_TAG);
+      runProcess("docker", ["rmi", "-f", `${REPOSITORY}:build-new`]);
 
-    // The registry tag now names the second build. The host still has the
-    // first, and missing-pull does not refresh it.
-    expect(deployWithMissingPullPolicy(SHA_TAG)).toBe(FIRST_BUILD_INPUT);
-  }, 180_000);
+      // The registry tag now names the second build. The host still has the
+      // first, and missing-pull does not refresh it.
+      expect(deployWithMissingPullPolicy(SHA_TAG)).toBe(FIRST_BUILD_INPUT);
+    },
+    DEPLOY_TEST_TIMEOUT_MS,
+  );
 
-  it("runs the new artifact when the tag names the workflow run", () => {
-    buildAndPush(firstBuildTag, FIRST_BUILD_INPUT);
-    buildAndPush("build-new", SECOND_BUILD_INPUT);
-    copyRegistryTag("build-new", secondBuildTag);
-    runProcess("docker", ["rmi", "-f", `${REPOSITORY}:build-new`]);
+  it(
+    "runs the new artifact when the tag names the workflow run",
+    () => {
+      buildAndPush(firstBuildTag, FIRST_BUILD_INPUT);
+      buildAndPush("build-new", SECOND_BUILD_INPUT);
+      copyRegistryTag("build-new", secondBuildTag);
+      runProcess("docker", ["rmi", "-f", `${REPOSITORY}:build-new`]);
 
-    expect(secondBuildTag).not.toBe(SHA_TAG);
-    expect(readLocalBuildInput(secondBuildTag)).toBeUndefined();
-    expect(deployWithMissingPullPolicy(secondBuildTag)).toBe(
-      SECOND_BUILD_INPUT,
-    );
-  }, 180_000);
+      expect(secondBuildTag).not.toBe(SHA_TAG);
+      expect(readLocalBuildInput(secondBuildTag)).toBeUndefined();
+      expect(deployWithMissingPullPolicy(secondBuildTag)).toBe(
+        SECOND_BUILD_INPUT,
+      );
+    },
+    DEPLOY_TEST_TIMEOUT_MS,
+  );
 });

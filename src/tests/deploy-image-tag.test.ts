@@ -17,6 +17,10 @@ describe("deploy workflow image identity", () => {
 
   it("pushes and deploys the tag from build-image-tag", () => {
     expect(deployWorkflow).toContain("scripts/build-image-tag.cjs");
+    expect(deployWorkflow).toContain('--run-id "${{ github.run_id }}"');
+    expect(deployWorkflow).toContain(
+      '--run-attempt "${{ github.run_attempt }}"',
+    );
     expect(deployWorkflow).toContain(
       "image_tag: ${{ steps.image_identity.outputs.image_tag }}",
     );
@@ -36,6 +40,17 @@ describe("deploy workflow image identity", () => {
   });
 });
 
+describe("rollback is an Ansible extra var", () => {
+  it("passes DEPLOY_DOCKER_IMAGE with -e so the playbook can read it", () => {
+    const taggingStrategy = readRepoFile("docs/cicd/image-tagging-strategy.md");
+
+    expect(taggingStrategy).toContain(
+      "-e DEPLOY_DOCKER_IMAGE=ghcr.io/bxmty/dotca:staging-",
+    );
+    expect(taggingStrategy).not.toMatch(/^DEPLOY_DOCKER_IMAGE=/m);
+  });
+});
+
 describe("deploy playbooks", () => {
   it.each(["ansible/staging-deploy.yml", "ansible/production-deploy.yml"])(
     "%s pulls the image CI named, on purpose, before compose starts it",
@@ -43,6 +58,8 @@ describe("deploy playbooks", () => {
       const playbook = readRepoFile(playbookPath);
       expect(playbook).toContain('docker pull "{{ docker_image }}"');
       expect(playbook).toContain("pull_policy: missing");
+      expect(playbook).toContain("does not substitute the moving");
+      expect(playbook).not.toContain("Use alternative");
     },
   );
 });

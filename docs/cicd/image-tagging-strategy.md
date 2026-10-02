@@ -20,14 +20,14 @@ The Actions summary of the deploy run records that tag and the image digest. On 
 
 Re-running the workflow builds a new image under a new run id. That is a new deploy, not a return to an earlier one.
 
-To roll back, deploy the earlier build's tag. The playbooks read it from `DEPLOY_DOCKER_IMAGE`:
+To roll back, deploy the earlier build's tag. The playbooks read the Ansible variable `DEPLOY_DOCKER_IMAGE` (the same one CI writes into the inventory). Pass it as an extra var; a shell variable of that name is not visible to the play:
 
 ```bash
-DEPLOY_DOCKER_IMAGE=ghcr.io/bxmty/dotca:staging-03f064a1b2c3d4e5f678901234567890abcdef01-18473920123-1 \
-  ansible-playbook -i inventory/deploy.ini staging-deploy.yml
+ansible-playbook -i inventory/deploy.ini staging-deploy.yml \
+  -e DEPLOY_DOCKER_IMAGE=ghcr.io/bxmty/dotca:staging-03f064a1b2c3d4e5f678901234567890abcdef01-18473920123-1
 ```
 
-Production uses the same variable with `production-deploy.yml` and a `main-…` tag. Take the tag from the summary of the run you are returning to. The playbook's `docker pull` re-resolves that tag against the registry, including when the host already has it.
+Production uses the same extra var with `production-deploy.yml` and a `main-…` tag. Take the tag from the summary of the run you are returning to. The playbook's `docker pull` re-resolves that tag against the registry, including when the host already has it. If that tag is missing from the registry, the play fails. It does not substitute the moving `:staging` or `:main` tag.
 
 ## Registry Organization
 
@@ -187,7 +187,7 @@ validation_rules:
 Roll back by redeploying an earlier build-identity tag, as described under [Build identity](#build-identity-what-deployyml-pushes). Do not mint a separate `:rollback-*` tag: the original tag already names that build, and a second name would be another thing to keep in sync.
 
 1. **Identify the target**: Copy the image tag and digest from the Actions summary of the last good run.
-2. **Deploy that tag**: Set `DEPLOY_DOCKER_IMAGE` and run the environment's playbook.
+2. **Deploy that tag**: Pass `DEPLOY_DOCKER_IMAGE` with `ansible-playbook -e` and run the environment's playbook.
 3. **Verify**: The running container's image is that tag, and its repo digest matches the summary.
 
 ## Implementation in GitHub Actions

@@ -19,6 +19,7 @@ on:
       - "jest.config.cjs"
       - "eslint.config.js"
       - ".github/workflows/deploy.yml"
+      - "scripts/build-image-tag.cjs"
       # All composite actions, not just deploy: a change to the test-runner is a
       # change to the gate itself, and must be able to trigger this workflow.
       - ".github/actions/**"
@@ -96,6 +97,7 @@ jobs:
               - 'ansible/**'
               - '.github/workflows/**'
               - '.github/actions/**'
+              - 'scripts/build-image-tag.cjs'
 
   # Environment detection and setup
   detect-environment:

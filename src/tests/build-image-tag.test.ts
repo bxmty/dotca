@@ -19,8 +19,8 @@ const scriptPath = join(
 
 const COMMIT_SHA = "03f064a1b2c3d4e5f678901234567890abcdef01";
 
-function buildImageTag(arguments_: string[]): string {
-  return execFileSync("node", [scriptPath, ...arguments_], {
+function buildImageTag(commandArguments: string[]): string {
+  return execFileSync("node", [scriptPath, ...commandArguments], {
     encoding: "utf8",
   }).trim();
 }
