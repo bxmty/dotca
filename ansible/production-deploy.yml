@@ -644,7 +644,7 @@
 
           Deployment Details:
           - Environment: Production
-          - Image Source: Image Promotion Workflow
+          - Image Source: deploy.yml build of this commit
           - Production Image: {{ docker_image }}
           - Status: Deployed and Running
           - Restart Policy: Always (survives reboots)

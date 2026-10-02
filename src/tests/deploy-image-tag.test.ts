@@ -48,6 +48,8 @@ describe("rollback is an Ansible extra var", () => {
       "-e DEPLOY_DOCKER_IMAGE=ghcr.io/bxmty/dotca:staging-",
     );
     expect(taggingStrategy).not.toMatch(/^DEPLOY_DOCKER_IMAGE=/m);
+    expect(taggingStrategy).not.toContain("docker tag ");
+    expect(taggingStrategy).not.toContain(":rollback-{");
   });
 });
 

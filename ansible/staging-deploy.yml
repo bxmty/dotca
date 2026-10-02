@@ -928,10 +928,9 @@
         special_time: daily
         job: "certbot renew --quiet --nginx"
 
-    # IMAGE PROMOTION TRIGGER TASK
-    - name: Trigger Image Promotion Workflow
+    - name: Record the deployed build
       block:
-        - name: Display promotion trigger information
+        - name: Display deployment completion
           ansible.builtin.debug:
             msg: |
               ============================================
@@ -939,56 +938,33 @@
               ============================================
 
               The staging environment is now ready for testing.
+              This build is {{ docker_image }}.
 
-              To promote this image to production:
-              1. Test the staging deployment thoroughly
-              2. Go to GitHub Actions → Image Promotion Workflow
-              3. Click "Run workflow" → "Run workflow"
-              4. Fill in the required inputs:
-                 - staging_image_tag: the tag of {{ docker_image }} (this build, not the moving staging tag)
-                 - promotion_reason: Manual testing passed
-                 - target_environment: production
-                 - force_promotion: false
-              5. Click "Run workflow"
-
-              The promotion workflow will:
-              - Validate the staging image
-              - Perform integrity checks
-              - Create production tags
-              - Enable manual approval
-              - Promote the image to production registry
+              Production is a separate image, built when the same
+              commit is on main. Do not retag this image as :main.
+              The moving :staging tag is not a rollback target.
 
               ============================================
 
-        - name: Create promotion trigger file
+        - name: Record the deployed image
           ansible.builtin.copy:
-            dest: "{{ app_dir }}/promotion-trigger.txt"
+            dest: "{{ app_dir }}/deployed-image.txt"
             mode: '0644'
             content: |
               STAGING DEPLOYMENT COMPLETED
               ===========================
 
               Timestamp: {{ ansible_date_time.iso8601 }}
-              Staging Image: {{ docker_image_override | default('ghcr.io/bxmty/dotca:staging') }}
+              Image: {{ docker_image }}
               Environment: staging
-              Status: READY_FOR_PROMOTION
 
-              Next Steps:
-              1. Test staging deployment
-              2. Trigger image promotion workflow
-              3. Approve promotion in GitHub
-              4. Deploy to production
+              Production is a new build from main, not a retag of this image.
+              To roll this build back, redeploy this tag with
+              ansible-playbook -e DEPLOY_DOCKER_IMAGE={{ docker_image }}
 
-              Promotion Workflow:
-              https://github.com/{{ github_repo_from_url }}/actions/workflows/image-promotion.yml
-
-        - name: Log promotion readiness
+        - name: Log the deployed image
           ansible.builtin.debug:
             msg: |
-              🚀 STAGING READY FOR PROMOTION
-
               Image: {{ docker_image }}
               Status: Deployed and ready for testing
-              Next: Manual testing + Image promotion workflow
-
-              Promotion trigger file created at: {{ app_dir }}/promotion-trigger.txt
+              Recorded at: {{ app_dir }}/deployed-image.txt
