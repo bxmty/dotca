@@ -18,9 +18,6 @@ The CI/CD pipeline has been successfully simplified from multiple complex workfl
 
 - **deploy.yml**: Unified deployment workflow with image promotion logic
 - **rollback.yml**: Emergency rollback capabilities
-- **deployment-dashboard.yml**: Status monitoring
-- **deployment-metrics.yml**: Performance analytics
-- **log-aggregation.yml**: Log management
 - Supporting workflows: docker-build, dependency-check, cleanup utilities
 
 ### Key Complexity Problems
