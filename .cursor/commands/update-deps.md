@@ -19,10 +19,7 @@ Check for outdated dependencies and update them one by one, running tests after 
 - `.github/workflows/dependency-check.yml` — pin all action versions
 - `.github/workflows/deploy.yml` — pin all action versions, including `actions/checkout`, `actions/setup-node`, `actions/upload-artifact`, `docker/*`, `dorny/paths-filter`, `hashicorp/setup-terraform`, and any Node.js version references
 - `.github/workflows/deploy.yml.test.yml` — pin all action versions
-- `.github/workflows/deployment-dashboard.yml` — pin all action versions
-- `.github/workflows/deployment-metrics.yml` — pin all action versions
 - `.github/workflows/image-cleanup.yml` — pin all action versions
-- `.github/workflows/log-aggregation.yml` — pin all action versions
 
 ### npm
 

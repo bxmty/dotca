@@ -17,9 +17,6 @@ graph TB
     subgraph "CI/CD Pipeline"
         D[GitHub Actions]
         E[Unified Deploy Workflow]
-        F[Deployment Dashboard]
-        G[Metrics Collection]
-        H[Log Aggregation]
         I[Image Cleanup]
     end
 
@@ -75,9 +72,6 @@ graph TB
     T --> U
     V --> W
     V --> X
-    E --> F
-    E --> G
-    E --> H
     W --> M
     V --> E
 ```
@@ -249,19 +243,13 @@ sequenceDiagram
 sequenceDiagram
     participant Deploy as Deployment
     participant Health as Health Checks
-    participant Metrics as Metrics Collection
-    participant Dashboard as Deployment Dashboard
     participant Notify as Notification System
     participant GitHub as GitHub
 
     Deploy->>Health: Trigger health checks
     Health->>Deploy: Health status
-    Deploy->>Metrics: Collect deployment metrics
-    Metrics->>Dashboard: Update dashboard
     Deploy->>Notify: Send notifications
     Notify->>GitHub: Update PR/issue comments
-    Notify->>Dashboard: Update status
-    Dashboard->>Metrics: Store metrics
 ```
 
 ## Component Responsibilities
@@ -271,9 +259,6 @@ sequenceDiagram
 | Workflow                     | Responsibility                          | Triggers                              | Outputs                       |
 | ---------------------------- | --------------------------------------- | ------------------------------------- | ----------------------------- |
 | **deploy.yml**               | Unified deployment for all environments | Push to staging/main, manual dispatch | Deployment status, image tags |
-| **deployment-dashboard.yml** | Status monitoring and dashboard updates | Scheduled, deployment events          | Dashboard updates             |
-| **deployment-metrics.yml**   | Performance analytics                   | Deployment events                     | Metrics data                  |
-| **log-aggregation.yml**      | Centralized log management              | Scheduled, deployment events          | Aggregated logs               |
 | **image-cleanup.yml**        | Image retention management              | Scheduled                             | Cleanup reports               |
 | **dependency-check.yml**     | Dependency vulnerability scanning       | Push events, scheduled                | Security reports              |
 
@@ -607,7 +592,6 @@ alerting_rules:
 - **Structured Logging**: JSON format for machine parsing
 - **Log Levels**: DEBUG, INFO, WARN, ERROR, CRITICAL
 - **Log Retention**: 30 days for operational logs, 1 year for audit logs
-- **Centralized Collection**: Aggregate logs from all components via `log-aggregation.yml`
 
 ---
 
