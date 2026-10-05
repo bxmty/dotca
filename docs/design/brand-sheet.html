@@ -1,0 +1,314 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Boximity Brand Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;600&family=Chivo+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the sheet is set in the system it records. Page tokens ARE the settled brand tokens, so the viewer's light/dark is the real light/dark. Label column + content column, ruled sections, flush left. */
+:root{
+  --bg:#F8F9FB; --cell:#FFFFFF; --ink:#191A1C; --muted:#555C67; --rule:#D3D8DF;
+  --cta:#436D97; --cta-ink:#FFFFFF; --fig:#436D97; --logo:#03194A;
+  --band:#03194A; --band-ink:#F8F9FB; --band-fig:#8EA7C1;
+  --hl:#E9DDE9;
+  --sans:"Chivo",Helvetica,Arial,sans-serif;
+  --mono:"Chivo Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16171A;--cell:#1C1E22;--ink:#E6E7E9;--muted:#9EA4AD;--rule:#33373D;--cta:#7B99B6;--cta-ink:#16171A;--fig:#7B99B6;--logo:#F8F9FB;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#16171A;--cell:#1C1E22;--ink:#E6E7E9;--muted:#9EA4AD;--rule:#33373D;--cta:#7B99B6;--cta-ink:#16171A;--fig:#7B99B6;--logo:#F8F9FB;color-scheme:dark}
+/* the highlight: pale purple in both modes, a light-token island inside it */
+.hl{--ink:#191A1C;--muted:#555C67;--rule:#D3D8DF;--cta:#436D97;--cta-ink:#FFFFFF;--fig:#436D97;background:var(--hl);color:var(--ink);color-scheme:light}
+::selection{background:var(--hl);color:#191A1C}
+.hl ::selection,.hl::selection{background:#191A1C;color:#E9DDE9}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);padding-inline:16px;padding-block:0 0;font-kerning:normal}
+.wrap{max-width:1120px;margin:0 auto}
+:focus-visible{outline:2px solid var(--fig);outline-offset:2px}
+h1,h2,h3{text-wrap:balance;margin:0}
+p{margin:0}
+.mono{font-family:var(--mono)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.mast{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-block:20px;border-bottom:1px solid var(--rule)}
+.lockup{display:block;color:var(--logo);flex:none}
+.lockup svg{display:block;height:34px;width:auto}
+.mast .meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+.row{display:grid;grid-template-columns:1fr 3fr;gap:12px 32px;padding-block:40px;border-top:1px solid var(--rule)}
+.row:first-of-type{border-top:0}
+@media (max-width:720px){.row{grid-template-columns:1fr}}
+.lbl{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:.4em}
+.body{display:grid;gap:18px;align-content:start;min-width:0}
+.lede h1{font-weight:300;font-size:42px;line-height:1.08;letter-spacing:-.02em;max-width:18ch}
+@media (min-width:900px){.lede h1{font-size:60px;line-height:1.04}}
+.lede p{font-size:20px;line-height:1.4;color:var(--muted);max-width:56ch}
+.row h2{font-weight:600;font-size:28px;line-height:1.15}
+.body > p{color:var(--muted);max-width:66ch}
+
+/* ruled data sheets */
+.sheet-wrap{overflow-x:auto;min-width:0}
+.sheet{width:100%;border-collapse:collapse;background:var(--cell);border:1px solid var(--rule);font-size:14px}
+.sheet th,.sheet td{text-align:left;padding:10px 14px;border-top:1px solid var(--rule);vertical-align:top}
+.sheet thead th{border-top:0;font-family:var(--mono);font-weight:400;font-size:12px;color:var(--muted)}
+.sheet tbody th{font-weight:600;white-space:nowrap}
+.sheet td.why{color:var(--muted)}
+.sheet .sw{display:inline-block;width:14px;height:14px;border:1px solid var(--rule);vertical-align:-2px;margin-right:8px}
+.sheet .pass{font-family:var(--mono);font-size:12px;color:var(--fig)}
+.sheet code{font-family:var(--mono);font-size:13px}
+
+/* type specimen */
+.scale{display:grid;border:1px solid var(--rule);background:var(--cell)}
+.step{display:grid;grid-template-columns:7.5rem 1fr;gap:16px;align-items:baseline;padding:12px 14px;border-top:1px solid var(--rule);min-width:0}
+.step:first-child{border-top:0}
+.step .k{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.step .s{overflow-wrap:anywhere;min-width:0}
+@media (max-width:520px){.step{grid-template-columns:1fr;gap:4px}}
+.rules{margin:0;padding:0;list-style:none;display:grid;gap:8px;max-width:66ch}
+.rules li{display:grid;grid-template-columns:7.5rem 1fr;gap:16px;color:var(--muted)}
+.rules li b{font-family:var(--mono);font-weight:400;font-size:12px;color:var(--ink);padding-top:.2em}
+@media (max-width:520px){.rules li{grid-template-columns:1fr;gap:2px}}
+
+/* palette strip */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1px solid var(--rule)}
+.chip{display:grid;gap:4px;padding:72px 12px 12px;border-left:1px solid var(--rule);font-size:13px;min-width:0}
+.chip:first-child{border-left:0}
+.chip b{font-weight:600}
+.chip span{font-family:var(--mono);font-size:12px}
+
+/* logo plates */
+.plates{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0;border:1px solid var(--rule)}
+.plate{display:grid;grid-template-rows:1fr auto;min-width:0;border-left:1px solid var(--rule)}
+.plate:first-child{border-left:0}
+.plate .stage{display:flex;align-items:center;justify-content:center;padding:40px 20px;min-height:160px}
+.plate .stage .lockup svg{height:40px}
+.plate p{padding:10px 14px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted);background:var(--cell)}
+.plate p b{color:var(--ink);font-weight:600}
+.cs{position:relative;display:inline-block;color:var(--logo);padding:22px}
+.cs svg{display:block;height:60px;width:auto}
+.cs .box{position:absolute;inset:0;border:1px dashed var(--fig)}
+.cs .x{position:absolute;left:0;top:50%;width:22px;border-top:1px solid var(--fig);font-family:var(--mono);font-size:11px;color:var(--fig);text-align:center;line-height:1.2}
+.cs-wrap{background:var(--cell);border:1px solid var(--rule);padding:24px;display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+.cs-wrap p{max-width:40ch;color:var(--muted);font-size:14px}
+
+/* favicon */
+.icons{display:flex;gap:28px;flex-wrap:wrap;align-items:end;background:var(--cell);border:1px solid var(--rule);padding:20px}
+.icons figure{margin:0;display:grid;gap:8px;justify-items:start;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.icons svg{display:block}
+.tabbar{display:flex;gap:6px;align-items:end;padding:8px 10px 0;overflow-x:auto}
+.tabbar .t{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px 8px 0 0;font:13px/1 system-ui,sans-serif;white-space:nowrap}
+.tabbar svg{width:16px;height:16px;flex:none}
+.tabbar.lt{background:#DFE3E8}.tabbar.lt .t{background:#FFFFFF;color:#1F1F1F}
+.tabbar.dk{background:#202124}.tabbar.dk .t{background:#35363A;color:#E8EAED}
+.tabs{display:grid;gap:8px;min-width:0}
+
+/* in-use specimen */
+.btn{display:inline-block;font:600 16px/1 var(--sans);padding:14px 18px;text-decoration:none;border:1px solid transparent}
+.btn-primary{background:var(--cta);color:var(--cta-ink)}
+.btn-ghost{border-color:var(--ink);color:var(--ink)}
+.ctas{display:flex;gap:10px;flex-wrap:wrap}
+.price{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:28px;font-weight:500;line-height:1.1}
+.rec .price{color:var(--fig)}
+.sheet thead th.rec{box-shadow:inset 0 3px 0 var(--cta);color:var(--ink);font-family:var(--sans);font-weight:600;font-size:16px}
+.sheet thead th.plain{color:var(--ink);font-family:var(--sans);font-weight:600;font-size:16px}
+.tag{display:block;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--ink)}
+.callout{padding:18px 20px;display:grid;gap:6px;max-width:62ch}
+.callout h3{font-size:18px;font-weight:600;line-height:1.3}
+.callout p{color:var(--ink);font-size:16px}
+.sheet ul{margin:0;padding:0;list-style:none;display:grid;gap:3px}
+
+.next ul{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--muted);max-width:66ch}
+.next li b{color:var(--ink);font-weight:600}
+.next a{color:var(--fig)}
+
+.band{background:var(--band);color:var(--band-ink);margin-inline:-16px;padding:32px 16px}
+.band .in{max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.band .lockup{color:var(--band-ink)}
+.band .lockup svg{height:40px}
+.band p{font-size:14px}
+.band .num{color:var(--band-fig);font-size:12px}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- logo 2.0 White geometry (knockout cube), classes stripped, filled with currentColor so one mark serves both modes -->
+  <symbol id="lockup" viewBox="0 0 594.43 188.67"><g fill="currentColor"><path d="M141.2,61.15C137,29.77,111.41,4.470,80,.57A71,71,0,0,0,15.88,115.72l.25.33,50.79,70.58a4.930,4.930,0,0,0,8,0l50.37-70.07A71.09,71.09,0,0,0,141.2,61.15Zm-29.74-3.68v40.2L74.61,119.2v-43ZM67.23,76.2v43L30.38,97.67V57.47l13.26,6.74ZM34.83,51.46,70.92,33.13,107,51.46,75.34,67.56,70.92,69.8,68,68.330Z"/><path d="M214.49,95.92c6.1-1.86,10.13-7.86,10.13-12.81V80.74c0-11.47-8.78-18.49-21.9-18.49H174.53v70.22h30.15c13.22,0,22-6,22-17.55V111.1C226.68,103.66,221.93,98.5,214.49,95.92ZM188.88,73.61H200c6.09,0,10.33,1.86,10.33,7.850v2.37c0,4.86-3.510,7.54-8.580,7.54H188.88Zm23.45,39.76c0,6.19-4.65,7.85-10,7.85H188.88V101.91h13.43c5.27,0,10,2.78,10,7.84Z"/><path d="M262.32,78.87c-14.36,0-25,7-25,19.11v16.21c0,12.29,11.56,19.21,25,19.21,13.11,0,24.57-7,24.57-19.21V98C286.89,86,277.29,78.87,262.32,78.87Zm10.22,34.39c0,5.27-5,8.16-10.22,8.16-5.69,0-10.64-2.79-10.64-8.16V98.91c0-5.06,5.16-8,10.64-8s10.22,2.79,10.22,8Z"/><path d="M328.2,106.65,346.07,79.8H329.44l-9.6,17.56L310,79.8H293.81l17.56,26.85L293,132.47h16.63l10.12-16.11L330,132.47h16.53Z"/><path d="M355.05,61.22v9.91h14.67V61.22Zm.11,18.58v52.67h14.46V79.8Z"/><path d="M445.41,78.77c-7.74,0-15,4.44-17.76,9.5-1.76-6.61-7.85-9.4-15.7-9.4-6.4,0-13.32,3.62-16.21,8.89l-1.13-8h-11v52.67h14.46V99.74c0-4.76,4.86-9.09,10.33-9.09s7.64,2.68,7.64,7.95v33.87h14.46V99.94c0-5.37,4.55-9.19,10.43-9.19,5.68,0,7.85,2.69,7.85,8.06v33.66h14.46V95.3C463.28,83.94,457.29,78.77,445.41,78.77Z"/><path d="M477,61.22v9.91h14.66V61.22Zm.1,18.58v52.67h14.46V79.8Z"/><path d="M537.53,119.46a25.33,25.33,0,0,1-8.78,1.45c-3.82,0-6.29-1.76-6.29-6V89.2h12.9V79.8h-12.9V67.52H508.1V79.8h-7.33v9.4H508v28.3c0,11.25,6.19,15.49,16.21,15.49,8.78,0,13-1.66,15.8-2.79Z"/><path d="M579.25,79.8l-10.64,36.77L557.88,79.8H542.6l18.68,53.6L560,136.81c-1.85,5.06-8,7.54-13.21,7.64l1.76,10.43c11.56-.1,20.85-4.44,25.09-16.21L594.43,79.8Z"/><path d="M70.92,29,26.7,51.46,70.92,73.94l44.23-22.48Zm0,40.81L68,68.33,34.83,51.46,70.92,33.13,107,51.46,75.34,67.56Z"/><path d="M70.92,73.94v51.68l44.23-25.84V51.46Zm40.54,23.73L74.61,119.2v-43l36.85-18.73Z"/><path d="M26.7,51.46V99.78l44.22,25.84V73.94ZM67.23,119.2,30.38,97.67V57.47l13.26,6.74,23.59,12Z"/><path d="M118.72,50.58a.31.31,0,0,0,0-.08,3.65,3.65,0,0,0-.31-.77l0-.1a3.53,3.53,0,0,0-.49-.66l-.08-.09a3.62,3.62,0,0,0-.65-.52l0,0s0,0-.07,0-.12-.08-.19-.11L72.59,25.7a3.710,3.710,0,0,0-3.34,0L25,48.18c-.06,0-.12.08-.19.11s0,0-.06,0l-.05,0a3.55,3.55,0,0,0-.64.52L24,49a3.09,3.09,0,0,0-.48.66l-.06.1a3.65,3.65,0,0,0-.31.77s0,.06,0,.08a3.74,3.74,0,0,0-.11.89V99.78A3.68,3.68,0,0,0,24.84,103L69.06,128.8h0a3.32,3.32,0,0,0,.59.24,1.78,1.78,0,0,0,.29.12,3.54,3.54,0,0,0,1.9,0,1.78,1.78,0,0,0,.29-.12,3.41,3.41,0,0,0,.6-.24h0L117,103a3.7,3.7,0,0,0,1.83-3.19V51.47A3.74,3.74,0,0,0,118.72,50.58Zm-7.26,47.09L74.61,119.2v-43l36.85-18.73ZM67.23,119.2,30.38,97.670V57.47l13.26,6.74,23.59,12Zm8.11-51.64L70.92,69.8,68,68.33,34.83,51.46,70.92,33.13,107,51.46Z"/></g></symbol>
+  <!-- isotype, White geometry (knockout), currentColor -->
+  <symbol id="iso" viewBox="0 0 220.82 293.71"><g fill="currentColor"><path d="M219.81,95.19C213.34,46.34,173.45,6.94,124.56.88A110.49,110.49,0,0,0,24.73,180.13l.39.51,79.07,109.88a7.66,7.66,0,0,0,12.45,0l78.42-109.08A110.6,110.6,0,0,0,219.81,95.19Zm-46.24-5.8v62.66l-57.45,33.56v-67l43.94-22.32Zm-68.86,29.2v67L47.27,152.05V89.39ZM54.15,80.11l56.27-28.59,56.26,28.59L164,81.5l-53.53,27.19Z"/><path d="M110.42,45.12l-68.86,35,68.86,35,68.85-35Zm0,63.57L54.15,80.11l56.27-28.59,56.26,28.59L164,81.5Z"/><path d="M110.42,115.09v80.46l68.85-40.22V80.11Zm63.15,37-57.45,33.56v-67l43.94-22.320,13.51-6.88Z"/><path d="M41.56,80.11v75.22l68.86,40.22V115.09Zm63.15,105.5L47.27,152.05V89.39l57.44,29.2Z"/><path d="M184.79,78.74a.7.7,0,0,1,0-.12,5.37,5.37,0,0,0-.48-1.2s-.05-.11-.08-.15a5.75,5.75,0,0,0-.75-1l-.14-.15a5.88,5.88,0,0,0-1-.8l-.07-.06s-.08,0-.11-.06-.2-.12-.29-.16L113,40a5.68,5.68,0,0,0-5.17,0L39,75a3,3,0,0,0-.3.16s-.07,0-.1.06-.05,0-.08.06a6.36,6.36,0,0,0-1,.79l-.14.16a5.75,5.75,0,0,0-.75,1s-.05.1-.08.15a5.37,5.37,0,0,0-.48,1.2.7.7,0,0,1,0,.12,6.27,6.27,0,0,0-.18,1.37v75.22a5.73,5.73,0,0,0,2.83,4.92l68.85,40.22h0s0,0,0,0a4,4,0,0,0,.92.37c.15.06.3.15.45.2a5.820,5.820,0,0,0,3,0c.15-.05.3-.14.47-.2a5.33,5.33,0,0,0,.9-.37s0,0,0,0h0l68.85-40.22a5.71,5.71,0,0,0,2.83-4.92V80.11A6.27,6.27,0,0,0,184.79,78.74Zm-11.22,73.31-57.45,33.56v-67l43.94-22.32,13.51-6.88Zm-68.86,33.56L47.27,152.05V89.39l57.44,29.2ZM164,81.5l-53.53,27.19L54.15,80.11l56.27-28.59,56.26,28.59Z"/></g></symbol>
+  <!-- isotype, NavyBlue file as shipped (two-colour: navy pin, white cube faces) = today's favicon.ico -->
+  <symbol id="iso2" viewBox="0 0 220.82 293.72"><path fill="#181c47" d="M219.81,95.19a110.62,110.62,0,0,1-24.76,86.25L116.63,290.53a7.66,7.66,0,0,1-12.44,0L25.12,180.66l-.4-.52A110.5,110.5,0,0,1,124.55.88C173.44,7,213.34,46.34,219.81,95.19Z"/><polygon fill="#fff" points="110.41 115.1 41.56 80.11 110.41 45.13 179.26 80.11 110.41 115.1"/><polygon fill="#fff" points="110.41 115.1 110.41 195.56 179.26 155.33 179.26 80.11 110.41 115.1"/><polygon fill="#fff" points="41.56 80.11 41.56 155.33 110.41 195.56 110.41 115.1 41.56 80.11"/><path fill="#171c46" d="M184.78,78.75s0-.08,0-.12a5.68,5.68,0,0,0-.48-1.2l-.09-.16a5.63,5.63,0,0,0-.75-1l-.14-.15a5.38,5.38,0,0,0-1-.79l-.08-.07-.11,0a2.82,2.82,0,0,0-.29-.18L113,40a5.72,5.72,0,0,0-5.16,0L39,75l-.29.17-.11,0-.08.07a5.38,5.38,0,0,0-1,.79l-.15.15a6.09,6.09,0,0,0-.74,1l-.09.16a6.26,6.26,0,0,0-.48,1.2s0,.08,0,.12a5.64,5.64,0,0,0-.18,1.36v75.22a5.72,5.72,0,0,0,2.83,4.93l68.84,40.22h0l0,0a6.49,6.49,0,0,0,.91.38c.16.05.3.14.46.18a5.5,5.5,0,0,0,2.94,0,4.62,4.62,0,0,0,.47-.19,6.32,6.32,0,0,0,.9-.37l0,0h0l68.84-40.22a5.72,5.72,0,0,0,2.83-4.93V80.11A5.64,5.64,0,0,0,184.78,78.75ZM110.41,51.52l56.26,28.59-2.730,1.39-53.53,27.21L54.15,80.11ZM47.26,89.41l57.45,29.19v67L47.26,152.06Zm68.85,96.21v-67l43.94-22.33,13.51-6.86v62.65Z"/></symbol>
+  <!-- square tile: knockout isotype centred on a filled square -->
+  <symbol id="tile" viewBox="0 0 300 300"><rect width="300" height="300" rx="36" fill="var(--tile-bg)"/><use href="#iso" x="66" y="45" width="168" height="210" style="color:var(--tile-fg)"/></symbol>
+</svg>
+
+
+<div class="wrap">
+  <header class="mast">
+    <span class="lockup" aria-label="Boximity"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity"><use href="#lockup"/></svg></span>
+    <span class="meta">Brand sheet <span class="num">2026-10-03</span> / boximity.ca refresh</span>
+  </header>
+
+  <section class="row lede">
+    <p class="lbl">Where we landed</p>
+    <div class="body">
+      <h1>Technical Manual, on the 2022 brand.</h1>
+      <p>A grotesk for words and its own mono for every number. One accent, queen blue, kept for the call to action and key figures. The logo 2.0 artwork, finally applied. This page is set in the system itself: switch your device between light and dark to see both modes.</p>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl">Decisions</p>
+    <div class="body">
+      <h2>Seven choices, settled</h2>
+      <div class="sheet-wrap"><table class="sheet">
+        <thead><tr><th scope="col">Choice</th><th scope="col">Landed on</th><th scope="col">Why</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Face</th><td>Chivo + Chivo Mono</td><td class="why">Matches the wordmark's width and density. <span class="num">59 KB</span> against <span class="num">75 KB</span> for Plex, which reads as IBM's.</td></tr>
+          <tr><th scope="row">Light ink</th><td>Neutral <code>#191A1C</code></td><td class="why">Navy text would compete with the blue button. Navy stays in the logo and the footer band.</td></tr>
+          <tr><th scope="row">Accent</th><td>Queen blue <code>#436D97</code></td><td class="why">The brand book's colour as printed. Passes with a white label at <span class="num">5.42:1</span>.</td></tr>
+          <tr><th scope="row">Dark CTA</th><td>Tint <code>#7B99B6</code>, dark label</td><td class="why">Lifts the button from <span class="num">3.31:1</span> to <span class="num">6.04:1</span> against the dark ground, and matches the dark key figures.</td></tr>
+          <tr><th scope="row">Navy</th><td>Oxford <code>#03194A</code></td><td class="why">The palette's named colour. Logo files are recoloured from <code>#181C47</code> once, in dotca's copies.</td></tr>
+          <tr><th scope="row">Highlight</th><td>Pale purple <code>#E9DDE9</code> in both modes</td><td class="why">A surface for the recommended plan column and callout blocks, never a button. In dark mode it's a deliberate light island: everything on it uses the light-mode colours. On the pricing sheet it stops above the button, so each mode keeps one CTA colour.</td></tr>
+          <tr><th scope="row">Logo</th><td>Horizontal lockup, <span class="num">34 px</span></td><td class="why">One file for both modes. Fixes the white logo that is invisible on today's light site.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl">Type</p>
+    <div class="body">
+      <h2>One family, two voices</h2>
+      <div class="scale">
+        <div class="step"><span class="k">60 / Light 300</span><span class="s" style="font-size:60px;line-height:1.04;font-weight:300;letter-spacing:-.02em">IT that just works</span></div>
+        <div class="step"><span class="k">42 / Light 300</span><span class="s" style="font-size:42px;line-height:1.1;font-weight:300;letter-spacing:-.02em">Away from the desk</span></div>
+        <div class="step"><span class="k">28 / SemiBold 600</span><span class="s" style="font-size:28px;line-height:1.15;font-weight:600">The Reactive IT Trap</span></div>
+        <div class="step"><span class="k">20 / SemiBold 600</span><span class="s" style="font-size:20px;line-height:1.3;font-weight:600">What exactly is included in the price?</span></div>
+        <div class="step"><span class="k">18 / Regular 400</span><span class="s" style="font-size:18px;line-height:1.6">Long-form prose and FAQ questions.</span></div>
+        <div class="step"><span class="k">16 / Regular 400</span><span class="s" style="font-size:16px">Too often, technology only gets attention after it breaks.</span></div>
+        <div class="step"><span class="k">28 / Mono 500</span><span class="s num" style="font-size:28px;font-weight:500;color:var(--fig)">$249.00</span></div>
+        <div class="step"><span class="k">14 / Regular 400</span><span class="s" style="font-size:14px">Email Support (Business Hours)</span></div>
+        <div class="step"><span class="k">12 / Mono 400</span><span class="s mono" style="font-size:12px;color:var(--muted)">Per user per month / 2026-09-29</span></div>
+      </div>
+      <ul class="rules">
+        <li><b>Scale</b><span>Eight sizes and no others: <span class="num">12 14 16 18 20 28 42 60</span>. In code, <code>--text-*: initial</code> comes before them. Prices and key figures are <span class="num">28</span>.</span></li>
+        <li><b>Numbers</b><span>Every figure that matters is set in Chivo Mono: prices, dates, step and question numbers. The number is mono and a unit word beside it is sans at 14 px (<span class="num">2</span> weeks). Symbols that belong to the number, like $, % and commas, stay mono.</span></li>
+        <li><b>Dashes</b><span>No display line starts with a dash: a word joiner and a no-break space go before it.</span></li>
+        <li><b>Weights</b><span>Light for large display, Regular for body, SemiBold for heads. Never bold paragraphs. Body stays at 400 in dark.</span></li>
+        <li><b>Measure</b><span>Body at 66 characters, line-height 1.5, flush left. Display tracked −0.02 em.</span></li>
+        <li><b>Data</b><span>Pricing and comparisons are ruled data sheets, not floating cards.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl">Colour</p>
+    <div class="body">
+      <h2>Neutral ground, one accent</h2>
+      <div class="strip" aria-label="Brand palette in use">
+        <div class="chip" style="background:#F8F9FB;color:#191A1C"><b>Cultured</b><span>#F8F9FB</span><span>Light ground</span></div>
+        <div class="chip" style="background:#191A1C;color:#E6E7E9"><b>Ink</b><span>#191A1C</span><span>Light text</span></div>
+        <div class="chip" style="background:#436D97;color:#FFFFFF"><b>Queen blue</b><span>#436D97</span><span>Accent, light</span></div>
+        <div class="chip" style="background:#7B99B6;color:#16171A"><b>Queen 30% tint</b><span>#7B99B6</span><span>Accent, dark</span></div>
+        <div class="chip" style="background:#03194A;color:#F8F9FB"><b>Oxford</b><span>#03194A</span><span>Logo and bands</span></div>
+        <div class="chip" style="background:#E9DDE9;color:#191A1C"><b>Pale purple</b><span>#E9DDE9</span><span>Highlight, both modes</span></div>
+        <div class="chip" style="background:#16171A;color:#E6E7E9"><b>Night</b><span>#16171A</span><span>Dark ground</span></div>
+      </div>
+      <div class="sheet-wrap"><table class="sheet">
+        <thead><tr><th scope="col">Token</th><th scope="col">Light</th><th scope="col">Dark</th><th scope="col">Checked against</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><code>--bg</code></th><td><span class="sw" style="background:#F8F9FB"></span><code>#F8F9FB</code></td><td><span class="sw" style="background:#16171A"></span><code>#16171A</code></td><td></td></tr>
+          <tr><th scope="row"><code>--cell</code></th><td><span class="sw" style="background:#FFFFFF"></span><code>#FFFFFF</code></td><td><span class="sw" style="background:#1C1E22"></span><code>#1C1E22</code></td><td></td></tr>
+          <tr><th scope="row"><code>--ink</code></th><td><span class="sw" style="background:#191A1C"></span><code>#191A1C</code></td><td><span class="sw" style="background:#E6E7E9"></span><code>#E6E7E9</code></td><td><span class="pass">bg 16.53 / 14.49</span></td></tr>
+          <tr><th scope="row"><code>--muted</code></th><td><span class="sw" style="background:#555C67"></span><code>#555C67</code></td><td><span class="sw" style="background:#9EA4AD"></span><code>#9EA4AD</code></td><td><span class="pass">bg 6.40 / 7.14</span></td></tr>
+          <tr><th scope="row"><code>--rule</code></th><td><span class="sw" style="background:#D3D8DF"></span><code>#D3D8DF</code></td><td><span class="sw" style="background:#33373D"></span><code>#33373D</code></td><td></td></tr>
+          <tr><th scope="row"><code>--cta</code></th><td><span class="sw" style="background:#436D97"></span><code>#436D97</code></td><td><span class="sw" style="background:#7B99B6"></span><code>#7B99B6</code></td><td><span class="pass">label 5.42 / 6.04, edge 5.15 / 6.04</span></td></tr>
+          <tr><th scope="row"><code>--cta-ink</code></th><td><span class="sw" style="background:#FFFFFF"></span><code>#FFFFFF</code></td><td><span class="sw" style="background:#16171A"></span><code>#16171A</code></td><td></td></tr>
+          <tr><th scope="row"><code>--accent-fig</code></th><td><span class="sw" style="background:#436D97"></span><code>#436D97</code></td><td><span class="sw" style="background:#7B99B6"></span><code>#7B99B6</code></td><td><span class="pass">cell 5.42 / 5.62</span></td></tr>
+          <tr><th scope="row"><code>--logo</code></th><td><span class="sw" style="background:#03194A"></span><code>#03194A</code></td><td><span class="sw" style="background:#F8F9FB"></span><code>#F8F9FB</code></td><td><span class="pass">bg 16.05 / 17.01</span></td></tr>
+          <tr><th scope="row"><code>--band</code></th><td colspan="2"><span class="sw" style="background:#03194A"></span><code>#03194A</code> in both modes, text <code>#F8F9FB</code>, figures <code>#8EA7C1</code></td><td><span class="pass">16.05 / 6.80</span></td></tr>
+          <tr><th scope="row"><code>--field</code></th><td><span class="sw" style="background:#7D8590"></span><code>#7D8590</code></td><td><span class="sw" style="background:#6E7583"></span><code>#6E7583</code></td><td><span class="pass">bg 3.54 / 3.87, cell 3.73 / 3.60</span></td></tr>
+          <tr><th scope="row"><code>--danger</code></th><td><span class="sw" style="background:#D7263D"></span><code>#D7263D</code></td><td><span class="sw" style="background:#FF7A85"></span><code>#FF7A85</code></td><td><span class="pass">bg 4.71 / 7.15, errors only</span></td></tr>
+          <tr><th scope="row"><code>--highlight</code></th><td colspan="2"><span class="sw" style="background:#E9DDE9"></span><code>#E9DDE9</code> in both modes, with the light tokens on it</td><td><span class="pass">ink 13.26, muted 5.13, queen figure 4.13 large only; against the ground 1.25 / 13.64</span></td></tr>
+          <tr><th scope="row"><code>::selection</code></th><td colspan="2"><span class="sw" style="background:#E9DDE9"></span>Pale purple with ink; inside a highlight, ink with pale purple</td><td><span class="pass">13.26</span></td></tr>
+        </tbody>
+      </table></div>
+      <p>Every pairing passes WCAG 2 AA: 4.5:1 for text, 3:1 for large figures, button edges and the logo. <b style="color:var(--ink)">Queen blue is for actions and evidence only</b>: the CTA, prices, key figures, and focus, current and selected states. Step numerals and markers are ink or muted. Pale purple is only a surface, and the same surface in both modes. In dark mode it's a light island: a <code>.hl</code> scope switches ink, muted, rules and queen to their light values on it. Queen on pale purple is <span class="num">4.13:1</span>, so it's used only for figures 24 px and larger. Buttons stay off the island, so each mode has one CTA colour. In the footer band, focus rings use the band figure colour (<span class="num">6.80:1</span>). Opal from the 2022 palette is not used.</p>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl">Logo</p>
+    <div class="body">
+      <h2>Logo 2.0, one file</h2>
+      <div class="plates">
+        <div class="plate"><div class="stage" style="background:#F8F9FB"><span class="lockup" style="color:#03194A"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity on light"><use href="#lockup"/></svg></span></div><p><b>Light.</b> Oxford on cultured, <span class="num">16.05:1</span>.</p></div>
+        <div class="plate"><div class="stage" style="background:#16171A"><span class="lockup" style="color:#F8F9FB"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity on dark"><use href="#lockup"/></svg></span></div><p><b>Dark.</b> Cultured on night, <span class="num">17.01:1</span>.</p></div>
+        <div class="plate"><div class="stage" style="background:#03194A"><span class="lockup" style="color:#F8F9FB"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity on oxford"><use href="#lockup"/></svg></span></div><p><b>Band.</b> Footer and social cards, after the book cover.</p></div>
+      </div>
+      <div class="cs-wrap">
+        <span class="cs"><span class="box" aria-hidden="true"></span><span class="x" aria-hidden="true">x</span><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity with clear space"><use href="#lockup"/></svg></span>
+        <p><b style="color:var(--ink)">Clear space x = the cap height of the B</b>, 37% of the lockup's height, on all four sides. In the nav the lockup is <span class="num">34 px</span> tall, about <span class="num">107 px</span> wide, with <span class="num">13 px</span> clear. Minimum width stays <span class="num">40 px</span>, per the book.</p>
+      </div>
+      <p>Built from the White artwork's knockout geometry with classes stripped and the fill set to <code class="mono">currentColor</code>, so the theme colours it.</p>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl">Favicon</p>
+    <div class="body">
+      <h2>Adaptive SVG, oxford tile behind it</h2>
+      <div class="tabs">
+        <div class="tabbar lt"><span class="t"><svg viewBox="0 0 220.82 293.71" style="color:#03194A" aria-hidden="true"><use href="#iso"/></svg>boximity.ca</span></div>
+        <div class="tabbar dk"><span class="t"><svg viewBox="0 0 220.82 293.71" style="color:#F8F9FB" aria-hidden="true"><use href="#iso"/></svg>boximity.ca</span></div>
+      </div>
+      <div class="icons">
+        <figure><svg width="16" height="16" viewBox="0 0 300 300" style="--tile-bg:#03194A;--tile-fg:#F8F9FB" aria-hidden="true"><use href="#tile"/></svg>16</figure>
+        <figure><svg width="32" height="32" viewBox="0 0 300 300" style="--tile-bg:#03194A;--tile-fg:#F8F9FB" aria-hidden="true"><use href="#tile"/></svg>32</figure>
+        <figure><svg width="48" height="48" viewBox="0 0 300 300" style="--tile-bg:#03194A;--tile-fg:#F8F9FB" aria-hidden="true"><use href="#tile"/></svg>48</figure>
+        <figure><svg width="90" height="90" viewBox="0 0 300 300" style="--tile-bg:#03194A;--tile-fg:#F8F9FB" aria-hidden="true"><use href="#tile"/></svg>180 apple-touch</figure>
+        <figure><svg width="120" height="120" viewBox="0 0 300 300" style="--tile-bg:#03194A;--tile-fg:#F8F9FB" aria-hidden="true"><use href="#tile"/></svg>192 / 512 / maskable</figure>
+      </div>
+      <p>The SVG favicon switches between oxford and cultured with the browser's theme. The oxford tile is the fallback and every raster icon. Both go to the SEO work on social cards and the web manifest.</p>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl">In use</p>
+    <div class="body">
+      <h2>The Reactive IT Trap</h2>
+      <p>Too often, technology only gets attention after it breaks — leaving you stuck reacting to security threats, wasted time, and frustrated employees instead of running the business.</p>
+      <div class="ctas"><a class="btn btn-primary" href="#">Get a Business-First IT Assessment</a><a class="btn btn-ghost" href="#">See Pricing Options</a></div>
+      <div class="sheet-wrap"><table class="sheet">
+        <thead><tr><th scope="col">Plan</th><th scope="col" class="plain">Basic</th><th scope="col" class="rec hl">Standard<span class="tag">Recommended</span></th></tr></thead>
+        <tbody>
+          <tr><th scope="row" class="mono" style="font-weight:400;font-size:12px;color:var(--muted)">Per user per month</th><td><span class="price">$99.00</span></td><td class="rec hl"><span class="price">$249.00</span></td></tr>
+          <tr><th scope="row" class="mono" style="font-weight:400;font-size:12px;color:var(--muted)">Includes</th><td><ul><li>Everything in Free</li><li>Password Manager</li><li>Business Email Solution</li></ul></td><td class="rec hl"><ul><li>Everything in Basic</li><li>Microsoft Collaboration Tools</li><li>Quarterly IT Assessment</li></ul></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout hl"><h3>What exactly is included in the price?</h3><p>A callout block for long-form pages: a summary to read first. Ink on the highlight in both modes, with no icon, no button and no edge.</p></div>
+    </div>
+  </section>
+
+  <section class="row next">
+    <p class="lbl">Still open</p>
+    <div class="body">
+      <h2>What comes next</h2>
+      <ul>
+        <li><b>Components.</b> Every pattern, with its light and dark rules and the Tailwind v4 build notes, is in the <a href="component-spec.html">Component Spec</a>.</li>
+        <li><b>Perf budget.</b> Fonts add <span class="num">59 KB</span> to a site that loads none today. Dropping Bootstrap pays for it, and the bar is no regression.</li>
+        <li><b>Build plan.</b> The perf gate, cutover sequencing and the social assets are still on the map.</li>
+      </ul>
+      <p><a href="https://github.com/mega-mattice/msp-playbook/issues/152">The full map</a></p>
+    </div>
+  </section>
+</div>
+
+<footer class="band">
+  <div class="in">
+    <span class="lockup"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity"><use href="#lockup"/></svg></span>
+    <p>Managed IT for businesses whose work happens away from the desk. <span class="num">Ontario, Canada</span></p>
+  </div>
+</footer>
+
+
+
+</body></html>
