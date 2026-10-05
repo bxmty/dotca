@@ -24,7 +24,7 @@ import { dirname } from "node:path";
 import lighthouse, { desktopConfig } from "lighthouse";
 import type { Flags } from "lighthouse";
 import puppeteer from "puppeteer-core";
-import type { Browser } from "puppeteer-core";
+import type { Browser, Page } from "puppeteer-core";
 import {
   assertDarkRender,
   buildPerfReport,
@@ -36,7 +36,9 @@ import {
   summarizeConfigurationRuns,
 } from "../src/lib/perfGate.ts";
 import type {
+  CompareCommand,
   ConfigurationResult,
+  MeasureCommand,
   PerfConfiguration,
   PerfReport,
   RenderProbe,
@@ -46,7 +48,7 @@ import type {
 // Blocks the font files themselves (self-hosted next/font output and Google
 // Fonts' file CDN), not the stylesheets that declare them, so the pass shows
 // what fallback fonts do to layout.
-const FONT_FILE_URL_PATTERNS = [
+const fontFileUrlPatterns = [
   "*.woff2",
   "*.woff",
   "*.ttf",
@@ -71,6 +73,15 @@ function resolveChromePath(chromePath: string | undefined): string {
 
 async function readPerfReport(reportPath: string): Promise<PerfReport> {
   return JSON.parse(await readFile(reportPath, "utf8")) as PerfReport;
+}
+
+/** Reads the backgrounds the page actually painted, for the dark proof. */
+async function fetchRenderProbe(page: Page): Promise<RenderProbe> {
+  return page.evaluate(() => ({
+    bodyBackgroundColor: window.getComputedStyle(document.body).backgroundColor,
+    htmlBackgroundColor: window.getComputedStyle(document.documentElement)
+      .backgroundColor,
+  }));
 }
 
 /**
@@ -102,7 +113,7 @@ async function measureOnePass({
       output: "json",
       onlyCategories: ["performance"],
       ...(configuration.isFontBlocked
-        ? { blockedUrlPatterns: FONT_FILE_URL_PATTERNS }
+        ? { blockedUrlPatterns: fontFileUrlPatterns }
         : {}),
     };
     const runnerResult = await lighthouse(
@@ -116,12 +127,7 @@ async function measureOnePass({
     }
     const runSample = extractRunSample(runnerResult.lhr);
     if (configuration.colorScheme === "dark") {
-      const renderProbe: RenderProbe = await page.evaluate(() => ({
-        bodyBackgroundColor: window.getComputedStyle(document.body)
-          .backgroundColor,
-        htmlBackgroundColor: window.getComputedStyle(document.documentElement)
-          .backgroundColor,
-      }));
+      const renderProbe = await fetchRenderProbe(page);
       assertDarkRender(getConfigurationKey(configuration), renderProbe);
       runSample.renderProbe = renderProbe;
     }
@@ -179,12 +185,7 @@ async function measureConfigurations({
   return { results, lighthouseVersion };
 }
 
-async function runMeasure(
-  command: Extract<
-    ReturnType<typeof parsePerfGateArguments>,
-    { command: "measure" }
-  >,
-): Promise<void> {
+async function runMeasure(command: MeasureCommand): Promise<void> {
   const isTargetedRerun =
     command.configurations.length < perfGateMatrix.length &&
     existsSync(command.outputPath);
@@ -224,12 +225,7 @@ async function runMeasure(
   }
 }
 
-async function runCompare(
-  command: Extract<
-    ReturnType<typeof parsePerfGateArguments>,
-    { command: "compare" }
-  >,
-): Promise<void> {
+async function runCompare(command: CompareCommand): Promise<void> {
   const comparison = comparePerfReports({
     beforeReport: await readPerfReport(command.beforePath),
     afterReport: await readPerfReport(command.afterPath),

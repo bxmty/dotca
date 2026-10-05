@@ -1,6 +1,6 @@
 import {
   assertDarkRender,
-  buildPerfReport as buildMeasuredPerfReport,
+  buildPerfReport,
   calculateMedian,
   comparePerfReports,
   parsePerfGateArguments,
@@ -188,6 +188,35 @@ describe("extractRunSample", () => {
       firstPartyJavaScriptBytes: 92000,
       fontBytes: 49000,
       fontFileCount: 2,
+      netTotalBytes: 171000,
+    });
+  });
+
+  it("should keep third-party CSS and fonts in their caps but out of the net total", () => {
+    const lighthouseResult = buildLighthouseResult();
+    const networkRequests = (
+      lighthouseResult.audits["network-requests"].details as {
+        items: Array<Record<string, unknown>>;
+      }
+    ).items;
+    networkRequests.push(
+      {
+        url: "https://fonts.googleapis.com/css2?family=Inter",
+        resourceType: "Stylesheet",
+        transferSize: 1000,
+      },
+      {
+        url: "https://fonts.gstatic.com/s/inter/v1/inter.woff2",
+        resourceType: "Font",
+        transferSize: 20000,
+      },
+    );
+
+    expect(extractRunSample(lighthouseResult).bytes).toEqual({
+      cssBytes: 31000,
+      firstPartyJavaScriptBytes: 92000,
+      fontBytes: 69000,
+      fontFileCount: 3,
       netTotalBytes: 171000,
     });
   });
@@ -384,24 +413,26 @@ const DESKTOP_DEFAULTS = {
 };
 
 /**
- * A full-matrix report with one pass per configuration, so each median is the
+ * A full-matrix report whose passes are identical, so each median is the
  * pass value itself. Overrides are keyed by configuration key.
  */
-function buildPerfReport({
+function buildFixtureReport({
   measuredAt = BEFORE_MEASURED_AT,
   overridesByKey = {},
   omittedKeys = [],
+  passesPerConfiguration = 5,
 }: {
   measuredAt?: string;
   overridesByKey?: Record<string, Record<string, unknown>>;
   omittedKeys?: string[];
+  passesPerConfiguration?: number;
 } = {}) {
   return {
     schemaVersion: 1,
     lighthouseVersion: "13.5.0",
     baseUrl: "https://staging.boximity.ca",
     measuredAt,
-    passesPerConfiguration: 1,
+    passesPerConfiguration,
     results: perfGateMatrix
       .filter(
         (configuration) =>
@@ -411,7 +442,7 @@ function buildPerfReport({
         summarizeConfigurationRuns({
           configuration,
           measuredAt,
-          runSamples: [
+          runSamples: Array.from({ length: passesPerConfiguration }, () =>
             buildRunSample({
               ...(configuration.formFactor === "desktop"
                 ? DESKTOP_DEFAULTS
@@ -421,7 +452,7 @@ function buildPerfReport({
                 : {}),
               ...overridesByKey[getConfigurationKey(configuration)],
             }),
-          ],
+          ),
         }),
       ),
   };
@@ -432,8 +463,8 @@ function compareWithAfter(
   beforeOverridesByKey: Record<string, Record<string, unknown>> = {},
 ) {
   return comparePerfReports({
-    beforeReport: buildPerfReport({ overridesByKey: beforeOverridesByKey }),
-    afterReport: buildPerfReport({
+    beforeReport: buildFixtureReport({ overridesByKey: beforeOverridesByKey }),
+    afterReport: buildFixtureReport({
       measuredAt: AFTER_MEASURED_AT,
       overridesByKey: afterOverridesByKey,
     }),
@@ -669,13 +700,13 @@ describe("comparePerfReports", () => {
     });
 
     it("should hold the net total to the frozen bytes-ref", () => {
-      const bytesReferenceReport = buildPerfReport({
+      const bytesReferenceReport = buildFixtureReport({
         overridesByKey: { [KEY]: withBytes({ netTotalBytes: 150000 }) },
       });
       const compareNetTotal = (netTotalBytes: number) =>
         comparePerfReports({
-          beforeReport: buildPerfReport(),
-          afterReport: buildPerfReport({
+          beforeReport: buildFixtureReport(),
+          afterReport: buildFixtureReport({
             measuredAt: AFTER_MEASURED_AT,
             overridesByKey: { [KEY]: withBytes({ netTotalBytes }) },
           }),
@@ -692,9 +723,9 @@ describe("comparePerfReports", () => {
 
     it("should fail the net total when the bytes-ref has no entry for the route", () => {
       const comparison = comparePerfReports({
-        beforeReport: buildPerfReport(),
-        afterReport: buildPerfReport({ measuredAt: AFTER_MEASURED_AT }),
-        bytesReferenceReport: buildPerfReport({ omittedKeys: [KEY] }),
+        beforeReport: buildFixtureReport(),
+        afterReport: buildFixtureReport({ measuredAt: AFTER_MEASURED_AT }),
+        bytesReferenceReport: buildFixtureReport({ omittedKeys: [KEY] }),
       });
 
       expect(findCheckStatus(comparison, KEY, "Net bytes vs bytes-ref")).toBe(
@@ -747,8 +778,8 @@ describe("comparePerfReports", () => {
 
   it("should fail a matrix configuration missing from the after report", () => {
     const comparison = comparePerfReports({
-      beforeReport: buildPerfReport(),
-      afterReport: buildPerfReport({
+      beforeReport: buildFixtureReport(),
+      afterReport: buildFixtureReport({
         measuredAt: AFTER_MEASURED_AT,
         omittedKeys: ["desktop-light:/pricing"],
       }),
@@ -761,8 +792,10 @@ describe("comparePerfReports", () => {
 
   it("should fail relative checks when the before report lacks the configuration", () => {
     const comparison = comparePerfReports({
-      beforeReport: buildPerfReport({ omittedKeys: ["mobile-light:/pricing"] }),
-      afterReport: buildPerfReport({ measuredAt: AFTER_MEASURED_AT }),
+      beforeReport: buildFixtureReport({
+        omittedKeys: ["mobile-light:/pricing"],
+      }),
+      afterReport: buildFixtureReport({ measuredAt: AFTER_MEASURED_AT }),
     });
 
     expect(
@@ -776,7 +809,7 @@ describe("comparePerfReports", () => {
   it("should treat a metric lost in JSON (NaN serialised as null) as a failure, not a pass", () => {
     const afterReport = JSON.parse(
       JSON.stringify(
-        buildPerfReport({
+        buildFixtureReport({
           measuredAt: AFTER_MEASURED_AT,
           overridesByKey: {
             "mobile-light:/": { largestContentfulPaintMs: Number.NaN },
@@ -785,7 +818,7 @@ describe("comparePerfReports", () => {
       ),
     );
     const comparison = comparePerfReports({
-      beforeReport: buildPerfReport(),
+      beforeReport: buildFixtureReport(),
       afterReport,
     });
 
@@ -797,10 +830,10 @@ describe("comparePerfReports", () => {
   describe("staleness warning", () => {
     it("should not warn when before and after are exactly 24 h apart", () => {
       const comparison = comparePerfReports({
-        beforeReport: buildPerfReport({
+        beforeReport: buildFixtureReport({
           measuredAt: "2026-10-04T10:00:00.000Z",
         }),
-        afterReport: buildPerfReport({
+        afterReport: buildFixtureReport({
           measuredAt: "2026-10-05T10:00:00.000Z",
         }),
       });
@@ -810,16 +843,34 @@ describe("comparePerfReports", () => {
 
     it("should warn, without failing, when before and after are more than 24 h apart", () => {
       const comparison = comparePerfReports({
-        beforeReport: buildPerfReport({
+        beforeReport: buildFixtureReport({
           measuredAt: "2026-10-04T10:00:00.000Z",
         }),
-        afterReport: buildPerfReport({
+        afterReport: buildFixtureReport({
           measuredAt: "2026-10-05T10:01:00.000Z",
         }),
       });
 
       expect(comparison.warnings.join("\n")).toMatch(/more than 24 h apart/);
       expect(comparison.markdown).toMatch(/more than 24 h apart/);
+      expect(comparison.exitCode).toBe(0);
+    });
+  });
+
+  describe("pass count warning", () => {
+    it("should not warn when every compared configuration has 5 passes", () => {
+      expect(compareWithAfter({}).warnings.join("\n")).not.toMatch(/passes/);
+    });
+
+    it("should warn when a side was measured with fewer than 5 passes", () => {
+      const comparison = comparePerfReports({
+        beforeReport: buildFixtureReport({ passesPerConfiguration: 1 }),
+        afterReport: buildFixtureReport({ measuredAt: AFTER_MEASURED_AT }),
+      });
+
+      expect(comparison.warnings.join("\n")).toMatch(
+        /before has fewer than 5 passes for 12 configuration/,
+      );
       expect(comparison.exitCode).toBe(0);
     });
   });
@@ -1024,7 +1075,7 @@ describe("buildPerfReport", () => {
     });
 
   it("should write a fresh measurement with its metadata", () => {
-    const perfReport = buildMeasuredPerfReport({
+    const perfReport = buildPerfReport({
       ...metadata,
       measuredAt: BEFORE_MEASURED_AT,
       freshResults: [resultFor("mobile-light:/", BEFORE_MEASURED_AT)],
@@ -1044,7 +1095,7 @@ describe("buildPerfReport", () => {
   });
 
   it("should replace only the rerun configurations when merging into a previous report", () => {
-    const previousReport = buildMeasuredPerfReport({
+    const previousReport = buildPerfReport({
       ...metadata,
       measuredAt: BEFORE_MEASURED_AT,
       freshResults: [
@@ -1053,7 +1104,7 @@ describe("buildPerfReport", () => {
       ],
     });
 
-    const mergedReport = buildMeasuredPerfReport({
+    const mergedReport = buildPerfReport({
       ...metadata,
       measuredAt: AFTER_MEASURED_AT,
       previousReport,
@@ -1074,14 +1125,14 @@ describe("buildPerfReport", () => {
   });
 
   it("should refuse to merge a rerun against a different base URL", () => {
-    const previousReport = buildMeasuredPerfReport({
+    const previousReport = buildPerfReport({
       ...metadata,
       measuredAt: BEFORE_MEASURED_AT,
       freshResults: [],
     });
 
     expect(() =>
-      buildMeasuredPerfReport({
+      buildPerfReport({
         ...metadata,
         baseUrl: "http://localhost:3000",
         measuredAt: AFTER_MEASURED_AT,

@@ -169,10 +169,12 @@ function readNetworkRequests(
   return details?.items ?? [];
 }
 
-// CSS and fonts count from any origin, so a font pulled from a third-party
-// CDN still lands in the font budget. JavaScript counts first-party only:
-// the net total deliberately excludes GTM and other third-party scripts whose
-// size the site does not control.
+// Two views of the same requests:
+// - The CSS and font caps count every origin, so a font pulled from a
+//   third-party CDN still lands in the font budget.
+// - The net total counts first-party (same hostname as the page) requests
+//   only, as msp-playbook#163 specifies: GTM and any other third-party
+//   bytes the site does not control are excluded.
 function calculateByteTotals(
   networkRequests: NetworkRequestItem[],
   pageUrl: string,
@@ -182,8 +184,10 @@ function calculateByteTotals(
   let firstPartyJavaScriptBytes = 0;
   let fontBytes = 0;
   let fontFileCount = 0;
+  let netTotalBytes = 0;
   for (const request of networkRequests) {
     const transferSize = request.transferSize ?? 0;
+    const isFirstParty = new URL(request.url).hostname === pageHostname;
     if (request.resourceType === "Stylesheet") {
       cssBytes += transferSize;
     } else if (request.resourceType === "Font" && transferSize > 0) {
@@ -191,11 +195,13 @@ function calculateByteTotals(
       // request with nothing transferred; it is not a file the page loaded.
       fontBytes += transferSize;
       fontFileCount += 1;
-    } else if (
-      request.resourceType === "Script" &&
-      new URL(request.url).hostname === pageHostname
-    ) {
+    } else if (request.resourceType === "Script" && isFirstParty) {
       firstPartyJavaScriptBytes += transferSize;
+    } else {
+      continue;
+    }
+    if (isFirstParty) {
+      netTotalBytes += transferSize;
     }
   }
   return {
@@ -203,7 +209,7 @@ function calculateByteTotals(
     firstPartyJavaScriptBytes,
     fontBytes,
     fontFileCount,
-    netTotalBytes: cssBytes + firstPartyJavaScriptBytes + fontBytes,
+    netTotalBytes,
   };
 }
 
@@ -269,13 +275,13 @@ export interface PerfConfiguration {
   isFontBlocked: boolean;
 }
 
-const GATED_ROUTES = [
+const gatedRoutes = [
   "/",
   "/services/managed-it-services-ontario",
   "/pricing",
   "/blog/backups",
 ];
-const DARK_AND_FONT_BLOCKED_ROUTES = ["/", "/pricing"];
+const darkAndFontBlockedRoutes = ["/", "/pricing"];
 
 /**
  * The matrix from msp-playbook#163: mobile + desktop light on four routes,
@@ -283,7 +289,7 @@ const DARK_AND_FONT_BLOCKED_ROUTES = ["/", "/pricing"];
  * checkout/onboarding and desktop dark are deliberately not measured.
  */
 export const perfGateMatrix: PerfConfiguration[] = [
-  ...GATED_ROUTES.flatMap((route) =>
+  ...gatedRoutes.flatMap((route) =>
     (["mobile", "desktop"] as const).map((formFactor) => ({
       route,
       formFactor,
@@ -291,13 +297,13 @@ export const perfGateMatrix: PerfConfiguration[] = [
       isFontBlocked: false,
     })),
   ),
-  ...DARK_AND_FONT_BLOCKED_ROUTES.map((route) => ({
+  ...darkAndFontBlockedRoutes.map((route) => ({
     route,
     formFactor: "mobile" as const,
     colorScheme: "dark" as const,
     isFontBlocked: false,
   })),
-  ...DARK_AND_FONT_BLOCKED_ROUTES.map((route) => ({
+  ...darkAndFontBlockedRoutes.map((route) => ({
     route,
     formFactor: "mobile" as const,
     colorScheme: "light" as const,
@@ -352,27 +358,33 @@ export function summarizeConfigurationRuns({
   runSamples: RunSample[];
   measuredAt: string;
 }): ConfigurationResult {
-  const medianOf = (readValue: (runSample: RunSample) => number) =>
+  const calculateMedianOf = (readValue: (runSample: RunSample) => number) =>
     calculateFiniteMedian(runSamples.map(readValue));
   const configurationResult: ConfigurationResult = {
     ...configuration,
     key: getConfigurationKey(configuration),
     measuredAt,
     medians: {
-      performanceScore: medianOf((run) => run.performanceScore),
-      largestContentfulPaintMs: medianOf((run) => run.largestContentfulPaintMs),
-      totalBlockingTimeMs: medianOf((run) => run.totalBlockingTimeMs),
-      cumulativeLayoutShift: medianOf((run) => run.cumulativeLayoutShift),
-      firstContentfulPaintMs: medianOf((run) => run.firstContentfulPaintMs),
+      performanceScore: calculateMedianOf((run) => run.performanceScore),
+      largestContentfulPaintMs: calculateMedianOf(
+        (run) => run.largestContentfulPaintMs,
+      ),
+      totalBlockingTimeMs: calculateMedianOf((run) => run.totalBlockingTimeMs),
+      cumulativeLayoutShift: calculateMedianOf(
+        (run) => run.cumulativeLayoutShift,
+      ),
+      firstContentfulPaintMs: calculateMedianOf(
+        (run) => run.firstContentfulPaintMs,
+      ),
     },
     byteMedians: {
-      cssBytes: medianOf((run) => run.bytes.cssBytes),
-      firstPartyJavaScriptBytes: medianOf(
+      cssBytes: calculateMedianOf((run) => run.bytes.cssBytes),
+      firstPartyJavaScriptBytes: calculateMedianOf(
         (run) => run.bytes.firstPartyJavaScriptBytes,
       ),
-      fontBytes: medianOf((run) => run.bytes.fontBytes),
-      fontFileCount: medianOf((run) => run.bytes.fontFileCount),
-      netTotalBytes: medianOf((run) => run.bytes.netTotalBytes),
+      fontBytes: calculateMedianOf((run) => run.bytes.fontBytes),
+      fontFileCount: calculateMedianOf((run) => run.bytes.fontFileCount),
+      netTotalBytes: calculateMedianOf((run) => run.bytes.netTotalBytes),
     },
     didEveryRunRender: runSamples.every((run) => run.didRender),
     runs: runSamples,
@@ -441,9 +453,26 @@ const CSS_CAP_BYTES = 35 * BYTES_PER_KIB;
 const FONT_CAP_BYTES = 60 * BYTES_PER_KIB;
 const FONT_FILE_CAP = 2;
 const STALE_PAIR_THRESHOLD_MS = 24 * 60 * 60 * 1000;
-const H1_EXPECTED_ROUTES = ["/", "/services/managed-it-services-ontario"];
+const h1ExpectedRoutes = ["/", "/services/managed-it-services-ontario"];
+
+const EXPECTED_PASSES_PER_CONFIGURATION = 5;
 
 type ValueFormat = "milliseconds" | "score" | "layoutShift" | "bytes" | "count";
+type LimitDirection = "atMost" | "atLeast";
+
+const valueFormatByMetric: Record<keyof MetricMedians, ValueFormat> = {
+  performanceScore: "score",
+  largestContentfulPaintMs: "milliseconds",
+  totalBlockingTimeMs: "milliseconds",
+  cumulativeLayoutShift: "layoutShift",
+  firstContentfulPaintMs: "milliseconds",
+};
+
+/** The after result and its paired before result (absent if not measured). */
+interface ResultPair {
+  afterResult: ConfigurationResult;
+  beforeResult: ConfigurationResult | undefined;
+}
 
 // A NaN median is written to JSON as null, and `null + 150` is 150 in
 // JavaScript — so every value read from a report is normalised to a finite
@@ -470,6 +499,13 @@ function formatValue(value: number, valueFormat: ValueFormat): string {
   }
 }
 
+function describeFlag(flag: boolean | undefined): string {
+  if (flag === undefined) {
+    return "missing";
+  }
+  return flag ? "yes" : "no";
+}
+
 function buildThresholdCheck({
   configurationKey,
   checkName,
@@ -484,7 +520,7 @@ function buildThresholdCheck({
   beforeValue: number;
   afterValue: number;
   limitValue: number;
-  direction: "atMost" | "atLeast";
+  direction: LimitDirection;
   valueFormat: ValueFormat;
 }): GateCheck {
   const isWithinLimit =
@@ -505,192 +541,243 @@ function buildThresholdCheck({
   };
 }
 
-function buildMetricChecks(
-  afterResult: ConfigurationResult,
-  beforeResult: ConfigurationResult | undefined,
-): GateCheck[] {
-  const configurationKey = afterResult.key;
-  const readAfter = (metric: keyof MetricMedians) =>
-    toFiniteOrNaN(afterResult.medians?.[metric]);
-  const readBefore = (metric: keyof MetricMedians) =>
-    toFiniteOrNaN(beforeResult?.medians?.[metric]);
-  const metricCheck = (
-    checkName: string,
-    metric: keyof MetricMedians,
-    limitValue: number,
-    direction: "atMost" | "atLeast" = "atMost",
-  ) =>
-    buildThresholdCheck({
-      configurationKey,
-      checkName,
-      beforeValue: readBefore(metric),
-      afterValue: readAfter(metric),
-      limitValue,
-      direction,
-      valueFormat:
-        metric === "performanceScore"
-          ? "score"
-          : metric === "cumulativeLayoutShift"
-            ? "layoutShift"
-            : "milliseconds",
-    });
-  const clsCheck = metricCheck("CLS", "cumulativeLayoutShift", CLS_CAP);
+function readBeforeMedian(
+  { beforeResult }: ResultPair,
+  metric: keyof MetricMedians,
+): number {
+  return toFiniteOrNaN(beforeResult?.medians?.[metric]);
+}
 
-  if (afterResult.isFontBlocked) {
-    return [
-      clsCheck,
-      {
-        configurationKey,
-        checkName: "Page renders",
-        beforeValue: describeFlag(beforeResult?.didEveryRunRender),
-        afterValue: describeFlag(afterResult.didEveryRunRender),
-        limit: "every pass paints",
-        status: afterResult.didEveryRunRender === true ? "pass" : "fail",
-      },
-    ];
-  }
+function buildMetricThresholdCheck(
+  resultPair: ResultPair,
+  {
+    checkName,
+    metric,
+    limitValue,
+    direction = "atMost",
+  }: {
+    checkName: string;
+    metric: keyof MetricMedians;
+    limitValue: number;
+    direction?: LimitDirection;
+  },
+): GateCheck {
+  return buildThresholdCheck({
+    configurationKey: resultPair.afterResult.key,
+    checkName,
+    beforeValue: readBeforeMedian(resultPair, metric),
+    afterValue: toFiniteOrNaN(resultPair.afterResult.medians?.[metric]),
+    limitValue,
+    direction,
+    valueFormat: valueFormatByMetric[metric],
+  });
+}
 
-  if (afterResult.formFactor === "desktop") {
-    return [
-      metricCheck(
-        "Perf score",
-        "performanceScore",
-        desktopBudget.scoreFloor,
-        "atLeast",
-      ),
-      metricCheck(
-        "LCP vs before",
-        "largestContentfulPaintMs",
-        readBefore("largestContentfulPaintMs") +
-          desktopBudget.allowedLcpRegressionMs,
-      ),
-      metricCheck(
-        "LCP cap",
-        "largestContentfulPaintMs",
-        desktopBudget.lcpCapMs,
-      ),
-      metricCheck("TBT cap", "totalBlockingTimeMs", desktopBudget.tbtCapMs),
-      clsCheck,
-      metricCheck(
-        "FCP vs before",
-        "firstContentfulPaintMs",
-        readBefore("firstContentfulPaintMs") +
-          desktopBudget.allowedFcpRegressionMs,
-      ),
-    ];
-  }
+function buildClsCheck(resultPair: ResultPair): GateCheck {
+  return buildMetricThresholdCheck(resultPair, {
+    checkName: "CLS",
+    metric: "cumulativeLayoutShift",
+    limitValue: CLS_CAP,
+  });
+}
 
+// The font-blocked pass is pass/fail on two things only: layout stays put
+// with fallback fonts, and the page still paints.
+function buildFontBlockedChecks(resultPair: ResultPair): GateCheck[] {
+  const { afterResult, beforeResult } = resultPair;
+  return [
+    buildClsCheck(resultPair),
+    {
+      configurationKey: afterResult.key,
+      checkName: "Page renders",
+      beforeValue: describeFlag(beforeResult?.didEveryRunRender),
+      afterValue: describeFlag(afterResult.didEveryRunRender),
+      limit: "every pass paints",
+      status: afterResult.didEveryRunRender === true ? "pass" : "fail",
+    },
+  ];
+}
+
+function buildDesktopChecks(resultPair: ResultPair): GateCheck[] {
+  return [
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "Perf score",
+      metric: "performanceScore",
+      limitValue: desktopBudget.scoreFloor,
+      direction: "atLeast",
+    }),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "LCP vs before",
+      metric: "largestContentfulPaintMs",
+      limitValue:
+        readBeforeMedian(resultPair, "largestContentfulPaintMs") +
+        desktopBudget.allowedLcpRegressionMs,
+    }),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "LCP cap",
+      metric: "largestContentfulPaintMs",
+      limitValue: desktopBudget.lcpCapMs,
+    }),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "TBT cap",
+      metric: "totalBlockingTimeMs",
+      limitValue: desktopBudget.tbtCapMs,
+    }),
+    buildClsCheck(resultPair),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "FCP vs before",
+      metric: "firstContentfulPaintMs",
+      limitValue:
+        readBeforeMedian(resultPair, "firstContentfulPaintMs") +
+        desktopBudget.allowedFcpRegressionMs,
+    }),
+  ];
+}
+
+function buildDarkRenderCheck({
+  afterResult,
+  beforeResult,
+}: ResultPair): GateCheck {
+  return {
+    configurationKey: afterResult.key,
+    checkName: "Dark render proven",
+    beforeValue: describeFlag(beforeResult?.isDarkRenderProven),
+    afterValue: describeFlag(afterResult.isDarkRenderProven),
+    limit: "before and after dark",
+    status:
+      beforeResult?.isDarkRenderProven === true &&
+      afterResult.isDarkRenderProven === true
+        ? "pass"
+        : "fail",
+  };
+}
+
+// Mobile light and mobile dark share these limits; dark adds the render
+// proof, because its before-number is only a valid baseline if it was dark.
+function buildMobileChecks(resultPair: ResultPair): GateCheck[] {
+  const { afterResult } = resultPair;
   const mobileChecks = [
-    metricCheck(
-      "Perf score",
-      "performanceScore",
-      readBefore("performanceScore") - mobileBudget.allowedScoreDrop,
-      "atLeast",
-    ),
-    metricCheck(
-      "LCP vs before",
-      "largestContentfulPaintMs",
-      readBefore("largestContentfulPaintMs") +
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "Perf score",
+      metric: "performanceScore",
+      limitValue:
+        readBeforeMedian(resultPair, "performanceScore") -
+        mobileBudget.allowedScoreDrop,
+      direction: "atLeast",
+    }),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "LCP vs before",
+      metric: "largestContentfulPaintMs",
+      limitValue:
+        readBeforeMedian(resultPair, "largestContentfulPaintMs") +
         mobileBudget.allowedLcpRegressionMs,
-    ),
-    metricCheck("LCP cap", "largestContentfulPaintMs", mobileBudget.lcpCapMs),
-    metricCheck(
-      "TBT vs before",
-      "totalBlockingTimeMs",
-      readBefore("totalBlockingTimeMs") + mobileBudget.allowedTbtRegressionMs,
-    ),
-    clsCheck,
-    metricCheck(
-      "FCP vs before",
-      "firstContentfulPaintMs",
-      readBefore("firstContentfulPaintMs") +
+    }),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "LCP cap",
+      metric: "largestContentfulPaintMs",
+      limitValue: mobileBudget.lcpCapMs,
+    }),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "TBT vs before",
+      metric: "totalBlockingTimeMs",
+      limitValue:
+        readBeforeMedian(resultPair, "totalBlockingTimeMs") +
+        mobileBudget.allowedTbtRegressionMs,
+    }),
+    buildClsCheck(resultPair),
+    buildMetricThresholdCheck(resultPair, {
+      checkName: "FCP vs before",
+      metric: "firstContentfulPaintMs",
+      limitValue:
+        readBeforeMedian(resultPair, "firstContentfulPaintMs") +
         mobileBudget.allowedFcpRegressionMs,
-    ),
+    }),
   ];
   if (afterResult.colorScheme === "dark") {
-    // The dark before-number is only a valid baseline if it was dark too.
-    mobileChecks.push({
-      configurationKey,
-      checkName: "Dark render proven",
-      beforeValue: describeFlag(beforeResult?.isDarkRenderProven),
-      afterValue: describeFlag(afterResult.isDarkRenderProven),
-      limit: "before and after dark",
-      status:
-        beforeResult?.isDarkRenderProven === true &&
-        afterResult.isDarkRenderProven === true
-          ? "pass"
-          : "fail",
-    });
+    mobileChecks.push(buildDarkRenderCheck(resultPair));
   }
   return mobileChecks;
 }
 
-function describeFlag(flag: boolean | undefined): string {
-  if (flag === undefined) {
-    return "missing";
-  }
-  return flag ? "yes" : "no";
+function buildByteThresholdCheck(
+  { afterResult, beforeResult }: ResultPair,
+  {
+    checkName,
+    category,
+    limitValue,
+  }: { checkName: string; category: keyof ByteTotals; limitValue: number },
+): GateCheck {
+  return buildThresholdCheck({
+    configurationKey: afterResult.key,
+    checkName,
+    beforeValue: toFiniteOrNaN(beforeResult?.byteMedians?.[category]),
+    afterValue: toFiniteOrNaN(afterResult.byteMedians?.[category]),
+    limitValue,
+    direction: "atMost",
+    valueFormat: category === "fontFileCount" ? "count" : "bytes",
+  });
 }
 
-function buildByteChecks({
-  afterResult,
-  beforeResult,
-  bytesReferenceResult,
-  hasBytesReference,
-}: {
-  afterResult: ConfigurationResult;
-  beforeResult: ConfigurationResult | undefined;
-  bytesReferenceResult: ConfigurationResult | undefined;
-  hasBytesReference: boolean;
-}): GateCheck[] {
-  const configurationKey = afterResult.key;
-  const readAfter = (category: keyof ByteTotals) =>
-    toFiniteOrNaN(afterResult.byteMedians?.[category]);
-  const readBefore = (category: keyof ByteTotals) =>
-    toFiniteOrNaN(beforeResult?.byteMedians?.[category]);
-  const byteCheck = (
-    checkName: string,
-    category: keyof ByteTotals,
-    limitValue: number,
-  ) =>
-    buildThresholdCheck({
-      configurationKey,
-      checkName,
-      beforeValue: readBefore(category),
-      afterValue: readAfter(category),
-      limitValue,
-      direction: "atMost",
-      valueFormat: category === "fontFileCount" ? "count" : "bytes",
-    });
-
-  const netTotalCheck = hasBytesReference
-    ? byteCheck(
-        "Net bytes vs bytes-ref",
-        "netTotalBytes",
-        toFiniteOrNaN(bytesReferenceResult?.byteMedians?.netTotalBytes),
-      )
-    : {
-        configurationKey,
-        checkName: "Net bytes vs bytes-ref",
-        beforeValue: formatValue(readBefore("netTotalBytes"), "bytes"),
-        afterValue: formatValue(readAfter("netTotalBytes"), "bytes"),
-        limit: "no --bytes-ref",
-        status: "skip" as const,
-      };
-  if (hasBytesReference && !bytesReferenceResult) {
-    netTotalCheck.limit = "missing in bytes-ref";
+// Without a frozen reference there is nothing to hold the net total to, so
+// the row is a SKIP (visible, not failing). With one, a route missing from
+// the reference fails: an unreferenced route must not pass by default.
+function buildNetTotalCheck(
+  resultPair: ResultPair,
+  bytesReferenceReport: PerfReport | undefined,
+): GateCheck {
+  const checkName = "Net bytes vs bytes-ref";
+  if (!bytesReferenceReport) {
+    return {
+      ...buildByteThresholdCheck(resultPair, {
+        checkName,
+        category: "netTotalBytes",
+        limitValue: Number.NaN,
+      }),
+      limit: "no --bytes-ref",
+      status: "skip",
+    };
   }
+  const bytesReferenceResult = indexResultsByKey(bytesReferenceReport).get(
+    resultPair.afterResult.key,
+  );
+  const netTotalCheck = buildByteThresholdCheck(resultPair, {
+    checkName,
+    category: "netTotalBytes",
+    limitValue: toFiniteOrNaN(bytesReferenceResult?.byteMedians?.netTotalBytes),
+  });
+  return bytesReferenceResult
+    ? netTotalCheck
+    : { ...netTotalCheck, limit: "missing in bytes-ref" };
+}
 
+function buildByteChecks(
+  resultPair: ResultPair,
+  bytesReferenceReport: PerfReport | undefined,
+): GateCheck[] {
   return [
-    netTotalCheck,
-    byteCheck("CSS bytes", "cssBytes", CSS_CAP_BYTES),
-    byteCheck(
-      "First-party JS vs before",
-      "firstPartyJavaScriptBytes",
-      readBefore("firstPartyJavaScriptBytes"),
-    ),
-    byteCheck("Font bytes", "fontBytes", FONT_CAP_BYTES),
-    byteCheck("Font files", "fontFileCount", FONT_FILE_CAP),
+    buildNetTotalCheck(resultPair, bytesReferenceReport),
+    buildByteThresholdCheck(resultPair, {
+      checkName: "CSS bytes",
+      category: "cssBytes",
+      limitValue: CSS_CAP_BYTES,
+    }),
+    buildByteThresholdCheck(resultPair, {
+      checkName: "First-party JS vs before",
+      category: "firstPartyJavaScriptBytes",
+      limitValue: toFiniteOrNaN(
+        resultPair.beforeResult?.byteMedians?.firstPartyJavaScriptBytes,
+      ),
+    }),
+    buildByteThresholdCheck(resultPair, {
+      checkName: "Font bytes",
+      category: "fontBytes",
+      limitValue: FONT_CAP_BYTES,
+    }),
+    buildByteThresholdCheck(resultPair, {
+      checkName: "Font files",
+      category: "fontFileCount",
+      limitValue: FONT_FILE_CAP,
+    }),
   ];
 }
 
@@ -702,6 +789,44 @@ function isByteBudgetCarrier(configuration: PerfConfiguration): boolean {
     configuration.colorScheme === "light" &&
     !configuration.isFontBlocked
   );
+}
+
+/** Every check for one matrix configuration, in table order. */
+function buildConfigurationChecks({
+  configuration,
+  afterResult,
+  beforeResult,
+  bytesReferenceReport,
+}: {
+  configuration: PerfConfiguration;
+  afterResult: ConfigurationResult | undefined;
+  beforeResult: ConfigurationResult | undefined;
+  bytesReferenceReport: PerfReport | undefined;
+}): GateCheck[] {
+  if (!afterResult) {
+    return [
+      {
+        configurationKey: getConfigurationKey(configuration),
+        checkName: "Measured",
+        beforeValue: beforeResult ? "yes" : "missing",
+        afterValue: "missing",
+        limit: "in after report",
+        status: "fail",
+      },
+    ];
+  }
+  const resultPair = { afterResult, beforeResult };
+  let metricChecks: GateCheck[];
+  if (configuration.isFontBlocked) {
+    metricChecks = buildFontBlockedChecks(resultPair);
+  } else if (configuration.formFactor === "desktop") {
+    metricChecks = buildDesktopChecks(resultPair);
+  } else {
+    metricChecks = buildMobileChecks(resultPair);
+  }
+  return isByteBudgetCarrier(configuration)
+    ? [...metricChecks, ...buildByteChecks(resultPair, bytesReferenceReport)]
+    : metricChecks;
 }
 
 function indexResultsByKey(
@@ -742,6 +867,32 @@ function findStalePairWarning(
   );
 }
 
+// `--passes` exists for quick local smoke runs; a gate verdict needs the full
+// five-pass medians on both sides, so anything less is called out.
+function findPassCountWarnings(
+  beforeReport: PerfReport,
+  afterReport: PerfReport,
+): string[] {
+  return (
+    [
+      ["before", beforeReport],
+      ["after", afterReport],
+    ] as const
+  ).flatMap(([sideName, perfReport]) => {
+    const underSampledKeys = perfReport.results
+      .filter(
+        (result) =>
+          (result.runs ?? []).length < EXPECTED_PASSES_PER_CONFIGURATION,
+      )
+      .map((result) => result.key);
+    return underSampledKeys.length === 0
+      ? []
+      : [
+          `${sideName} has fewer than ${EXPECTED_PASSES_PER_CONFIGURATION} passes for ${underSampledKeys.length} configuration(s): ${underSampledKeys.join(", ")}. Re-measure with the default --passes before relying on the verdict.`,
+        ];
+  });
+}
+
 function isH1Element(lcpElement: LcpElement | undefined): boolean {
   return lcpElement !== undefined && /^<h1[\s>]/i.test(lcpElement.snippet);
 }
@@ -750,7 +901,7 @@ function findLcpElementWarnings(afterResults: ConfigurationResult[]): string[] {
   return afterResults
     .filter(
       (result) =>
-        H1_EXPECTED_ROUTES.includes(result.route) && !result.isFontBlocked,
+        h1ExpectedRoutes.includes(result.route) && !result.isFontBlocked,
     )
     .flatMap((result) => {
       const runs = result.runs ?? [];
@@ -792,11 +943,49 @@ function findMeasurementValidityWarnings(
   });
 }
 
+function collectWarnings(
+  beforeReport: PerfReport,
+  afterReport: PerfReport,
+): string[] {
+  const afterResults = afterReport.results;
+  return [
+    findStalePairWarning(indexResultsByKey(beforeReport), afterResults),
+    beforeReport.lighthouseVersion !== afterReport.lighthouseVersion
+      ? `Lighthouse versions differ: before ${beforeReport.lighthouseVersion}, after ${afterReport.lighthouseVersion}.`
+      : undefined,
+    ...findPassCountWarnings(beforeReport, afterReport),
+    ...findMeasurementValidityWarnings(afterResults),
+    ...findLcpElementWarnings(afterResults),
+  ].filter((warning): warning is string => warning !== undefined);
+}
+
 function describeReportSide(perfReport: PerfReport): string {
   const commitSuffix = perfReport.commitSha
     ? ` @ ${perfReport.commitSha.slice(0, 7)}`
     : "";
   return `${perfReport.measuredAt}${commitSuffix}`;
+}
+
+function formatRerunSection(
+  failingConfigurationKeys: string[],
+  { baseUrl, afterReportPath }: { baseUrl: string; afterReportPath: string },
+): string[] {
+  if (failingConfigurationKeys.length === 0) {
+    return [];
+  }
+  const onlyFlags = failingConfigurationKeys
+    .map((key) => `--only ${key}`)
+    .join(" ");
+  return [
+    "",
+    "### Rerun failing configurations",
+    "",
+    "One rerun (fresh passes) is allowed; a failure after it blocks unless waived in the PR.",
+    "",
+    "```sh",
+    `npm run perf:gate -- measure --base-url ${baseUrl} --out ${afterReportPath} ${onlyFlags}`,
+    "```",
+  ];
 }
 
 function formatComparisonMarkdown({
@@ -815,15 +1004,17 @@ function formatComparisonMarkdown({
   afterReportPath: string;
 }): string {
   const failedCount = checks.filter((check) => check.status === "fail").length;
-  const verdict = failedCount === 0 ? "PASS" : "FAIL";
+  const warningLines =
+    warnings.length === 0
+      ? []
+      : ["", "### Warnings", "", ...warnings.map((warning) => `- ${warning}`)];
   const lines = [
-    `## Perf gate: ${verdict}`,
+    `## Perf gate: ${failedCount === 0 ? "PASS" : "FAIL"}`,
     "",
     `${failedCount} of ${checks.length} checks failed. ` +
       `Before: ${describeReportSide(beforeReport)}. ` +
       `After: ${describeReportSide(afterReport)}. ` +
-      `Lighthouse ${afterReport.lighthouseVersion}, ${afterReport.baseUrl}, ` +
-      `median of ${afterReport.passesPerConfiguration} passes.`,
+      `Lighthouse ${afterReport.lighthouseVersion}, ${afterReport.baseUrl}.`,
     "",
     "| Configuration | Check | Before | After | Limit | Result |",
     "|---|---|---|---|---|---|",
@@ -831,30 +1022,12 @@ function formatComparisonMarkdown({
       (check) =>
         `| ${check.configurationKey} | ${check.checkName} | ${check.beforeValue} | ${check.afterValue} | ${check.limit} | ${check.status.toUpperCase()} |`,
     ),
+    ...warningLines,
+    ...formatRerunSection(failingConfigurationKeys, {
+      baseUrl: afterReport.baseUrl,
+      afterReportPath,
+    }),
   ];
-  if (warnings.length > 0) {
-    lines.push(
-      "",
-      "### Warnings",
-      "",
-      ...warnings.map((warning) => `- ${warning}`),
-    );
-  }
-  if (failingConfigurationKeys.length > 0) {
-    const onlyFlags = failingConfigurationKeys
-      .map((key) => `--only ${key}`)
-      .join(" ");
-    lines.push(
-      "",
-      "### Rerun failing configurations",
-      "",
-      "One rerun (fresh passes) is allowed; a failure after it blocks unless waived in the PR.",
-      "",
-      "```sh",
-      `npm run perf:gate -- measure --base-url ${afterReport.baseUrl} --out ${afterReportPath} ${onlyFlags}`,
-      "```",
-    );
-  }
   return `${lines.join("\n")}\n`;
 }
 
@@ -878,49 +1051,16 @@ export function comparePerfReports({
 }): GateComparison {
   const beforeResultsByKey = indexResultsByKey(beforeReport);
   const afterResultsByKey = indexResultsByKey(afterReport);
-  const bytesReferenceResultsByKey = indexResultsByKey(bytesReferenceReport);
-
-  const checks = perfGateMatrix.flatMap((configuration): GateCheck[] => {
+  const checks = perfGateMatrix.flatMap((configuration) => {
     const configurationKey = getConfigurationKey(configuration);
-    const afterResult = afterResultsByKey.get(configurationKey);
-    const beforeResult = beforeResultsByKey.get(configurationKey);
-    if (!afterResult) {
-      return [
-        {
-          configurationKey,
-          checkName: "Measured",
-          beforeValue: beforeResult ? "yes" : "missing",
-          afterValue: "missing",
-          limit: "in after report",
-          status: "fail",
-        },
-      ];
-    }
-    const metricChecks = buildMetricChecks(afterResult, beforeResult);
-    if (!isByteBudgetCarrier(configuration)) {
-      return metricChecks;
-    }
-    return [
-      ...metricChecks,
-      ...buildByteChecks({
-        afterResult,
-        beforeResult,
-        bytesReferenceResult: bytesReferenceResultsByKey.get(configurationKey),
-        hasBytesReference: bytesReferenceReport !== undefined,
-      }),
-    ];
+    return buildConfigurationChecks({
+      configuration,
+      afterResult: afterResultsByKey.get(configurationKey),
+      beforeResult: beforeResultsByKey.get(configurationKey),
+      bytesReferenceReport,
+    });
   });
-
-  const afterResults = afterReport.results;
-  const warnings = [
-    findStalePairWarning(beforeResultsByKey, afterResults),
-    beforeReport.lighthouseVersion !== afterReport.lighthouseVersion
-      ? `Lighthouse versions differ: before ${beforeReport.lighthouseVersion}, after ${afterReport.lighthouseVersion}.`
-      : undefined,
-    ...findMeasurementValidityWarnings(afterResults),
-    ...findLcpElementWarnings(afterResults),
-  ].filter((warning): warning is string => warning !== undefined);
-
+  const warnings = collectWarnings(beforeReport, afterReport);
   const failingConfigurationKeys = [
     ...new Set(
       checks
@@ -928,7 +1068,6 @@ export function comparePerfReports({
         .map((check) => check.configurationKey),
     ),
   ];
-
   return {
     checks,
     warnings,
@@ -1013,24 +1152,24 @@ Configuration keys:
 
 See docs/perf-gate.md for the before -> deploy -> after procedure.`;
 
-export type PerfGateCommand =
-  | {
-      command: "measure";
-      baseUrl: string;
-      outputPath: string;
-      configurations: PerfConfiguration[];
-      passesPerConfiguration: number;
-      commitSha?: string;
-      chromePath?: string;
-    }
-  | {
-      command: "compare";
-      beforePath: string;
-      afterPath: string;
-      bytesReferencePath?: string;
-    };
+export interface MeasureCommand {
+  command: "measure";
+  baseUrl: string;
+  outputPath: string;
+  configurations: PerfConfiguration[];
+  passesPerConfiguration: number;
+  commitSha?: string;
+  chromePath?: string;
+}
 
-const DEFAULT_PASSES_PER_CONFIGURATION = 5;
+export interface CompareCommand {
+  command: "compare";
+  beforePath: string;
+  afterPath: string;
+  bytesReferencePath?: string;
+}
+
+export type PerfGateCommand = MeasureCommand | CompareCommand;
 
 function requireOption(
   optionValue: string | undefined,
@@ -1043,15 +1182,13 @@ function requireOption(
 }
 
 function parseBaseUrl(baseUrlText: string): string {
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(baseUrlText);
-  } catch {
-    throw new Error(
-      `--base-url must be an absolute http(s) URL, got "${baseUrlText}".`,
-    );
-  }
-  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+  const parsedUrl = URL.canParse(baseUrlText)
+    ? new URL(baseUrlText)
+    : undefined;
+  if (
+    !parsedUrl ||
+    (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:")
+  ) {
     throw new Error(
       `--base-url must be an absolute http(s) URL, got "${baseUrlText}".`,
     );
@@ -1079,7 +1216,7 @@ function selectConfigurations(onlyKeys: string[]): PerfConfiguration[] {
 
 function parsePassCount(passesText: string | undefined): number {
   if (passesText === undefined) {
-    return DEFAULT_PASSES_PER_CONFIGURATION;
+    return EXPECTED_PASSES_PER_CONFIGURATION;
   }
   const passCount = Number(passesText);
   if (!Number.isInteger(passCount) || passCount < 1) {

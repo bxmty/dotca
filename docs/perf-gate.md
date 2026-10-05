@@ -90,6 +90,9 @@ configuration key.
 
 Each configuration gets 5 passes, and every threshold is applied to the
 median. The JSON keeps the raw value from every pass alongside the medians.
+`--passes` can lower the count for a quick local smoke run. `compare` then
+warns that a side has fewer than 5 passes, so don't use those numbers for a
+gate verdict.
 
 ## Thresholds
 
@@ -104,9 +107,11 @@ median. The JSON keeps the raw value from every pass alongside the medians.
 **Byte budgets** are checked once per route, from the mobile light run,
 using compressed transfer size (1 KiB = 1024 bytes):
 
-- Net total (CSS + first-party JS + fonts) ≤ the `--bytes-ref` file's value.
-  Third-party JS such as GTM is left out. CSS and fonts count from any
-  origin.
+- Net total (CSS + JS + fonts) ≤ the `--bytes-ref` file's value. It counts
+  only first-party requests, meaning the same hostname as the page. GTM and
+  every other third-party request are left out.
+- The CSS and font caps below count every origin, so a font from a
+  third-party CDN still counts toward the font budget.
 - CSS ≤ 35 KiB.
 - First-party JS ≤ before.
 - Fonts ≤ 60 KiB and ≤ 2 font files.
