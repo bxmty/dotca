@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Logo from "./Logo";
 
 const navLinks = [
   { href: "/#solutions", label: "Solutions" },
@@ -19,19 +19,8 @@ export default function Navbar() {
   return (
     <nav className="navbar navbar-expand-md py-4 px-3 px-md-5">
       <div className="container-fluid">
-        <Link
-          href="/"
-          className="navbar-brand d-flex align-items-center fs-4 fw-semibold text-body"
-        >
-          <Image
-            src="/images/logo.svg"
-            alt="Boximity MSP Logo"
-            className="me-2"
-            width={30}
-            height={30}
-            priority
-          />
-          boximity msp
+        <Link href="/" className="navbar-brand d-flex align-items-center">
+          <Logo />
         </Link>
         <button
           className="navbar-toggler"
