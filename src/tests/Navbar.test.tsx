@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import Navbar from "@/app/components/Navbar";
 
@@ -30,5 +30,17 @@ describe("Navbar mobile toggle", () => {
       "aria-expanded",
       "false",
     );
+  });
+});
+
+describe("Navbar brand", () => {
+  it("links home through the Boximity logo", () => {
+    render(<Navbar />);
+
+    const home = screen.getByRole("link", { name: "Boximity" });
+    expect(home).toHaveAttribute("href", "/");
+    expect(
+      within(home).getByRole("img", { name: "Boximity" }),
+    ).toBeInTheDocument();
   });
 });
