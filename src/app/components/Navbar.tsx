@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -11,6 +14,8 @@ const navLinks = [
 ] as const;
 
 export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <nav className="navbar navbar-expand-md py-4 px-3 px-md-5">
       <div className="container-fluid">
@@ -31,21 +36,23 @@ export default function Navbar() {
         <button
           className="navbar-toggler"
           type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
           aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((open) => !open)}
         >
-          <span className="navbar-toggler-icon" />
+          {isOpen ? "Close" : "Menu"}
         </button>
-        <div className="collapse navbar-collapse" id="navbarNav">
+        <div
+          className={`navbar-collapse collapse${isOpen ? " show" : ""}`}
+          id="navbarNav"
+        >
           <ul className="navbar-nav ms-auto gap-1 gap-md-2">
             {navLinks.map(({ href, label }) => (
               <li key={href} className="nav-item">
                 <Link
                   href={href}
                   className="nav-link text-body fs-6 fw-semibold"
+                  onClick={() => setIsOpen(false)}
                 >
                   {label}
                 </Link>
