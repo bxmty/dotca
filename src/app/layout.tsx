@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
 import Script from "next/script";
 import { Suspense } from "react";
@@ -12,6 +11,7 @@ import JsonLd from "./components/JsonLd";
 import BreadcrumbSchema from "./components/BreadcrumbSchema";
 import { GA_MEASUREMENT_ID } from "../lib/gtag";
 import { getLocalBusinessSchema } from "../lib/schema";
+import { fontVariableClassNames } from "../lib/fonts";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -89,7 +89,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={fontVariableClassNames} suppressHydrationWarning>
       <head>
         {/* Set the Bootstrap color mode before first paint to avoid a flash
             of the wrong theme. ThemeSync keeps it in sync afterwards. */}

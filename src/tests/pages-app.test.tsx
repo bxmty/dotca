@@ -107,6 +107,17 @@ describe("pages-router app wrapper", () => {
     expect(screen.getByTestId("page")).toHaveTextContent("hello");
   });
 
+  it("defines the next/font variables globally for the @theme fonts", () => {
+    renderApp();
+
+    // next/jest's font mock reports "fontFamily" as each font's family
+    const css = Array.from(document.querySelectorAll("style"))
+      .map((style) => style.textContent)
+      .join("\n");
+    expect(css).toMatch(/--font-chivo:\s*fontFamily/);
+    expect(css).toMatch(/--font-chivo-mono:\s*fontFamily/);
+  });
+
   it("initialises Google Analytics once on mount", () => {
     renderApp();
 

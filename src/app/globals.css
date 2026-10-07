@@ -1,18 +1,147 @@
-/* Bootstrap custom CSS
+/* Technical Manual tokens (docs/design/component-spec.html, build notes).
  *
- * Theming model: Bootstrap 5.3 color modes only. The active theme is the
- * data-bs-theme attribute on <html>, set before first paint by an inline
- * script in layout.tsx and kept in sync with the OS preference by
- * ThemeSync. Do not add prefers-color-scheme media queries here —
- * they bypass the attribute and break explicit theme selection.
+ * Theming model: the raw variables below switch with the OS colour scheme
+ * under prefers-color-scheme, and @theme exposes them as utilities
+ * (bg-cell, text-ink, border-rule, ...). Markup never needs dark: variants.
+ * Tailwind's default colours, text sizes and radii are reset, so only the
+ * brand palette, the eight-step type scale and the brand radius exist.
  */
+@import "tailwindcss" source("../");
 
 :root {
-  --bs-font-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  --bg: #f8f9fb;
+  --cell: #ffffff;
+  --ink: #191a1c;
+  --muted: #555c67;
+  --rule: #d3d8df;
+  --field: #7d8590;
+  --cta: #436d97;
+  --cta-ink: #ffffff;
+  --fig: #436d97;
+  --logo: #03194a;
+  --band: #03194a;
+  --band-ink: #f8f9fb;
+  --band-fig: #8ea7c1;
+  --band-rule: #2a3f6b;
+  --hl: #e9dde9; /* the same in both schemes */
+  --danger: #d7263d;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a;
+    --cell: #1c1e22;
+    --ink: #e6e7e9;
+    --muted: #9ea4ad;
+    --rule: #33373d;
+    --field: #6e7583;
+    --cta: #7b99b6;
+    --cta-ink: #16171a;
+    --fig: #7b99b6;
+    --logo: #f8f9fb;
+    --danger: #ff7a85;
+    color-scheme: dark;
+  }
+}
+
+/* The highlight is a light-token island: pale purple in both schemes. */
+.hl {
+  --ink: #191a1c;
+  --muted: #555c67;
+  --rule: #d3d8df;
+  --field: #7d8590;
+  --cta: #436d97;
+  --cta-ink: #ffffff;
+  --fig: #436d97;
+  background: var(--hl);
+  color: var(--ink);
+  color-scheme: light;
+}
+
+::selection {
+  background: var(--hl);
+  color: #191a1c;
+}
+
+.hl ::selection,
+.hl::selection {
+  background: #191a1c;
+  color: var(--hl);
+}
+
+/* The oxford band (footer): cultured logo, and band-fig focus rings and
+ * accents at 6.80:1 instead of queen blue's 3.12:1. */
+.bg-band {
+  --logo: var(--band-ink);
+  --fig: var(--band-fig);
+}
+
+@theme inline {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+
+  --color-bg: var(--bg);
+  --color-cell: var(--cell);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-field: var(--field);
+  --color-cta: var(--cta);
+  --color-cta-ink: var(--cta-ink);
+  --color-fig: var(--fig);
+  --color-logo: var(--logo);
+  --color-band: var(--band);
+  --color-band-ink: var(--band-ink);
+  --color-band-fig: var(--band-fig);
+  --color-band-rule: var(--band-rule);
+  --color-hl: var(--hl);
+  --color-danger: var(--danger);
+
+  --text-label: 12px;
+  --text-small: 14px;
+  --text-body: 16px;
+  --text-prose: 18px;
+  --text-h3: 20px;
+  --text-h2: 28px; /* price and key figure use text-h2 */
+  --text-section: 42px;
+  --text-display: 60px;
+
+  /* next/font variables, set on <html> by both routers (src/lib/fonts.ts) */
+  --font-sans: var(--font-chivo), Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-chivo-mono), ui-monospace, Menlo, Consolas, monospace;
+
+  /* rounded-ctl on buttons, fields and chips only; sheets and blocks stay square */
+  --radius-ctl: 2px;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--fig);
+    outline-offset: 2px;
+  }
+}
+
+/* Legacy rules from the Bootstrap era. Pages still use some of these
+ * classes until they are restyled (#617-#622); delete each rule with the
+ * last markup that uses it. */
+
+:root {
+  --bs-font-sans-serif:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
+    "Liberation Sans", Arial, sans-serif;
   --bs-border-radius: 0.25rem;
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
