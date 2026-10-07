@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
 import Script from "next/script";
 import { Suspense } from "react";
-import BootstrapClient from "./components/BootstrapClient";
+import ThemeSync from "./components/ThemeSync";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
@@ -92,7 +92,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Set the Bootstrap color mode before first paint to avoid a flash
-            of the wrong theme. BootstrapClient keeps it in sync afterwards. */}
+            of the wrong theme. ThemeSync keeps it in sync afterwards. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
@@ -133,7 +133,7 @@ export default function RootLayout({
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           />
         )}
-        <BootstrapClient />
+        <ThemeSync />
         <Suspense fallback={null}>
           <GoogleAnalytics />
         </Suspense>
