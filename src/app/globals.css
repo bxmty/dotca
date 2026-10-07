@@ -3,7 +3,7 @@
  * Theming model: Bootstrap 5.3 color modes only. The active theme is the
  * data-bs-theme attribute on <html>, set before first paint by an inline
  * script in layout.tsx and kept in sync with the OS preference by
- * BootstrapClient. Do not add prefers-color-scheme media queries here —
+ * ThemeSync. Do not add prefers-color-scheme media queries here —
  * they bypass the attribute and break explicit theme selection.
  */
 
@@ -54,6 +54,27 @@ html, body {
 
 .bg-alt .accordion {
   --bs-accordion-bg: #343a40;
+}
+
+/* FAQ items are native <details>; restyle the summary as an accordion button */
+.faq-item > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.faq-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item:not([open]) > summary {
+  color: var(--bs-body-color);
+  background-color: var(--bs-accordion-bg);
+  box-shadow: none;
+}
+
+.faq-item:not([open]) > summary::after {
+  background-image: var(--bs-accordion-btn-icon);
+  transform: none;
 }
 
 /* Dark theme adjustments */
