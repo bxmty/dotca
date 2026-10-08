@@ -12,11 +12,13 @@ type ButtonStyle = {
   variant: ButtonVariant;
   /** Full width, as in the phone menu and the pricing sheet. */
   isBlock?: boolean;
+  /** 14 px label and 12 px padding, so four plans fit the pricing sheet. */
+  isCompact?: boolean;
   className?: string;
 };
 
 const BASE_CLASSES =
-  "inline-flex items-center justify-center gap-2 rounded-ctl border px-5 py-3.5 min-h-12 font-sans text-body font-semibold leading-none no-underline whitespace-nowrap cursor-pointer disabled:bg-cell disabled:border-field disabled:text-muted disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 rounded-ctl border min-h-12 font-sans font-semibold leading-none no-underline whitespace-nowrap cursor-pointer disabled:bg-cell disabled:border-field disabled:text-muted disabled:cursor-not-allowed";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
@@ -25,13 +27,18 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-transparent text-ink border-ink enabled:hover:bg-ink enabled:hover:text-bg",
 };
 
+const DEFAULT_SIZE_CLASSES = "px-5 py-3.5 text-body";
+const COMPACT_SIZE_CLASSES = "p-3 text-small";
+
 export function getButtonClassName({
   variant,
   isBlock = false,
+  isCompact = false,
   className,
 }: ButtonStyle): string {
   return [
     BASE_CLASSES,
+    isCompact ? COMPACT_SIZE_CLASSES : DEFAULT_SIZE_CLASSES,
     variantClasses[variant],
     isBlock ? "w-full" : "",
     className ?? "",
@@ -46,6 +53,7 @@ type ButtonProps = ButtonStyle &
 export function Button({
   variant,
   isBlock,
+  isCompact,
   className,
   type = "button",
   ...buttonProps
@@ -53,7 +61,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={getButtonClassName({ variant, isBlock, className })}
+      className={getButtonClassName({ variant, isBlock, isCompact, className })}
       {...buttonProps}
     />
   );
@@ -65,12 +73,13 @@ type ButtonLinkProps = ButtonStyle &
 export function ButtonLink({
   variant,
   isBlock,
+  isCompact,
   className,
   ...linkProps
 }: ButtonLinkProps) {
   return (
     <Link
-      className={getButtonClassName({ variant, isBlock, className })}
+      className={getButtonClassName({ variant, isBlock, isCompact, className })}
       {...linkProps}
     />
   );

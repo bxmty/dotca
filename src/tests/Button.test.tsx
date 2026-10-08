@@ -52,6 +52,18 @@ describe("Button", () => {
     }
   });
 
+  it("draws the compact size at 14 px with 12 px padding", () => {
+    const classes = getButtonClassName({
+      variant: "secondary",
+      isCompact: true,
+    }).split(" ");
+
+    expect(classes).toEqual(expect.arrayContaining(["text-small", "p-3"]));
+    expect(classes).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^(text-body|px-5)$/)]),
+    );
+  });
+
   it("passes a submit type through", () => {
     render(
       <Button variant="primary" type="submit">
