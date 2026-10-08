@@ -276,28 +276,64 @@ body {
   background-color: var(--bs-tertiary-bg);
 }
 
-/* Dark theme styles for phone input */
-.bg-dark .phone-input-container .form-control {
-  background-color: rgba(108, 117, 125, 0.25) !important;
-  color: #fff !important;
-  border-color: #6c757d !important;
+/* The contact form's phone field (Component Spec, forms). react-phone-input-2
+ * ships an unlayered stylesheet, which outranks Tailwind's layered
+ * utilities, so the field style is restated here at higher specificity:
+ * cell fill, --field edge, 2 px corners, 46 px tall, the danger edge and
+ * inset bar when invalid. The flag button takes the bar, since it covers
+ * the input's left edge. The sizes are literals: @theme inline doesn't emit
+ * --text-body or --radius-ctl as runtime variables. */
+.react-tel-input.tel-field .form-control {
+  width: 100%;
+  height: auto;
+  min-height: 46px;
+  padding: 11px 12px 11px 52px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--cell);
+  border: 1px solid var(--field);
+  border-radius: 2px;
 }
 
-.bg-dark .phone-input-dropdown {
-  background-color: rgba(108, 117, 125, 0.5) !important;
-  border-color: #6c757d !important;
+.react-tel-input.tel-field .form-control:focus {
+  border-color: var(--fig);
+  outline: 2px solid var(--fig);
+  outline-offset: -1px;
+  box-shadow: none;
 }
 
-.bg-dark .phone-input-dropdown .selected-flag {
-  background-color: transparent !important;
+.react-tel-input.tel-field .flag-dropdown {
+  background: var(--cell);
+  border-color: var(--field);
+  border-radius: 2px 0 0 2px;
 }
 
-.bg-dark .country-list {
-  background-color: #2b3035 !important;
-  color: #fff !important;
-  border-color: #6c757d !important;
+.react-tel-input.tel-field .selected-flag:hover,
+.react-tel-input.tel-field .selected-flag:focus,
+.react-tel-input.tel-field .flag-dropdown.open .selected-flag {
+  background: var(--bg);
 }
 
-.bg-dark .country-list .country:hover {
-  background-color: #495057 !important;
+.react-tel-input.tel-field .form-control[aria-invalid="true"],
+.react-tel-input.tel-field:has([aria-invalid="true"]) .flag-dropdown {
+  border-color: var(--danger);
+}
+
+.react-tel-input.tel-field:has([aria-invalid="true"]) .flag-dropdown {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.react-tel-input.tel-field .country-list {
+  background: var(--cell);
+  color: var(--ink);
+}
+
+.react-tel-input.tel-field .country-list .country:hover,
+.react-tel-input.tel-field .country-list .country.highlight {
+  background: var(--bg);
+}
+
+.react-tel-input.tel-field .country-list .country .dial-code {
+  color: var(--muted);
 }
