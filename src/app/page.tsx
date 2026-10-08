@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
 import { ButtonLink } from "./components/Button";
 import ContactForm from "./components/ContactForm";
 import { KeyFigureGrid, type KeyFigureProps } from "./components/KeyFigure";
 import Offer from "./components/Offer";
 import RuledGrid from "./components/RuledGrid";
 import RuledList from "./components/RuledList";
+import Section from "./components/Section";
 import SectionHead from "./components/SectionHead";
 import Steps from "./components/Steps";
 import TickList from "./components/TickList";
@@ -133,19 +133,6 @@ const bundleOffer = {
     "Server Monitoring",
   ],
 };
-
-/**
- * One ground for every section: they are separated by the section head's
- * ink rule, not by alternating dark bands. 64 px apart on phones, 96 px from
- * 768 px.
- */
-function Section({ id, children }: { id?: string; children: ReactNode }) {
-  return (
-    <section id={id} className="grid gap-5.5 px-4 py-8 md:px-7 md:py-12">
-      {children}
-    </section>
-  );
-}
 
 export default function Home() {
   return (
