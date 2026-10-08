@@ -181,27 +181,6 @@ body {
   --bs-accordion-bg: #343a40;
 }
 
-/* FAQ items are native <details>; restyle the summary as an accordion button */
-.faq-item > summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.faq-item > summary::-webkit-details-marker {
-  display: none;
-}
-
-.faq-item:not([open]) > summary {
-  color: var(--bs-body-color);
-  background-color: var(--bs-accordion-bg);
-  box-shadow: none;
-}
-
-.faq-item:not([open]) > summary::after {
-  background-image: var(--bs-accordion-btn-icon);
-  transform: none;
-}
-
 /* Dark theme adjustments */
 [data-bs-theme="dark"] {
   --bs-link-color: #8bb9fe;
