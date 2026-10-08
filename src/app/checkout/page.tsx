@@ -2,16 +2,33 @@
 
 import { useState, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import PlanSelector from "./PlanSelector";
 import StripeWrapper, {
   type CheckoutCustomer,
 } from "../components/StripeWrapper";
 import StripePaymentForm from "../components/StripePaymentForm";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import { Button, ButtonLink } from "../components/Button";
+import {
+  Field,
+  getErrorProps,
+  PhoneField,
+  TextField,
+} from "../components/Field";
+import SegmentedChoice, {
+  type SegmentedOption,
+} from "../components/SegmentedChoice";
+import StatusNote from "../components/StatusNote";
+import StatusPage from "../components/StatusPage";
+import TextLink from "../components/TextLink";
+import TickList from "../components/TickList";
+import {
+  INCOMPLETE_EMAIL_MESSAGE,
+  isEmailAddress,
+  omitFieldErrors,
+} from "@/lib/formValidation";
 import type { AddressSuggestion } from "@/lib/nominatim";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
+import type { BillingCycle } from "@/lib/pricing";
 
 interface PricingPlan {
   name: string;
@@ -20,11 +37,68 @@ interface PricingPlan {
   features: string[];
 }
 
+type CustomerFields = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  company: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+};
+type CustomerField = keyof CustomerFields;
+type FieldErrors = Partial<Record<CustomerField, string>>;
+
+// Every customer field is required. Messages are worded as the fix
+// (Component Spec, forms), in field order, so focus can move to the first.
+const REQUIRED_FIELD_MESSAGES: Record<CustomerField, string> = {
+  firstName: "enter your first name",
+  lastName: "enter your last name",
+  email: "enter your email address",
+  company: "enter your company name",
+  phone: "enter a phone number we can reach you on",
+  address: "enter your street address",
+  city: "enter your city",
+  state: "enter your province or state",
+  zip: "enter your postal code",
+};
+const CUSTOMER_FIELDS = Object.keys(REQUIRED_FIELD_MESSAGES) as CustomerField[];
+
+// A country code is at most three digits, so anything shorter is no number
+// at all; react-phone-input-2 reports the bare country code when empty.
+const MAX_COUNTRY_CODE_DIGITS = 3;
+
+function validateCustomerFields(fields: CustomerFields): FieldErrors {
+  const errors: FieldErrors = {};
+  for (const field of CUSTOMER_FIELDS) {
+    if (!fields[field].trim()) {
+      errors[field] = REQUIRED_FIELD_MESSAGES[field];
+    }
+  }
+  if (!errors.email && !isEmailAddress(fields.email)) {
+    errors.email = INCOMPLETE_EMAIL_MESSAGE;
+  }
+  if (fields.phone.replace(/\D/g, "").length <= MAX_COUNTRY_CODE_DIGITS) {
+    errors.phone = REQUIRED_FIELD_MESSAGES.phone;
+  }
+  return errors;
+}
+
+const BILLING_CYCLE_OPTIONS: readonly SegmentedOption<BillingCycle>[] = [
+  { value: "monthly", label: "Monthly" },
+  { value: "annual", label: "Annual", detail: "save 10%" },
+];
+
+const SUMMARY_ROW_CLASS_NAME = "flex justify-between gap-4";
+const PRICE_CLASS_NAME = "font-mono font-medium tabular-nums";
+
 export default function Checkout() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CustomerFields>({
     firstName: "",
     lastName: "",
     email: "",
@@ -40,8 +114,9 @@ export default function Checkout() {
   // on screen, never a stale copy.
   const [confirmedCustomer, setConfirmedCustomer] =
     useState<CheckoutCustomer | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [employeeCount, setEmployeeCount] = useState(5);
-  const [billingCycle, setBillingCycle] = useState("monthly");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
   // Pricing plans data
   const pricingPlans = useMemo(
@@ -115,9 +190,13 @@ export default function Checkout() {
     setLoading(false);
   };
 
+  const clearFieldErrors = (fields: CustomerField[]) =>
+    setFieldErrors((errors) => omitFieldErrors(errors, fields));
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setConfirmedCustomer(null);
+    clearFieldErrors([name as CustomerField]);
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -126,9 +205,19 @@ export default function Checkout() {
 
   const handlePhoneChange = (phone: string): void => {
     setConfirmedCustomer(null);
+    clearFieldErrors(["phone"]);
+    setFormData((prev) => ({ ...prev, phone }));
+  };
+
+  const handleAddressSelected = (suggestion: AddressSuggestion): void => {
+    setConfirmedCustomer(null);
+    clearFieldErrors(["address", "city", "state", "zip"]);
     setFormData((prev) => ({
       ...prev,
-      phone: `+${phone}`, // Add + prefix for E.164 format
+      address: suggestion.addressLine,
+      city: suggestion.city || prev.city,
+      state: suggestion.state || prev.state,
+      zip: suggestion.postalCode || prev.zip,
     }));
   };
 
@@ -160,32 +249,14 @@ export default function Checkout() {
     return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   };
 
-  const handleBillingCycleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBillingCycle(e.target.value);
-  };
-
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
 
-    // Validate all required fields are filled
-    const requiredFields = [
-      "firstName",
-      "lastName",
-      "email",
-      "company",
-      "phone",
-      "address",
-      "city",
-      "state",
-      "zip",
-    ];
-
-    const missingFields = requiredFields.filter(
-      (field) => !formData[field as keyof typeof formData],
-    );
-
-    if (missingFields.length > 0) {
-      alert(`Please fill in all required fields: ${missingFields.join(", ")}`);
+    const errors = validateCustomerFields(formData);
+    setFieldErrors(errors);
+    const firstInvalidField = CUSTOMER_FIELDS.find((field) => errors[field]);
+    if (firstInvalidField) {
+      document.getElementById(firstInvalidField)?.focus();
       return;
     }
 
@@ -205,555 +276,322 @@ export default function Checkout() {
     router.push("/checkout/confirmation?redirect_status=succeeded");
   };
 
+  const planSelector = (
+    // Invisible component to handle URL params with suspense
+    <Suspense fallback={null}>
+      <PlanSelector
+        pricingPlans={pricingPlans}
+        onPlanSelected={handlePlanSelected}
+      />
+    </Suspense>
+  );
+
   if (loading) {
     return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center">
-        <div>
-          <Suspense fallback={<p>Loading plans...</p>}>
-            <PlanSelector
-              pricingPlans={pricingPlans}
-              onPlanSelected={handlePlanSelected}
-            />
-          </Suspense>
-          <p>Loading...</p>
-        </div>
+      <div className="mx-auto max-w-[1120px] px-4 py-16 md:px-7">
+        <Suspense fallback={<p>Loading plans...</p>}>
+          <PlanSelector
+            pricingPlans={pricingPlans}
+            onPlanSelected={handlePlanSelected}
+          />
+        </Suspense>
+        <p role="status" className="m-0 font-mono text-label text-muted">
+          Loading...
+        </p>
       </div>
     );
   }
 
   if (!selectedPlan) {
     return (
-      <div className="min-vh-100 d-flex flex-column">
-        {/* Invisible component to handle URL params with suspense */}
-        <Suspense fallback={null}>
-          <PlanSelector
-            pricingPlans={pricingPlans}
-            onPlanSelected={handlePlanSelected}
-          />
-        </Suspense>
-
-        {/* Header */}
-        <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
-          <Link
-            href="/"
-            className="fs-4 fw-semibold text-decoration-none text-body"
-          >
-            boximity msp
-          </Link>
-          <nav className="d-none d-md-flex gap-4">
-            <Link href="/#solutions" className="text-decoration-none text-body">
-              Solutions
-            </Link>
-            <Link href="/#benefits" className="text-decoration-none text-body">
-              Benefits
-            </Link>
-            <Link href="/#process" className="text-decoration-none text-body">
-              Process
-            </Link>
-            <Link href="/#contact" className="text-decoration-none text-body">
-              Contact
-            </Link>
-            <Link href="/pricing" className="text-decoration-none text-body">
-              Pricing
-            </Link>
-          </nav>
-          <button className="btn d-md-none border-0 p-0">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              width="24"
-              height="24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-        </header>
-
-        <section className="py-5 py-md-7 flex-grow-1">
-          <div className="container text-center">
-            <h1 className="fs-1 fw-light mb-4 border-bottom pb-3">
-              No Plan Selected
-            </h1>
-            <p className="lead text-body-secondary mb-4">
-              Please select a plan from our pricing page to proceed with
-              checkout.
-            </p>
-            <Link href="/pricing" className="btn btn-dark px-4 py-2">
+      <>
+        {planSelector}
+        <StatusPage
+          kicker="Checkout"
+          heading="No Plan Selected"
+          action={
+            <ButtonLink variant="secondary" href="/pricing">
               View Pricing Options
-            </Link>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="py-4 py-md-5 border-top mt-auto">
-          <div className="container">
-            <div className="row align-items-center">
-              <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
-                <div className="fs-4 fw-semibold mb-2">boximity msp</div>
-                <p className="small text-body-secondary mb-0">
-                  © 2025 boximity msp. All rights reserved.
-                </p>
-              </div>
-              <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
-                <div className="d-flex gap-4">
-                  <a href="#" className="text-body-secondary">
-                    <span className="visually-hidden">LinkedIn</span>
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path>
-                    </svg>
-                  </a>
-                  <a href="#" className="text-body-secondary">
-                    <span className="visually-hidden">Twitter</span>
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path>
-                    </svg>
-                  </a>
-                  <a href="#" className="text-body-secondary">
-                    <span className="visually-hidden">Facebook</span>
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
-                        clipRule="evenodd"
-                      ></path>
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </footer>
-      </div>
+            </ButtonLink>
+          }
+        >
+          <p className="m-0">
+            Please select a plan from our pricing page to proceed with checkout.
+          </p>
+        </StatusPage>
+      </>
     );
   }
 
+  const unitPrice = parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, ""));
+  const subtotal =
+    unitPrice * employeeCount * (billingCycle === "annual" ? 12 : 1);
+  const estimatedTotal = calculateTotal(selectedPlan.unit_price, employeeCount);
+
   return (
-    <div className="min-vh-100 d-flex flex-column">
-      {/* Invisible component to handle URL params with suspense */}
-      <Suspense fallback={null}>
-        <PlanSelector
-          pricingPlans={pricingPlans}
-          onPlanSelected={handlePlanSelected}
-        />
-      </Suspense>
+    <>
+      {planSelector}
 
-      <main className="flex-grow-1">
-        {/* Checkout Section */}
-        <section className="py-5 py-md-7">
-          <div className="container">
-            <h1 className="fs-1 fw-light mb-5 border-bottom pb-3">
-              Complete Your Purchase
-            </h1>
+      <section className="mx-auto grid max-w-[1120px] gap-10 px-4 py-12 md:px-7 md:py-16">
+        <h1 className="m-0 border-t-2 border-ink pt-3.5 text-h2 leading-tight font-light tracking-[-0.02em] text-balance md:text-section">
+          Complete Your Purchase
+        </h1>
 
-            {/* Plan Summary */}
-            <div className="bg-body-tertiary border p-4 p-md-5 rounded mb-5">
-              <h2 className="fs-4 fw-medium mb-4">Your Selected Plan</h2>
-              <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
-                <div>
-                  <div className="fs-3 fw-medium mb-1">
-                    {selectedPlan.name} Plan
-                  </div>
-                  <div className="fs-4 text-body-secondary mb-1">
-                    {selectedPlan.unit_price} per user per month
-                  </div>
-                  <p className="text-body-secondary">
-                    {selectedPlan.description}
-                  </p>
-                </div>
-                <div className="mt-3 mt-md-0">
-                  <Link
-                    href="/pricing"
-                    className="text-body text-decoration-underline"
-                  >
-                    Change Plan
-                  </Link>
-                </div>
-              </div>
+        {/* Plan summary */}
+        <div className="grid gap-6 border border-rule bg-cell p-5 md:p-7">
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+            <div className="grid gap-1">
+              <h2 className="m-0 font-mono text-label font-normal text-muted">
+                Your Selected Plan
+              </h2>
+              <p className="m-0 text-h3 leading-tight font-semibold">
+                {selectedPlan.name} Plan
+              </p>
+              <p className={`m-0 text-body ${PRICE_CLASS_NAME}`}>
+                {selectedPlan.unit_price} per user per month
+              </p>
+              <p className="m-0 max-w-[62ch] text-small text-muted">
+                {selectedPlan.description}
+              </p>
+            </div>
+            <TextLink href="/pricing" className="text-small">
+              Change Plan
+            </TextLink>
+          </div>
 
-              {/* Employee Count Form */}
-              <div className="mt-4 pt-4 border-top">
-                <div className="row align-items-end">
-                  <div className="col-md-6">
-                    <label htmlFor="employeeCount" className="form-label">
-                      Number of Employees (minimum 5)
-                    </label>
-                    <input
-                      type="number"
-                      id="employeeCount"
-                      min="5"
-                      max="20"
-                      value={employeeCount}
-                      onChange={handleEmployeeCountChange}
-                      className="form-control"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-6 mt-3 mt-md-0">
-                    <div className="mb-3">
-                      <label className="form-label">Billing Cycle</label>
-                      <div className="d-flex gap-4">
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            id="billingMonthly"
-                            name="billingCycle"
-                            value="monthly"
-                            checked={billingCycle === "monthly"}
-                            onChange={handleBillingCycleChange}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="billingMonthly"
-                          >
-                            Monthly
-                          </label>
-                        </div>
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            id="billingAnnual"
-                            name="billingCycle"
-                            value="annual"
-                            checked={billingCycle === "annual"}
-                            onChange={handleBillingCycleChange}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="billingAnnual"
-                          >
-                            Annual{" "}
-                            <span className="badge bg-success ms-1">
-                              Save 10%
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="d-flex justify-content-between fw-medium">
-                      <span>
-                        {billingCycle === "annual" ? "Annual" : "Monthly"}{" "}
-                        Total:
-                      </span>
-                      <span className="fs-4">
-                        {calculateTotal(selectedPlan.unit_price, employeeCount)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-top">
-                <h3 className="fs-5 fw-medium mb-3">Includes:</h3>
-                <ul className="list-unstyled">
-                  {selectedPlan.features.map((feature, index) => (
-                    <li key={index} className="d-flex align-items-start mb-2">
-                      <svg
-                        className="text-success-emphasis flex-shrink-0 me-2 mt-1"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+          <div className="grid items-start gap-6 border-t border-rule pt-6 md:grid-cols-2">
+            <TextField
+              id="employeeCount"
+              label="Number of Employees (minimum 5)"
+              type="number"
+              min="5"
+              max="20"
+              value={employeeCount}
+              onChange={handleEmployeeCountChange}
+              required
+            />
+            <div className="grid gap-3">
+              <SegmentedChoice
+                legend="Billing Cycle"
+                name="billingCycle"
+                options={BILLING_CYCLE_OPTIONS}
+                value={billingCycle}
+                onChange={setBillingCycle}
+              />
+              <div
+                className={`${SUMMARY_ROW_CLASS_NAME} items-baseline font-semibold`}
+              >
+                <span>
+                  {billingCycle === "annual" ? "Annual" : "Monthly"} Total:
+                </span>
+                <span className={`text-h2 text-fig ${PRICE_CLASS_NAME}`}>
+                  {estimatedTotal}
+                </span>
               </div>
             </div>
-
-            {/* Checkout Form */}
-            <form onSubmit={handleSubmit}>
-              <div className="row g-5">
-                <div className="col-md-6">
-                  <h2 className="fs-4 fw-medium mb-4">Customer Information</h2>
-                  <div className="row g-3">
-                    <div className="col-sm-6">
-                      <label htmlFor="firstName" className="form-label">
-                        First Name*
-                      </label>
-                      <input
-                        type="text"
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-sm-6">
-                      <label htmlFor="lastName" className="form-label">
-                        Last Name*
-                      </label>
-                      <input
-                        type="text"
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="email" className="form-label">
-                        Email Address*
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="company" className="form-label">
-                        Company Name
-                      </label>
-                      <input
-                        type="text"
-                        id="company"
-                        name="company"
-                        value={formData.company}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="phone" className="form-label">
-                        Phone Number*
-                      </label>
-                      <PhoneInput
-                        country={"ca"} // Default country
-                        value={formData.phone.replace(/^\+/, "")} // Remove + prefix for the component
-                        onChange={handlePhoneChange}
-                        inputClass="form-control"
-                        containerClass="phone-input-container"
-                        buttonClass="phone-input-dropdown"
-                        inputProps={{
-                          id: "phone",
-                          name: "phone",
-                          required: true,
-                          autoFocus: false,
-                        }}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="address" className="form-label">
-                        Address
-                      </label>
-                      <AddressAutocomplete
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        onSelectAddress={(suggestion: AddressSuggestion) => {
-                          setConfirmedCustomer(null);
-                          setFormData((prev) => ({
-                            ...prev,
-                            address: suggestion.addressLine,
-                            city: suggestion.city || prev.city,
-                            state: suggestion.state || prev.state,
-                            zip: suggestion.postalCode || prev.zip,
-                          }));
-                        }}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label htmlFor="city" className="form-label">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label htmlFor="state" className="form-label">
-                        Province/State
-                      </label>
-                      <input
-                        type="text"
-                        id="state"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label htmlFor="zip" className="form-label">
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        id="zip"
-                        name="zip"
-                        value={formData.zip}
-                        onChange={handleInputChange}
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <h2 className="fs-4 fw-medium mb-4">Payment</h2>
-                  <div>
-                    {confirmedCustomer ? (
-                      <div className="row g-3">
-                        <div className="col-12">
-                          <StripeWrapper
-                            plan={selectedPlan.name}
-                            employeeCount={employeeCount}
-                            billingCycle={billingCycle}
-                            customer={confirmedCustomer}
-                          >
-                            <StripePaymentForm
-                              onSuccess={handlePaymentSuccess}
-                            />
-                          </StripeWrapper>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-body-secondary">
-                          Fill in your information, then continue to our secure
-                          payment form.
-                        </p>
-                        <button
-                          type="submit"
-                          className="btn btn-success w-100 py-3 fs-5"
-                          data-testid="continue-to-payment"
-                        >
-                          Continue to Payment
-                        </button>
-                      </div>
-                    )}
-
-                    <p className="small text-body-secondary mt-3 mb-0">
-                      Need invoicing or a custom plan?{" "}
-                      <Link href="/#contact" className="text-decoration-none">
-                        Contact us →
-                      </Link>
-                    </p>
-
-                    <div className="mt-5 pt-4 border-top">
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>
-                          {selectedPlan.name} Plan ({selectedPlan.unit_price} ×{" "}
-                          {employeeCount} employees
-                          {billingCycle === "annual" ? " × 12 months" : ""})
-                        </span>
-                        <span>
-                          {formatCurrency(
-                            parseFloat(
-                              selectedPlan.unit_price.replace(/[^\d.]/g, ""),
-                            ) *
-                              employeeCount *
-                              (billingCycle === "annual" ? 12 : 1),
-                          )}
-                        </span>
-                      </div>
-
-                      {billingCycle === "annual" && (
-                        <div className="d-flex justify-content-between mb-2 text-success-emphasis">
-                          <span>Annual Discount (10%)</span>
-                          <span>
-                            -
-                            {formatCurrency(
-                              parseFloat(
-                                selectedPlan.unit_price.replace(/[^\d.]/g, ""),
-                              ) *
-                                employeeCount *
-                                12 *
-                                0.1,
-                            )}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="d-flex justify-content-between small text-body-secondary mb-2">
-                        <span>Tax</span>
-                        <span>Calculated at next step</span>
-                      </div>
-                      <div className="d-flex justify-content-between fw-bold fs-5 mt-3 pt-3 border-top">
-                        <span>Estimated Total</span>
-                        <span>
-                          {calculateTotal(
-                            selectedPlan.unit_price,
-                            employeeCount,
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-12 mt-4">
-                  <div className="alert alert-secondary mb-4">
-                    <p className="mb-0 small">
-                      By completing your purchase, you agree to our{" "}
-                      <a href="#" className="text-decoration-none">
-                        Terms of Service
-                      </a>{" "}
-                      and{" "}
-                      <a href="#" className="text-decoration-none">
-                        Privacy Policy
-                      </a>
-                      .
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </form>
           </div>
-        </section>
-      </main>
-    </div>
+
+          <div className="grid gap-3 border-t border-rule pt-6">
+            <h3 className="m-0 text-small font-semibold">Includes:</h3>
+            <TickList
+              items={selectedPlan.features.map((feature) => ({
+                label: feature,
+              }))}
+            />
+          </div>
+        </div>
+
+        {/* Checkout form */}
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="grid items-start gap-10 md:grid-cols-2"
+        >
+          <div className="grid gap-4.5">
+            <h2 className="m-0 text-h3 leading-tight font-semibold">
+              Customer Information
+            </h2>
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              <TextField
+                id="firstName"
+                label="First Name*"
+                type="text"
+                name="firstName"
+                autoComplete="given-name"
+                value={formData.firstName}
+                onChange={handleInputChange}
+                required
+                error={fieldErrors.firstName}
+              />
+              <TextField
+                id="lastName"
+                label="Last Name*"
+                type="text"
+                name="lastName"
+                autoComplete="family-name"
+                value={formData.lastName}
+                onChange={handleInputChange}
+                required
+                error={fieldErrors.lastName}
+              />
+            </div>
+            <TextField
+              id="email"
+              label="Email Address*"
+              type="email"
+              name="email"
+              autoComplete="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              error={fieldErrors.email}
+            />
+            <TextField
+              id="company"
+              label="Company Name"
+              type="text"
+              name="company"
+              autoComplete="organization"
+              value={formData.company}
+              onChange={handleInputChange}
+              required
+              error={fieldErrors.company}
+            />
+            <PhoneField
+              id="phone"
+              name="phone"
+              label="Phone Number*"
+              value={formData.phone}
+              onChange={handlePhoneChange}
+              error={fieldErrors.phone}
+            />
+            <Field id="address" label="Address" error={fieldErrors.address}>
+              <AddressAutocomplete
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                onSelectAddress={handleAddressSelected}
+                required
+                {...getErrorProps("address", fieldErrors.address)}
+              />
+            </Field>
+            <div className="grid gap-3.5 md:grid-cols-3">
+              <TextField
+                id="city"
+                label="City"
+                type="text"
+                name="city"
+                autoComplete="address-level2"
+                value={formData.city}
+                onChange={handleInputChange}
+                required
+                error={fieldErrors.city}
+              />
+              <TextField
+                id="state"
+                label="Province/State"
+                type="text"
+                name="state"
+                autoComplete="address-level1"
+                value={formData.state}
+                onChange={handleInputChange}
+                required
+                error={fieldErrors.state}
+              />
+              <TextField
+                id="zip"
+                label="Postal Code"
+                type="text"
+                name="zip"
+                autoComplete="postal-code"
+                value={formData.zip}
+                onChange={handleInputChange}
+                required
+                error={fieldErrors.zip}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4.5">
+            <h2 className="m-0 text-h3 leading-tight font-semibold">Payment</h2>
+            {confirmedCustomer ? (
+              <StripeWrapper
+                plan={selectedPlan.name}
+                employeeCount={employeeCount}
+                billingCycle={billingCycle}
+                customer={confirmedCustomer}
+              >
+                <StripePaymentForm onSuccess={handlePaymentSuccess} />
+              </StripeWrapper>
+            ) : (
+              <div className="grid gap-3">
+                <p className="m-0 text-small text-muted">
+                  Fill in your information, then continue to our secure payment
+                  form.
+                </p>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isBlock
+                  data-testid="continue-to-payment"
+                >
+                  Continue to Payment
+                </Button>
+              </div>
+            )}
+
+            <p className="m-0 text-small text-muted">
+              Need invoicing or a custom plan?{" "}
+              <TextLink href="/#contact">Contact us →</TextLink>
+            </p>
+
+            {/* Order summary */}
+            <div className="grid gap-2 border-t border-rule pt-4 text-small">
+              <div className={SUMMARY_ROW_CLASS_NAME}>
+                <span>
+                  {selectedPlan.name} Plan ({selectedPlan.unit_price} ×{" "}
+                  {employeeCount} employees
+                  {billingCycle === "annual" ? " × 12 months" : ""})
+                </span>
+                <span className={PRICE_CLASS_NAME}>
+                  {formatCurrency(subtotal)}
+                </span>
+              </div>
+
+              {billingCycle === "annual" && (
+                <div className={SUMMARY_ROW_CLASS_NAME}>
+                  <span>Annual Discount (10%)</span>
+                  <span className={PRICE_CLASS_NAME}>
+                    -{formatCurrency(subtotal * 0.1)}
+                  </span>
+                </div>
+              )}
+
+              <div className={`${SUMMARY_ROW_CLASS_NAME} text-muted`}>
+                <span>Tax</span>
+                <span>Calculated at next step</span>
+              </div>
+              <div
+                className={`${SUMMARY_ROW_CLASS_NAME} mt-2 items-baseline border-t-2 border-ink pt-3 text-body font-semibold`}
+              >
+                <span>Estimated Total</span>
+                <span className={`text-h3 ${PRICE_CLASS_NAME}`}>
+                  {estimatedTotal}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <StatusNote tone="note" label="Note" className="md:col-span-2">
+            <p className="m-0">
+              By completing your purchase, you agree to our{" "}
+              <TextLink href="/terms-of-service">Terms of Service</TextLink> and{" "}
+              <TextLink href="/privacy-policy">Privacy Policy</TextLink>.
+            </p>
+          </StatusNote>
+        </form>
+      </section>
+    </>
   );
 }

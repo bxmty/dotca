@@ -203,7 +203,7 @@ describe("CheckoutPage Component", () => {
     );
   });
 
-  it("blocks continuing to payment until required fields are filled", async () => {
+  it("blocks continuing to payment with an inline error on each empty field", async () => {
     const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<CheckoutPage />);
 
@@ -213,17 +213,62 @@ describe("CheckoutPage Component", () => {
       expect(screen.getByTestId("continue-to-payment")).toBeInTheDocument();
     });
 
-    const form = screen
-      .getByLabelText("First Name*")
-      .closest("form") as HTMLFormElement;
-    fireEvent.submit(form);
+    fireEvent.click(screen.getByTestId("continue-to-payment"));
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Please fill in all required fields"),
+    const expectedErrors: [string, string][] = [
+      ["First Name*", "Fix: enter your first name"],
+      ["Last Name*", "Fix: enter your last name"],
+      ["Email Address*", "Fix: enter your email address"],
+      ["Company Name", "Fix: enter your company name"],
+      ["Address", "Fix: enter your street address"],
+      ["City", "Fix: enter your city"],
+      ["Province/State", "Fix: enter your province or state"],
+      ["Postal Code", "Fix: enter your postal code"],
+    ];
+    for (const [label, message] of expectedErrors) {
+      const field = screen.getByLabelText(label);
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAccessibleDescription(message);
+    }
+    expect(document.getElementById("phone")).toHaveAccessibleDescription(
+      "Fix: enter a phone number we can reach you on",
     );
+
+    expect(screen.getByLabelText("First Name*")).toHaveFocus();
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId("stripe-wrapper")).not.toBeInTheDocument();
 
     alertSpy.mockRestore();
+  });
+
+  it("asks for a full email address and clears an error once the field is edited", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("First Name*")).toBeInTheDocument();
+    });
+
+    await fillCustomerInformation();
+    fireEvent.change(screen.getByLabelText("Email Address*"), {
+      target: { value: "john@" },
+    });
+    fireEvent.click(screen.getByTestId("continue-to-payment"));
+
+    const email = screen.getByLabelText("Email Address*");
+    expect(email).toHaveAccessibleDescription(
+      "Fix: enter the full address, like dana@company.ca",
+    );
+    expect(email).toHaveFocus();
+    expect(screen.getByLabelText("First Name*")).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expect(screen.queryByTestId("stripe-wrapper")).not.toBeInTheDocument();
+
+    fireEvent.change(email, { target: { value: "john@example.com" } });
+    expect(email).not.toHaveAttribute("aria-invalid");
+    expect(email).not.toHaveAccessibleDescription();
   });
 
   it("mounts the payment form with the confirmed customer snapshot", async () => {
@@ -338,7 +383,7 @@ describe("CheckoutPage Component", () => {
       expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
     });
 
-    const monthlyRadio = screen.getByLabelText("Monthly");
+    const monthlyRadio = screen.getByLabelText(/^Monthly/);
     const annualRadio = screen.getByLabelText(/^Annual/);
 
     expect(monthlyRadio).toBeChecked();

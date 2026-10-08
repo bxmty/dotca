@@ -219,131 +219,9 @@
   }
 }
 
-/* Legacy rules from the Bootstrap era. Pages still use some of these
- * classes until they are restyled (#617-#622); delete each rule with the
- * last markup that uses it. */
-
-:root {
-  --bs-font-sans-serif:
-    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
-    "Liberation Sans", Arial, sans-serif;
-  --bs-border-radius: 0.25rem;
-}
-
-html,
-body {
-  height: 100%;
-}
-
-/* Custom utility classes */
-.object-fit-cover {
-  object-fit: cover;
-}
-
-/* Z-index utility classes - using inline styles for critical elements */
-.z-index-0 {
-  z-index: 0 !important;
-}
-
-.z-index-1 {
-  z-index: 1 !important;
-}
-
-.z-index-2 {
-  z-index: 2 !important;
-}
-
-/* Dark band section, dark in both themes. Every .bg-alt element must also
- * carry data-bs-theme="dark" so Bootstrap themes nested components (cards,
- * accordions, borders) for the dark surface instead of the page theme. */
-.bg-alt {
-  --bs-body-bg: #2b3035;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-}
-
-/* Lift nested surfaces slightly off the band */
-.bg-alt .card:not(.bg-dark) {
-  --bs-card-bg: #343a40;
-}
-
-.bg-alt .accordion {
-  --bs-accordion-bg: #343a40;
-}
-
-/* Dark theme adjustments */
-[data-bs-theme="dark"] {
-  --bs-link-color: #8bb9fe;
-  --bs-link-hover-color: #a7c7fd;
-
-  .dark-invert {
-    filter: invert(1);
-  }
-
-  /* Default outline-primary border/text is too dim on dark backgrounds */
-  .btn-outline-primary {
-    --bs-btn-color: #6ea8fe;
-    --bs-btn-border-color: #6ea8fe;
-    --bs-btn-hover-bg: #6ea8fe;
-    --bs-btn-hover-color: #000;
-  }
-
-  /* Lift cards off the page background */
-  .card {
-    --bs-card-bg: #2b3035;
-  }
-}
-
-/* Add to your global CSS file or create a new module */
-.phone-input-container {
-  width: 100%;
-}
-
-.phone-input-container .form-control {
-  width: 100% !important;
-  height: calc(1.5em + 0.75rem + 2px);
-  padding: 0.375rem 0.75rem;
-  padding-left: 52px !important;
-}
-
-.phone-input-dropdown {
-  padding: 6px 10px;
-  border-radius: 4px 0 0 4px;
-  border: 1px solid #ced4da;
-  border-right: none;
-}
-
-/* Theme-aware phone input: react-phone-input-2's stylesheet hardcodes a
- * white background, so restate the Bootstrap form tokens at higher
- * specificity. */
-.react-tel-input.phone-input-container .form-control {
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-  border-color: var(--bs-border-color);
-}
-
-.react-tel-input.phone-input-container .form-control::placeholder {
-  color: var(--bs-secondary-color);
-}
-
-.react-tel-input.phone-input-container .flag-dropdown {
-  background-color: var(--bs-tertiary-bg);
-  border-color: var(--bs-border-color);
-}
-
-.react-tel-input.phone-input-container .country-list {
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-}
-
-.react-tel-input.phone-input-container .country-list .country:hover,
-.react-tel-input.phone-input-container .country-list .country.highlight {
-  background-color: var(--bs-tertiary-bg);
-}
-
-/* The contact form's phone field (Component Spec, forms). react-phone-input-2
- * ships an unlayered stylesheet, which outranks Tailwind's layered
- * utilities, so the field style is restated here at higher specificity:
+/* The phone field (PhoneField in Field.tsx; Component Spec, forms).
+ * react-phone-input-2 ships an unlayered stylesheet, which outranks
+ * Tailwind's layered utilities, so the field style is restated here at higher specificity:
  * cell fill, --field edge, 2 px corners, 46 px tall, the danger edge and
  * inset bar when invalid. The flag button takes the bar, since it covers
  * the input's left edge. The sizes are literals: @theme inline doesn't emit
@@ -401,4 +279,75 @@ body {
 
 .react-tel-input.tel-field .country-list .country .dial-code {
   color: var(--muted);
+}
+
+/* Legacy rules from the Bootstrap era. Pages still use some of these
+ * classes until they are restyled (#617-#622); delete each rule with the
+ * last markup that uses it. */
+
+:root {
+  --bs-font-sans-serif:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
+    "Liberation Sans", Arial, sans-serif;
+  --bs-border-radius: 0.25rem;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* Custom utility classes */
+.object-fit-cover {
+  object-fit: cover;
+}
+
+/* Z-index utility classes - using inline styles for critical elements */
+.z-index-0 {
+  z-index: 0 !important;
+}
+
+.z-index-1 {
+  z-index: 1 !important;
+}
+
+.z-index-2 {
+  z-index: 2 !important;
+}
+
+/* Dark band section, dark in both themes. Every .bg-alt element must also
+ * carry data-bs-theme="dark" so Bootstrap themes nested components (cards,
+ * accordions, borders) for the dark surface instead of the page theme. */
+.bg-alt {
+  --bs-body-bg: #2b3035;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+/* Lift nested surfaces slightly off the band */
+.bg-alt .card:not(.bg-dark) {
+  --bs-card-bg: #343a40;
+}
+
+.bg-alt .accordion {
+  --bs-accordion-bg: #343a40;
+}
+
+/* Dark theme adjustments */
+[data-bs-theme="dark"] {
+  --bs-link-color: #8bb9fe;
+  --bs-link-hover-color: #a7c7fd;
+
+  /* Default outline-primary border/text is too dim on dark backgrounds */
+  .btn-outline-primary {
+    --bs-btn-color: #6ea8fe;
+    --bs-btn-border-color: #6ea8fe;
+    --bs-btn-hover-bg: #6ea8fe;
+    --bs-btn-hover-color: #000;
+  }
+
+  /* Lift cards off the page background */
+  .card {
+    --bs-card-bg: #2b3035;
+  }
 }
