@@ -1,21 +1,31 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import StripeWrapper, {
   type CheckoutCustomer,
 } from "@/app/components/StripeWrapper";
 import { getStripe } from "@/lib/stripe";
+import { getStripeAppearance } from "@/lib/stripeAppearance";
 
 // Mock the stripe module
 jest.mock("@/lib/stripe", () => ({
   getStripe: jest.fn().mockReturnValue({}),
 }));
 
-// Mock the Elements component from @stripe/react-stripe-js
+// Mock the Elements component from @stripe/react-stripe-js, recording the
+// options of each render
+const mockElementsOptions: jest.Mock = jest.fn();
 jest.mock("@stripe/react-stripe-js", () => ({
-  Elements: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="stripe-elements">{children}</div>
-  ),
+  Elements: ({
+    children,
+    options,
+  }: {
+    children: React.ReactNode;
+    options: unknown;
+  }) => {
+    mockElementsOptions(options);
+    return <div data-testid="stripe-elements">{children}</div>;
+  },
 }));
 
 describe("StripeWrapper", () => {
@@ -272,6 +282,77 @@ describe("StripeWrapper", () => {
       expect(
         screen.getByText("Failed to initialize payment. Please try again."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("appearance", () => {
+    const originalMatchMedia = window.matchMedia;
+    let prefersDark: boolean;
+    let listeners: Set<() => void>;
+
+    beforeEach(() => {
+      prefersDark = false;
+      listeners = new Set();
+      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+        get matches() {
+          return query === "(prefers-color-scheme: dark)" && prefersDark;
+        },
+        media: query,
+        addEventListener: (_: string, listener: () => void) =>
+          listeners.add(listener),
+        removeEventListener: (_: string, listener: () => void) =>
+          listeners.delete(listener),
+      }));
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ clientSecret: "test_secret" }),
+      } as unknown as Response);
+    });
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    function lastAppearance() {
+      const calls = mockElementsOptions.mock.calls;
+      return (calls[calls.length - 1][0] as { appearance: unknown }).appearance;
+    }
+
+    function changeScheme(isDark: boolean) {
+      prefersDark = isDark;
+      act(() => listeners.forEach((listener) => listener()));
+    }
+
+    it("themes the Payment Element for the OS scheme when it mounts", async () => {
+      prefersDark = true;
+      render(
+        <StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+      });
+      expect(lastAppearance()).toEqual(getStripeAppearance("dark"));
+    });
+
+    it("switches the appearance when the OS scheme changes while open", async () => {
+      render(
+        <StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+      });
+      expect(lastAppearance()).toEqual(getStripeAppearance("light"));
+
+      changeScheme(true);
+      expect(lastAppearance()).toEqual(getStripeAppearance("dark"));
+
+      changeScheme(false);
+      expect(lastAppearance()).toEqual(getStripeAppearance("light"));
+      // A scheme change re-themes the element; it never creates a second
+      // subscription.
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -133,6 +133,7 @@ describe("ContactForm Component", () => {
         screen.getByText(/Server configuration error - missing API key/),
       ).toBeInTheDocument();
     });
+    expect(screen.getByRole("alert")).toHaveTextContent(/^Error/);
   });
 
   it("shows success message and does not redirect when API returns a message", async () => {
@@ -176,6 +177,124 @@ describe("ContactForm Component", () => {
 
     // Router.push should not have been called
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  describe("inline validation", () => {
+    let alertSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      alertSpy.mockRestore();
+    });
+
+    function expectFieldError(input: HTMLElement, message: RegExp) {
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      const describedBy = input.getAttribute("aria-describedby");
+      expect(describedBy).toBeTruthy();
+      const messageElement = document.getElementById(describedBy as string);
+      expect(messageElement).toHaveTextContent(message);
+      expect(messageElement).toHaveClass("text-danger");
+      expect(input).toHaveAccessibleDescription(message);
+    }
+
+    it("shows an inline error per empty field, without alert() or a request", async () => {
+      render(<ContactForm />);
+
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+      expectFieldError(screen.getByLabelText(/Name/i), /enter your name/i);
+      expectFieldError(screen.getByLabelText(/Email/i), /enter your email/i);
+      expectFieldError(screen.getByLabelText(/Phone/i), /enter a phone/i);
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("moves focus to the first invalid field", () => {
+      render(<ContactForm />);
+
+      fireEvent.change(screen.getByLabelText(/Name/i), {
+        target: { value: "Test User" },
+      });
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+      expect(screen.getByLabelText(/Email/i)).toHaveFocus();
+    });
+
+    it("flags only the field that is wrong, worded as the fix", () => {
+      render(<ContactForm />);
+
+      fireEvent.change(screen.getByLabelText(/Name/i), {
+        target: { value: "Test User" },
+      });
+      fireEvent.change(screen.getByLabelText(/Email/i), {
+        target: { value: "dana@" },
+      });
+      fireEvent.change(screen.getByLabelText(/Phone/i), {
+        target: { value: "123-456-7890" },
+      });
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+      expectFieldError(
+        screen.getByLabelText(/Email/i),
+        /enter the full address, like/i,
+      );
+      expect(screen.getByLabelText(/Name/i)).not.toHaveAttribute(
+        "aria-invalid",
+      );
+      expect(screen.getByLabelText(/Name/i)).not.toHaveAttribute(
+        "aria-describedby",
+      );
+      expect(screen.getByLabelText(/Phone/i)).not.toHaveAttribute(
+        "aria-invalid",
+      );
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("clears a field's error once it is edited", () => {
+      render(<ContactForm />);
+
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+      const nameInput = screen.getByLabelText(/Name/i);
+      expect(nameInput).toHaveAttribute("aria-invalid", "true");
+
+      fireEvent.change(nameInput, { target: { value: "T" } });
+
+      expect(nameInput).not.toHaveAttribute("aria-invalid");
+      expect(screen.queryByText(/enter your name/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("sits on the page ground, not in a dark box", () => {
+    const { container } = render(<ContactForm />);
+
+    expect(container.innerHTML).not.toMatch(/bg-dark|data-bs-theme/);
+    expect(screen.getByLabelText(/Name/i)).toHaveClass(
+      "rounded-ctl",
+      "border-field",
+      "bg-cell",
+    );
+  });
+
+  it("announces the submission result as a status line", async () => {
+    render(<ContactForm />);
+
+    fireEvent.change(screen.getByLabelText(/Name/i), {
+      target: { value: "Test User" },
+    });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/Phone/i), {
+      target: { value: "123-456-7890" },
+    });
+    fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /Sent.*Thank you!/,
+    );
   });
 
   it("disables the submit button while submitting", async () => {

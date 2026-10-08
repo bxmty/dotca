@@ -23,6 +23,7 @@ describe("Checkout Confirmation Page", () => {
       "href",
       "/",
     );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows a processing message while the payment is pending", async () => {
@@ -43,6 +44,17 @@ describe("Checkout Confirmation Page", () => {
       screen.getByRole("link", { name: /return to checkout/i }),
     ).toHaveAttribute("href", "/checkout");
   });
+
+  it.each(["requires_payment_method", "failed"])(
+    "flags the %s outcome as an error status",
+    async (redirectStatus) => {
+      await renderConfirmation(redirectStatus);
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /could not be completed\. No charge was made/,
+      );
+    },
+  );
 
   it("shows a generic confirmation when no redirect status is present", async () => {
     await renderConfirmation();

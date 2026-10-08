@@ -153,4 +153,24 @@ describe("Tailwind theme tokens", () => {
     expect(band).toMatch(/--logo:\s*var\(--band-ink\)/);
     expect(band).toMatch(/--fig:\s*var\(--band-fig\)/);
   });
+
+  it("sets long-form copy in .prose at 18 px / 1.6 / 66 ch", async () => {
+    const css = await buildCss([]);
+
+    const prose = readRule(css, ".prose");
+    expect(prose).toContain("max-width: 66ch");
+    expect(prose).toContain("font-size: 18px");
+    expect(prose).toMatch(/line-height:\s*1\.6\b/);
+  });
+
+  it("keeps list markers in .prose, which preflight strips", async () => {
+    const css = await buildCss([]);
+
+    expect(readRule(css, ".prose :where(ul)")).toContain(
+      "list-style-type: disc",
+    );
+    expect(readRule(css, ".prose :where(ol)")).toContain(
+      "list-style-type: decimal",
+    );
+  });
 });
