@@ -129,6 +129,96 @@
   }
 }
 
+/* Long-form copy: blog posts and the legal pages (Component Spec, blog).
+ * Hand-written element styles instead of @tailwindcss/typography: the posts
+ * use a handful of elements, and the plugin's scale isn't the brand's. The
+ * one @apply scope the spec allows. Element selectors sit in :where(), so a
+ * utility on an element inside (a chip, the end CTA's button) still wins. */
+@layer components {
+  .prose {
+    @apply grid max-w-[66ch] gap-4.5 text-prose leading-[1.6];
+  }
+
+  .prose :where(h1, h2, h3, p, ul, ol, pre, blockquote, hr) {
+    @apply m-0;
+  }
+
+  .prose :where(h1) {
+    @apply text-h2 leading-[1.08] font-light tracking-[-0.02em] text-balance md:text-section;
+  }
+
+  .prose :where(.dek) {
+    @apply text-h3 leading-[1.4] text-muted;
+  }
+
+  .prose :where(.meta) {
+    @apply flex flex-wrap gap-x-4.5 gap-y-1 border-y border-rule py-2 font-mono text-label text-muted;
+  }
+
+  .prose :where(h2) {
+    @apply mt-3 text-h2 leading-[1.2] font-semibold;
+  }
+
+  .prose :where(h3) {
+    @apply text-h3 leading-tight font-semibold;
+  }
+
+  /* Preflight strips list markers; long-form lists keep them. */
+  .prose :where(ul, ol) {
+    @apply grid gap-1.5 pl-[1.2em];
+  }
+
+  .prose :where(ul) {
+    @apply list-disc;
+  }
+
+  .prose :where(ol) {
+    @apply list-decimal;
+  }
+
+  .prose :where(li)::marker {
+    @apply text-muted;
+  }
+
+  .prose :where(strong) {
+    @apply font-semibold;
+  }
+
+  .prose :where(a) {
+    @apply text-ink underline decoration-fig decoration-1 underline-offset-3 hover:decoration-2;
+  }
+
+  .prose :where(code) {
+    @apply font-mono;
+  }
+
+  .prose :where(pre) {
+    @apply overflow-x-auto border border-rule bg-cell px-3.5 py-3 font-mono text-small leading-normal;
+  }
+
+  .prose :where(hr) {
+    @apply border-0 border-t border-rule;
+  }
+
+  .prose :where(section) {
+    @apply grid gap-4.5;
+  }
+
+  /* Callout: the pale-purple .hl island, with no icon, button or edge. A
+   * markdown blockquote renders as one (markdownComponents.tsx). */
+  .prose :where(.callout) {
+    @apply grid gap-1.5 px-5 py-4.5;
+  }
+
+  .prose :where(.callout) :where(h3) {
+    @apply text-prose;
+  }
+
+  .prose :where(.callout) :where(p) {
+    @apply text-body leading-normal text-ink;
+  }
+}
+
 /* Legacy rules from the Bootstrap era. Pages still use some of these
  * classes until they are restyled (#617-#622); delete each rule with the
  * last markup that uses it. */
