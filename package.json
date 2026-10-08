@@ -43,6 +43,7 @@
     "@eslint/eslintrc": "3.3.7",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.7",
@@ -60,6 +61,7 @@
     "lighthouse": "13.5.0",
     "prettier": "3.9.9",
     "puppeteer-core": "25.12.0",
+    "tailwindcss": "4.3.3",
     "typescript": "6.0.3"
   },
   "overrides": {

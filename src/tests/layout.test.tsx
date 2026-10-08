@@ -39,6 +39,28 @@ describe("RootLayout Component", () => {
     expect(markup).toContain('setAttribute("data-bs-theme"');
   });
 
+  it("defines the next/font variables on <html> for the @theme fonts", () => {
+    const markup = renderToString(
+      <RootLayout>
+        <div>Test Content</div>
+      </RootLayout>,
+    );
+    // next/jest's font mock returns "variable" for each font's variable class
+    expect(markup).toMatch(/<html[^>]*class="variable variable"/);
+  });
+
+  it("offers a skip link that only shows on focus", () => {
+    const markup = renderToString(
+      <RootLayout>
+        <div>Test Content</div>
+      </RootLayout>,
+    );
+    expect(markup).toMatch(
+      /<a class="sr-only[^"]*focus:not-sr-only[^"]*" href="#main-content">Skip to main content<\/a>/,
+    );
+    expect(markup).toContain('<main id="main-content"');
+  });
+
   it("includes proper meta tags", () => {
     // Skip this test as it requires complex DOM mocking
     // The layout component structure is tested by the other tests

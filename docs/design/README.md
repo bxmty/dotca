@@ -33,3 +33,19 @@ Both SVGs come from the White artwork's knockout geometry with classes stripped 
 cultured `#F8F9FB` in dark, cultured on the oxford footer band). The lockup is 34 px tall in the
 nav, with clear space equal to the cap height of the B on all sides and a minimum width of
 40 px.
+
+## Favicon set
+
+`logo/favicon/` holds the favicon sources from the favicon build
+([msp-playbook#180](https://github.com/mega-mattice/msp-playbook/pull/180),
+`outputs/brand/favicon-build/`). The site's icons are built from them:
+
+| Site file                                    | Source                                             | Notes                                                                                                               |
+| -------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/app/icon.svg`                           | `favicon-small.svg` + `favicon-full.svg`           | Adaptive: oxford, cultured under `prefers-color-scheme: dark`. Heavy-Y cube below 48 px, full detail from 48 px up. |
+| `src/app/favicon.ico`                        | `favicon-small.svg` (16, 32), `tile-full.svg` (48) | The pin on a transparent background at 16 and 32 px; the oxford tile at 48 px.                                      |
+| `src/app/apple-icon.png`                     | `tile-full.svg`                                    | 180 px                                                                                                              |
+| `public/icon-192.png`, `public/icon-512.png` | `tile-full.svg`                                    | Manifest icons; the 512 also serves as the maskable icon (the pin sits inside the safe zone).                       |
+
+The rasters were rendered with `sharp` (librsvg), the copy Next already installs. The size
+variants are candidates until checked in real browser tabs in light and dark.

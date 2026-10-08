@@ -3,27 +3,29 @@ export interface FaqItem {
   answer: string;
 }
 
-/** FAQ accordion on native <details>; items open and close independently. */
+// FAQ from the Component Spec: native <details> between hairline rules.
+// Items open independently and all start closed. The marker is a mono "+"
+// in ink that turns to "×" when open; it's a pseudo-element, so it is never
+// announced.
+
+const SUMMARY_CLASS_NAME =
+  "grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_24px] items-start gap-4 py-4 [&::-webkit-details-marker]:hidden after:text-center after:font-mono after:text-h3 after:leading-none after:text-ink after:transition-transform after:content-['+'] group-open:after:rotate-45 motion-reduce:after:transition-none";
+
 export default function FaqList({ items }: { items: readonly FaqItem[] }) {
   return (
-    <div className="accordion">
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
-        return (
-          <details
-            key={item.question}
-            className={`accordion-item faq-item border${isLast ? "" : " mb-3"}`}
-            open={index === 0}
-          >
-            <summary className="accordion-button fw-medium">
-              <h3 className="fs-6 fw-medium m-0">{item.question}</h3>
-            </summary>
-            <div className="accordion-body text-body-secondary">
-              {item.answer}
-            </div>
-          </details>
-        );
-      })}
+    <div className="max-w-[780px] border-t border-rule">
+      {items.map((item) => (
+        <details key={item.question} className="group border-b border-rule">
+          <summary className={SUMMARY_CLASS_NAME}>
+            <h3 className="m-0 text-prose leading-snug font-semibold">
+              {item.question}
+            </h3>
+          </summary>
+          <p className="m-0 max-w-[66ch] pr-10 pb-4.5 text-muted">
+            {item.answer}
+          </p>
+        </details>
+      ))}
     </div>
   );
 }

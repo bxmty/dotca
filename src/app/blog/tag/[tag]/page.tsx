@@ -6,7 +6,9 @@ import {
   tagToSlug,
   getAllTags,
 } from "@/lib/blog";
-import BlogList from "@/app/components/BlogList";
+import PostList from "@/app/components/PostList";
+import Section from "@/app/components/Section";
+import SectionHead from "@/app/components/SectionHead";
 
 interface PageProps {
   params: Promise<{ tag: string }>;
@@ -60,24 +62,21 @@ export default async function BlogTagPage({ params }: PageProps) {
   const posts = getBlogPostsByTag(displayTag);
 
   return (
-    <div className="container py-5">
-      <div className="row mb-5">
-        <div className="col-12 text-center">
-          <h1 className="display-4 fw-bold mb-3">Tag: {displayTag}</h1>
-          <p className="lead text-muted mb-4">
-            {posts.length} post{posts.length !== 1 ? "s" : ""} tagged with{" "}
-            {displayTag}
-          </p>
-        </div>
-      </div>
-
-      <section>
-        <BlogList
-          posts={posts}
-          title={`Posts tagged "${displayTag}"`}
-          showFeatured={false}
-        />
+    <>
+      <section className="grid gap-5.5 px-4 pt-14 pb-4 md:px-7">
+        <h1 className="m-0 font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
+          Tag: {displayTag}
+        </h1>
+        <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">
+          {posts.length} post{posts.length !== 1 ? "s" : ""} tagged with{" "}
+          {displayTag}
+        </p>
       </section>
-    </div>
+
+      <Section>
+        <SectionHead title={`Posts tagged "${displayTag}"`} />
+        <PostList posts={posts} label={`Posts tagged ${displayTag}`} />
+      </Section>
+    </>
   );
 }

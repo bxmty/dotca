@@ -1,4 +1,4 @@
-import Link from "next/link";
+import TextLink from "@/app/components/TextLink";
 import type { ServiceLandingContent } from "../ServiceLandingPage";
 
 export const ontarioContent: ServiceLandingContent = {
@@ -184,10 +184,8 @@ export const ontarioContent: ServiceLandingContent = {
       <>
         We&apos;re a young Ontario MSP building our client base — here&apos;s
         exactly what that means for you:{" "}
-        <Link href="/#process" className="text-white text-decoration-underline">
-          see our approach
-        </Link>
-        . Start with a free IT assessment today.
+        <TextLink href="/#process">see our approach</TextLink>. Start with a
+        free IT assessment today.
       </>
     ),
   },

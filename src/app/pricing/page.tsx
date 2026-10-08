@@ -1,8 +1,8 @@
-"use client";
-
-import Link from "next/link";
-import { Suspense } from "react";
+import { ButtonLink } from "../components/Button";
 import FaqList from "../components/FaqList";
+import Section from "../components/Section";
+import SectionHead from "../components/SectionHead";
+import { getPlanHref, pricingPlans, type PricingPlan } from "./plans";
 
 const FAQ_ITEMS = [
   {
@@ -27,190 +27,233 @@ const FAQ_ITEMS = [
   },
 ];
 
-// Shared pricing plans data
-const pricingPlans = [
-  {
-    name: "Free",
-    price: "$0.00",
-    description:
-      "Ideal for startups and freelancers looking to secure their digital assets",
-    features: [
-      "Automatic Windows Updates",
-      "Basic Antivirus Protection",
-      "24/7 Device Monitoring",
-    ],
-    cta: "Choose Free",
-  },
-  {
-    name: "Basic",
-    price: "$99.00",
-    description:
-      "Perfect for small teams needing essential IT security and communication tools",
-    features: [
-      "Everything in Free",
-      "Password Manager",
-      "Business Email Solution",
-      "Email Support (Business Hours)",
-      "Basic Security Monitoring",
-      "Setup & Onboarding Assistance",
-    ],
-    cta: "Choose Basic",
-  },
-  {
-    name: "Standard",
-    price: "$249.00",
-    description:
-      "Our recommended option for growing businesses needing comprehensive IT support",
-    features: [
-      "Everything in Basic",
-      "Professional Web Hosting",
-      "Microsoft Collaboration Tools",
-      "Quarterly IT Assessment",
-      "Extended Technical Support",
-      "Cloud Backup Solutions",
-      "30-day email & phone support",
-    ],
-    highlighted: true,
-    cta: "Choose Standard",
-  },
-  {
-    name: "Premium",
-    price: "$449.00",
-    description:
-      "Complete IT management solution for businesses requiring enterprise-grade technology",
-    features: [
-      "Everything in Standard",
-      "24/7 Priority Support",
-      "Server Monitoring & Management",
-      "Reduced Web Design Rates",
-      "Advanced Security Suite",
-      "Dedicated Account Manager",
-      "On-site Consultations",
-      "Unlimited Device Support",
-    ],
-    cta: "Choose Premium",
-  },
-];
+// Pricing sheet from the Component Spec: a ruled table from 900 px, and one
+// stacked block per plan below it, both drawn from pricingPlans. The
+// Recommended plan is a pale-purple .hl island in both modes, topped by a
+// 3 px CTA rule; it stops above the button, so each mode keeps one CTA
+// colour. Prices are mono 500 at 28 px (text-h2), never smaller: queen on
+// pale purple passes only as large text.
 
-// Client component to handle the Link with searchParams
-function PricingCards() {
+const PRICE_CLASS_NAME =
+  "font-mono text-h2 leading-[1.05] font-medium tabular-nums";
+const RECOMMENDED_RULE_CLASS_NAME = "shadow-[inset_0_3px_0_var(--cta)]";
+const ROW_LABEL_CLASS_NAME =
+  "w-32.5 px-4 py-3.5 text-left align-top font-mono text-label font-normal text-muted";
+const ROW_HEADER_CLASS_NAME = `${ROW_LABEL_CLASS_NAME} border-t border-rule`;
+const CELL_CLASS_NAME = "border-t border-rule px-4 py-3.5 text-left align-top";
+
+function RecommendedTag({ className }: { className: string }) {
   return (
-    <div className="row g-3">
+    <span className={`font-mono text-label font-normal text-ink ${className}`}>
+      Recommended
+    </span>
+  );
+}
+
+function PlanPrice({ plan }: { plan: PricingPlan }) {
+  return (
+    <span
+      className={`${PRICE_CLASS_NAME} ${plan.highlighted ? "text-fig" : ""}`}
+    >
+      {plan.price}
+    </span>
+  );
+}
+
+function FeatureList({ features }: { features: readonly string[] }) {
+  return (
+    <ul className="m-0 grid list-none gap-1.25 p-0 text-small">
+      {features.map((feature) => (
+        <li key={feature}>{feature}</li>
+      ))}
+    </ul>
+  );
+}
+
+function PlanAction({
+  plan,
+  isCompact = false,
+}: {
+  plan: PricingPlan;
+  isCompact?: boolean;
+}) {
+  return (
+    <ButtonLink
+      variant={plan.highlighted ? "primary" : "secondary"}
+      isBlock
+      isCompact={isCompact}
+      href={getPlanHref(plan)}
+    >
+      {plan.cta}
+    </ButtonLink>
+  );
+}
+
+/** The Recommended plan's island head: pale purple under a 3 px CTA rule. */
+function getIslandHeadClassName(plan: PricingPlan): string {
+  return plan.highlighted ? `hl ${RECOMMENDED_RULE_CLASS_NAME}` : "";
+}
+
+/** Cells of the Recommended column carry the island, except the action row. */
+function getPlanCellClassName(plan: PricingPlan): string {
+  return plan.highlighted ? `${CELL_CLASS_NAME} hl` : CELL_CLASS_NAME;
+}
+
+function PricingTable() {
+  return (
+    <table
+      aria-labelledby="plans-heading"
+      className="hidden w-full table-fixed border-collapse border border-rule bg-cell text-small min-[900px]:table"
+    >
+      <thead>
+        <tr>
+          <th scope="col" className={`${ROW_LABEL_CLASS_NAME} pt-4.5`}>
+            Plan
+          </th>
+          {pricingPlans.map((plan) => (
+            <th
+              key={plan.name}
+              scope="col"
+              className={`px-4 pt-4.5 pb-3.5 text-left align-top text-h3 font-semibold ${getIslandHeadClassName(
+                plan,
+              )}`}
+            >
+              {plan.name}
+              {plan.highlighted && <RecommendedTag className="mt-1 block" />}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row" className={ROW_HEADER_CLASS_NAME}>
+            Per user / month
+          </th>
+          {pricingPlans.map((plan) => (
+            <td key={plan.name} className={getPlanCellClassName(plan)}>
+              <PlanPrice plan={plan} />
+            </td>
+          ))}
+        </tr>
+        <tr>
+          <th scope="row" className={ROW_HEADER_CLASS_NAME}>
+            For
+          </th>
+          {pricingPlans.map((plan) => (
+            <td
+              key={plan.name}
+              className={`${getPlanCellClassName(plan)} text-muted`}
+            >
+              {plan.description}
+            </td>
+          ))}
+        </tr>
+        <tr>
+          <th scope="row" className={ROW_HEADER_CLASS_NAME}>
+            Includes
+          </th>
+          {pricingPlans.map((plan) => (
+            <td key={plan.name} className={getPlanCellClassName(plan)}>
+              <FeatureList features={plan.features} />
+            </td>
+          ))}
+        </tr>
+        <tr>
+          <td className={CELL_CLASS_NAME} />
+          {pricingPlans.map((plan) => (
+            <td key={plan.name} className={CELL_CLASS_NAME}>
+              <PlanAction plan={plan} isCompact />
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function StackedPlans() {
+  return (
+    <div className="grid border border-rule bg-cell min-[900px]:hidden">
       {pricingPlans.map((plan) => (
-        <div key={plan.name} className="col-md-3">
+        <section
+          key={plan.name}
+          data-testid="plan-block"
+          className="border-t border-rule first:border-t-0"
+        >
           <div
-            className={`card h-100 ${plan.highlighted ? "border-primary shadow position-relative" : "border"}`}
+            className={`grid gap-2.5 px-4.5 pt-4.5 pb-3 ${getIslandHeadClassName(
+              plan,
+            )}`}
           >
-            {plan.highlighted && (
-              <div className="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill">
-                Recommended
-              </div>
-            )}
-            <div className="card-body p-4">
-              <h3 className="fs-3 fw-medium mb-2">{plan.name}</h3>
-              <div className="fs-2 fw-light mb-1">{plan.price}</div>
-              <p className="small fst-italic text-body-secondary mb-3">
-                per user per month
-              </p>
-              <p className="text-body-secondary mb-4">{plan.description}</p>
-              <ul className="list-unstyled mb-4">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="d-flex align-items-start mb-2">
-                    <svg
-                      className="text-success-emphasis flex-shrink-0 me-2 mt-1"
-                      width="20"
-                      height="20"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M5 13l4 4L19 7"
-                      ></path>
-                    </svg>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h3 className="m-0 text-h3 leading-tight font-semibold">
+                {plan.name}
+                {plan.highlighted && <RecommendedTag className="ml-1.5" />}
+              </h3>
+              <span>
+                <PlanPrice plan={plan} />{" "}
+                <span className="font-mono text-label text-muted">
+                  / user / month
+                </span>
+              </span>
             </div>
-            <div className="card-footer border-0 bg-transparent p-4 pt-0">
-              <Link
-                href={
-                  plan.name === "Free"
-                    ? "/onboarding"
-                    : `/checkout?plan=${plan.name}`
-                }
-                className={`btn ${plan.highlighted ? "btn-primary" : "btn-outline-primary"} w-100`}
-              >
-                {plan.cta}
-              </Link>
-            </div>
+            <p className="m-0 text-small text-muted">
+              <b className="mr-1.5 font-mono text-label font-normal">For</b>
+              {plan.description}
+            </p>
+            <FeatureList features={plan.features} />
           </div>
-        </div>
+          <div className="px-4.5 pt-1.5 pb-4.5">
+            <PlanAction plan={plan} />
+          </div>
+        </section>
       ))}
     </div>
   );
 }
 
-// Main page component
 export default function Pricing() {
   return (
     <>
-      {/* Pricing Hero */}
-      <section className="py-5 py-md-7 bg-alt text-white" data-bs-theme="dark">
-        <div className="container text-center">
-          <h1 className="display-4 fw-light mb-4">
-            Technology Solutions That Fit Your Budget
-          </h1>
-          <p className="lead text-light mx-auto mb-4 col-md-8">
-            Enterprise-grade technology solutions without enterprise-level
-            complexity or cost. Choose the package that best fits your business
-            needs.
-          </p>
-        </div>
+      {/* Type-only hero, left-aligned like every other route. */}
+      <section className="grid gap-5.5 px-4 pt-14 pb-12 md:px-7">
+        <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
+          Technology Solutions That Fit Your Budget
+        </h1>
+        <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">
+          Enterprise-grade technology solutions without enterprise-level
+          complexity or cost. Choose the package that best fits your business
+          needs.
+        </p>
       </section>
 
-      {/* Pricing Plans */}
-      <section className="py-5 py-md-7">
-        <div className="container">
-          <Suspense fallback={<div>Loading pricing plans...</div>}>
-            <PricingCards />
-          </Suspense>
-        </div>
+      <section
+        aria-labelledby="plans-heading"
+        className="grid px-4 pb-8 md:px-7 md:pb-12"
+      >
+        <h2 id="plans-heading" className="sr-only">
+          Plans
+        </h2>
+        <PricingTable />
+        <StackedPlans />
       </section>
 
-      {/* FAQ Section */}
-      <section className="bg-alt py-5 py-md-7" data-bs-theme="dark">
-        <div className="container">
-          <h2 className="fs-1 fw-light mb-5 text-center">
-            Frequently Asked Questions
-          </h2>
-          <div className="row justify-content-center">
-            <div className="col-lg-8">
-              <FaqList items={FAQ_ITEMS} />
-            </div>
-          </div>
-        </div>
-      </section>
+      <Section>
+        <SectionHead title="Frequently Asked Questions" />
+        <FaqList items={FAQ_ITEMS} />
+      </Section>
 
-      {/* Call to Action */}
-      <section className="py-5 py-md-7">
-        <div className="container text-center">
-          <h2 className="fs-1 fw-light mb-4">
-            Ready to Transform Your Business Technology?
-          </h2>
-          <p className="lead text-body-secondary col-md-8 mx-auto mb-5">
-            Take the first step today to eliminate IT headaches and focus on
-            what you do best: serving your customers and growing your business.
-          </p>
-          <Link href="/#contact" className="btn btn-secondary btn-lg px-5 py-3">
+      <Section>
+        <SectionHead
+          title="Ready to Transform Your Business Technology?"
+          lede="Take the first step today to eliminate IT headaches and focus on what you do best: serving your customers and growing your business."
+        />
+        <div>
+          <ButtonLink variant="primary" href="/#contact">
             Get a Business-First IT Assessment
-          </Link>
+          </ButtonLink>
         </div>
-      </section>
+      </Section>
     </>
   );
 }

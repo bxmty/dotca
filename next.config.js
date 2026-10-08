@@ -12,8 +12,6 @@ const nextConfig = {
   // from phones/other devices on the LAN. Allow private-network origins.
   // Patterns match hostname segments split on ".", so IPv4 needs one "*" per octet.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
-  // Enable CSS import in server components
-  transpilePackages: ["bootstrap"],
   // Image optimization configuration
   images: {
     domains: [],
