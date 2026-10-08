@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
 import { Button } from "./Button";
+import { PhoneField, TextField } from "./Field";
+import StatusNote from "./StatusNote";
+import {
+  INCOMPLETE_EMAIL_MESSAGE,
+  isEmailAddress,
+} from "../../lib/formValidation";
 import { TEXT_LINK_CLASS_NAME } from "./TextLink";
 
 interface ContactFormProps {
@@ -16,9 +20,6 @@ type FieldErrors = Partial<Record<FieldName, string>>;
 
 // Field order, for moving focus to the first invalid one
 const FIELD_NAMES: readonly FieldName[] = ["name", "email", "phone"];
-
-// The same pattern the contact API applies
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // A country code is at most three digits, so anything shorter is no number
 // at all. Whether a longer one is valid stays the API's call (libphonenumber),
@@ -37,8 +38,8 @@ function validateContactFields({
   }
   if (!email.trim()) {
     errors.email = "enter your email address";
-  } else if (!EMAIL_PATTERN.test(email.trim())) {
-    errors.email = "enter the full address, like dana@company.ca";
+  } else if (!isEmailAddress(email)) {
+    errors.email = INCOMPLETE_EMAIL_MESSAGE;
   }
   const phoneDigits = phone.replace(/\D/g, "");
   if (phoneDigits.length <= MAX_COUNTRY_CODE_DIGITS) {
@@ -48,39 +49,6 @@ function validateContactFields({
 }
 
 const getFieldId = (field: FieldName) => `contact-${field}`;
-const getErrorId = (field: FieldName) => `contact-${field}-error`;
-
-/** Ties a field to its inline error while it has one. */
-function getErrorProps(field: FieldName, errors: FieldErrors) {
-  return errors[field]
-    ? { "aria-invalid": true, "aria-describedby": getErrorId(field) }
-    : {};
-}
-
-// Fields from the Component Spec: cell fill, a 3:1 --field edge, 2 px
-// corners, 46 px tall. An invalid field takes the danger edge and an inset
-// bar. The phone field's equivalent lives in globals.css (.tel-field),
-// because react-phone-input-2's unlayered stylesheet outranks utilities.
-const INPUT_CLASS_NAME =
-  "min-h-11.5 w-full rounded-ctl border border-field bg-cell px-3 py-2.75 text-body text-ink focus:border-fig focus:outline-2 focus:-outline-offset-1 focus:outline-fig aria-invalid:border-danger aria-invalid:shadow-[inset_3px_0_0_var(--danger)]";
-const LABEL_CLASS_NAME = "text-small font-semibold";
-
-function FieldError({
-  field,
-  errors,
-}: {
-  field: FieldName;
-  errors: FieldErrors;
-}) {
-  const message = errors[field];
-  if (!message) return null;
-  return (
-    <p id={getErrorId(field)} className="m-0 text-small text-danger">
-      <span className="font-mono">Fix: </span>
-      {message}
-    </p>
-  );
-}
 
 const ContactForm = ({ className = "" }: ContactFormProps) => {
   const [name, setName] = useState("");
@@ -196,20 +164,13 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
         </p>
       </div>
 
-      {/* Status line from the Component Spec: a ruled note with a mono
-          label, its left edge in ink for success and danger for errors. */}
       {submitStatus.type && (
-        <div
-          role={isSuccess ? "status" : "alert"}
-          className={`grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 border border-l-3 border-rule bg-cell px-3.5 py-3 text-small ${isSuccess ? "border-l-ink" : "border-l-danger"}`}
+        <StatusNote
+          tone={isSuccess ? "ok" : "error"}
+          label={isSuccess ? "Sent" : "Error"}
         >
-          <b
-            className={`pt-1 font-mono text-label font-medium ${isSuccess ? "text-fig" : "text-danger"}`}
-          >
-            {isSuccess ? "Sent" : "Error"}
-          </b>
-          <span>{submitStatus.message}</span>
-        </div>
+          {submitStatus.message}
+        </StatusNote>
       )}
 
       <div
@@ -227,69 +188,45 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
           autoComplete="off"
         />
       </div>
-      <div className="grid min-w-0 gap-1.5">
-        <label htmlFor={getFieldId("name")} className={LABEL_CLASS_NAME}>
-          Name
-        </label>
-        <input
-          type="text"
-          id={getFieldId("name")}
-          name="name"
-          autoComplete="name"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            clearFieldError("name");
-          }}
-          className={INPUT_CLASS_NAME}
-          required
-          {...getErrorProps("name", fieldErrors)}
-        />
-        <FieldError field="name" errors={fieldErrors} />
-      </div>
-      <div className="grid min-w-0 gap-1.5">
-        <label htmlFor={getFieldId("email")} className={LABEL_CLASS_NAME}>
-          Email
-        </label>
-        <input
-          type="email"
-          id={getFieldId("email")}
-          name="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            clearFieldError("email");
-          }}
-          className={INPUT_CLASS_NAME}
-          required
-          {...getErrorProps("email", fieldErrors)}
-        />
-        <FieldError field="email" errors={fieldErrors} />
-      </div>
-      <div className="grid min-w-0 gap-1.5">
-        <label htmlFor={getFieldId("phone")} className={LABEL_CLASS_NAME}>
-          Phone
-        </label>
-        <PhoneInput
-          country={"ca"} // Default country
-          value={phone}
-          onChange={(phone) => {
-            setPhone(`+${phone}`); // Add + prefix for E.164 format
-            clearFieldError("phone");
-          }}
-          containerClass="tel-field"
-          inputProps={{
-            id: getFieldId("phone"),
-            name: "phone",
-            required: true,
-            autoFocus: false,
-            autoComplete: "tel",
-            ...getErrorProps("phone", fieldErrors),
-          }}
-        />
-        <FieldError field="phone" errors={fieldErrors} />
-      </div>
+      <TextField
+        id={getFieldId("name")}
+        label="Name"
+        type="text"
+        name="name"
+        autoComplete="name"
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          clearFieldError("name");
+        }}
+        required
+        error={fieldErrors.name}
+      />
+      <TextField
+        id={getFieldId("email")}
+        label="Email"
+        type="email"
+        name="email"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          clearFieldError("email");
+        }}
+        required
+        error={fieldErrors.email}
+      />
+      <PhoneField
+        id={getFieldId("phone")}
+        label="Phone"
+        name="phone"
+        value={phone}
+        onChange={(phone) => {
+          setPhone(phone);
+          clearFieldError("phone");
+        }}
+        error={fieldErrors.phone}
+      />
       <Button
         type="submit"
         variant="primary"
