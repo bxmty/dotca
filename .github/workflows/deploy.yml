@@ -423,7 +423,7 @@ jobs:
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         # Optimized for performance: scoped caching, inline cache, fast compression
         # Next.js inlines only NEXT_PUBLIC_-prefixed values into the client
         # bundle, so the unprefixed SENTRY_DSN reaches the server and edge
