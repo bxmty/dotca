@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import Home from "@/app/page";
+import { expectWaypointStops, WAYPOINT_CAPTION } from "./heroExpectations";
 
 // Mock the ContactForm component
 jest.mock("@/app/components/ContactForm", () => {
@@ -58,6 +59,15 @@ describe("Home page", () => {
       "border-t",
       "font-mono",
     );
+  });
+
+  it("plots one working day over the hero's right half", () => {
+    render(<Home />);
+
+    const hero = getHero();
+    expectWaypointStops(hero);
+    expect(within(hero).getByText(WAYPOINT_CAPTION)).toBeInTheDocument();
+    expect(hero).toHaveClass("lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]");
   });
 
   it("renders all four key figures, with no source lines yet", () => {

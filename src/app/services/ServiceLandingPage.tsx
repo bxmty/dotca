@@ -3,6 +3,7 @@ import { ButtonLink } from "@/app/components/Button";
 import FaqList from "@/app/components/FaqList";
 import { KeyFigureGrid, type KeyFigureProps } from "@/app/components/KeyFigure";
 import Offer from "@/app/components/Offer";
+import PageHero from "@/app/components/PageHero";
 import RuledGrid from "@/app/components/RuledGrid";
 import Section from "@/app/components/Section";
 import SectionHead from "@/app/components/SectionHead";
@@ -122,33 +123,31 @@ export default function ServiceLandingPage({
 
   return (
     <>
-      {/* Type-only hero: the H1 is the LCP element (decision 7), so no
-          image goes above the fold. Height follows the content. */}
-      <section className="grid gap-5.5 px-4 pt-14 pb-12 md:px-7">
-        <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
-          {hero.heading}
-        </h1>
-        <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">
-          {hero.lead}
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <ButtonLink variant="primary" href={ASSESSMENT_HREF}>
-            Get Free IT Assessment
-          </ButtonLink>
-          <ButtonLink variant="secondary" href="/pricing">
-            View Cloud 5 Pack Pricing
-          </ButtonLink>
-        </div>
-        {/* Fact line: the price is the accent, the trust lines stay muted */}
-        <p className="m-0 flex flex-wrap gap-x-7 gap-y-2 border-t border-rule pt-3.5 font-mono text-label text-muted">
-          <span>
-            <b className="font-medium text-fig">{PACK_PRICE}</b> per month,
-            Cloud 5 Pack
-          </span>
-          <span>{hero.trustLine}</span>
-          {trustSignal && <span>{trustSignal}</span>}
-        </p>
-      </section>
+      <PageHero
+        heading={hero.heading}
+        lead={hero.lead}
+        actions={
+          <>
+            <ButtonLink variant="primary" href={ASSESSMENT_HREF}>
+              Get Free IT Assessment
+            </ButtonLink>
+            <ButtonLink variant="secondary" href="/pricing">
+              View Cloud 5 Pack Pricing
+            </ButtonLink>
+          </>
+        }
+        // The price is the accent; the trust lines stay muted.
+        facts={
+          <>
+            <span>
+              <b className="font-medium text-fig">{PACK_PRICE}</b> per month,
+              Cloud 5 Pack
+            </span>
+            <span>{hero.trustLine}</span>
+            {trustSignal && <span>{trustSignal}</span>}
+          </>
+        }
+      />
 
       <Section>
         <SectionHead title={why.heading} />

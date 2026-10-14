@@ -1,7 +1,9 @@
 import { ButtonLink } from "./components/Button";
 import ContactForm from "./components/ContactForm";
 import { KeyFigureGrid, type KeyFigureProps } from "./components/KeyFigure";
+import HeroWaypoints from "./components/HeroWaypoints";
 import Offer from "./components/Offer";
+import PageHero from "./components/PageHero";
 import RuledGrid from "./components/RuledGrid";
 import RuledList from "./components/RuledList";
 import Section from "./components/Section";
@@ -137,38 +139,45 @@ const bundleOffer = {
 export default function Home() {
   return (
     <>
-      {/* Type-only hero: the H1 is the LCP element (decision 7), so no
-          image goes above the fold. Height follows the content. */}
-      <section className="grid gap-5.5 px-4 pt-14 pb-12 md:px-7">
-        <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
-          IT that just works&#8288;&nbsp;— for businesses whose work happens
-          away from the desk.
-        </h1>
-        <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">
-          For businesses that live outside the office, we replace break-fix
-          firefighting with technology that just works&#8288;&nbsp;— one flat
-          price, no surprises.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <ButtonLink variant="primary" href="#contact">
-            Get a Business-First IT Assessment
-          </ButtonLink>
-          <ButtonLink variant="secondary" href="/pricing">
-            See Pricing Options
-          </ButtonLink>
-        </div>
-        {/* Fact line: published figures only. The price is the accent;
-            words like "Toronto" stay ink. */}
-        <p className="m-0 flex flex-wrap gap-x-7 gap-y-2 border-t border-rule pt-3.5 font-mono text-label text-muted">
-          <span>
-            <b className="font-medium text-fig">$99</b> per month per user,
-            complete bundle
-          </span>
-          <span>
-            <b className="font-medium text-ink">Toronto</b> Ontario, Canada
-          </span>
-        </p>
-      </section>
+      <PageHero
+        heading={
+          <>
+            IT that just works&#8288;&nbsp;— for businesses whose work happens
+            away from the desk.
+          </>
+        }
+        lead={
+          <>
+            For businesses that live outside the office, we replace break-fix
+            firefighting with technology that just works&#8288;&nbsp;— one flat
+            price, no surprises.
+          </>
+        }
+        actions={
+          <>
+            <ButtonLink variant="primary" href="#contact">
+              Get a Business-First IT Assessment
+            </ButtonLink>
+            <ButtonLink variant="secondary" href="/pricing">
+              See Pricing Options
+            </ButtonLink>
+          </>
+        }
+        // Published figures only. The price is the accent; words like
+        // "Toronto" stay ink.
+        facts={
+          <>
+            <span>
+              <b className="font-medium text-fig">$99</b> per month per user,
+              complete bundle
+            </span>
+            <span>
+              <b className="font-medium text-ink">Toronto</b> Ontario, Canada
+            </span>
+          </>
+        }
+        aside={<HeroWaypoints />}
+      />
 
       <Section>
         <SectionHead

@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import PricingPage from "@/app/pricing/page";
 import { pricingPlans } from "@/app/pricing/plans";
+import { expectContoursWithoutWaypoints } from "./heroExpectations";
 
 // The pricing sheet renders twice from one pricingPlans source: a ruled table
 // from 900 px and stacked blocks below it (CSS hides the other).
@@ -32,6 +33,14 @@ describe("PricingPage", () => {
         name: "Technology Solutions That Fit Your Budget",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the hero to contours, with no waypoints", () => {
+    render(<PricingPage />);
+
+    expectContoursWithoutWaypoints(
+      screen.getByRole("heading", { level: 1 }).closest("section")!,
+    );
   });
 
   it("renders one table column per plan", () => {
