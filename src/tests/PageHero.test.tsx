@@ -55,7 +55,68 @@ describe("PageHero", () => {
       <PageHero heading="Pricing" lead="Choose a package." />,
     );
 
-    expect(container.querySelector("section")?.children).toHaveLength(2);
+    const copy = Array.from(
+      container.querySelector("section")?.children ?? [],
+    ).filter((child) => child.getAttribute("aria-hidden") !== "true");
+    expect(copy).toHaveLength(2);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  describe("contour ground", () => {
+    const renderGround = () => {
+      const { container } = render(
+        <PageHero heading="Pricing" lead="Choose a package." />,
+      );
+      const section = container.querySelector("section");
+      const ground = section?.querySelector("svg");
+      return { section, ground };
+    };
+
+    it("sits behind the copy as decoration hidden from assistive tech", () => {
+      const { section, ground } = renderGround();
+
+      expect(ground).toHaveAttribute("aria-hidden", "true");
+      expect(ground).toHaveClass("absolute", "inset-0", "-z-10");
+      expect(section).toHaveClass("relative", "isolate", "overflow-hidden");
+      // Decision 7: the H1 is still the first thing in the hero.
+      expect(section?.firstElementChild?.tagName).toBe("H1");
+    });
+
+    it("is inline SVG cropped to cover the hero, with no image request", () => {
+      const { section, ground } = renderGround();
+
+      expect(ground).toHaveAttribute("viewBox", "0 0 1600 700");
+      expect(ground).toHaveAttribute("preserveAspectRatio", "xMaxYMid slice");
+      expect(section?.querySelector("img, image, use")).toBeNull();
+    });
+
+    it("draws index contours in the accent and the rest in the rule colour", () => {
+      const { ground } = renderGround();
+      const rings = Array.from(ground?.querySelectorAll("path") ?? []);
+      const index = rings.filter((ring) => ring.classList.contains("text-fig"));
+      const minor = rings.filter((ring) =>
+        ring.classList.contains("text-rule"),
+      );
+
+      // 16 + 12 + 9 rings; index every fifth: 3 + 2 + 1.
+      expect(rings).toHaveLength(37);
+      expect(index).toHaveLength(6);
+      expect(minor).toHaveLength(31);
+      expect(index[0]).toHaveAttribute("stroke-width", "1.4");
+      expect(minor[0]).toHaveAttribute("stroke-width", "0.8");
+      for (const ring of rings) {
+        expect(ring).toHaveAttribute("stroke", "currentColor");
+        expect(ring).toHaveAttribute("fill", "none");
+      }
+    });
+
+    it("fades out behind the copy and toward the bottom, dimmed below md", () => {
+      const { ground } = renderGround();
+
+      expect(ground).toHaveClass("max-md:opacity-35");
+      expect(ground?.getAttribute("style")).toContain(
+        "linear-gradient(to right, transparent 10%, black 60%), linear-gradient(to bottom, black 60%, transparent)",
+      );
+    });
   });
 });

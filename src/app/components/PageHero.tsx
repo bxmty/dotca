@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
+import ContourGround from "./ContourGround";
 
 // Type-only page hero from the Component Spec, shared by the home, service
 // landing and pricing pages. The H1 is the first text in the hero and the
 // LCP element (decision 7), so no image goes above the fold and the height
-// follows the content.
+// follows the content. A decorative contour ground sits behind the copy;
+// it is rendered after it and absolutely positioned, so it takes no grid cell.
 
 type PageHeroProps = {
   heading: ReactNode;
@@ -24,7 +26,7 @@ export default function PageHero({
   facts,
 }: PageHeroProps) {
   return (
-    <section className="grid gap-5.5 px-4 pt-14 pb-12 md:px-7">
+    <section className="relative isolate grid gap-5.5 overflow-hidden px-4 pt-14 pb-12 md:px-7">
       <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
         {heading}
       </h1>
@@ -35,6 +37,7 @@ export default function PageHero({
           {facts}
         </p>
       )}
+      <ContourGround />
     </section>
   );
 }
