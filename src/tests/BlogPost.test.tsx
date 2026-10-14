@@ -192,6 +192,15 @@ describe("BlogPost", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("sets the box as a light-token .hl island in both schemes", () => {
+      renderPost();
+
+      // bg-hl alone would leave dark-scheme ink and button colours on the
+      // pale purple; .hl switches every token to its light value.
+      const box = within(getRail()).getByRole("region", { name: "Offer" });
+      expect(box).toHaveClass("hl");
+    });
+
     it("hides the box on phones, where the end CTA covers it", () => {
       renderPost();
 

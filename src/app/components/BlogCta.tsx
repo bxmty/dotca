@@ -94,7 +94,7 @@ export function BlogRailOffer({ cta }: BlogCtaProps) {
   }
 
   return (
-    <section aria-label="Offer" className="hidden gap-3 bg-hl p-4 lg:grid">
+    <section aria-label="Offer" className="hl hidden gap-3 p-4 lg:grid">
       <p className="m-0 text-small leading-snug">{content.railText}</p>
       <div>
         <ButtonLink variant="primary" href={content.href}>
