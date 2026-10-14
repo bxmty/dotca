@@ -123,7 +123,6 @@ export default function ServiceLandingPage({
 
   return (
     <>
-      {/* Fact line: the price is the accent, the trust lines stay muted */}
       <PageHero
         heading={hero.heading}
         lead={hero.lead}
@@ -137,6 +136,7 @@ export default function ServiceLandingPage({
             </ButtonLink>
           </>
         }
+        // The price is the accent; the trust lines stay muted.
         facts={
           <>
             <span>

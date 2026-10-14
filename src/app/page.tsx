@@ -139,8 +139,6 @@ const bundleOffer = {
 export default function Home() {
   return (
     <>
-      {/* Fact line: published figures only. The price is the accent;
-          words like "Toronto" stay ink. */}
       <PageHero
         heading={
           <>
@@ -165,6 +163,8 @@ export default function Home() {
             </ButtonLink>
           </>
         }
+        // Published figures only. The price is the accent; words like
+        // "Toronto" stay ink.
         facts={
           <>
             <span>
