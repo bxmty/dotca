@@ -10,20 +10,7 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// Mock the ThemeSync component
-jest.mock("@/app/components/ThemeSync", () => {
-  return function MockThemeSync() {
-    return <div data-testid="theme-sync"></div>;
-  };
-});
-
 describe("RootLayout Component", () => {
-  it("renders children and ThemeSync", () => {
-    // Simplified test - layout rendering is complex in test environment
-    // The ThemeSync mock is tested separately
-    expect(true).toBe(true);
-  });
-
   it("sets correct HTML attributes", () => {
     // RootLayout renders <html>; client render inside a div is invalid in React 19.
     // SSR string output avoids jsdom nesting and matches real document structure.
@@ -33,10 +20,9 @@ describe("RootLayout Component", () => {
       </RootLayout>,
     );
     expect(markup).toContain('lang="en"');
-    // The theme attribute is not server-rendered; an inline script in <head>
-    // sets data-bs-theme from the OS preference before first paint.
-    expect(markup).not.toContain("data-bs-theme=");
-    expect(markup).toContain('setAttribute("data-bs-theme"');
+    // The colour scheme follows prefers-color-scheme in globals.css, so no
+    // script reads the OS preference before first paint.
+    expect(markup).not.toContain("matchMedia");
   });
 
   it("defines the next/font variables on <html> for the @theme fonts", () => {

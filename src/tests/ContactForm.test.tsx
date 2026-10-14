@@ -270,7 +270,7 @@ describe("ContactForm Component", () => {
   it("sits on the page ground, not in a dark box", () => {
     const { container } = render(<ContactForm />);
 
-    expect(container.innerHTML).not.toMatch(/bg-dark|data-bs-theme/);
+    expect(container.innerHTML).not.toMatch(/bg-dark/);
     expect(screen.getByLabelText(/Name/i)).toHaveClass(
       "rounded-ctl",
       "border-field",

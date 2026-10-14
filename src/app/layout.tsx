@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Script from "next/script";
 import { Suspense } from "react";
-import ThemeSync from "./components/ThemeSync";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import WebVitalsReporter from "./components/WebVitalsReporter";
@@ -89,15 +88,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={fontVariableClassNames} suppressHydrationWarning>
+    <html lang="en" className={fontVariableClassNames}>
       <head>
-        {/* Set the Bootstrap color mode before first paint to avoid a flash
-            of the wrong theme. ThemeSync keeps it in sync afterwards. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
-          }}
-        />
         <link
           rel="alternate"
           type="application/rss+xml"
@@ -133,7 +125,6 @@ export default function RootLayout({
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           />
         )}
-        <ThemeSync />
         <Suspense fallback={null}>
           <GoogleAnalytics />
         </Suspense>

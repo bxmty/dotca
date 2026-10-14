@@ -144,6 +144,5 @@ describe("Home page", () => {
       ),
     );
     expect(bootstrapClassNames).toEqual([]);
-    expect(container.querySelector("[data-bs-theme]")).toBeNull();
   });
 });
