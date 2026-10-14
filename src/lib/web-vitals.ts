@@ -42,9 +42,16 @@ export const reportWebVitals = async (metric: WebVitalsMetric) => {
         action: "web_vitals",
         category: "Web Vitals",
         label: metric.id,
+        // CLS sends the delta (×1000 for an integer): GA sums deltas per page.
         value: Math.round(
           metric.name === "CLS" ? metric.delta * 1000 : metric.value,
         ),
+        params: {
+          metric_name: metric.name,
+          // pathname only: query strings can carry PII.
+          page_path: window.location.pathname,
+          rating: metric.rating,
+        },
       });
     } else if (
       gtag.GA_MEASUREMENT_ID &&
