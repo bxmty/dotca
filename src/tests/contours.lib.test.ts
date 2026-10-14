@@ -1,18 +1,16 @@
-import { CONTOUR_HILLS, traceContourRings } from "@/lib/contours";
+import { traceContourRings } from "@/lib/contours";
 
 describe("traceContourRings", () => {
-  const hill = { cx: 100, cy: 50, rings: 10, step: 8 };
+  const hill = { cx: 100, cy: 50, ringCount: 10, step: 8 };
 
   it("traces one ring per contour on every hill", () => {
     expect(traceContourRings([hill])).toHaveLength(10);
     // The hero's field: 16 + 12 + 9 rings.
-    expect(traceContourRings(CONTOUR_HILLS)).toHaveLength(37);
+    expect(traceContourRings()).toHaveLength(37);
   });
 
   it("is deterministic, so server and client render the same paths", () => {
-    expect(traceContourRings(CONTOUR_HILLS)).toEqual(
-      traceContourRings(CONTOUR_HILLS),
-    );
+    expect(traceContourRings()).toEqual(traceContourRings());
   });
 
   it("traces each ring as a closed 120-point path", () => {
@@ -45,7 +43,7 @@ describe("traceContourRings", () => {
   });
 
   it("gives every ring a unique key across hills", () => {
-    const keys = traceContourRings(CONTOUR_HILLS).map((ring) => ring.key);
+    const keys = traceContourRings().map((ring) => ring.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
