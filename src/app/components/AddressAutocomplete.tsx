@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { AddressSuggestion } from "@/lib/nominatim";
+import { INPUT_CLASS_NAME } from "./Field";
+import { TEXT_LINK_CLASS_NAME } from "./TextLink";
 
 interface AddressAutocompleteProps {
   id: string;
@@ -13,6 +15,9 @@ interface AddressAutocompleteProps {
   required?: boolean;
   countryCodes?: string;
   placeholder?: string;
+  /** From getErrorProps, so the field's inline error is tied to the input. */
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
 }
 
 const DEBOUNCE_MS = 400;
@@ -24,10 +29,12 @@ export default function AddressAutocomplete({
   value,
   onChange,
   onSelectAddress,
-  className = "form-control",
+  className = INPUT_CLASS_NAME,
   required,
   countryCodes = "ca",
   placeholder,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -117,7 +124,7 @@ export default function AddressAutocomplete({
   }
 
   return (
-    <div className="position-relative" ref={containerRef}>
+    <div className="relative" ref={containerRef}>
       <input
         type="text"
         id={id}
@@ -133,25 +140,25 @@ export default function AddressAutocomplete({
         aria-expanded={isOpen}
         aria-autocomplete="list"
         aria-controls={listboxId}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
       />
       {isOpen && (
         <ul
           id={listboxId}
           role="listbox"
-          className="list-group position-absolute w-100 shadow-sm"
-          style={{ zIndex: 1060, top: "100%" }}
+          className="absolute top-full z-50 m-0 mt-1 w-full list-none border border-field bg-cell p-0 text-small"
         >
           {suggestions.map((suggestion, index) => (
             <li
               key={suggestion.id}
               role="option"
               aria-selected={index === highlightedIndex}
+              className="border-b border-rule aria-selected:bg-bg aria-selected:shadow-[inset_3px_0_0_var(--fig)]"
             >
               <button
                 type="button"
-                className={`list-group-item list-group-item-action${
-                  index === highlightedIndex ? " active" : ""
-                }`}
+                className="w-full cursor-pointer px-3 py-2.5 text-left text-ink hover:bg-bg"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => selectSuggestion(suggestion)}
               >
@@ -159,12 +166,13 @@ export default function AddressAutocomplete({
               </button>
             </li>
           ))}
-          <li className="list-group-item small text-body-secondary">
+          <li className="px-3 py-2 font-mono text-label text-muted">
             Search by{" "}
             <a
               href="https://www.openstreetmap.org/copyright"
               target="_blank"
               rel="noreferrer"
+              className={TEXT_LINK_CLASS_NAME}
             >
               OpenStreetMap
             </a>{" "}

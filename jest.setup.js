@@ -57,10 +57,20 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
+// Passes DOM props (className, aria-*, target, ...) through to the <a>, and
+// drops the Next-only routing props React would warn about.
 jest.mock("next/link", () => ({
   __esModule: true,
-  default: ({ children, href, onClick }) => {
-    return React.createElement("a", { href, onClick }, children);
+  default: ({
+    children,
+    href,
+    prefetch: _prefetch,
+    replace: _replace,
+    scroll: _scroll,
+    shallow: _shallow,
+    ...anchorProps
+  }) => {
+    return React.createElement("a", { href, ...anchorProps }, children);
   },
 }));
 

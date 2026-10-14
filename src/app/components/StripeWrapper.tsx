@@ -4,6 +4,9 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { getStripe } from "../../lib/stripe";
 import { parseGa4CookieIds } from "../../lib/ga4Cookies";
+import { getStripeAppearance, STRIPE_FONTS } from "../../lib/stripeAppearance";
+import { useColorScheme } from "../../lib/useColorScheme";
+import StatusNote from "./StatusNote";
 
 export interface CheckoutCustomer {
   name: string;
@@ -34,6 +37,7 @@ export default function StripeWrapper({
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
 
   // One key per distinct order, so a re-render or double-fire can only
   // replay the same subscription create, never mint a second one.
@@ -98,46 +102,46 @@ export default function StripeWrapper({
     createSubscription();
   }, [plan, employeeCount, billingCycle, customer, idempotencyKey]);
 
+  // Elements re-themes the mounted Payment Element when appearance changes,
+  // so an OS theme switch restyles it without a new subscription.
   const options = {
     clientSecret,
-    appearance: {
-      theme: "flat" as const,
-      variables: {
-        colorPrimary: "#198754", // Bootstrap success color
-        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-        borderRadius: "0.375rem", // Match Bootstrap's border-radius
-      },
-    },
+    appearance: getStripeAppearance(colorScheme),
+    fonts: STRIPE_FONTS,
   };
 
   if (loading) {
-    return <div className="text-center py-3">Loading payment form...</div>;
+    return (
+      <p role="status" className="m-0 py-3 font-mono text-label text-muted">
+        Loading payment form...
+      </p>
+    );
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger">
-        <p className="mb-2 fw-bold">Something went wrong!</p>
-        <p className="mb-0">{error}</p>
+      <StatusNote tone="error" label="Error">
+        <p className="m-0 font-semibold">Something went wrong!</p>
+        <p className="m-0">{error}</p>
         {process.env.NEXT_PUBLIC_ENVIRONMENT === "staging" && (
-          <p className="mt-2 small text-muted">
+          <p className="m-0 font-mono text-label text-muted">
             Environment: {process.env.NEXT_PUBLIC_ENVIRONMENT}, API URL:{" "}
             {process.env.NEXT_PUBLIC_API_URL}, Stripe Key Set:{" "}
             {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "Yes" : "No"}
           </p>
         )}
-      </div>
+      </StatusNote>
     );
   }
 
   if (!clientSecret) {
     return (
-      <div className="alert alert-danger">
-        <p className="mb-0">
+      <StatusNote tone="error" label="Error">
+        <p className="m-0">
           Failed to initialize payment. Please refresh the page or try again
           later.
         </p>
-      </div>
+      </StatusNote>
     );
   }
 

@@ -2,10 +2,10 @@ import { AppProps } from "next/app";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import "bootstrap/dist/css/bootstrap.min.css";
 import "../app/globals.css";
 import { onCLS, onINP, onLCP, onFCP, onTTFB } from "web-vitals";
 import * as gtag from "../lib/gtag"; // Import your existing gtag.ts file
+import { rootFontVariablesCss } from "../lib/fonts";
 
 // Add gtag to the Window interface
 declare global {
@@ -80,6 +80,11 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <>
+      {/* _document can't load fonts, so define the next/font variables on
+          :root here; globals.css @theme reads them as --font-sans/-mono. */}
+      <style jsx global>{`
+        ${rootFontVariablesCss}
+      `}</style>
       {/* Google Analytics Script - only load if we have a measurement ID */}
       {gtag.GA_MEASUREMENT_ID && (
         <>

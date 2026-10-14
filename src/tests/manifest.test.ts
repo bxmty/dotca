@@ -12,9 +12,21 @@ describe("web app manifest", () => {
 
   it("ships the icon sizes an installable PWA needs", () => {
     expect(manifest().icons).toEqual([
-      { src: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      {
+        src: "/favicon.ico",
+        sizes: "16x16 32x32 48x48",
+        type: "image/x-icon",
+      },
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      // The oxford tile keeps the pin inside the maskable safe zone, so the
+      // same 512 px file serves as the maskable icon.
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
     ]);
   });
 

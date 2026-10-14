@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import BlogCta from "@/app/components/BlogCta";
 
@@ -19,6 +19,18 @@ describe("BlogCta", () => {
     expect(link).toHaveAttribute("href", "/book");
   });
 
+  it("renders a rule-topped end block with a heading", () => {
+    render(<BlogCta />);
+
+    const block = screen.getByRole("complementary", { name: "Next step" });
+    expect(block).toHaveClass("border-t-2", "border-ink");
+    expect(
+      within(block).getByRole("heading", {
+        name: "Want a second pair of eyes on your setup?",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("renders nothing when the cta is suppressed", () => {
     const { container } = render(<BlogCta cta={{ type: "none" }} />);
 
@@ -29,7 +41,10 @@ describe("BlogCta", () => {
   it("links a lead magnet cta to its resource page", () => {
     render(
       <BlogCta
-        cta={{ type: "lead-magnet", slug: "cyber-insurance-readiness-checklist" }}
+        cta={{
+          type: "lead-magnet",
+          slug: "cyber-insurance-readiness-checklist",
+        }}
       />,
     );
 

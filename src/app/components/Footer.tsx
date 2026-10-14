@@ -1,43 +1,107 @@
+import Link from "next/link";
+import Logo from "./Logo";
+
+type FooterLink = { href: string; label: string };
+type FooterGroup = { heading: string; links: readonly FooterLink[] };
+
+// Grouped columns, so the service landing pages are reachable from every
+// route (the SEO map wants the internal links too).
+const footerGroups: readonly FooterGroup[] = [
+  {
+    heading: "Services",
+    links: [
+      {
+        href: "/services/managed-it-services-ontario",
+        label: "Managed IT, Ontario",
+      },
+      {
+        href: "/services/it-services-for-architecture-firms",
+        label: "Architecture firms",
+      },
+      { href: "/pricing", label: "Pricing" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { href: "/blog", label: "Blog" },
+      { href: "/#contact", label: "Contact" },
+      {
+        href: "https://www.linkedin.com/company/19035825/",
+        label: "LinkedIn",
+      },
+    ],
+  },
+  {
+    heading: "Legal",
+    links: [
+      { href: "/privacy-policy", label: "Privacy policy" },
+      { href: "/terms-of-service", label: "Terms of service" },
+    ],
+  },
+];
+
+// The bottom line shows a short SHA, like `git log --oneline`.
+const SHORT_COMMIT_HASH_LENGTH = 7;
+
+const BAND_LINK_CLASS_NAME = "text-band-ink no-underline hover:underline";
+
+/**
+ * The oxford band, in both modes. bg-band re-points --logo at the cultured
+ * ink and --fig at band-fig (globals.css), so the lockup, accents and focus
+ * rings all read on oxford.
+ */
 export default function Footer() {
+  // Set at build time (Dockerfile, deploy.yml) to the full commit SHA.
   const commitHash = process.env.NEXT_PUBLIC_COMMIT_HASH;
 
   return (
-    <footer className="py-4 py-md-5 border-top mt-auto">
-      <div className="container">
-        <div className="row align-items-center">
-          <div className="col-md-6 mb-4 mb-md-0 text-center text-md-start">
-            <div className="fs-4 fw-semibold mb-2">boximity msp</div>
-            <p className="small text-body-secondary mb-0">
-              © 2026 boximity msp. All rights reserved.
-            </p>
-            {commitHash && (
-              <p className="small text-muted mb-0 mt-1">Build: {commitHash}</p>
-            )}
-          </div>
-          <div className="col-md-6 d-flex justify-content-center justify-content-md-end">
-            <div className="d-flex gap-4 align-items-center">
-              <a href="/privacy-policy" className="text-body-secondary small">
-                Privacy Policy
-              </a>
-              <a href="/terms-of-service" className="text-body-secondary small">
-                Terms of Service
-              </a>
-              <a
-                href="https://www.linkedin.com/company/19035825/"
-                className="text-body-secondary"
-              >
-                <span className="visually-hidden">LinkedIn</span>
-                <svg
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path>
-                </svg>
-              </a>
-            </div>
-          </div>
+    <footer className="bg-band text-band-ink">
+      <div className="mx-auto grid gap-6 px-4 pt-8 pb-[22px] md:px-7">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <Logo height={36} />
+          <nav aria-label="Footer" className="flex flex-wrap gap-10 text-small">
+            {footerGroups.map(({ heading, links }) => {
+              const headingId = `footer-${heading.toLowerCase()}`;
+              return (
+                <div key={heading} className="grid content-start gap-1.5">
+                  <p
+                    id={headingId}
+                    className="m-0 font-mono text-label text-band-fig"
+                  >
+                    {heading}
+                  </p>
+                  <ul
+                    aria-labelledby={headingId}
+                    className="m-0 grid list-none gap-1.5 p-0"
+                  >
+                    {links.map(({ href, label }) => (
+                      <li key={href}>
+                        <Link href={href} className={BAND_LINK_CLASS_NAME}>
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="flex flex-wrap justify-between gap-3 border-t border-band-rule pt-3 font-mono text-label text-band-fig">
+          <span>© 2026 Boximity MSP · Toronto, Ontario</span>
+          <span>
+            <a href="mailto:hi@boximity.ca" className="text-band-fig">
+              hi@boximity.ca
+            </a>
+            {" · "}
+            <a href="tel:+12895390098" className="text-band-fig">
+              (289) 539-0098
+            </a>
+          </span>
+          {commitHash && (
+            <span>Build {commitHash.slice(0, SHORT_COMMIT_HASH_LENGTH)}</span>
+          )}
         </div>
       </div>
     </footer>
