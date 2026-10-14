@@ -8,22 +8,31 @@ const ASSESSMENT_HREF = "/book";
 // lead-magnet CTA uses this label until that lookup ships.
 const LEAD_MAGNET_FALLBACK_LABEL = "Download the guide";
 
-type EndCtaContent = {
+type CtaContent = {
   heading: string;
   lede?: string;
   label: string;
   href: string;
+  /** The rail box's one line and button text (BlogRailOffer). */
+  railText: string;
+  railLabel: string;
 };
 
-/** The end CTA's text and target for a post's (non-suppressed) cta. */
-function getEndCtaContent(
-  cta: Exclude<BlogPostCta, { type: "none" }>,
-): EndCtaContent {
+/** The CTA text and target for a post's cta, or null when suppressed. */
+function getCtaContent(
+  cta: BlogPostCta = { type: "assessment" },
+): CtaContent | null {
+  if (cta.type === "none") {
+    return null;
+  }
+
   if (cta.type === "lead-magnet") {
     return {
       heading: "Keep a copy",
       label: LEAD_MAGNET_FALLBACK_LABEL,
       href: `/resources/${cta.slug}`,
+      railText: "Keep a copy of the guide.",
+      railLabel: LEAD_MAGNET_FALLBACK_LABEL,
     };
   }
 
@@ -32,6 +41,8 @@ function getEndCtaContent(
     lede: "The assessment is free, and you keep the findings.",
     label: "Get a Business-First IT Assessment",
     href: ASSESSMENT_HREF,
+    railText: "Free assessment. You keep the findings.",
+    railLabel: "Book it",
   };
 }
 
@@ -44,13 +55,11 @@ interface BlogCtaProps {
  * instead of a centred button. The lead-magnet variant uses the same block.
  */
 export default function BlogCta({ cta }: BlogCtaProps) {
-  const resolvedCta = cta ?? { type: "assessment" };
+  const content = getCtaContent(cta);
 
-  if (resolvedCta.type === "none") {
+  if (!content) {
     return null;
   }
-
-  const content = getEndCtaContent(resolvedCta);
 
   return (
     <aside
@@ -69,5 +78,29 @@ export default function BlogCta({ cta }: BlogCtaProps) {
         </ButtonLink>
       </div>
     </aside>
+  );
+}
+
+/**
+ * The small pale-purple box that ends the post's left rail (Component Spec,
+ * blog). It makes the same offer as the end CTA, so it is hidden on phones,
+ * where the end CTA follows the body closely.
+ */
+export function BlogRailOffer({ cta }: BlogCtaProps) {
+  const content = getCtaContent(cta);
+
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Offer" className="hidden gap-3 bg-hl p-4 lg:grid">
+      <p className="m-0 text-small leading-snug">{content.railText}</p>
+      <div>
+        <ButtonLink variant="primary" href={content.href}>
+          {content.railLabel}
+        </ButtonLink>
+      </div>
+    </section>
   );
 }
