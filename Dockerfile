@@ -35,8 +35,10 @@ ENV SENTRY_DSN=$SENTRY_DSN
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-# Install dependencies, including dev dependencies needed for build
-RUN npm ci
+# Install dependencies, including dev dependencies needed for build.
+# NODE_ENV=production above would make npm ci skip them (Tailwind's
+# PostCSS plugin is one); the runner copies only the standalone output.
+RUN npm ci --include=dev
 
 # Copy the entire project
 COPY . .
