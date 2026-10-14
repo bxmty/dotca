@@ -343,7 +343,7 @@ pre.code i{font-style:normal;color:var(--muted)}
       <div class="sheet-wrap"><table class="sheet">
         <thead><tr><th>Choice</th><th>Settled</th><th>Rejected</th></tr></thead>
         <tbody>
-          <tr><th><a class="link" href="#hero">Hero</a></th><td>Type only, on the page ground, with no photo</td><td class="m">Oxford band; photo under an overlay</td></tr>
+          <tr><th><a class="link" href="#hero">Hero</a></th><td>Type only, on the page ground, with no photo. A contour ground on every hero; waypoints on the home hero from <code>lg</code> up (2026-10-08)</td><td class="m">Oxford band; photo under an overlay</td></tr>
           <tr><th><a class="link" href="#bands">Section bands</a></th><td>Rules only. Oxford appears only in the footer.</td><td class="m">Alternating oxford bands</td></tr>
           <tr><th><a class="link" href="#pricing">Pricing on a phone</a></th><td>Plans stack below 900 px</td><td class="m">A sideways-scrolling table</td></tr>
           <tr><th><a class="link" href="#blog">Blog index</a></th><td>A ruled list with no cover images</td><td class="m">Image cards</td></tr>
@@ -428,7 +428,7 @@ pre.code i{font-style:normal;color:var(--muted)}
   <section class="row" id="hero">
     <p class="lbl"><b>Hero</b><span>/ · /services/* · /pricing</span></p>
     <div class="body">
-      <div class="ask"><span class="q">Q1 · Hero treatment</span><p>Today's hero is a stock office photo under a 75% black overlay. That image is the LCP element on mobile. A type-only hero removes the image request and fits the Technical Manual direction. The cost is that the top of the page has no picture.</p>
+      <div class="ask"><span class="q">Q1 · Hero treatment</span><p>Decided: the hero is type only on every route, over a contour ground, and the home hero adds a waypoint route in its right half on desktop (rules below). The demo here shows the type alone. The original question: today's hero is a stock office photo under a 75% black overlay. That image is the LCP element on mobile. A type-only hero removes the image request and fits the Technical Manual direction. The cost is that the top of the page has no picture.</p>
         <div class="seg" role="group" aria-label="Hero variant" data-target="heroDemo" data-attr="v">
           <button type="button" data-val="type" aria-pressed="true">Type only (proposed)</button>
           <button type="button" data-val="band" aria-pressed="false">Oxford band</button>
@@ -448,7 +448,10 @@ pre.code i{font-style:normal;color:var(--muted)}
         <li><b>Type</b><span>60 px Chivo Light, tracked −0.02 em, 17 ch measure. The subhead is 20 px muted. Left-aligned on every route, including /pricing, which is centred today.</span></li>
         <li><b>Fact line</b><span>An optional mono strip under a rule, for figures that are already published (the price at §2.3/§4.7). It isn't a stat banner. Only the published figure is queen; words like "Toronto" are ink.</span></li>
         <li><b>Dashes</b><span>A word joiner and no-break space go before a dash in display type (<code>&amp;#8288;&amp;nbsp;—</code>), so no line starts with "—".</span></li>
-        <li><b>Height</b><span>Set by the content. <code>vh-75</code> goes away.</span></li>
+        <li><b>Contour ground</b><span>Decided 2026-10-08 (hero prototype, round 2). Every hero route (/, /services/*, /pricing) sits on a topographic contour ground: inline SVG behind the copy, strongest top-right and fading out behind the text and toward the bottom edge. Index contours (every fifth) are queen at 1.4 px, the rest are rule at 0.8 px, so it follows the theme. Below <code>md</code> it dims to 35% so the subhead reads. It is decoration: <code>aria-hidden</code>, no pointer events.</span></li>
+        <li><b>Waypoints</b><span>Home only, from <code>lg</code> up (round 3, variant B). The right half plots one working day over the contours: four timestamped stops (06:40 Job site · 09:15 On the road · 13:30 Client's office · 21:05 Home) joined by a dashed queen route, captioned "One working day · four offices · one IT team" bottom-right. Each stop is a ringed queen marker, the time in 20 px mono ink, the place as a muted uppercase mono label. The stops are an ordered list for assistive tech; the route line is hidden. Below <code>lg</code> the waypoints don't render and the hero is the single column above. Service and pricing heroes carry the contours only.</span></li>
+        <li><b>LCP</b><span>Decision 7 still holds: the contours and waypoints are inline SVG and text, so there is no image request and the H1 stays the first text and the LCP element.</span></li>
+        <li><b>Height</b><span>Set by the content. <code>vh-75</code> goes away. With waypoints, the home hero has a 640 px minimum height from <code>lg</code> up so the stops have room.</span></li>
         <li><b>Dark</b><span>Type-only follows the theme. The band and photo variants are oxford in both modes, and their buttons invert to cultured on oxford.</span></li>
       </ul>
     </div>
