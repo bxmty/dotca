@@ -161,7 +161,9 @@ describe("BlogPost", () => {
     ])("offers the assessment for %s", (_name, overrides) => {
       renderPost(overrides);
 
-      const box = within(getRail()).getByRole("region", { name: "Offer" });
+      const box = within(getRail()).getByRole("region", {
+        name: "Free assessment offer",
+      });
       expect(box).toHaveTextContent("Free assessment. You keep the findings.");
       expect(
         within(box).getByRole("link", { name: "Book it" }),
@@ -171,7 +173,9 @@ describe("BlogPost", () => {
     it("offers the guide with the end CTA's label and target", () => {
       renderPost({ cta: { type: "lead-magnet", slug: "backup-checklist" } });
 
-      const box = within(getRail()).getByRole("region", { name: "Offer" });
+      const box = within(getRail()).getByRole("region", {
+        name: "Free guide offer",
+      });
       const endCta = screen.getByRole("complementary", { name: "Next step" });
       const boxLink = within(box).getByRole("link");
       const endLink = within(endCta).getByRole("link");
@@ -184,9 +188,7 @@ describe("BlogPost", () => {
     it("shows no box when the cta is suppressed", () => {
       renderPost({ cta: { type: "none" } });
 
-      expect(
-        within(getRail()).queryByRole("region", { name: "Offer" }),
-      ).not.toBeInTheDocument();
+      expect(within(getRail()).queryByRole("region")).not.toBeInTheDocument();
       expect(
         within(getRail()).queryByRole("link", { name: /book|guide/i }),
       ).not.toBeInTheDocument();
@@ -197,14 +199,18 @@ describe("BlogPost", () => {
 
       // bg-hl alone would leave dark-scheme ink and button colours on the
       // pale purple; .hl switches every token to its light value.
-      const box = within(getRail()).getByRole("region", { name: "Offer" });
+      const box = within(getRail()).getByRole("region", {
+        name: "Free assessment offer",
+      });
       expect(box).toHaveClass("hl");
     });
 
     it("hides the box on phones, where the end CTA covers it", () => {
       renderPost();
 
-      const box = within(getRail()).getByRole("region", { name: "Offer" });
+      const box = within(getRail()).getByRole("region", {
+        name: "Free assessment offer",
+      });
       expect(box).toHaveClass("hidden", "lg:grid");
     });
   });

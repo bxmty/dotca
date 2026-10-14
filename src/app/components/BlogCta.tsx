@@ -8,58 +8,67 @@ const ASSESSMENT_HREF = "/book";
 // lead-magnet CTA uses this label until that lookup ships.
 const LEAD_MAGNET_FALLBACK_LABEL = "Download the guide";
 
+const DEFAULT_CTA: BlogPostCta = { type: "assessment" };
+
+/** A cta that shows an offer: anything but `none`. */
+type ShownBlogPostCta = Exclude<BlogPostCta, { type: "none" }>;
+
+/** The props shared by the end CTA and the rail box: the post's cta. */
+interface BlogPostCtaProps {
+  cta?: BlogPostCta;
+}
+
 type CtaContent = {
-  heading: string;
-  lede?: string;
-  label: string;
+  /** The target both surfaces link to. */
   href: string;
-  /** The rail box's one line and button text (BlogRailOffer). */
-  railText: string;
-  railLabel: string;
+  /** The end CTA block (BlogCta). */
+  end: { heading: string; lede?: string; label: string };
+  /** The rail box's region name, one line and button text (BlogRailOffer). */
+  rail: { regionName: string; text: string; label: string };
 };
 
-/** The CTA text and target for a post's cta, or null when suppressed. */
-function getCtaContent(
-  cta: BlogPostCta = { type: "assessment" },
-): CtaContent | null {
-  if (cta.type === "none") {
-    return null;
-  }
-
+/**
+ * The single mapping from a shown cta to the copy and target of both
+ * surfaces, so the end CTA and the rail box cannot drift apart.
+ */
+function getCtaContent(cta: ShownBlogPostCta): CtaContent {
   if (cta.type === "lead-magnet") {
     return {
-      heading: "Keep a copy",
-      label: LEAD_MAGNET_FALLBACK_LABEL,
       href: `/resources/${cta.slug}`,
-      railText: "Keep a copy of the guide.",
-      railLabel: LEAD_MAGNET_FALLBACK_LABEL,
+      end: { heading: "Keep a copy", label: LEAD_MAGNET_FALLBACK_LABEL },
+      rail: {
+        regionName: "Free guide offer",
+        text: "Keep a copy of the guide.",
+        label: LEAD_MAGNET_FALLBACK_LABEL,
+      },
     };
   }
 
   return {
-    heading: "Want a second pair of eyes on your setup?",
-    lede: "The assessment is free, and you keep the findings.",
-    label: "Get a Business-First IT Assessment",
     href: ASSESSMENT_HREF,
-    railText: "Free assessment. You keep the findings.",
-    railLabel: "Book it",
+    end: {
+      heading: "Want a second pair of eyes on your setup?",
+      lede: "The assessment is free, and you keep the findings.",
+      label: "Get a Business-First IT Assessment",
+    },
+    rail: {
+      regionName: "Free assessment offer",
+      text: "Free assessment. You keep the findings.",
+      label: "Book it",
+    },
   };
-}
-
-interface BlogCtaProps {
-  cta?: BlogPostCta;
 }
 
 /**
  * The post's end CTA (Component Spec, blog): a block under a 2 px ink rule
  * instead of a centred button. The lead-magnet variant uses the same block.
  */
-export default function BlogCta({ cta }: BlogCtaProps) {
-  const content = getCtaContent(cta);
-
-  if (!content) {
+export default function BlogCta({ cta = DEFAULT_CTA }: BlogPostCtaProps) {
+  if (cta.type === "none") {
     return null;
   }
+
+  const ctaContent = getCtaContent(cta);
 
   return (
     <aside
@@ -67,14 +76,14 @@ export default function BlogCta({ cta }: BlogCtaProps) {
       className="mt-6 grid gap-3 border-t-2 border-ink pt-4"
     >
       <h2 className="m-0 text-h3 leading-tight font-semibold">
-        {content.heading}
+        {ctaContent.end.heading}
       </h2>
-      {content.lede && (
-        <p className="m-0 text-body text-muted">{content.lede}</p>
+      {ctaContent.end.lede && (
+        <p className="m-0 text-body text-muted">{ctaContent.end.lede}</p>
       )}
       <div>
-        <ButtonLink variant="primary" href={content.href}>
-          {content.label}
+        <ButtonLink variant="primary" href={ctaContent.href}>
+          {ctaContent.end.label}
         </ButtonLink>
       </div>
     </aside>
@@ -86,19 +95,22 @@ export default function BlogCta({ cta }: BlogCtaProps) {
  * blog). It makes the same offer as the end CTA, so it is hidden on phones,
  * where the end CTA follows the body closely.
  */
-export function BlogRailOffer({ cta }: BlogCtaProps) {
-  const content = getCtaContent(cta);
-
-  if (!content) {
+export function BlogRailOffer({ cta = DEFAULT_CTA }: BlogPostCtaProps) {
+  if (cta.type === "none") {
     return null;
   }
 
+  const ctaContent = getCtaContent(cta);
+
   return (
-    <section aria-label="Offer" className="hl hidden gap-3 p-4 lg:grid">
-      <p className="m-0 text-small leading-snug">{content.railText}</p>
+    <section
+      aria-label={ctaContent.rail.regionName}
+      className="hl hidden gap-3 p-4 lg:grid"
+    >
+      <p className="m-0 text-small leading-snug">{ctaContent.rail.text}</p>
       <div>
-        <ButtonLink variant="primary" href={content.href}>
-          {content.railLabel}
+        <ButtonLink variant="primary" href={ctaContent.href}>
+          {ctaContent.rail.label}
         </ButtonLink>
       </div>
     </section>
