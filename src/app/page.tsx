@@ -1,6 +1,7 @@
 import { ButtonLink } from "./components/Button";
 import ContactForm from "./components/ContactForm";
 import { KeyFigureGrid, type KeyFigureProps } from "./components/KeyFigure";
+import HeroWaypoints from "./components/HeroWaypoints";
 import Offer from "./components/Offer";
 import PageHero from "./components/PageHero";
 import RuledGrid from "./components/RuledGrid";
@@ -175,6 +176,7 @@ export default function Home() {
             </span>
           </>
         }
+        aside={<HeroWaypoints />}
       />
 
       <Section>

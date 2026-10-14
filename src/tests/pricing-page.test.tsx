@@ -34,6 +34,17 @@ describe("PricingPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the hero to contours, with no waypoints", () => {
+    render(<PricingPage />);
+
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
+    expect(hero.querySelector("svg path")).not.toBeNull();
+    expect(within(hero).queryByRole("list")).not.toBeInTheDocument();
+    expect(
+      within(hero).queryByText("One working day · four offices · one IT team"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders one table column per plan", () => {
     render(<PricingPage />);
 

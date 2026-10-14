@@ -121,6 +121,17 @@ describe("ServiceLandingPage", () => {
     expect(container.querySelector("img, picture")).toBeNull();
   });
 
+  it("keeps the hero to contours, with no waypoints", () => {
+    render(<ServiceLandingPage content={content} />);
+
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
+    expect(hero.querySelector("svg path")).not.toBeNull();
+    expect(within(hero).queryByRole("list")).not.toBeInTheDocument();
+    expect(
+      within(hero).queryByText("One working day · four offices · one IT team"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the why cards as a ruled grid under a section head", () => {
     render(<ServiceLandingPage content={content} />);
 

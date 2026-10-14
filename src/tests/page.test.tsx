@@ -60,6 +60,25 @@ describe("Home page", () => {
     );
   });
 
+  it("plots one working day over the hero's right half", () => {
+    render(<Home />);
+
+    const hero = getHero();
+    const stops = within(within(hero).getByRole("list")).getAllByRole(
+      "listitem",
+    );
+    expect(stops.map((stop) => stop.textContent)).toEqual([
+      "06:40Job site",
+      "09:15On the road",
+      "13:30Client's office",
+      "21:05Home",
+    ]);
+    expect(
+      within(hero).getByText("One working day · four offices · one IT team"),
+    ).toBeInTheDocument();
+    expect(hero).toHaveClass("lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]");
+  });
+
   it("renders all four key figures, with no source lines yet", () => {
     render(<Home />);
 

@@ -16,7 +16,11 @@ describe("PageHero", () => {
       name: "Technology Solutions That Fit Your Budget",
     });
     // Decision 7: the H1 is the first text in the hero (the LCP element).
-    expect(container.querySelector("section")?.firstElementChild).toBe(heading);
+    const section = container.querySelector("section");
+    expect(section?.querySelector("h1, p, a, span")).toBe(heading);
+    expect(section?.textContent).toMatch(
+      /^Technology Solutions That Fit Your Budget/,
+    );
     expect(heading).toHaveClass(
       "font-light",
       "text-section",
@@ -51,14 +55,10 @@ describe("PageHero", () => {
   });
 
   it("renders only the heading and lead when actions and facts are omitted", () => {
-    const { container } = render(
-      <PageHero heading="Pricing" lead="Choose a package." />,
-    );
+    render(<PageHero heading="Pricing" lead="Choose a package." />);
 
-    const copy = Array.from(
-      container.querySelector("section")?.children ?? [],
-    ).filter((child) => child.getAttribute("aria-hidden") !== "true");
-    expect(copy).toHaveLength(2);
+    const copy = screen.getByRole("heading", { level: 1 }).parentElement;
+    expect(copy?.children).toHaveLength(2);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
@@ -78,8 +78,8 @@ describe("PageHero", () => {
       expect(ground).toHaveAttribute("aria-hidden", "true");
       expect(ground).toHaveClass("absolute", "inset-0", "-z-10");
       expect(section).toHaveClass("relative", "isolate", "overflow-hidden");
-      // Decision 7: the H1 is still the first thing in the hero.
-      expect(section?.firstElementChild?.tagName).toBe("H1");
+      // Decision 7: the H1 is still the first text in the hero.
+      expect(section?.textContent).toMatch(/^Pricing/);
     });
 
     it("is inline SVG cropped to cover the hero, with no image request", () => {
@@ -117,6 +117,42 @@ describe("PageHero", () => {
       expect(ground?.getAttribute("style")).toContain(
         "linear-gradient(to right, transparent 10%, black 60%), linear-gradient(to bottom, black 60%, transparent)",
       );
+    });
+  });
+
+  describe("aside", () => {
+    it("gives the hero no right half when there is no aside", () => {
+      const { container } = render(
+        <PageHero heading="Pricing" lead="Choose a package." />,
+      );
+
+      const section = container.querySelector("section");
+      expect(section?.className).not.toMatch(/lg:grid-cols|lg:min-h/);
+    });
+
+    it("puts the aside in a right half from lg, after the copy", () => {
+      const { container } = render(
+        <PageHero
+          heading="IT that just works"
+          lead="One flat price."
+          aside={<div data-testid="aside">Waypoints</div>}
+        />,
+      );
+
+      const section = container.querySelector("section")!;
+      const aside = screen.getByTestId("aside");
+      const copy = screen.getByRole("heading", { level: 1 }).parentElement!;
+      expect(section).toHaveClass(
+        "lg:min-h-[640px]",
+        "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]",
+      );
+      expect(copy.parentElement).toBe(section);
+      expect(aside.parentElement).toBe(section);
+      expect(
+        copy.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      // Decision 7: the H1 is still the first text in the hero.
+      expect(section.textContent).toMatch(/^IT that just works/);
     });
   });
 });
