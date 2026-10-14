@@ -7,6 +7,7 @@ import ArchitectureFirmsPage from "@/app/services/it-services-for-architecture-f
 import { architectureFirmsContent } from "@/app/services/it-services-for-architecture-firms/content";
 import OntarioPage from "@/app/services/managed-it-services-ontario/page";
 import { ontarioContent } from "@/app/services/managed-it-services-ontario/content";
+import { expectContoursWithoutWaypoints } from "./heroExpectations";
 
 // Representative content: every optional section is present, and the key
 // figures include one with a source and one without (decision 5).
@@ -124,12 +125,9 @@ describe("ServiceLandingPage", () => {
   it("keeps the hero to contours, with no waypoints", () => {
     render(<ServiceLandingPage content={content} />);
 
-    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
-    expect(hero.querySelector("svg path")).not.toBeNull();
-    expect(within(hero).queryByRole("list")).not.toBeInTheDocument();
-    expect(
-      within(hero).queryByText("One working day · four offices · one IT team"),
-    ).not.toBeInTheDocument();
+    expectContoursWithoutWaypoints(
+      screen.getByRole("heading", { level: 1 }).closest("section")!,
+    );
   });
 
   it("renders the why cards as a ruled grid under a section head", () => {

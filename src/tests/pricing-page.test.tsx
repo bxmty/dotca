@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import PricingPage from "@/app/pricing/page";
 import { pricingPlans } from "@/app/pricing/plans";
+import { expectContoursWithoutWaypoints } from "./heroExpectations";
 
 // The pricing sheet renders twice from one pricingPlans source: a ruled table
 // from 900 px and stacked blocks below it (CSS hides the other).
@@ -37,12 +38,9 @@ describe("PricingPage", () => {
   it("keeps the hero to contours, with no waypoints", () => {
     render(<PricingPage />);
 
-    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
-    expect(hero.querySelector("svg path")).not.toBeNull();
-    expect(within(hero).queryByRole("list")).not.toBeInTheDocument();
-    expect(
-      within(hero).queryByText("One working day · four offices · one IT team"),
-    ).not.toBeInTheDocument();
+    expectContoursWithoutWaypoints(
+      screen.getByRole("heading", { level: 1 }).closest("section")!,
+    );
   });
 
   it("renders one table column per plan", () => {

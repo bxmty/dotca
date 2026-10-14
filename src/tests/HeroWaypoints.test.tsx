@@ -1,18 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import HeroWaypoints from "@/app/components/HeroWaypoints";
+import { expectWaypointStops, WAYPOINT_CAPTION } from "./heroExpectations";
 
 describe("HeroWaypoints", () => {
   it("lists one working day's four stops in order, with time and place", () => {
-    render(<HeroWaypoints />);
+    const { container } = render(<HeroWaypoints />);
 
-    const stops = within(screen.getByRole("list")).getAllByRole("listitem");
-    expect(stops.map((stop) => stop.textContent)).toEqual([
-      "06:40Job site",
-      "09:15On the road",
-      "13:30Client's office",
-      "21:05Home",
-    ]);
+    const stops = expectWaypointStops(container);
     expect(within(stops[0]).getByText("06:40")).toHaveClass(
       "font-mono",
       "text-h3",
@@ -25,12 +20,25 @@ describe("HeroWaypoints", () => {
     );
   });
 
+  it("separates time from place for assistive tech only", () => {
+    render(<HeroWaypoints />);
+
+    const [firstStop] = within(screen.getByRole("list")).getAllByRole(
+      "listitem",
+    );
+    expect(within(firstStop).getByText(",")).toHaveClass("sr-only");
+  });
+
+  it("keeps list semantics on the unstyled list (VoiceOver drops them)", () => {
+    render(<HeroWaypoints />);
+
+    expect(screen.getByRole("list")).toHaveAttribute("role", "list");
+  });
+
   it("captions the day in the bottom-right corner", () => {
     render(<HeroWaypoints />);
 
-    const caption = screen.getByText(
-      "One working day · four offices · one IT team",
-    );
+    const caption = screen.getByText(WAYPOINT_CAPTION);
     expect(caption).toHaveClass("absolute", "right-0", "bottom-0", "uppercase");
   });
 

@@ -37,7 +37,8 @@ export default function HeroWaypoints() {
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <ol className="m-0 list-none p-0">
+      {/* role="list": Safari/VoiceOver drops list semantics on list-none. */}
+      <ol role="list" className="m-0 list-none p-0">
         {STOPS.map((stop) => (
           <li
             key={stop.time}
@@ -54,6 +55,8 @@ export default function HeroWaypoints() {
               <span className="font-mono text-h3 leading-none text-ink tabular-nums">
                 {stop.time}
               </span>
+              {/* Read as "06:40, Job site", not "06:40Job site". */}
+              <span className="sr-only">, </span>
               <span className={`text-muted ${MONO_LABEL}`}>{stop.place}</span>
             </span>
           </li>
