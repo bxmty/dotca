@@ -11,11 +11,15 @@ const STOPS = [
 
 const MONO_LABEL = "font-mono text-label tracking-[.08em] uppercase";
 
+const ROUTE_STROKE_WIDTH_PX = 1.5;
+/** Dash and gap lengths, in px (the stroke doesn't scale). */
+const ROUTE_DASH_PATTERN = "6 6";
+
 export default function HeroWaypoints() {
   return (
     <div className="relative hidden lg:block">
       {/* Stretched to the column, so stops and route share % coordinates;
-          the stroke stays 1.5px however the box is stretched. */}
+          the stroke keeps its px width however the box is stretched. */}
       <svg
         aria-hidden="true"
         focusable="false"
@@ -27,8 +31,8 @@ export default function HeroWaypoints() {
           points={STOPS.map((stop) => `${stop.x},${stop.y}`).join(" ")}
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.5}
-          strokeDasharray="6 6"
+          strokeWidth={ROUTE_STROKE_WIDTH_PX}
+          strokeDasharray={ROUTE_DASH_PATTERN}
           vectorEffect="non-scaling-stroke"
         />
       </svg>

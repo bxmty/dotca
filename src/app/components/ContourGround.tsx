@@ -9,6 +9,10 @@ import { CONTOUR_VIEWBOX, traceContourRings } from "@/lib/contours";
 
 const RINGS = traceContourRings();
 
+/** Index contours (every fifth ring) are drawn heavier than the rest. */
+const INDEX_STROKE_WIDTH_PX = 1.4;
+const MINOR_STROKE_WIDTH_PX = 0.8;
+
 const FADE_GRADIENTS =
   "linear-gradient(to right, transparent 10%, black 60%), linear-gradient(to bottom, black 60%, transparent)";
 
@@ -36,7 +40,9 @@ export default function ContourGround() {
           d={ring.path}
           fill="none"
           stroke="currentColor"
-          strokeWidth={ring.isIndex ? 1.4 : 0.8}
+          strokeWidth={
+            ring.isIndex ? INDEX_STROKE_WIDTH_PX : MINOR_STROKE_WIDTH_PX
+          }
           className={ring.isIndex ? "text-fig" : "text-rule"}
         />
       ))}
