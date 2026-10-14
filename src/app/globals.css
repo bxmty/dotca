@@ -147,10 +147,6 @@
     @apply text-h2 leading-[1.08] font-light tracking-[-0.02em] text-balance md:text-section;
   }
 
-  .prose :where(.dek) {
-    @apply text-h3 leading-[1.4] text-muted;
-  }
-
   .prose :where(.meta) {
     @apply flex flex-wrap gap-x-4.5 gap-y-1 border-y border-rule py-2 font-mono text-label text-muted;
   }
