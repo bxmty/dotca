@@ -277,73 +277,7 @@
   color: var(--muted);
 }
 
-/* Legacy rules from the Bootstrap era. Pages still use some of these
- * classes until they are restyled (#617-#622); delete each rule with the
- * last markup that uses it. */
-
-:root {
-  --bs-font-sans-serif:
-    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
-    "Liberation Sans", Arial, sans-serif;
-  --bs-border-radius: 0.25rem;
-}
-
 html,
 body {
   height: 100%;
-}
-
-/* Custom utility classes */
-.object-fit-cover {
-  object-fit: cover;
-}
-
-/* Z-index utility classes - using inline styles for critical elements */
-.z-index-0 {
-  z-index: 0 !important;
-}
-
-.z-index-1 {
-  z-index: 1 !important;
-}
-
-.z-index-2 {
-  z-index: 2 !important;
-}
-
-/* Dark band section, dark in both themes. Every .bg-alt element must also
- * carry data-bs-theme="dark" so Bootstrap themes nested components (cards,
- * accordions, borders) for the dark surface instead of the page theme. */
-.bg-alt {
-  --bs-body-bg: #2b3035;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-}
-
-/* Lift nested surfaces slightly off the band */
-.bg-alt .card:not(.bg-dark) {
-  --bs-card-bg: #343a40;
-}
-
-.bg-alt .accordion {
-  --bs-accordion-bg: #343a40;
-}
-
-/* Dark theme adjustments */
-[data-bs-theme="dark"] {
-  --bs-link-color: #8bb9fe;
-  --bs-link-hover-color: #a7c7fd;
-
-  /* Default outline-primary border/text is too dim on dark backgrounds */
-  .btn-outline-primary {
-    --bs-btn-color: #6ea8fe;
-    --bs-btn-border-color: #6ea8fe;
-    --bs-btn-hover-bg: #6ea8fe;
-    --bs-btn-hover-color: #000;
-  }
-
-  /* Lift cards off the page background */
-  .card {
-    --bs-card-bg: #2b3035;
-  }
 }
