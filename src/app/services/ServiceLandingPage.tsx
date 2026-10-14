@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import CheckIcon from "@/app/components/CheckIcon";
+import FaqList from "@/app/components/FaqList";
 import { HERO_BLUR_DATA_URL } from "./heroImage";
 
 /**
@@ -407,38 +408,7 @@ export default function ServiceLandingPage({
           </h2>
           <div className="row justify-content-center">
             <div className="col-lg-8">
-              <div className="accordion" id="faqAccordion">
-                {faq.items.map((item, index) => {
-                  const isFirst = index === 0;
-                  const isLast = index === faq.items.length - 1;
-                  return (
-                    <div
-                      key={item.question}
-                      className={`accordion-item border${isLast ? "" : " mb-3"}`}
-                    >
-                      <h3 className="accordion-header">
-                        <button
-                          className={`accordion-button fw-medium${isFirst ? "" : " collapsed"}`}
-                          type="button"
-                          data-bs-toggle="collapse"
-                          data-bs-target={`#faq${index + 1}`}
-                        >
-                          {item.question}
-                        </button>
-                      </h3>
-                      <div
-                        id={`faq${index + 1}`}
-                        className={`accordion-collapse collapse${isFirst ? " show" : ""}`}
-                        data-bs-parent="#faqAccordion"
-                      >
-                        <div className="accordion-body text-body-secondary">
-                          {item.answer}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <FaqList items={faq.items} />
             </div>
           </div>
         </div>

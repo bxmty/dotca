@@ -10,17 +10,17 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// Mock the BootstrapClient component
-jest.mock("@/app/components/BootstrapClient", () => {
-  return function MockBootstrapClient() {
-    return <div data-testid="bootstrap-client"></div>;
+// Mock the ThemeSync component
+jest.mock("@/app/components/ThemeSync", () => {
+  return function MockThemeSync() {
+    return <div data-testid="theme-sync"></div>;
   };
 });
 
 describe("RootLayout Component", () => {
-  it("renders children and BootstrapClient", () => {
+  it("renders children and ThemeSync", () => {
     // Simplified test - layout rendering is complex in test environment
-    // The BootstrapClient mock is tested separately
+    // The ThemeSync mock is tested separately
     expect(true).toBe(true);
   });
 

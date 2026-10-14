@@ -71,8 +71,11 @@ test.describe("Post-Deployment Navigation Tests", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // The navbar is a Bootstrap collapse: the toggler opens #navbarNav
-    const mobileToggle = page.locator(".navbar-toggler");
+    // The navbar toggle is a React disclosure button labelled Menu/Close
+    const mobileToggle = page.getByRole("button", {
+      name: "Menu",
+      exact: true,
+    });
     await expect(mobileToggle).toBeVisible();
     await mobileToggle.click();
 

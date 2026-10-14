@@ -1,0 +1,818 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Boximity Component Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;600&family=Chivo+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the Brand Sheet's grammar — mono label column + specimen column, ruled sections. Each specimen is drawn in the settled tokens, so the page's light/dark is the real light/dark. */
+:root{
+  --bg:#F8F9FB; --cell:#FFFFFF; --ink:#191A1C; --muted:#555C67; --rule:#D3D8DF; --field:#7D8590;
+  --cta:#436D97; --cta-ink:#FFFFFF; --fig:#436D97; --logo:#03194A;
+  --band:#03194A; --band-ink:#F8F9FB; --band-fig:#8EA7C1; --band-rule:#2A3F6B;
+  --hl:#E9DDE9;
+  --danger:#D7263D; --r-ctl:2px;
+  --sans:"Chivo",Helvetica,Arial,sans-serif;
+  --mono:"Chivo Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16171A;--cell:#1C1E22;--ink:#E6E7E9;--muted:#9EA4AD;--rule:#33373D;--field:#6E7583;--cta:#7B99B6;--cta-ink:#16171A;--fig:#7B99B6;--logo:#F8F9FB;--danger:#FF7A85;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#16171A;--cell:#1C1E22;--ink:#E6E7E9;--muted:#9EA4AD;--rule:#33373D;--field:#6E7583;--cta:#7B99B6;--cta-ink:#16171A;--fig:#7B99B6;--logo:#F8F9FB;--danger:#FF7A85;color-scheme:dark}
+/* the highlight: pale purple in both modes, and a light-token island inside it */
+.hl{--ink:#191A1C;--muted:#555C67;--rule:#D3D8DF;--field:#7D8590;--cta:#436D97;--cta-ink:#FFFFFF;--fig:#436D97;background:var(--hl);color:var(--ink);color-scheme:light}
+::selection{background:var(--hl);color:#191A1C}
+.hl ::selection,.hl::selection{background:#191A1C;color:#E9DDE9}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);padding-inline:16px;padding-block:0;font-kerning:normal}
+.wrap{max-width:1120px;margin:0 auto}
+:focus-visible{outline:2px solid var(--fig);outline-offset:2px}
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+p{margin:0}
+code,.mono{font-family:var(--mono)}
+code{font-size:.85em}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a{color:inherit}
+
+/* page chrome */
+.mast{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-block:20px;border-bottom:1px solid var(--rule)}
+.lockup{display:block;color:var(--logo);flex:none;line-height:0}
+.lockup svg{display:block;height:34px;width:auto}
+.theme{display:flex;border:1px solid var(--rule);font-family:var(--mono);font-size:12px}
+.theme button{font:inherit;background:none;border:0;color:var(--muted);padding:6px 10px;cursor:pointer}
+.theme button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);gap:12px 32px;padding-block:40px;border-top:1px solid var(--rule)}
+.row:first-of-type{border-top:0}
+@media (max-width:760px){.row{grid-template-columns:minmax(0,1fr)}}
+.lbl{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:.4em;display:grid;gap:6px;align-content:start}
+.lbl b{color:var(--ink);font-weight:500}
+.body{display:grid;gap:20px;align-content:start;min-width:0}
+.lede h1{font-weight:300;font-size:42px;line-height:1.08;letter-spacing:-.02em;max-width:20ch}
+.lede p{font-size:18px;line-height:1.5;color:var(--muted);max-width:60ch}
+.row > .body > h2{font-weight:600;font-size:28px;line-height:1.15}
+.note{color:var(--muted);max-width:66ch}
+.rules{margin:0;padding:0;list-style:none;display:grid;gap:8px;max-width:72ch}
+.rules li{display:grid;grid-template-columns:8rem 1fr;gap:16px;color:var(--muted);font-size:14px}
+.rules li b{font-family:var(--mono);font-weight:400;font-size:12px;color:var(--ink);padding-top:.25em}
+@media (max-width:520px){.rules li{grid-template-columns:1fr;gap:2px}}
+.stage{border:1px solid var(--rule);background:var(--bg);min-width:0;overflow:hidden}
+.stage-cap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--rule);padding:8px 14px;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--cell)}
+.pad{padding:28px}
+@media (max-width:520px){.pad{padding:18px}}
+.ask{border:1px solid var(--fig);padding:14px 16px;display:grid;gap:10px;max-width:72ch}
+.ask p{font-size:14px}
+.ask .q{font-family:var(--mono);font-size:12px;color:var(--fig)}
+.seg{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);width:max-content;max-width:100%}
+.seg button{font:500 12px/1 var(--mono);background:var(--cell);color:var(--muted);border:0;border-left:1px solid var(--rule);padding:9px 12px;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* sheets (inventory + pricing) */
+.sheet-wrap{overflow-x:auto;min-width:0}
+.sheet{width:100%;border-collapse:collapse;background:var(--cell);border:1px solid var(--rule);font-size:14px}
+.sheet th,.sheet td{text-align:left;padding:10px 14px;border-top:1px solid var(--rule);vertical-align:top}
+.sheet thead th{border-top:0;font-family:var(--mono);font-weight:400;font-size:12px;color:var(--muted)}
+.sheet tbody th{font-weight:600}
+.sheet td.m{color:var(--muted)}
+.sheet code{font-size:12px}
+.st{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.st.new{color:var(--fig)}
+
+/* ========== THE COMPONENTS ========== */
+/* buttons */
+.btn{border-radius:var(--r-ctl);display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px/1 var(--sans);padding:14px 20px;text-decoration:none;border:1px solid transparent;cursor:pointer;min-height:48px;white-space:nowrap}
+.btn-primary{background:var(--cta);color:var(--cta-ink)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-secondary{border-color:var(--ink);color:var(--ink);background:transparent}
+.btn-secondary:hover{background:var(--ink);color:var(--bg)}
+.btn-block{width:100%}
+.btn[disabled]{background:var(--cell);border-color:var(--field);color:var(--muted);cursor:not-allowed;filter:none}
+.link{color:var(--ink);text-decoration:underline;text-decoration-color:var(--fig);text-underline-offset:3px;text-decoration-thickness:1px}
+.link:hover{text-decoration-thickness:2px}
+.ctas{display:flex;gap:10px;flex-wrap:wrap}
+
+/* nav */
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--rule);background:var(--bg)}
+.nav ul{list-style:none;margin:0;padding:0;display:flex;gap:24px;font-size:16px}
+.nav ul a{text-decoration:none;color:var(--ink)}
+.nav ul a:hover{text-decoration:underline;text-decoration-color:var(--fig);text-underline-offset:6px}
+.nav ul a[aria-current]{box-shadow:inset 0 -2px 0 var(--fig)}
+.nav .navcta{font-size:14px;padding:10px 14px;min-height:40px}
+.nav-right{display:flex;align-items:center;gap:24px}
+.phone{width:min(375px,100%);border:1px solid var(--rule);background:var(--bg)}
+.phone .nav{padding:14px 16px}
+.phone .nav .lockup svg{height:28px}
+.menu-btn{border-radius:var(--r-ctl);font:500 12px/1 var(--mono);background:none;border:1px solid var(--rule);color:var(--ink);padding:10px 12px;min-height:44px;cursor:pointer}
+.menu-panel{border-bottom:1px solid var(--rule)}
+.menu-panel ul{list-style:none;margin:0;padding:0}
+.menu-panel li a{display:flex;justify-content:space-between;padding:14px 16px;border-top:1px solid var(--rule);text-decoration:none;color:var(--ink);font-size:16px}
+.menu-panel li:first-child a{border-top:0}
+.menu-panel .pad-s{padding:14px 16px;border-top:1px solid var(--rule)}
+.navs{display:flex;gap:20px;flex-wrap:wrap;align-items:start}
+
+/* hero */
+.hero{padding:56px 28px 48px;display:grid;gap:22px;position:relative}
+.hero h1{font-weight:300;font-size:clamp(42px,5.4vw,60px);line-height:1.04;letter-spacing:-.02em;max-width:17ch}
+.hero p{font-size:20px;line-height:1.4;max-width:52ch;color:var(--muted)}
+.hero .facts{display:flex;gap:28px;flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:14px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.hero .facts b{color:var(--ink);font-weight:500}
+.hero .facts b.fig{color:var(--fig)}
+.hero[data-v="band"]{background:var(--band);color:var(--band-ink)}
+.hero[data-v="band"] p,.hero[data-v="band"] .facts{color:var(--band-ink)}
+.hero[data-v="band"] .facts{border-color:var(--band-rule)}
+.hero[data-v="band"] .facts b{color:var(--band-fig)}
+.hero[data-v="band"] .btn-primary{background:var(--band-ink);color:var(--band)}
+.hero[data-v="band"] .btn-secondary{border-color:var(--band-ink);color:var(--band-ink)}
+.hero[data-v="photo"]{color:#F8F9FB;background:
+  linear-gradient(rgba(3,25,74,.82),rgba(3,25,74,.82)),
+  repeating-linear-gradient(115deg,#3b4a5e 0 14px,#2c3a4d 14px 30px)}
+.hero[data-v="photo"] p,.hero[data-v="photo"] .facts{color:#F8F9FB}
+.hero[data-v="photo"] .facts{border-color:#2A3F6B}
+.hero[data-v="photo"] .facts b{color:#8EA7C1}
+.hero[data-v="photo"] .btn-primary{background:#F8F9FB;color:#03194A}
+.hero[data-v="photo"] .btn-secondary{border-color:#F8F9FB;color:#F8F9FB}
+.hero .photo-tag{display:none;position:absolute;right:12px;bottom:10px;font:12px var(--mono);color:#8EA7C1}
+.hero[data-v="photo"] .photo-tag{display:block}
+
+/* section head */
+.sec{padding:40px 28px;display:grid;gap:22px}
+.sec-h{display:grid;gap:10px;border-top:2px solid var(--ink);padding-top:14px;max-width:62ch}
+.sec-h h2{font-weight:300;font-size:42px;line-height:1.1;letter-spacing:-.02em}
+.sec-h p{font-size:18px;color:var(--muted)}
+@media (max-width:520px){.sec-h h2{font-size:28px}}
+.sec[data-band="on"]{background:var(--band);color:var(--band-ink)}
+.sec[data-band="on"] .sec-h{border-color:var(--band-ink)}
+.sec[data-band="on"] .sec-h p,.sec[data-band="on"] .grid p{color:var(--band-fig)}
+.sec[data-band="on"] .grid{border-color:var(--band-rule);background:transparent}
+.sec[data-band="on"] .grid > div{border-color:var(--band-rule)}
+
+/* ruled grid (replaces card rows) */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));border-top:1px solid var(--rule)}
+.grid > div{padding:18px 20px 22px 0;display:grid;gap:8px;align-content:start;border-bottom:1px solid var(--rule)}
+@media (min-width:700px){.grid > div{border-bottom:0;padding-right:28px}.grid > div + div{border-left:1px solid var(--rule);padding-left:20px}}
+.grid h3{font-size:20px;font-weight:600;line-height:1.25}
+.grid p{color:var(--muted);font-size:14px}
+.grid .k{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* steps */
+.steps{list-style:none;margin:0;padding:0;counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0}
+.steps li{counter-increment:s;display:grid;gap:8px;padding:0 24px 0 0;align-content:start}
+.steps li::before{content:counter(s,decimal-leading-zero);font:500 28px/1 var(--mono);color:var(--ink);border-bottom:1px solid var(--rule);padding-bottom:12px;margin-bottom:6px}
+.steps h3{font-size:20px;font-weight:600}
+.steps p{color:var(--muted);font-size:14px}
+@media (max-width:700px){.steps{gap:24px}}
+
+/* figures */
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border:1px solid var(--rule);background:var(--cell)}
+.figs > div{padding:16px 18px;border-top:1px solid var(--rule);display:grid;gap:4px;margin-top:-1px}
+@media (min-width:700px){.figs > div + div{border-left:1px solid var(--rule)}}
+.figs .v{font:500 28px/1.05 var(--mono);color:var(--fig);font-variant-numeric:tabular-nums}
+.figs .v small{font:400 14px var(--sans);color:var(--muted);margin-left:6px}
+.figs p{font-size:14px;color:var(--muted)}
+.figs .src{font:12px var(--mono);color:var(--muted)}
+
+/* check list */
+.ticks{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ticks li{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start}
+.ticks li::before{content:"";width:12px;height:7px;border-left:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);margin:7px 0 0 2px}
+.ticks small{display:block;color:var(--muted);font-size:14px}
+
+/* pricing */
+.price-sheet{width:100%;border-collapse:collapse;background:var(--cell);border:1px solid var(--rule);font-size:14px;table-layout:fixed;min-width:760px}
+.price-sheet th,.price-sheet td{text-align:left;padding:14px 16px;border-top:1px solid var(--rule);vertical-align:top}
+.price-sheet thead th{border-top:0;font-weight:600;font-size:20px;padding-top:18px}
+.price-sheet thead th:first-child,.price-sheet tbody th{font:400 12px var(--mono);color:var(--muted);width:130px}
+.price-sheet thead .rec{box-shadow:inset 0 3px 0 var(--cta)}
+.price-sheet .tag{display:block;font:400 12px var(--mono);color:var(--ink);margin-top:4px}
+.price{font:500 28px/1.05 var(--mono);font-variant-numeric:tabular-nums}
+.price-sheet .rec .price{color:var(--fig)}
+.price-sheet .per{display:block;font:12px var(--mono);color:var(--muted);margin-top:4px}
+.price-sheet ul{margin:0;padding:0;list-style:none;display:grid;gap:5px;font-size:14px}
+.price-sheet .desc{color:var(--muted);font-size:14px}
+.price-sheet .act .btn{width:100%;font-size:14px;padding:12px}
+.plans{display:none;gap:0;border:1px solid var(--rule);background:var(--cell)}
+.plans section{border-top:1px solid var(--rule)}
+.plans section:first-child{border-top:0}
+.plans .isl{padding:18px 18px 12px;display:grid;gap:10px}
+.plans .rec .isl{box-shadow:inset 0 3px 0 var(--cta)}
+.plans .act{padding:6px 18px 18px}
+.plans .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.plans h3{font-size:20px;font-weight:600}
+.plans .rec .price{color:var(--fig)}
+.plans .tag{font:12px var(--mono);color:var(--ink);margin-left:6px}
+.plans .for{font-size:14px;color:var(--muted)}
+.plans .for b{font:400 12px var(--mono);margin-right:6px}
+.plans ul{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px}
+.plans .per{font:12px var(--mono);color:var(--muted)}
+[data-pm="stack"] .price-wrap{display:none}
+[data-pm="stack"] .plans{display:grid}
+.offer{border:1px solid var(--rule);background:var(--cell);display:grid;grid-template-columns:1fr 1fr;max-width:760px}
+.offer > div{padding:22px;display:grid;gap:12px;align-content:start}
+.offer > div + div{border-left:1px solid var(--rule)}
+.offer .terms{font:12px var(--mono);color:var(--muted);border-top:1px solid var(--rule);padding-top:10px}
+@media (max-width:620px){.offer{grid-template-columns:1fr}.offer > div + div{border-left:0;border-top:1px solid var(--rule)}}
+
+/* guarantees */
+.guar{list-style:none;margin:0;padding:0;display:grid;gap:0;border-top:1px solid var(--rule);max-width:780px}
+.guar li{display:grid;grid-template-columns:3rem 1fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--rule);font-size:18px;line-height:1.4}
+.guar li span{font:500 12px var(--mono);color:var(--muted);padding-top:.35em}
+
+/* FAQ */
+.faq{border-top:1px solid var(--rule);max-width:780px}
+.faq details{border-bottom:1px solid var(--rule)}
+.faq summary{list-style:none;display:grid;grid-template-columns:1fr 24px;gap:16px;align-items:start;padding:16px 0;cursor:pointer;font-weight:600;font-size:18px;line-height:1.35}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:400 20px/1 var(--mono);color:var(--ink);text-align:center;transition:transform .15s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq .a{padding:0 40px 18px 0;color:var(--muted);max-width:66ch}
+@media (prefers-reduced-motion:reduce){.faq summary::after{transition:none}}
+
+/* forms */
+.form{display:grid;gap:18px;max-width:560px}
+.form .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:520px){.form .two{grid-template-columns:1fr}}
+.fld{display:grid;gap:6px;min-width:0}
+.fld label,.fld legend{font-size:14px;font-weight:600}
+.fld .opt{font:400 12px var(--mono);color:var(--muted);margin-left:6px}
+.fld input,.fld select,.fld textarea{font:400 16px/1.4 var(--sans);color:var(--ink);background:var(--cell);border:1px solid var(--field);border-radius:var(--r-ctl);padding:11px 12px;min-height:46px;width:100%}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid var(--fig);outline-offset:-1px;border-color:var(--fig)}
+.fld .hint{font-size:14px;color:var(--muted)}
+.fld.err input{border-color:var(--danger);box-shadow:inset 3px 0 0 var(--danger)}
+.fld .msg{font-size:14px;color:var(--danger)}
+.fld .msg::before{content:"Fix: ";font-family:var(--mono)}
+fieldset.fld{border:0;padding:0;margin:0}
+.choice{border-radius:var(--r-ctl);overflow:hidden;display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--field);background:var(--cell)}
+.choice label{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:12px;cursor:pointer;font-weight:400}
+.choice label + label{border-left:1px solid var(--field)}
+.choice label:has(input:checked){box-shadow:inset 0 0 0 2px var(--fig)}
+.choice input{accent-color:var(--cta);width:18px;height:18px;min-height:0;margin:2px 0 0}
+.choice small{display:block;font:12px var(--mono);color:var(--muted)}
+.tel{display:grid;grid-template-columns:auto 1fr}
+.tel span{display:flex;align-items:center;padding:0 12px;border:1px solid var(--field);border-right:0;background:var(--cell);font:14px var(--mono);color:var(--muted)}
+.stripe{border-radius:var(--r-ctl);border:1px solid var(--field);background:var(--cell);padding:12px;display:grid;grid-template-columns:1fr 90px 70px;gap:10px;font:14px var(--mono);color:var(--muted)}
+.progress{display:grid;gap:8px}
+.progress ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.progress li{border-top:3px solid var(--rule);padding-top:6px;font:12px var(--mono);color:var(--muted)}
+.progress li.done{border-color:var(--ink);color:var(--ink)}
+.progress li.now{border-color:var(--cta);color:var(--ink)}
+.status{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;padding:12px 14px;border:1px solid var(--rule);border-left:3px solid var(--ink);background:var(--cell);font-size:14px;max-width:560px}
+.status b{font:500 12px var(--mono);padding-top:.25em}
+.status.bad{border-left-color:var(--danger)}
+.status.bad b{color:var(--danger)}
+.status.ok b{color:var(--fig)}
+.status.ok{border-left-color:var(--fig)}
+.formcols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+@media (max-width:860px){.formcols{grid-template-columns:1fr}}
+
+/* blog */
+.posts{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.posts li{display:grid;grid-template-columns:7.5rem 1fr;gap:6px 20px;padding:18px 0;border-bottom:1px solid var(--rule)}
+.posts time{font:12px var(--mono);color:var(--muted);padding-top:.3em}
+.posts h3{font-size:20px;font-weight:600;line-height:1.25}
+.posts h3 a{text-decoration:none}
+.posts h3 a:hover{text-decoration:underline;text-decoration-color:var(--fig);text-underline-offset:4px}
+.posts p{color:var(--muted);font-size:14px;max-width:62ch}
+.posts .tags{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:560px){.posts li{grid-template-columns:1fr}.posts .tags{grid-column:1}}
+.tagc{border-radius:var(--r-ctl);font:12px var(--mono);color:var(--muted);border:1px solid var(--rule);padding:3px 7px;text-decoration:none}
+.tagc:hover{border-color:var(--ink);color:var(--ink)}
+.cards{display:none;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.cards article{border:1px solid var(--rule);background:var(--cell);display:grid}
+.cards .img{aspect-ratio:16/9;max-width:100%;background:repeating-linear-gradient(135deg,var(--rule) 0 2px,transparent 2px 10px)}
+.cards .in{padding:14px;display:grid;gap:6px}
+.cards time{font:12px var(--mono);color:var(--muted)}
+.cards h3{font-size:18px;font-weight:600}
+[data-bi="cards"] .posts{display:none}
+[data-bi="cards"] .cards{display:grid}
+.prose{max-width:66ch;display:grid;gap:18px;font-size:18px;line-height:1.6}
+.prose .meta{font:12px var(--mono);color:var(--muted);display:flex;gap:18px;flex-wrap:wrap;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:8px 0}
+.prose h1{font-weight:300;font-size:clamp(28px,4.6vw,42px);line-height:1.08;letter-spacing:-.02em}
+.prose .dek{font-size:20px;line-height:1.4;color:var(--muted)}
+.prose h2{font-size:28px;font-weight:600;line-height:1.2;margin-top:12px}
+.prose h3{font-size:20px;font-weight:600}
+.prose ul{margin:0;padding-left:1.2em;display:grid;gap:6px}
+.prose ul li::marker{color:var(--muted)}
+.prose pre{margin:0;background:var(--cell);border:1px solid var(--rule);padding:12px 14px;font:14px/1.5 var(--mono);overflow-x:auto}
+.callout{padding:18px 20px;display:grid;gap:6px}
+.callout h3{font-size:18px;font-weight:600}
+.callout p{color:var(--ink);font-size:16px;line-height:1.5}
+.endcta{border-top:2px solid var(--ink);padding-top:16px;display:grid;gap:12px}
+.endcta h3{font-size:20px;font-weight:600}
+.endcta p{color:var(--muted);font-size:16px}
+
+/* footer */
+.foot{background:var(--band);color:var(--band-ink);padding:32px 28px 22px;display:grid;gap:24px;--fig:var(--band-fig)}
+.foot .top{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:start}
+.foot .lockup{color:var(--band-ink)}
+.foot .lockup svg{height:36px}
+.foot nav{display:flex;gap:40px;flex-wrap:wrap;font-size:14px}
+.foot nav div{display:grid;gap:6px}
+.foot nav b{font:400 12px var(--mono);color:var(--band-fig)}
+.foot nav a{text-decoration:none}
+.foot nav a:hover{text-decoration:underline}
+.foot .bottom{border-top:1px solid var(--band-rule);padding-top:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font:12px var(--mono);color:var(--band-fig)}
+
+/* token code */
+pre.code{margin:0;background:var(--cell);border:1px solid var(--rule);padding:14px 16px;font:12px/1.55 var(--mono);overflow-x:auto;color:var(--ink)}
+pre.code i{font-style:normal;color:var(--muted)}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="lockup" viewBox="0 0 594.43 188.67"><g fill="currentColor"><path d="M141.2,61.15C137,29.77,111.41,4.470,80,.57A71,71,0,0,0,15.88,115.72l.25.33,50.79,70.58a4.930,4.930,0,0,0,8,0l50.37-70.07A71.09,71.09,0,0,0,141.2,61.15Zm-29.74-3.68v40.2L74.61,119.2v-43ZM67.23,76.2v43L30.38,97.67V57.47l13.26,6.74ZM34.83,51.46,70.92,33.13,107,51.46,75.34,67.56,70.92,69.8,68,68.330Z"/><path d="M214.49,95.92c6.1-1.860,10.130-7.860,10.130-12.810V80.74c0-11.47-8.78-18.49-21.9-18.49H174.53v70.22h30.15c13.22,0,22-6,22-17.55V111.1C226.68,103.66,221.93,98.5,214.49,95.92ZM188.88,73.61H200c6.09,0,10.330,1.860,10.330,7.850v2.37c0,4.86-3.510,7.54-8.580,7.54H188.88Zm23.45,39.76c0,6.19-4.65,7.85-10,7.85H188.88V101.91h13.43c5.27,0,10,2.780,10,7.840Z"/><path d="M262.32,78.87c-14.36,0-25,7-25,19.11v16.21c0,12.29,11.56,19.21,25,19.21,13.11,0,24.57-7,24.57-19.21V98C286.89,86,277.29,78.87,262.32,78.87Zm10.22,34.39c0,5.27-5,8.16-10.22,8.16-5.69,0-10.64-2.79-10.64-8.16V98.91c0-5.06,5.16-8,10.64-8s10.22,2.79,10.22,8Z"/><path d="M328.2,106.65,346.07,79.8H329.44l-9.6,17.56L310,79.8H293.81l17.56,26.85L293,132.47h16.630l10.120-16.110L330,132.47h16.53Z"/><path d="M355.05,61.22v9.91h14.67V61.22Zm.11,18.58v52.67h14.46V79.8Z"/><path d="M445.41,78.77c-7.74,0-15,4.44-17.76,9.5-1.76-6.61-7.85-9.4-15.7-9.4-6.4,0-13.32,3.62-16.21,8.89l-1.13-8h-11v52.67h14.46V99.74c0-4.76,4.86-9.09,10.33-9.09s7.64,2.68,7.64,7.95v33.87h14.46V99.94c0-5.37,4.55-9.19,10.43-9.19,5.68,0,7.85,2.69,7.85,8.06v33.66h14.46V95.3C463.28,83.94,457.29,78.77,445.41,78.77Z"/><path d="M477,61.22v9.91h14.66V61.22Zm.1,18.58v52.67h14.46V79.8Z"/><path d="M537.53,119.46a25.33,25.33,0,0,1-8.78,1.45c-3.82,0-6.29-1.760-6.29-6V89.2h12.9V79.8h-12.9V67.52H508.1V79.8h-7.33v9.4H508v28.3c0,11.25,6.19,15.49,16.21,15.49,8.78,0,13-1.66,15.8-2.79Z"/><path d="M579.25,79.8l-10.64,36.77L557.88,79.8H542.6l18.68,53.6L560,136.81c-1.85,5.06-8,7.54-13.21,7.64l1.76,10.43c11.56-.1,20.85-4.44,25.09-16.21L594.43,79.8Z"/><path d="M70.92,29,26.7,51.46,70.92,73.94l44.23-22.48Zm0,40.81L68,68.33,34.83,51.46,70.92,33.13,107,51.46,75.34,67.56Z"/><path d="M70.92,73.94v51.68l44.23-25.84V51.46Zm40.54,23.73L74.61,119.2v-43l36.85-18.73Z"/><path d="M26.7,51.46V99.78l44.22,25.84V73.94ZM67.23,119.2,30.38,97.67V57.47l13.26,6.74,23.59,12Z"/><path d="M118.72,50.58a.31.31,0,0,0,0-.08,3.65,3.65,0,0,0-.31-.77l0-.1a3.530,3.530,0,0,0-.49-.66l-.08-.09a3.62,3.62,0,0,0-.65-.52l0,0s0,0-.07,0-.12-.08-.19-.11L72.59,25.7a3.710,3.710,0,0,0-3.34,0L25,48.18c-.06,0-.12.08-.19.11s0,0-.06,0l-.05,0a3.55,3.55,0,0,0-.64.52L24,49a3.09,3.09,0,0,0-.48.66l-.06.1a3.65,3.65,0,0,0-.31.77s0,.06,0,.08a3.74,3.74,0,0,0-.11.89V99.78A3.68,3.68,0,0,0,24.84,103L69.06,128.8h0a3.32,3.32,0,0,0,.59.24,1.78,1.78,0,0,0,.29.12,3.54,3.54,0,0,0,1.9,0,1.78,1.78,0,0,0,.29-.12,3.41,3.41,0,0,0,.6-.24h0L117,103a3.7,3.7,0,0,0,1.83-3.19V51.47A3.740,3.740,0,0,0,118.72,50.58Zm-7.26,47.09L74.61,119.2v-43l36.85-18.73ZM67.23,119.2,30.38,97.670V57.47l13.26,6.74,23.59,12Zm8.11-51.64L70.92,69.8,68,68.33,34.83,51.46,70.92,33.13,107,51.46Z"/></g></symbol>
+</svg>
+
+<div class="wrap">
+  <header class="mast">
+    <span class="lockup"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity"><use href="#lockup"/></svg></span>
+    <div class="theme" role="group" aria-label="Theme">
+      <button type="button" data-t="system" aria-pressed="true">System</button>
+      <button type="button" data-t="light" aria-pressed="false">Light</button>
+      <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+
+  <section class="row lede">
+    <p class="lbl"><b>Settled</b><span class="num">2026-10-03</span></p>
+    <div class="body">
+      <h1>Every pattern boximity.ca needs, in Technical Manual.</h1>
+      <p>Each block below is one component, drawn in the settled tokens and mapped to the dotca routes that use it. Flip the theme switch to check light and dark. All choices are settled. The table below lists them. Round 3 applies the design review and puts the pale-purple highlight in both modes.</p>
+    </div>
+  </section>
+
+  <section class="row" id="decide">
+    <p class="lbl"><b>Decided</b><span class="num">2026-10-03</span></p>
+    <div class="body">
+      <div class="sheet-wrap"><table class="sheet">
+        <thead><tr><th>Choice</th><th>Settled</th><th>Rejected</th></tr></thead>
+        <tbody>
+          <tr><th><a class="link" href="#hero">Hero</a></th><td>Type only, on the page ground, with no photo</td><td class="m">Oxford band; photo under an overlay</td></tr>
+          <tr><th><a class="link" href="#bands">Section bands</a></th><td>Rules only. Oxford appears only in the footer.</td><td class="m">Alternating oxford bands</td></tr>
+          <tr><th><a class="link" href="#pricing">Pricing on a phone</a></th><td>Plans stack below 900 px</td><td class="m">A sideways-scrolling table</td></tr>
+          <tr><th><a class="link" href="#blog">Blog index</a></th><td>A ruled list with no cover images</td><td class="m">Image cards</td></tr>
+          <tr><th><a class="link" href="#forms">Error red</a></th><td>Crimson rose <code>#D7263D</code> / <code>#FF7A85</code>, for errors only</td><td class="m">Brick <code>#B42318</code> (too old-fashioned); signal; clean crimson</td></tr>
+          <tr><th>FAQ</th><td><code>&lt;details&gt;</code>; several answers can be open at once</td><td class="m">One open at a time</td></tr>
+          <tr><th>Corners</th><td>2 px on controls only. Sheets and blocks stay square.</td><td class="m">Fully square; 4 px</td></tr>
+          <tr><th>Also accepted</th><td>A nav of 4 links plus the CTA; a figure's source line is optional (rendered when a source exists); the contact form sits on the page ground</td><td class="m"></td></tr>
+          <tr><th><a class="link" href="#pricing">Highlight</a></th><td>Pale purple in both modes, as a light-token island (<code>.hl</code>). On the Recommended plan it stops above the button, so each mode keeps one CTA colour.</td><td class="m">Aubergine in dark; full column with a queen or oxford button inside; price plate only</td></tr>
+          <tr><th>Design review</th><td>Queen blue only for actions and evidence; 8-step type scale; one-line buttons; ruled disabled state; pale-purple selection; footer focus on <code>--band-fig</code></td><td class="m"></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">The switches below still show the rejected options for reference. The page defaults are the settled choices.</p>
+    </div>
+  </section>
+
+  <section class="row">
+    <p class="lbl"><b>Inventory</b><span>Mapped to dotca</span></p>
+    <div class="body">
+      <h2>Fifteen components, eight routes</h2>
+      <p class="note">This covers every Bootstrap pattern now in <code>src/app</code>. The "replaces" column lists the classes that go away. <span class="st new">new</span> marks a pattern that doesn't exist today.</p>
+      <div class="sheet-wrap"><table class="sheet">
+        <thead><tr><th>Component</th><th>Replaces</th><th>Routes</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><th>Nav</th><td class="m"><code>navbar</code>, <code>collapse</code></td><td class="m">all (layout)</td><td class="m">A <code>&lt;button aria-expanded&gt;</code> disclosure below 768 px. No Bootstrap JS.</td></tr>
+          <tr><th>Hero</th><td class="m"><code>vh-75</code> photo + overlay, <code>display-4</code></td><td class="m">/, /services/*, /pricing</td><td class="m">Q1</td></tr>
+          <tr><th>Section head</th><td class="m"><code>fs-1 fw-light border-bottom</code></td><td class="m">all content routes</td><td class="m">A 2 px ink rule above the heading, which replaces the light underline</td></tr>
+          <tr><th>Section band</th><td class="m"><code>bg-alt</code> + <code>data-bs-theme="dark"</code></td><td class="m">/, /pricing, /services/*</td><td class="m">Q2</td></tr>
+          <tr><th>Ruled grid</th><td class="m"><code>row g-4</code> + <code>card</code>, icon circles</td><td class="m">/, /services/*</td><td class="m">Cells share rules, with no shadows and no icon discs</td></tr>
+          <tr><th>Steps</th><td class="m"><code>rounded-circle bg-primary</code> numerals</td><td class="m">/ (process)</td><td class="m">Mono 01–03 on a rule. This is a real sequence, so it's numbered.</td></tr>
+          <tr><th>Key figures</th><td class="m"><code>card bg-dark</code>, <code>text-danger-emphasis</code></td><td class="m">/ (real cost), /services/*</td><td class="m">Mono number in the accent with the unit in sans, label in muted text, optional source line</td></tr>
+          <tr><th>Tick list</th><td class="m"><code>CheckIcon</code>, <code>text-success-emphasis</code></td><td class="m">/, /pricing, /checkout, /services/*</td><td class="m">A muted ink tick. Green goes away.</td></tr>
+          <tr><th>Guarantees</th><td class="m"><code>fs-5 fw-medium</code> columns</td><td class="m">/</td><td class="m">A ruled list. The Three Uniques are named and not numbered.</td></tr>
+          <tr><th>Pricing sheet</th><td class="m"><code>card border-primary</code>, <code>badge rounded-pill</code></td><td class="m">/pricing</td><td class="m">A ruled table. The Recommended column is a pale-purple island that stops above its button. Q3 covers phones.</td></tr>
+          <tr><th>Single offer</th><td class="m"><code>card shadow</code>, <code>alert-success</code>, <code>card-header bg-primary</code></td><td class="m">/ (bundle), /services/* ($1,250)</td><td class="m">Two ruled cells: the price and terms, then what's included</td></tr>
+          <tr><th>FAQ</th><td class="m"><code>accordion</code> + Bootstrap Collapse</td><td class="m">/pricing, /services/*</td><td class="m"><code>&lt;details&gt;</code>. All items open independently, and the first one starts closed.</td></tr>
+          <tr><th>Forms + status</th><td class="m"><code>form-control</code>, <code>form-check</code>, <code>form-select</code>, <code>alert-*</code></td><td class="m">/ (contact), /checkout, /onboarding, /checkout/confirmation</td><td class="m">Fields with 2 px corners and a 3:1 edge, inline errors, a 3-step progress bar. Q5 covers colour.</td></tr>
+          <tr><th>Blog index + post</th><td class="m"><code>card</code>, <code>badge</code>, <code>bi bi-*</code> icons, <code>prose</code></td><td class="m">/blog, /blog/[slug], /blog/tag/[tag]</td><td class="m">Q4. Bootstrap Icons go away, and meta is a mono line.</td></tr>
+          <tr><th>Footer band <span class="st new">new</span></th><td class="m"><code>border-top</code> footer</td><td class="m">all (layout)</td><td class="m">Oxford band with the cultured lockup and grouped links, in both modes</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Not restyled: <code>/sentry-example-page</code> (internal). <code>/privacy-policy</code> and <code>/terms-of-service</code> use the post typography without the dek or the end CTA.</p>
+    </div>
+  </section>
+
+  <!-- NAV -->
+  <section class="row">
+    <p class="lbl"><b>Nav</b><span>layout.tsx / Navbar.tsx</span></p>
+    <div class="body">
+      <div class="stage">
+        <nav class="nav" aria-label="Desktop preview">
+          <span class="lockup"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity"><use href="#lockup"/></svg></span>
+          <div class="nav-right">
+            <ul><li><a href="#" aria-current="page">Services</a></li><li><a href="#">Pricing</a></li><li><a href="#">Blog</a></li><li><a href="#">Contact</a></li></ul>
+            <a class="btn btn-primary navcta" href="#">Book an assessment</a>
+          </div>
+        </nav>
+        <div class="stage-cap"><span>≥ 768 px</span><span>34 px lockup, 13 px clear space</span></div>
+      </div>
+      <div class="navs">
+        <div class="phone">
+          <nav class="nav" aria-label="Phone preview">
+            <span class="lockup"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity"><use href="#lockup"/></svg></span>
+            <button class="menu-btn" id="menuBtn" type="button" aria-expanded="true" aria-controls="menuPanel">Close</button>
+          </nav>
+          <div class="menu-panel" id="menuPanel">
+            <ul><li><a href="#">Services</a></li><li><a href="#">Pricing</a></li><li><a href="#">Blog</a></li><li><a href="#">Contact</a></li></ul>
+            <div class="pad-s"><a class="btn btn-primary btn-block" href="#">Book an assessment</a></div>
+          </div>
+        </div>
+        <ul class="rules" style="flex:1;min-width:240px">
+          <li><b>Links</b><span>Four links instead of six. The in-page anchors (Solutions, Benefits, Process) fold into Services, since a nav that jumps around one page breaks on every other route.</span></li>
+          <li><b>CTA</b><span>The assessment button lives in the nav on every route. It's the one primary button in view at the top.</span></li>
+          <li><b>Phone</b><span>The menu button reads Menu or Close, as text rather than a hamburger icon. It's a full-width panel of ruled rows with 48 px targets. It opens instantly with no slide animation.</span></li>
+          <li><b>Current page</b><span>A 2 px accent underline marks it, with <code>aria-current="page"</code>.</span></li>
+        </ul>
+      </div>
+      <p class="note">The link labels and the CTA wording are placeholders, and copy is out of scope here. The structure (four links plus one button) is the part to react to. The CTA label must match the name §4.4 gives it.</p>
+    </div>
+  </section>
+
+  <!-- HERO -->
+  <section class="row" id="hero">
+    <p class="lbl"><b>Hero</b><span>/ · /services/* · /pricing</span></p>
+    <div class="body">
+      <div class="ask"><span class="q">Q1 · Hero treatment</span><p>Today's hero is a stock office photo under a 75% black overlay. That image is the LCP element on mobile. A type-only hero removes the image request and fits the Technical Manual direction. The cost is that the top of the page has no picture.</p>
+        <div class="seg" role="group" aria-label="Hero variant" data-target="heroDemo" data-attr="v">
+          <button type="button" data-val="type" aria-pressed="true">Type only (proposed)</button>
+          <button type="button" data-val="band" aria-pressed="false">Oxford band</button>
+          <button type="button" data-val="photo" aria-pressed="false">Photo + oxford overlay</button>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="hero" id="heroDemo" data-v="type">
+          <h1>IT that just works&#8288;&nbsp;— for businesses whose work happens away from the desk.</h1>
+          <p>We replace break-fix firefighting with technology that just works&#8288;&nbsp;— one flat price, no surprises.</p>
+          <div class="ctas"><a class="btn btn-primary" href="#">Get a Business-First IT Assessment</a><a class="btn btn-secondary" href="#">See pricing</a></div>
+          <div class="facts"><span><b class="fig">$99</b> per user per month to start</span><span><b>Toronto</b> Ontario, Canada</span></div>
+          <span class="photo-tag">[photo placeholder]</span>
+        </div>
+      </div>
+      <ul class="rules">
+        <li><b>Type</b><span>60 px Chivo Light, tracked −0.02 em, 17 ch measure. The subhead is 20 px muted. Left-aligned on every route, including /pricing, which is centred today.</span></li>
+        <li><b>Fact line</b><span>An optional mono strip under a rule, for figures that are already published (the price at §2.3/§4.7). It isn't a stat banner. Only the published figure is queen; words like "Toronto" are ink.</span></li>
+        <li><b>Dashes</b><span>A word joiner and no-break space go before a dash in display type (<code>&amp;#8288;&amp;nbsp;—</code>), so no line starts with "—".</span></li>
+        <li><b>Height</b><span>Set by the content. <code>vh-75</code> goes away.</span></li>
+        <li><b>Dark</b><span>Type-only follows the theme. The band and photo variants are oxford in both modes, and their buttons invert to cultured on oxford.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SECTION HEAD + BANDS + GRID -->
+  <section class="row" id="bands">
+    <p class="lbl"><b>Section head<br>+ ruled grid</b><span>/ · /services/*</span></p>
+    <div class="body">
+      <div class="ask"><span class="q">Q2 · Section bands</span><p>Today, every other home section flips to a dark band (<code>data-bs-theme="dark"</code>), so the page reads as zebra stripes. The proposal keeps one ground and separates sections with a heavy rule, which is how a technical manual separates chapters. Switch on oxford bands to compare.</p>
+        <div class="seg" role="group" aria-label="Band variant" data-target="bandDemo" data-attr="band">
+          <button type="button" data-val="off" aria-pressed="true">Rules only (proposed)</button>
+          <button type="button" data-val="on" aria-pressed="false">Oxford band</button>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="sec" id="bandDemo" data-band="off">
+          <div class="sec-h"><h2>The Reactive IT Trap</h2><p>Too often, technology only gets attention after it breaks.</p></div>
+          <div class="grid">
+            <div><h3>Security threats</h3><p>Bad actors are constantly targeting your business and customer data.</p></div>
+            <div><h3>Wasted time</h3><p>Hours spent troubleshooting instead of serving customers.</p></div>
+            <div><h3>Employee frustration</h3><p>Turnover rises when technology keeps failing.</p></div>
+          </div>
+        </div>
+      </div>
+      <ul class="rules">
+        <li><b>Head</b><span>2 px ink rule, a 42 px Light heading (28 px on phones), and an optional 18 px muted lede. Max width 62 ch.</span></li>
+        <li><b>Grid</b><span>Cells share hairline rules with no card shadows. The icon discs go away. If a cell needs an icon, it's a 20 px stroke icon in ink, never in a coloured circle.</span></li>
+        <li><b>Spacing</b><span>Sections sit 96 px apart on desktop and 64 px on phones. Today's <code>py-md-7</code> is a custom utility, and it becomes one Tailwind spacing token.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- STEPS + FIGURES + TICKS + GUARANTEES -->
+  <section class="row">
+    <p class="lbl"><b>Steps, figures,<br>ticks, guarantees</b><span>/ · /services/*</span></p>
+    <div class="body">
+      <div class="stage"><div class="sec">
+        <ol class="steps">
+          <li><h3>Share your team structure</h3><p>A contact list with roles and the systems each person uses.</p></li>
+          <li><h3>Review your current IT spend</h3><p>Last year's spend and recent technology purchases.</p></li>
+          <li><h3>Simple setup</h3><p>We email install instructions for our management tool.</p></li>
+        </ol>
+      </div><div class="stage-cap"><span>Steps</span><span>numbered because the order is real; ink, not queen</span></div></div>
+
+      <div class="stage"><div class="sec">
+        <div class="figs">
+          <div><span class="v">2<small>weeks</small></span><p>of downtime after a cyber incident</p><span class="src">Source: [FILL]</span></div>
+          <div><span class="v">22%</span><p>productivity lost to technology issues</p><span class="src">Source: [FILL]</span></div>
+          <div><span class="v">$108,000</span><p>average small-business breach cost</p></div>
+        </div>
+      </div><div class="stage-cap"><span>Key figures</span><span>accent figure, muted label, optional source line (the third cell shows none)</span></div></div>
+
+      <div class="stage"><div class="sec" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+        <ul class="ticks">
+          <li><span>Secure password management<small>Protect critical business accounts</small></span></li>
+          <li><span>Business email<small>Communicate professionally with customers</small></span></li>
+          <li><span>Microsoft collaboration tools<small>Work together from anywhere</small></span></li>
+        </ul>
+        <ol class="guar">
+          <li><span>A</span>Every recommendation comes with a plain-language reason you can repeat back.</li>
+          <li><span>B</span>No line item you weren't told about in advance.</li>
+          <li><span>C</span>A free written second opinion on any vendor quote.</li>
+        </ol>
+      </div><div class="stage-cap"><span>Tick list · Guarantees</span><span>sample copy shortened from the live site</span></div></div>
+
+      <ul class="rules">
+        <li><b>Accent</b><span>Queen blue is only for actions and evidence: the CTA, prices, key figures, and focus, current and selected states. Step numerals and the FAQ marker are ink. Guarantee letters, grid kickers and prose list markers are muted.</span></li>
+        <li><b>Figures</b><span>A key figure is a 28 px mono 500 number in <code>--accent-fig</code>. Symbols that belong to the number (<code>$ % ,</code>) stay mono, and a unit word is 14 px sans in muted text. Today's red <code>text-danger-emphasis</code> goes away: alarm red is reserved for errors (Q5).</span></li>
+        <li><b>Claims</b><span>The source line is optional (amended 2026-10-03, msp-playbook#165 decision 5). The component renders it when a source exists and lays out cleanly without one. All four live home-page stats stay; sourcing them is a nice-to-have with no build dependency.</span></li>
+        <li><b>Ticks</b><span>A drawn 1.5 px tick in muted ink. Green success ticks go away.</span></li>
+        <li><b>Guarantees</b><span>A ruled list with a muted mono letter. A–C marks them as a set, not a ranking.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="row" id="pricing">
+    <p class="lbl"><b>Pricing sheet<br>+ single offer</b><span>/pricing · / · /services/*</span></p>
+    <div class="body">
+      <div class="ask"><span class="q">Q3 · Pricing on a phone</span><p>A four-plan table is 760 px wide at minimum. On a phone it either scrolls sideways or each plan stacks as its own block. Stacking repeats the row labels, and scrolling hides plans off-screen.</p>
+        <div class="seg" role="group" aria-label="Phone pricing" data-target="pmDemo" data-attr="pm">
+          <button type="button" data-val="stack" aria-pressed="true">Stack (proposed)</button>
+          <button type="button" data-val="scroll" aria-pressed="false">Table, scroll</button>
+        </div>
+      </div>
+      <div class="stage"><div class="pad" id="pmDemo" data-pm="stack">
+        <div class="sheet-wrap price-wrap">
+          <table class="price-sheet">
+            <thead><tr><th scope="col">Plan</th><th scope="col">Free</th><th scope="col">Basic</th><th scope="col" class="rec hl">Standard<span class="tag">Recommended</span></th><th scope="col">Premium</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Per user / month</th><td><span class="price">$0</span></td><td><span class="price">$99</span></td><td class="rec hl"><span class="price">$249</span></td><td><span class="price">$449</span></td></tr>
+              <tr><th scope="row">For</th><td class="desc">Startups and freelancers</td><td class="desc">Small teams needing essentials</td><td class="rec hl desc">Growing businesses</td><td class="desc">Full IT management</td></tr>
+              <tr><th scope="row">Includes</th><td><ul><li>Windows updates</li><li>Antivirus</li><li>24/7 monitoring</li></ul></td><td><ul><li>Everything in Free</li><li>Password manager</li><li>Business email</li></ul></td><td class="rec hl"><ul><li>Everything in Basic</li><li>Microsoft 365 tools</li><li>Quarterly IT assessment</li></ul></td><td><ul><li>Everything in Standard</li><li>24/7 priority support</li><li>On-site consultations</li></ul></td></tr>
+              <tr class="act"><th scope="row"></th><td><a class="btn btn-secondary" href="#">Choose Free</a></td><td><a class="btn btn-secondary" href="#">Choose Basic</a></td><td class="rec"><a class="btn btn-primary" href="#">Choose Standard</a></td><td><a class="btn btn-secondary" href="#">Choose Premium</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="plans">
+          <section><div class="isl"><div class="top"><h3>Free</h3><span><span class="price">$0</span> <span class="per">/ user / month</span></span></div><p class="for"><b>For</b>Startups and freelancers</p><ul><li>Windows updates</li><li>Antivirus</li><li>24/7 monitoring</li></ul></div><div class="act"><a class="btn btn-secondary btn-block" href="#">Choose Free</a></div></section>
+          <section><div class="isl"><div class="top"><h3>Basic</h3><span><span class="price">$99</span> <span class="per">/ user / month</span></span></div><p class="for"><b>For</b>Small teams needing essentials</p><ul><li>Everything in Free</li><li>Password manager</li><li>Business email</li></ul></div><div class="act"><a class="btn btn-secondary btn-block" href="#">Choose Basic</a></div></section>
+          <section class="rec"><div class="isl hl"><div class="top"><h3>Standard<span class="tag">Recommended</span></h3><span><span class="price">$249</span> <span class="per">/ user / month</span></span></div><p class="for"><b>For</b>Growing businesses</p><ul><li>Everything in Basic</li><li>Microsoft 365 tools</li><li>Quarterly IT assessment</li></ul></div><div class="act"><a class="btn btn-primary btn-block" href="#">Choose Standard</a></div></section>
+          <section><div class="isl"><div class="top"><h3>Premium</h3><span><span class="price">$449</span> <span class="per">/ user / month</span></span></div><p class="for"><b>For</b>Full IT management</p><ul><li>Everything in Standard</li><li>24/7 priority support</li><li>On-site consultations</li></ul></div><div class="act"><a class="btn btn-secondary btn-block" href="#">Choose Premium</a></div></section>
+        </div>
+      </div><div class="stage-cap"><span>The switch previews the phone layout at any width</span><span>on the live site, ≥ 900 px always shows the table</span></div></div>
+
+      <div class="offer">
+        <div><span class="price" style="color:var(--fig)">$1,250</span><span class="per mono" style="font-size:12px;color:var(--muted)">per month · Cloud 5 Pack</span><a class="btn btn-primary" href="#">Get a Business-First IT Assessment</a><p class="terms">First month free on annual service</p></div>
+        <div><ul class="ticks"><li>24/7 monitoring</li><li>Cybersecurity</li><li>Cloud backup</li><li>Microsoft 365 management</li></ul></div>
+      </div>
+
+      <ul class="rules">
+        <li><b>Prices</b><span>Mono 500, 28 px. In the Recommended column the price is queen blue on pale purple, at 4.13:1. That's allowed only because it's large text (§ pale purple rule), so the price never goes below 24 px.</span></li>
+        <li><b>Island</b><span>The Recommended column is pale purple in both modes, from the plan name down to Includes. Inside it, the <code>.hl</code> scope switches every token to its light value: ink 13.26:1, muted 5.13:1, queen for the price. The tag is mono 12 px ink, and the 3 px queen rule stays on top. In dark mode the island is a deliberate light area (12.70:1 against the dark cell), with no extra rule at its edge.</span></li>
+        <li><b>Buttons</b><span>The island stops above the action row, so "Choose Standard" is the ordinary primary on the sheet: queen with a white label in light, the tint with a night label in dark. Each mode keeps one CTA colour. The rest are secondary. Buttons never wrap (<code>white-space: nowrap</code>, 12 px padding in the sheet). The checkout's green <code>btn-success</code> becomes primary.</span></li>
+        <li><b>Phone</b><span>The stacked block keeps the "For" row, and its island ends above the button in the same way.</span></li>
+        <li><b>Offer</b><span>Today's <code>alert-success</code> "first month free" becomes a mono terms line, not a green box.</span></li>
+        <li><b>Plan data</b><span>Plans are drawn from the existing <code>pricingPlans</code> array, so the stacked and table layouts render from one source.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="row">
+    <p class="lbl"><b>FAQ</b><span>/pricing · /services/*</span></p>
+    <div class="body">
+      <div class="faq">
+        <details><summary>What's included in the password manager?</summary><p class="a">Secure credential storage, password generation, multi-factor authentication, and admin controls for team access.</p></details>
+        <details><summary>How long does implementation take?</summary><p class="a">Basic in 1–2 weeks, Standard in 3–5, Premium in 5–7, depending on team size.</p></details>
+        <details><summary>Do prices include all software licences?</summary><p class="a">Yes. Every package includes the licences its features need.</p></details>
+      </div>
+      <ul class="rules">
+        <li><b>Mechanism</b><span>Native <code>&lt;details&gt;/&lt;summary&gt;</code>. No JS, keyboard and screen-reader support built in, and Ctrl+F finds text in closed answers. Several items can be open at once: the "one at a time" accordion behaviour goes away.</span></li>
+        <li><b>Marker</b><span>A mono + in ink, turning to × when open. The rotation is turned off under reduced motion.</span></li>
+        <li><b>Schema</b><span>The FAQPage JSON-LD is unchanged, since it comes from the same content array.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FORMS -->
+  <section class="row" id="forms">
+    <p class="lbl"><b>Forms + status</b><span>/ (contact) · /checkout · /onboarding · /checkout/confirmation</span></p>
+    <div class="body">
+      <div class="ask"><span class="q">Q5 · Error red, round 2</span><p>Decided: errors get one red token, used only for field errors and failed-payment status. The brick red from round 1 (<code>#B42318</code>) is out because it reads as old-fashioned next to queen blue. Below are three cleaner reds. Each has a light value that passes AA as text on the page ground and a lighter dark-mode value. Pick one with the switch, then flip the theme.</p>
+        <div class="reds">
+          <div><span class="sw2" style="background:#DC2626"></span><span class="sw2" style="background:#F87171"></span><b>A. Signal</b><span>Pure warm red. Light <code>#DC2626</code> 4.58:1, dark <code>#F87171</code> 6.48:1</span></div>
+          <div><span class="sw2" style="background:#D7263D"></span><span class="sw2" style="background:#FF7A85"></span><b>B. Crimson rose</b><span>Cool, leans toward blue. Light <code>#D7263D</code> 4.71:1, dark <code>#FF7A85</code> 7.15:1</span></div>
+          <div><span class="sw2" style="background:#CF222E"></span><span class="sw2" style="background:#FF6369"></span><b>C. Clean crimson</b><span>Neutral, the most contrast. Light <code>#CF222E</code> 5.08:1, dark <code>#FF6369</code> 6.18:1</span></div>
+        </div>
+        <div class="seg" role="group" aria-label="Error red" data-target="formDemo" data-attr="err">
+          <button type="button" data-val="a" aria-pressed="false">A. Signal</button>
+          <button type="button" data-val="b" aria-pressed="true">B. Crimson rose</button>
+          <button type="button" data-val="c" aria-pressed="false">C. Clean crimson</button>
+          <button type="button" data-val="old" aria-pressed="false">Round 1 brick</button>
+        </div>
+      </div>
+      <div class="stage"><div class="pad formcols" id="formDemo" data-err="b">
+        <form class="form" onsubmit="event.preventDefault()">
+          <div class="progress"><ol><li class="done">1 Plan</li><li class="now">2 Your details</li><li>3 Payment</li></ol></div>
+          <fieldset class="fld"><legend>Billing cycle</legend>
+            <div class="choice">
+              <label><input type="radio" name="cyc" id="cycM"><span>Monthly<small>$249 / user</small></span></label>
+              <label><input type="radio" name="cyc" id="cycA" checked><span>Annual<small>first month free</small></span></label>
+            </div>
+          </fieldset>
+          <div class="two">
+            <div class="fld"><label for="fn">First name</label><input id="fn" value="Dana" autocomplete="given-name"></div>
+            <div class="fld"><label for="ln">Last name</label><input id="ln" value="Reyes" autocomplete="family-name"></div>
+          </div>
+          <div class="fld err"><label for="em">Work email</label><input id="em" value="dana@" aria-invalid="true" aria-describedby="emMsg"><span class="msg" id="emMsg">enter the full address, like dana@company.ca</span></div>
+          <div class="fld"><label for="ph">Phone <span class="opt">optional</span></label><div class="tel"><span>+1</span><input id="ph" value="289 555 0142" inputmode="tel"></div><span class="hint">Replaces react-phone-input-2's styling and its <code>!important</code> patch.</span></div>
+          <div class="fld"><label for="sz">Team size</label><select id="sz"><option>1–4</option><option selected>5–10</option><option>11–25</option></select></div>
+          <div class="fld"><label>Card</label><div class="stripe"><span>4242 4242 4242 4242</span><span>12 / 28</span><span>CVC</span></div><span class="hint">Stripe Payment Element, themed by <code>appearance</code> variables mapped from these tokens.</span></div>
+          <button class="btn btn-primary btn-block" type="submit">Pay $249.00</button>
+          <button class="btn btn-primary btn-block" type="button" disabled>Pay $249.00</button>
+        </form>
+        <div style="display:grid;gap:14px;align-content:start">
+          <div class="status bad"><b>Error</b><span>Your card was declined. Try another card or call us at (289) 539-0098.</span></div>
+          <div class="status ok"><b>Sent</b><span>Thanks — we'll reply within one business day.</span></div>
+          <div class="status"><b>Note</b><span>We never share your company's data.</span></div>
+          <ul class="rules">
+            <li><b>Fields</b><span>2 px corners (<code>--radius-ctl</code>) on a cell fill, with a <code>--field</code> edge: light <code>#7D8590</code> 3.54:1 on the ground and 3.73:1 on the cell; dark <code>#6E7583</code> 3.87:1 on the ground and 3.60:1 on the cell. That meets WCAG 1.4.11 with room to spare. <code>--rule</code> is too faint for inputs. Labels sit above the field, and the minimum height is 46 px.</span></li>
+            <li><b>Disabled</b><span>A ruled, muted control: cell fill, <code>--field</code> edge, muted label. No 45% opacity, which made it look like a faded CTA. The second Pay button shows it.</span></li>
+            <li><b>Errors</b><span>Inline under the field, tied with <code>aria-describedby</code>, worded as the fix. No browser <code>alert()</code>: the checkout's missing-fields alert becomes inline messages.</span></li>
+            <li><b>Choice</b><span>Radios become a two-cell segmented choice. The selected cell gets a 2 px accent ring.</span></li>
+            <li><b>Progress</b><span>Onboarding's "Step 2 of 3" becomes a three-segment bar: ink for done, accent for current.</span></li>
+            <li><b>Contact form</b><span>Leaves its dark box and sits on the page ground like every other form.</span></li>
+          </ul>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- BLOG -->
+  <section class="row" id="blog">
+    <p class="lbl"><b>Blog index<br>+ long-form</b><span>/blog · /blog/[slug] · /blog/tag/[tag] · legal pages</span></p>
+    <div class="body">
+      <div class="ask"><span class="q">Q4 · Blog index</span><p>Of the eleven posts, most cover images are stock or placeholder, so the image cards mostly show filler. A dated ruled list reads like a manual's contents page and doesn't need images. Cover images stay on the post page and in OG cards.</p>
+        <div class="seg" role="group" aria-label="Blog index" data-target="blogDemo" data-attr="bi">
+          <button type="button" data-val="list" aria-pressed="true">Ruled list (proposed)</button>
+          <button type="button" data-val="cards" aria-pressed="false">Image cards</button>
+        </div>
+      </div>
+      <div class="stage"><div class="pad" id="blogDemo" data-bi="list">
+        <ol class="posts">
+          <li><time class="num">2026-09-29</time><div style="display:grid;gap:4px"><h3><a href="#">What a payment-redirection scam looks like from the inside</a></h3><p>The bank-account-change email, and the one phone call that stops it.</p></div><span class="tags"><a class="tagc" href="#">security</a><a class="tagc" href="#">email</a></span></li>
+          <li><time class="num">2026-09-12</time><div style="display:grid;gap:4px"><h3><a href="#">Microsoft Teams for crews that are never at a desk</a></h3><p>Setting it up so the field team actually uses it.</p></div><span class="tags"><a class="tagc" href="#">microsoft-365</a></span></li>
+        </ol>
+        <div class="cards">
+          <article><div class="img"></div><div class="in"><time class="num">2026-09-29</time><h3>What a payment-redirection scam looks like</h3></div></article>
+          <article><div class="img"></div><div class="in"><time class="num">2026-09-12</time><h3>Microsoft Teams for crews never at a desk</h3></div></article>
+        </div>
+      </div><div class="stage-cap"><span>Post titles are illustrative</span><span>tags are mono chips, not filled badges</span></div></div>
+
+      <div class="stage"><div class="pad">
+        <article class="prose">
+          <h1>What a payment-redirection scam looks like from the inside</h1>
+          <p class="dek">The bank-account-change email, and the one phone call that stops it.</p>
+          <div class="meta"><span>Matt Mattice</span><time class="num">2026-09-29</time><span class="num">6 min read</span></div>
+          <div class="callout hl"><h3>The short version</h3><p>If a supplier emails new banking details, call them on a number you already have before you pay.</p></div>
+          <p>A callout is the pale-purple highlight in both modes: ink on the tint, no icon, no button and no edge. Selected text is pale purple with ink; inside a highlight it inverts to ink with pale purple.</p>
+          <h2>How the email arrives</h2>
+          <ul><li>It replies inside a real thread.</li><li>The sender address is one character off.</li></ul>
+          <pre><code>From: accounts@suppl1er.ca</code></pre>
+          <div class="endcta"><h3>Want a second pair of eyes on your setup?</h3><p>The assessment is free, and you keep the findings.</p><div><a class="btn btn-primary" href="#">Get a Business-First IT Assessment</a></div></div>
+        </article>
+      </div><div class="stage-cap"><span>Post · 18 px / 1.6 / 66 ch</span><span>BlogCta becomes the end CTA</span></div></div>
+
+      <ul class="rules">
+        <li><b>Measure</b><span>Body 18 px Regular, line-height 1.6, 66 ch, flush left. The title is 42 px Light, left-aligned (it's centred bold today). List markers are muted.</span></li>
+        <li><b>Meta</b><span>Author, date, read time on one mono line between rules. Bootstrap Icons (<code>bi bi-*</code>) go away, so the icon font is dropped.</span></li>
+        <li><b>Prose</b><span>Hand-written element styles under a <code>.prose</code> scope, instead of <code>@tailwindcss/typography</code>. The markdown uses five elements (h2, h3, lists, one code block), so the plugin's weight isn't worth it.</span></li>
+        <li><b>End CTA</b><span>A rule-topped block in place of the centred button. A lead-magnet variant uses the same block.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <section class="row">
+    <p class="lbl"><b>Footer band</b><span>layout.tsx / Footer.tsx</span></p>
+    <div class="body">
+      <div class="stage">
+        <footer class="foot">
+          <div class="top">
+            <span class="lockup"><svg viewBox="0 0 594.43 188.67" role="img" aria-label="Boximity"><use href="#lockup"/></svg></span>
+            <nav aria-label="Footer preview">
+              <div><b>Services</b><a href="#">Managed IT, Ontario</a><a href="#">Architecture firms</a><a href="#">Pricing</a></div>
+              <div><b>Company</b><a href="#">Blog</a><a href="#">Contact</a><a href="#">LinkedIn</a></div>
+              <div><b>Legal</b><a href="#">Privacy policy</a><a href="#">Terms of service</a></div>
+            </nav>
+          </div>
+          <div class="bottom"><span>© 2026 Boximity MSP · Toronto, Ontario</span><span>hi@boximity.ca · (289) 539-0098</span><span>Build a1b2c3d</span></div>
+        </footer>
+      </div>
+      <ul class="rules">
+        <li><b>Band</b><span>Oxford in both modes, with the cultured lockup. This is the same plate as the social cards, so the footer and the OG image match.</span></li>
+        <li><b>Links</b><span>Grouped columns. The service landing pages become discoverable from every route, which the SEO map also wants for internal linking.</span></li>
+        <li><b>Build hash</b><span>Kept, as mono in <code>--band-fig</code>.</span></li>
+        <li><b>Focus</b><span>The band sets <code>--fig: var(--band-fig)</code>, so focus rings and accent underlines there are 6.80:1 on oxford instead of queen's 3.12:1.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- BUILD -->
+  <section class="row">
+    <p class="lbl"><b>Build notes</b><span>globals.css</span></p>
+    <div class="body">
+      <h2>Tokens as Tailwind v4 <code style="font-size:.8em">@theme</code></h2>
+      <pre class="code"><i>/* globals.css: raw values switch with the OS scheme; @theme exposes them as utilities */</i>
+@import "tailwindcss";
+
+:root { --bg:#F8F9FB; --cell:#FFF; --ink:#191A1C; --muted:#555C67; --rule:#D3D8DF;
+        --field:#7D8590; --cta:#436D97; --cta-ink:#FFF; --fig:#436D97; --logo:#03194A;
+        --hl:#E9DDE9; --danger:#D7263D; }  <i>/* --hl is the same in both modes */</i>
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#16171A; --cell:#1C1E22; --ink:#E6E7E9; --field:#6E7583; --danger:#FF7A85; <i>/* …dark values */</i> } }
+
+<i>/* the highlight is a light-token island in both modes */</i>
+.hl { --ink:#191A1C; --muted:#555C67; --rule:#D3D8DF; --field:#7D8590;
+      --cta:#436D97; --cta-ink:#FFF; --fig:#436D97;
+      background: var(--hl); color: var(--ink); color-scheme: light; }
+::selection { background: var(--hl); color: #191A1C; }
+.hl ::selection { background: #191A1C; color: #E9DDE9; }
+.bg-band { --fig: var(--band-fig); }  <i>/* footer focus ring 6.80:1 */</i>
+
+@theme inline {
+  --color-*: initial; --text-*: initial; --radius-*: initial;
+  --color-bg: var(--bg);   --color-cell: var(--cell); --color-ink: var(--ink);
+  --color-muted: var(--muted); --color-rule: var(--rule); --color-field: var(--field);
+  --color-cta: var(--cta); --color-cta-ink: var(--cta-ink); --color-fig: var(--fig);
+  --color-band: #03194A; --color-band-ink: #F8F9FB; --color-band-fig: #8EA7C1;
+  --color-hl: var(--hl); --color-danger: var(--danger);
+  --text-label: 12px; --text-small: 14px; --text-body: 16px; --text-prose: 18px;
+  --text-h3: 20px; --text-h2: 28px; --text-section: 42px; --text-display: 60px;  <i>/* price and key figure use text-h2 */</i>
+  --font-sans: var(--font-chivo); --font-mono: var(--font-chivo-mono);
+  --radius-ctl: 2px; <i>/* rounded-ctl on buttons, fields, chips only; sheets and blocks stay square */</i>
+}
+
+<i>/* layout.tsx: next/font */</i>
+const chivo = Chivo({ subsets:['latin'], variable:'--font-chivo', display:'swap', adjustFontFallback:true });
+const chivoMono = Chivo_Mono({ subsets:['latin'], variable:'--font-chivo-mono', display:'swap', preload:false });</pre>
+      <ul class="rules">
+        <li><b>Utilities</b><span><code>bg-cell text-ink border-rule</code>, <code>text-fig font-mono</code>, <code>bg-cta text-cta-ink</code>. Components are React components plus utilities, and no <code>@apply</code> classes except the <code>.prose</code> scope.</span></li>
+        <li><b>Resets</b><span><code>--color-*</code>, <code>--text-*</code> and <code>--radius-*: initial</code> come before the brand tokens, so Tailwind's defaults can't leak in (no stray <code>blue-500</code> or <code>text-[15px]</code>). The type scale is eight steps: 12, 14, 16, 18, 20, 28, 42, 60.</span></li>
+        <li><b>Highlight</b><span>Add <code>hl</code> to the Recommended column's cells (not the action row) and to callouts. No <code>dark:</code> variant is needed: the scope already holds the light values.</span></li>
+        <li><b>Grids</b><span>Arbitrary grid tracks use <code>minmax(0,…)</code>, e.g. <code>grid-cols-[minmax(0,1fr)_minmax(0,3fr)]</code>. A bare <code>1fr</code> lets wide content push the page sideways on phones.</span></li>
+        <li><b>Fonts</b><span>Preload only Chivo, with <code>adjustFontFallback</code> so the 60 px hero doesn't shift when it swaps in. Chivo Mono loads with <code>preload: false</code>. One variable file per family.</span></li>
+        <li><b>Dark</b><span>Values swap under <code>prefers-color-scheme</code> on the raw variables, so no <code>dark:</code> variants are needed in markup. The <code>data-bs-theme</code> script goes away.</span></li>
+        <li><b>Stripe</b><span><code>appearance.variables</code> reads the same values (<code>colorPrimary</code>, <code>colorBackground</code>, <code>colorText</code>, <code>colorDanger</code>, <code>borderRadius: '2px'</code>, <code>fontFamily</code> Chivo), switched with <code>matchMedia</code>.</span></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function setTheme(t){
+    if(t==="system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme",t);
+    document.querySelectorAll(".theme button").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.t===t));});
+    try{localStorage.setItem("bx-theme",t);}catch(e){}
+  }
+  document.querySelectorAll(".theme button").forEach(function(b){b.addEventListener("click",function(){setTheme(b.dataset.t);});});
+  try{var s=localStorage.getItem("bx-theme"); if(s) setTheme(s);}catch(e){}
+
+  document.querySelectorAll(".seg").forEach(function(g){
+    var target=document.getElementById(g.dataset.target), attr="data-"+g.dataset.attr;
+    g.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click",function(){
+        target.setAttribute(attr,b.dataset.val);
+        g.querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed",String(x===b));});
+      });
+    });
+  });
+
+  var mb=document.getElementById("menuBtn"), mp=document.getElementById("menuPanel");
+  mb.addEventListener("click",function(){
+    var open=mb.getAttribute("aria-expanded")==="true";
+    mb.setAttribute("aria-expanded",String(!open)); mb.textContent=open?"Menu":"Close"; mp.hidden=open;
+  });
+})();
+</script>
+<style>
+/* Q5 round 2: candidate reds, light values here, dark values below */
+[data-err="a"]{--danger:#DC2626}
+[data-err="b"]{--danger:#D7263D}
+[data-err="c"]{--danger:#CF222E}
+[data-err="old"]{--danger:#B42318}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) [data-err="a"]{--danger:#F87171}
+  :root:not([data-theme="light"]) [data-err="b"]{--danger:#FF7A85}
+  :root:not([data-theme="light"]) [data-err="c"]{--danger:#FF6369}
+  :root:not([data-theme="light"]) [data-err="old"]{--danger:#F97066}
+}
+:root[data-theme="dark"] [data-err="a"]{--danger:#F87171}
+:root[data-theme="dark"] [data-err="b"]{--danger:#FF7A85}
+:root[data-theme="dark"] [data-err="c"]{--danger:#FF6369}
+:root[data-theme="dark"] [data-err="old"]{--danger:#F97066}
+.reds{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.reds > div{display:grid;grid-template-columns:auto auto 1fr;gap:4px 8px;align-items:center;font-size:14px;color:var(--muted)}
+.reds b{color:var(--ink);font-weight:600}
+.reds > div > span:last-child{grid-column:1 / -1}
+.sw2{width:22px;height:22px;display:inline-block}
+</style>
+
+
+</body></html>

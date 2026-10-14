@@ -59,8 +59,8 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("next/link", () => ({
   __esModule: true,
-  default: ({ children, href }) => {
-    return React.createElement("a", { href }, children);
+  default: ({ children, href, onClick }) => {
+    return React.createElement("a", { href, onClick }, children);
   },
 }));
 

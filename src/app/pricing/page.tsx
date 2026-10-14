@@ -2,6 +2,30 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
+import FaqList from "../components/FaqList";
+
+const FAQ_ITEMS = [
+  {
+    question: "What's included in the Password Manager?",
+    answer:
+      "Our Password Manager includes secure credential storage, password generation, multi-factor authentication, and admin controls to manage team access to company accounts.",
+  },
+  {
+    question: "How long does implementation typically take?",
+    answer:
+      "For most small businesses, our Basic package can be implemented within 1-2 weeks, Standard within 3-5 weeks, and Premium within 5-7 weeks, depending on your team size and existing infrastructure.",
+  },
+  {
+    question: "Do these prices include all necessary software licenses?",
+    answer:
+      "Yes, all packages include the necessary licenses for the specified features. There are no hidden costs or additional software purchases required.",
+  },
+  {
+    question: "What if my business needs change and I need to upgrade?",
+    answer:
+      "You can upgrade your plan at any time. We'll prorate the difference and apply any unused portion of your current subscription to your new plan.",
+  },
+];
 
 // Shared pricing plans data
 const pricingPlans = [
@@ -166,101 +190,7 @@ export default function Pricing() {
           </h2>
           <div className="row justify-content-center">
             <div className="col-lg-8">
-              <div className="accordion" id="faqAccordion">
-                <div className="accordion-item mb-3 border">
-                  <h3 className="accordion-header">
-                    <button
-                      className="accordion-button fw-medium"
-                      type="button"
-                      data-bs-toggle="collapse"
-                      data-bs-target="#faq1"
-                    >
-                      What&apos;s included in the Password Manager?
-                    </button>
-                  </h3>
-                  <div
-                    id="faq1"
-                    className="accordion-collapse collapse show"
-                    data-bs-parent="#faqAccordion"
-                  >
-                    <div className="accordion-body text-body-secondary">
-                      Our Password Manager includes secure credential storage,
-                      password generation, multi-factor authentication, and
-                      admin controls to manage team access to company accounts.
-                    </div>
-                  </div>
-                </div>
-                <div className="accordion-item mb-3 border">
-                  <h3 className="accordion-header">
-                    <button
-                      className="accordion-button fw-medium collapsed"
-                      type="button"
-                      data-bs-toggle="collapse"
-                      data-bs-target="#faq2"
-                    >
-                      How long does implementation typically take?
-                    </button>
-                  </h3>
-                  <div
-                    id="faq2"
-                    className="accordion-collapse collapse"
-                    data-bs-parent="#faqAccordion"
-                  >
-                    <div className="accordion-body text-body-secondary">
-                      For most small businesses, our Basic package can be
-                      implemented within 1-2 weeks, Standard within 3-5 weeks,
-                      and Premium within 5-7 weeks, depending on your team size
-                      and existing infrastructure.
-                    </div>
-                  </div>
-                </div>
-                <div className="accordion-item mb-3 border">
-                  <h3 className="accordion-header">
-                    <button
-                      className="accordion-button fw-medium collapsed"
-                      type="button"
-                      data-bs-toggle="collapse"
-                      data-bs-target="#faq3"
-                    >
-                      Do these prices include all necessary software licenses?
-                    </button>
-                  </h3>
-                  <div
-                    id="faq3"
-                    className="accordion-collapse collapse"
-                    data-bs-parent="#faqAccordion"
-                  >
-                    <div className="accordion-body text-body-secondary">
-                      Yes, all packages include the necessary licenses for the
-                      specified features. There are no hidden costs or
-                      additional software purchases required.
-                    </div>
-                  </div>
-                </div>
-                <div className="accordion-item border">
-                  <h3 className="accordion-header">
-                    <button
-                      className="accordion-button fw-medium collapsed"
-                      type="button"
-                      data-bs-toggle="collapse"
-                      data-bs-target="#faq4"
-                    >
-                      What if my business needs change and I need to upgrade?
-                    </button>
-                  </h3>
-                  <div
-                    id="faq4"
-                    className="accordion-collapse collapse"
-                    data-bs-parent="#faqAccordion"
-                  >
-                    <div className="accordion-body text-body-secondary">
-                      You can upgrade your plan at any time. We&apos;ll prorate
-                      the difference and apply any unused portion of your
-                      current subscription to your new plan.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <FaqList items={FAQ_ITEMS} />
             </div>
           </div>
         </div>
