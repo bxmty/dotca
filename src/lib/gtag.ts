@@ -184,11 +184,14 @@ export const event = ({
   category,
   label,
   value,
+  params,
 }: {
   action: string;
   category: string;
   label: string;
   value?: number;
+  /** Extra event parameters (e.g. GA4 custom dimensions). Core fields win on key clashes. */
+  params?: Record<string, string | number>;
 }) => {
   if (!GA_MEASUREMENT_ID) {
     console.error("GA Measurement ID is missing. Event not tracked.");
@@ -208,6 +211,7 @@ export const event = ({
 
   try {
     const eventParams: GtagEventParams = {
+      ...params,
       event_category: category,
       event_label: label,
       value: value,

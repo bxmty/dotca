@@ -45,6 +45,7 @@ describe("web-vitals.ts web performance tracking", () => {
 
     // Setup default environment
     process.env.NODE_ENV = "production";
+    window.history.pushState({}, "", "/");
   });
 
   afterEach(() => {
@@ -93,6 +94,7 @@ describe("web-vitals.ts web performance tracking", () => {
         category: "Web Vitals",
         label: "cls-id",
         value: 50, // CLS delta * 1000 = 0.05 * 1000 = 50
+        params: { metric_name: "CLS", page_path: "/", rating: "good" },
       });
     });
 
@@ -115,7 +117,62 @@ describe("web-vitals.ts web performance tracking", () => {
         category: "Web Vitals",
         label: "fcp-id",
         value: 1200,
+        params: { metric_name: "FCP", page_path: "/", rating: "good" },
       });
+    });
+
+    it("tags the GA4 event with metric name, page path and rating", async () => {
+      window.history.pushState({}, "", "/services/law");
+      initWebVitals();
+
+      const lcpMetric: WebVitalsMetric = {
+        name: "LCP",
+        value: 2500,
+        id: "lcp-id",
+        delta: 2500,
+        rating: "needs-improvement",
+        navigationType: "navigate",
+      };
+
+      await reportCallback(lcpMetric);
+
+      expect(mockGaEvent).toHaveBeenCalledWith({
+        action: "web_vitals",
+        category: "Web Vitals",
+        label: "lcp-id",
+        value: 2500,
+        params: {
+          metric_name: "LCP",
+          page_path: "/services/law",
+          rating: "needs-improvement",
+        },
+      });
+    });
+
+    it("leaves the query string out of page_path", async () => {
+      window.history.pushState(
+        {},
+        "",
+        "/contact?email=jane%40example.com&ref=ad#form",
+      );
+      initWebVitals();
+
+      const inpMetric: WebVitalsMetric = {
+        name: "INP",
+        value: 180,
+        id: "inp-id",
+        delta: 180,
+        rating: "good",
+        navigationType: "navigate",
+      };
+
+      await reportCallback(inpMetric);
+
+      expect(mockGaEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({ page_path: "/contact" }),
+        }),
+      );
     });
 
     it("reports all metrics to API endpoint", async () => {

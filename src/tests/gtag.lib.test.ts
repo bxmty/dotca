@@ -429,6 +429,49 @@ describe("gtag.ts Google Analytics utilities", () => {
       );
     });
 
+    it("merges extra params into the event payload", () => {
+      jest.resetModules();
+      const { event: newEvent } = require("@/lib/gtag");
+
+      newEvent({
+        action: "web_vitals",
+        category: "Web Vitals",
+        label: "lcp-id",
+        value: 2500,
+        params: { metric_name: "LCP", page_path: "/pricing", rating: "poor" },
+      });
+
+      expect(mockGtag).toHaveBeenCalledWith("event", "web_vitals", {
+        event_category: "Web Vitals",
+        event_label: "lcp-id",
+        value: 2500,
+        environment: "production",
+        metric_name: "LCP",
+        page_path: "/pricing",
+        rating: "poor",
+      });
+    });
+
+    it("does not let extra params override the core fields", () => {
+      jest.resetModules();
+      const { event: newEvent } = require("@/lib/gtag");
+
+      newEvent({
+        action: "test_action",
+        category: "test_category",
+        label: "test_label",
+        value: 1,
+        params: { event_label: "spoofed", value: 999, environment: "x" },
+      });
+
+      expect(mockGtag).toHaveBeenCalledWith("event", "test_action", {
+        event_category: "test_category",
+        event_label: "test_label",
+        value: 1,
+        environment: "production",
+      });
+    });
+
     it("handles missing optional parameters", () => {
       jest.resetModules();
       const { event: newEvent } = require("@/lib/gtag");
