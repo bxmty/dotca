@@ -1,5 +1,6 @@
 import { ButtonLink } from "../components/Button";
 import FaqList from "../components/FaqList";
+import PageHero from "../components/PageHero";
 import Section from "../components/Section";
 import SectionHead from "../components/SectionHead";
 import { getPlanHref, pricingPlans, type PricingPlan } from "./plans";
@@ -215,17 +216,10 @@ function StackedPlans() {
 export default function Pricing() {
   return (
     <>
-      {/* Type-only hero, left-aligned like every other route. */}
-      <section className="grid gap-5.5 px-4 pt-14 pb-12 md:px-7">
-        <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
-          Technology Solutions That Fit Your Budget
-        </h1>
-        <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">
-          Enterprise-grade technology solutions without enterprise-level
-          complexity or cost. Choose the package that best fits your business
-          needs.
-        </p>
-      </section>
+      <PageHero
+        heading="Technology Solutions That Fit Your Budget"
+        lead="Enterprise-grade technology solutions without enterprise-level complexity or cost. Choose the package that best fits your business needs."
+      />
 
       <section
         aria-labelledby="plans-heading"
