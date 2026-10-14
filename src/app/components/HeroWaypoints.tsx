@@ -1,6 +1,7 @@
 // One working day plotted over the home hero's contour ground (#632):
 // four timestamped stops joined by a dashed accent route, with a caption.
-// Desktop only (lg and up); it fills the hero's right half.
+// Pass it as PageHero's `aside`: it fills the hero's right half, and PageHero
+// hides it below lg.
 
 const STOPS = [
   { x: 18, y: 16, time: "06:40", place: "Job site" },
@@ -17,7 +18,7 @@ const ROUTE_DASH_PATTERN = "6 6";
 
 export default function HeroWaypoints() {
   return (
-    <div className="relative hidden lg:block">
+    <div className="relative">
       {/* Stretched to the column, so stops and route share % coordinates;
           the stroke keeps its px width however the box is stretched. */}
       <svg

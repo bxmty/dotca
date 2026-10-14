@@ -21,7 +21,7 @@ type PageHeroProps = {
   facts?: ReactNode;
   /**
    * Desktop-only right half (lg and up). The hero gains a second column and
-   * a minimum height so the aside has room; hide it below lg yourself.
+   * a minimum height so the aside has room; below lg the aside is hidden.
    */
   aside?: ReactNode;
 };
@@ -33,12 +33,12 @@ export default function PageHero({
   facts,
   aside,
 }: PageHeroProps) {
-  const rightHalf = aside
+  const asideLayoutClasses = aside
     ? " lg:min-h-[640px] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
     : "";
   return (
     <section
-      className={`relative isolate grid gap-10 overflow-hidden px-4 pt-14 pb-12 md:px-7${rightHalf}`}
+      className={`relative isolate grid gap-10 overflow-hidden px-4 pt-14 pb-12 md:px-7${asideLayoutClasses}`}
     >
       <div className="grid content-start gap-5.5">
         <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
@@ -54,7 +54,8 @@ export default function PageHero({
           </p>
         )}
       </div>
-      {aside}
+      {/* A grid wrapper, so the aside stretches to fill the right half. */}
+      {aside && <div className="hidden lg:grid">{aside}</div>}
       <ContourGround />
     </section>
   );

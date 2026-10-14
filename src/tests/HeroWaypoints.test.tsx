@@ -45,10 +45,4 @@ describe("HeroWaypoints", () => {
     expect(line).toHaveAttribute("stroke-dasharray", "6 6");
     expect(line).toHaveAttribute("vector-effect", "non-scaling-stroke");
   });
-
-  it("shows only from lg up", () => {
-    const { container } = render(<HeroWaypoints />);
-
-    expect(container.firstElementChild).toHaveClass("hidden", "lg:block");
-  });
 });

@@ -147,12 +147,28 @@ describe("PageHero", () => {
         "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]",
       );
       expect(copy.parentElement).toBe(section);
-      expect(aside.parentElement).toBe(section);
+      expect(aside.parentElement?.parentElement).toBe(section);
       expect(
         copy.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       // Decision 7: the H1 is still the first text in the hero.
       expect(section.textContent).toMatch(/^IT that just works/);
+    });
+
+    it("hides the aside below lg, so callers needn't", () => {
+      render(
+        <PageHero
+          heading="IT that just works"
+          lead="One flat price."
+          aside={<div data-testid="aside">Waypoints</div>}
+        />,
+      );
+
+      // The wrapper is a grid from lg, so the aside fills the whole half.
+      expect(screen.getByTestId("aside").parentElement).toHaveClass(
+        "hidden",
+        "lg:grid",
+      );
     });
   });
 });
