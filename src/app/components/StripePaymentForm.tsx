@@ -6,8 +6,6 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { Button } from "./Button";
-import StatusNote from "./StatusNote";
 
 interface StripePaymentFormProps {
   onSuccess: () => void;
@@ -52,23 +50,21 @@ export default function StripePaymentForm({
   };
 
   return (
-    <div className="grid gap-4">
+    <div className="stripe-form">
       <PaymentElement />
 
       {errorMessage && (
-        <StatusNote tone="error" label="Error">
-          <p className="m-0">{errorMessage}</p>
-        </StatusNote>
+        <div className="alert alert-danger mt-3">{errorMessage}</div>
       )}
 
-      <Button
-        variant="primary"
-        isBlock
+      <button
+        type="button"
         onClick={handleConfirmPayment}
         disabled={!stripe || isLoading}
+        className="btn btn-success w-100 py-3 mt-3 fs-5"
       >
         {isLoading ? "Processing..." : "Complete Payment"}
-      </Button>
+      </button>
     </div>
   );
 }
