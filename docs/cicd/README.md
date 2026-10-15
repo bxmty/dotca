@@ -25,9 +25,6 @@ Code Changes → Build (CI) → Staging → Image Promotion → Production
 ### Key Workflows
 
 - **`deploy.yml`**: Unified deployment workflow with automatic environment detection (staging/production)
-- **`deployment-dashboard.yml`**: Status monitoring and dashboard updates
-- **`deployment-metrics.yml`**: Performance analytics and metrics collection
-- **`log-aggregation.yml`**: Centralized log management
 - **`image-cleanup.yml`**: Automated image retention and cleanup
 - **`dependency-check.yml`**: Dependency vulnerability scanning
 
