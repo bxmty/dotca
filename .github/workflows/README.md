@@ -48,29 +48,6 @@ Code Changes → Unified Deploy Workflow → Environment Deployment
   - Comprehensive rollback reporting
   - Notification integration
 
-### 📊 Monitoring & Analytics
-
-#### `deployment-dashboard.yml`
-
-**Purpose**: Deployment status monitoring and basic dashboard
-
-- **Triggers**: Post-deployment, manual refresh
-- **Features**: Environment status tracking, deployment history
-
-#### `deployment-metrics.yml`
-
-**Purpose**: Collect and analyze deployment metrics
-
-- **Triggers**: Post-deployment, scheduled daily
-- **Features**: Success rates, deployment times, environment metrics
-
-#### `log-aggregation.yml`
-
-**Purpose**: Aggregate and analyze deployment logs
-
-- **Triggers**: Post-deployment, scheduled cleanup
-- **Features**: Log collection, error pattern analysis, cleanup
-
 ### 🛠️ Maintenance Workflows
 
 #### `docker-build.yml`
@@ -185,14 +162,6 @@ graph TD
 
     G[Manual Trigger] --> H[rollback.yml]
     G --> I[environment-destroy.yml]
-
-    B --> J[deployment-dashboard.yml]
-    B --> K[deployment-metrics.yml]
-    B --> L[log-aggregation.yml]
-
-    H --> J
-    H --> K
-    H --> L
 ```
 
 ## 🚦 Workflow States & Triggers
@@ -201,9 +170,6 @@ graph TD
 | ------------------------ | --------- | ------ | ----------------------------- | ---------- |
 | deploy.yml               | ✅        | ✅     | ✅ (main/staging/renovations) | ❌         |
 | rollback.yml             | ❌        | ✅     | ❌                            | ❌         |
-| deployment-dashboard.yml | ✅        | ✅     | ❌                            | ❌         |
-| deployment-metrics.yml   | ✅        | ❌     | ❌                            | ✅ (daily) |
-| log-aggregation.yml      | ✅        | ✅     | ❌                            | ✅ (daily) |
 | docker-build.yml         | ✅        | ✅     | ✅ (main/staging)             | ❌         |
 | dependency-check.yml     | ❌        | ✅     | ❌                            | ❌         |
 
@@ -263,10 +229,8 @@ graph TD
 ### Best Practices
 
 - Always test changes in staging before production
-- Monitor deployment dashboard for status updates
 - Use manual dispatch for emergency deployments when needed
 - Keep environment configurations updated
-- Regularly review deployment metrics
 
 ### Health Check Endpoints
 

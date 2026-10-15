@@ -395,7 +395,6 @@ docker push ghcr.io/your_username/dotca:staging
 - [ ] Update docker-compose.yml to use GHCR images
 - [ ] Modify Ansible playbooks to pull images from GHCR
 - [ ] Verify unified deployment workflow handles both staging and production
-- [ ] Set up notification workflows (`.github/workflows/deployment-dashboard.yml`)
 
 ### Testing and Validation:
 
