@@ -1,9 +1,10 @@
 export default function Loading() {
   return (
-    <div className="container py-5 text-center">
-      <div className="spinner-border text-primary" role="status">
-        <span className="visually-hidden">Loading…</span>
-      </div>
-    </div>
+    <p
+      role="status"
+      className="m-0 px-4 pt-14 font-mono text-label text-muted md:px-7"
+    >
+      Loading…
+    </p>
   );
 }

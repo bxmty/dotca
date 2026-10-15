@@ -58,11 +58,11 @@ describe("Legacy Pages", () => {
   });
 
   describe("_document Page", () => {
-    it("renders an English document that follows the OS colour scheme", () => {
+    it("renders an English document with no theme attribute", () => {
       const markup = renderDocumentMarkup();
 
-      expect(markup).toContain('lang="en"');
-      expect(markup).toContain('data-bs-theme="auto"');
+      // globals.css follows the OS colour scheme, so <html> carries only lang
+      expect(markup).toContain('<html lang="en">');
     });
 
     it("renders the head, page body and Next.js scripts", () => {

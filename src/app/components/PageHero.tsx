@@ -1,0 +1,62 @@
+import type { ReactNode } from "react";
+import ContourGround from "./ContourGround";
+
+// Type-only page hero from the Component Spec, shared by the home, service
+// landing and pricing pages. The H1 is the first text in the hero and the
+// LCP element (decision 7), so no image goes above the fold and the height
+// follows the content. A decorative contour ground sits behind the copy;
+// it is rendered after it and absolutely positioned, so it takes no grid cell.
+// An optional aside fills a right half from lg up (the home waypoints, #632);
+// it comes after the copy, so the H1 stays the first text.
+
+type PageHeroProps = {
+  heading: ReactNode;
+  lead: ReactNode;
+  /** Call-to-action buttons, laid out in a wrapping row. */
+  actions?: ReactNode;
+  /**
+   * Mono fact line under a hairline rule: pass one `<span>` per fact.
+   * Published figures only; a price takes the accent (`text-fig`).
+   */
+  facts?: ReactNode;
+  /**
+   * Desktop-only right half (lg and up). The hero gains a second column and
+   * a minimum height so the aside has room; below lg the aside is hidden.
+   */
+  aside?: ReactNode;
+};
+
+export default function PageHero({
+  heading,
+  lead,
+  actions,
+  facts,
+  aside,
+}: PageHeroProps) {
+  const asideLayoutClasses = aside
+    ? " lg:min-h-[640px] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
+    : "";
+  return (
+    <section
+      className={`relative isolate grid gap-10 overflow-hidden px-4 pt-14 pb-12 md:px-7${asideLayoutClasses}`}
+    >
+      <div className="grid content-start gap-5.5">
+        <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
+          {heading}
+        </h1>
+        <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">
+          {lead}
+        </p>
+        {actions && <div className="flex flex-wrap gap-3">{actions}</div>}
+        {facts && (
+          <p className="m-0 flex flex-wrap gap-x-7 gap-y-2 border-t border-rule pt-3.5 font-mono text-label text-muted">
+            {facts}
+          </p>
+        )}
+      </div>
+      {/* A grid wrapper, so the aside stretches to fill the right half. */}
+      {aside && <div className="hidden lg:grid">{aside}</div>}
+      <ContourGround />
+    </section>
+  );
+}

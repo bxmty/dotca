@@ -1,22 +1,62 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
+import { Button } from "./Button";
+import { PhoneField, TextField } from "./Field";
+import StatusNote from "./StatusNote";
+import {
+  INCOMPLETE_EMAIL_MESSAGE,
+  isEmailAddress,
+} from "../../lib/formValidation";
+import { TEXT_LINK_CLASS_NAME } from "./TextLink";
 
 interface ContactFormProps {
   className?: string;
 }
 
+type ContactFields = { name: string; email: string; phone: string };
+type FieldName = keyof ContactFields;
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+// Field order, for moving focus to the first invalid one
+const FIELD_NAMES: readonly FieldName[] = ["name", "email", "phone"];
+
+// A country code is at most three digits, so anything shorter is no number
+// at all. Whether a longer one is valid stays the API's call (libphonenumber),
+// so the client never blocks a number the API would accept.
+const MAX_COUNTRY_CODE_DIGITS = 3;
+
+/** Errors worded as the fix (Component Spec, forms). */
+function validateContactFields({
+  name,
+  email,
+  phone,
+}: ContactFields): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!name.trim()) {
+    errors.name = "enter your name";
+  }
+  if (!email.trim()) {
+    errors.email = "enter your email address";
+  } else if (!isEmailAddress(email)) {
+    errors.email = INCOMPLETE_EMAIL_MESSAGE;
+  }
+  const phoneDigits = phone.replace(/\D/g, "");
+  if (phoneDigits.length <= MAX_COUNTRY_CODE_DIGITS) {
+    errors.phone = "enter a phone number we can reach you on";
+  }
+  return errors;
+}
+
+const getFieldId = (field: FieldName) => `contact-${field}`;
+
 const ContactForm = ({ className = "" }: ContactFormProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   // Honeypot: humans never see this field; bots that fill it are dropped
   const [website, setWebsite] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{
     type: "success" | "error" | null;
@@ -26,8 +66,21 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
     message: "",
   });
 
+  const clearFieldError = (field: FieldName) =>
+    setFieldErrors((errors) => ({ ...errors, [field]: undefined }));
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+
+    const errors = validateContactFields({ name, email, phone });
+    setFieldErrors(errors);
+    const firstInvalidField = FIELD_NAMES.find((field) => errors[field]);
+    if (firstInvalidField) {
+      setSubmitStatus({ type: null, message: "" });
+      document.getElementById(getFieldId(firstInvalidField))?.focus();
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: "" });
 
@@ -90,121 +143,111 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
     }
   };
 
+  const isSuccess = submitStatus.type === "success";
+
   return (
-    <form className={`col-md-6 ps-md-5 ${className}`} onSubmit={handleSubmit}>
+    <form
+      className={`grid max-w-[560px] content-start gap-4.5 ${className}`}
+      onSubmit={handleSubmit}
+      noValidate
+      aria-labelledby="contact-form-heading"
+    >
+      <div className="grid gap-1">
+        <h3
+          id="contact-form-heading"
+          className="m-0 text-h3 leading-tight font-semibold"
+        >
+          Book Your Consultation
+        </h3>
+        <p className="m-0 text-small text-muted">
+          We&apos;ll contact you to schedule your session
+        </p>
+      </div>
+
       {submitStatus.type && (
-        <div
-          className={`mb-4 alert ${submitStatus.type === "success" ? "alert-success" : "alert-danger"}`}
+        <StatusNote
+          tone={isSuccess ? "ok" : "error"}
+          label={isSuccess ? "Sent" : "Error"}
         >
           {submitStatus.message}
-        </div>
+        </StatusNote>
       )}
-      <div className="bg-dark text-white p-4 rounded mb-4" data-bs-theme="dark">
-        <div className="d-flex align-items-center mb-3">
-          <div className="bg-primary p-2 rounded-circle me-3">
-            <svg
-              aria-hidden="true"
-              width="24"
-              height="24"
-              fill="none"
-              stroke="white"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-          </div>
-          <div>
-            <h3 className="fs-5 mb-0 text-white">Book Your Consultation</h3>
-            <p className="text-light mb-0 small">
-              We&apos;ll contact you to schedule your session
-            </p>
-          </div>
-        </div>
 
-        <div
-          aria-hidden="true"
-          style={{ position: "absolute", left: "-9999px", opacity: 0 }}
-        >
-          <label htmlFor="contact-website">Website</label>
-          <input
-            type="text"
-            id="contact-website"
-            name="website"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            tabIndex={-1}
-            autoComplete="off"
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="name" className="form-label text-light">
-            Name*
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="form-control bg-secondary bg-opacity-25 text-white border-secondary"
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="email" className="form-label text-light">
-            Email*
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="form-control bg-secondary bg-opacity-25 text-white border-secondary"
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="phone" className="form-label text-light">
-            Phone*
-          </label>
-          <PhoneInput
-            country={"ca"} // Default country
-            value={phone}
-            onChange={(phone) => setPhone(`+${phone}`)} // Add + prefix for E.164 format
-            inputClass="form-control bg-secondary bg-opacity-25 text-white border-secondary"
-            containerClass="phone-input-container"
-            buttonClass="phone-input-dropdown bg-secondary border-secondary"
-            inputProps={{
-              id: "phone",
-              name: "phone",
-              required: true,
-              autoFocus: false,
-            }}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="btn btn-primary w-100 py-3 fs-5"
-          data-testid="contact-submit-button"
-        >
-          {isSubmitting ? "Submitting..." : "Book Your Consult"}
-        </button>
+      <div
+        aria-hidden="true"
+        style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+      >
+        <label htmlFor="contact-website">Website</label>
+        <input
+          type="text"
+          id="contact-website"
+          name="website"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
+      <TextField
+        id={getFieldId("name")}
+        label="Name"
+        type="text"
+        name="name"
+        autoComplete="name"
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          clearFieldError("name");
+        }}
+        required
+        error={fieldErrors.name}
+      />
+      <TextField
+        id={getFieldId("email")}
+        label="Email"
+        type="email"
+        name="email"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          clearFieldError("email");
+        }}
+        required
+        error={fieldErrors.email}
+      />
+      <PhoneField
+        id={getFieldId("phone")}
+        label="Phone"
+        name="phone"
+        value={phone}
+        onChange={(phone) => {
+          setPhone(phone);
+          clearFieldError("phone");
+        }}
+        error={fieldErrors.phone}
+      />
+      <Button
+        type="submit"
+        variant="primary"
+        isBlock
+        disabled={isSubmitting}
+        data-testid="contact-submit-button"
+      >
+        {isSubmitting ? "Submitting..." : "Book Your Consult"}
+      </Button>
 
-        <p className="small text-light mt-3 text-center">
+      <div className="grid gap-1 text-small text-muted">
+        <p className="m-0">
           We&apos;ll reach out within 24 hours to schedule your consultation.
         </p>
-        <p className="small text-light mb-0 text-center">
+        <p className="m-0">
           Prefer to pick a time yourself?{" "}
           <a
             href="/book"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white"
+            className={TEXT_LINK_CLASS_NAME}
             data-testid="contact-book-link"
           >
             Book a time now

@@ -1,103 +1,95 @@
-import Link from "next/link";
 import type { BlogPost as BlogPostType } from "@/types/blog";
-import { formatBlogDate, tagToSlug } from "@/lib/blog";
-import BlogCta from "./BlogCta";
+import BlogCta, { BlogRailOffer } from "./BlogCta";
 import OptimizedImage from "./OptimizedImage";
+import { TagChipList } from "./TagChip";
 
 interface BlogPostProps {
   post: BlogPostType;
-  content: React.ReactNode; // MDX content will be passed as React nodes
+  content: React.ReactNode; // rendered markdown
 }
+
+// A post (Component Spec, blog): a split header (60 px Light title, dek on
+// the right), the cover edge to edge, then a sticky left rail (meta rows,
+// tag chips, offer box) beside the .prose article. The legal pages keep the
+// plain ProsePage frame.
 
 export default function BlogPost({ post, content }: BlogPostProps) {
   const { frontmatter } = post;
+  const tags = frontmatter.tags ?? [];
+  const metaRows = [
+    {
+      label: "Author",
+      value: frontmatter.author,
+    },
+    {
+      label: "Published",
+      value: (
+        <time dateTime={frontmatter.date} className="tabular-nums">
+          {frontmatter.date}
+        </time>
+      ),
+    },
+    {
+      label: "Reading",
+      value: <span className="tabular-nums">{post.readingTime} min</span>,
+    },
+  ];
 
   return (
-    <article className="blog-post">
-      {/* Hero Section */}
-      <header className="mb-5">
-        {frontmatter.coverImage && (
-          <div
-            className="position-relative mb-4 overflow-hidden rounded"
-            style={{ height: "400px" }}
-          >
-            <OptimizedImage
-              src={frontmatter.coverImage}
-              alt={frontmatter.title}
-              fill
-              className="object-fit-cover"
-              priority
-              sizes="100vw"
-            />
-          </div>
-        )}
-
-        <div className="text-center mb-4">
-          <h1 className="display-4 fw-bold mb-3">{frontmatter.title}</h1>
-          <p className="lead text-muted mb-3">{frontmatter.description}</p>
-
-          <div className="d-flex justify-content-center align-items-center flex-wrap text-muted small">
-            <span className="me-3">
-              <i className="bi bi-person-fill me-1"></i>
-              {frontmatter.author}
-            </span>
-            <span className="me-3">
-              <i className="bi bi-calendar-event me-1"></i>
-              {formatBlogDate(frontmatter.date)}
-            </span>
-            <span className="me-3">
-              <i className="bi bi-clock me-1"></i>
-              {frontmatter.readingTime} min read
-            </span>
-          </div>
-        </div>
-
-        {/* Tags */}
-        {frontmatter.tags && frontmatter.tags.length > 0 && (
-          <div className="text-center mb-4">
-            {frontmatter.tags.map((tag) => (
-              <Link
-                key={tag}
-                href={`/blog/tag/${tagToSlug(tag)}`}
-                className="badge bg-primary me-2 mb-2 text-decoration-none"
-              >
-                {tag}
-              </Link>
-            ))}
-          </div>
-        )}
+    <div className="pb-12 md:pb-24">
+      <header className="grid gap-4.5 px-4 pt-14 pb-10 md:px-7 lg:grid-cols-12 lg:items-end lg:gap-10">
+        <h1 className="m-0 text-h2 leading-[1.04] font-light tracking-[-0.02em] text-balance md:text-section lg:col-span-7 lg:text-display">
+          {frontmatter.title}
+        </h1>
+        <p className="m-0 text-h3 leading-[1.4] text-muted lg:col-span-5">
+          {frontmatter.description}
+        </p>
       </header>
 
-      {/* Content */}
-      <div className="blog-content prose prose-lg mx-auto">{content}</div>
-
-      <BlogCta cta={frontmatter.cta} />
-
-      {/* Footer */}
-      <footer className="mt-5 pt-4 border-top">
-        <div className="text-center text-muted small">
-          <p className="mb-2">
-            Published on {formatBlogDate(frontmatter.date)} by{" "}
-            {frontmatter.author}
-          </p>
-          {frontmatter.tags && frontmatter.tags.length > 0 && (
-            <p>
-              Tagged:{" "}
-              {frontmatter.tags.map((tag, index) => (
-                <span key={tag}>
-                  {index > 0 && ", "}
-                  <Link
-                    href={`/blog/tag/${tagToSlug(tag)}`}
-                    className="text-muted text-decoration-none"
-                  >
-                    {tag}
-                  </Link>
-                </span>
-              ))}
-            </p>
-          )}
+      {frontmatter.coverImage && (
+        <div className="relative aspect-[5/2] w-full overflow-hidden border-y border-rule bg-cell">
+          <OptimizedImage
+            src={frontmatter.coverImage}
+            alt=""
+            fill
+            className="object-cover"
+            preload
+            sizes="100vw"
+          />
         </div>
-      </footer>
-    </article>
+      )}
+
+      <div className="grid gap-8 px-4 pt-12 md:px-7 lg:grid-cols-[220px_minmax(0,66ch)] lg:gap-16 xl:grid-cols-[260px_minmax(0,66ch)]">
+        <aside aria-label="About this post">
+          <div className="grid gap-5 lg:sticky lg:top-8">
+            <dl className="m-0 grid border-t-2 border-ink font-mono text-label">
+              {metaRows.map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex justify-between gap-3 border-b border-rule py-2"
+                >
+                  <dt className="text-muted">{label}</dt>
+                  <dd className="m-0">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {tags.length > 0 && (
+              <div className="hidden lg:block">
+                <TagChipList tags={tags} />
+              </div>
+            )}
+            <BlogRailOffer cta={frontmatter.cta} />
+          </div>
+        </aside>
+
+        <article className="prose">
+          {content}
+          {tags.length > 0 && (
+            <TagChipList tags={tags} className="mt-3 lg:hidden" />
+          )}
+          <BlogCta cta={frontmatter.cta} />
+        </article>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,11 @@
 // tests/onboarding-page.test.tsx
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import OnboardingPage from "@/app/onboarding/page";
@@ -26,6 +32,61 @@ global.fetch = jest.fn(() =>
   }),
 ) as jest.Mock;
 
+function fillCompanyStep() {
+  fireEvent.change(screen.getByLabelText(/Company Name/i), {
+    target: { value: "Test Company" },
+  });
+  fireEvent.change(screen.getByLabelText(/Industry/i), {
+    target: { value: "Technology" },
+  });
+  fireEvent.change(screen.getByLabelText(/Number of Employees/i), {
+    target: { value: "11-25" },
+  });
+}
+
+function fillContactStep() {
+  fireEvent.change(screen.getByLabelText(/Contact Name/i), {
+    target: { value: "John Doe" },
+  });
+  fireEvent.change(screen.getByLabelText(/Email/i), {
+    target: { value: "john@example.com" },
+  });
+  fireEvent.change(
+    document.getElementById("contactPhone") as HTMLInputElement,
+    { target: { value: "12895550142" } },
+  );
+  fireEvent.change(screen.getByLabelText(/Address/i), {
+    target: { value: "123 Main St" },
+  });
+  fireEvent.change(screen.getByLabelText(/City/i), {
+    target: { value: "Toronto" },
+  });
+  fireEvent.change(screen.getByLabelText(/Province\/State/i), {
+    target: { value: "ON" },
+  });
+  fireEvent.change(screen.getByLabelText(/Postal Code/i), {
+    target: { value: "M5V 1A1" },
+  });
+}
+
+function clickNext() {
+  fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+}
+
+/** Fills the two required steps and lands on step 3. */
+function goToItEnvironmentStep() {
+  fillCompanyStep();
+  clickNext();
+  fillContactStep();
+  clickNext();
+}
+
+function getCurrentProgressStep() {
+  return within(screen.getByRole("navigation", { name: /^Step/ }))
+    .getAllByRole("listitem")
+    .find((item) => item.getAttribute("aria-current") === "step");
+}
+
 describe("OnboardingPage Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -49,8 +110,8 @@ describe("OnboardingPage Component", () => {
   it("navigates to step 2 when Next button is clicked", async () => {
     render(<OnboardingPage />);
 
-    // Click the Next button
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    fillCompanyStep();
+    clickNext();
 
     // Check if step 2 title is rendered
     expect(screen.getByText("Contact Details")).toBeInTheDocument();
@@ -72,11 +133,7 @@ describe("OnboardingPage Component", () => {
   it("navigates to step 3 and back", async () => {
     render(<OnboardingPage />);
 
-    // Navigate to step 2
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
-
-    // Navigate to step 3
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    goToItEnvironmentStep();
 
     // Check if step 3 title is rendered
     expect(screen.getByText("IT Environment")).toBeInTheDocument();
@@ -130,6 +187,10 @@ describe("OnboardingPage Component", () => {
       document.getElementById("contactPhone") as HTMLInputElement,
       { target: { value: "12345678901" } },
     );
+    await user.type(screen.getByLabelText(/Address/i), "123 Main St");
+    await user.type(screen.getByLabelText(/City/i), "Toronto");
+    await user.type(screen.getByLabelText(/Province\/State/i), "ON");
+    await user.type(screen.getByLabelText(/Postal Code/i), "M5V 1A1");
 
     // Navigate to step 3
     fireEvent.click(screen.getByRole("button", { name: /Next/i }));
@@ -164,9 +225,7 @@ describe("OnboardingPage Component", () => {
   it("submits form data and shows the success screen", async () => {
     render(<OnboardingPage />);
 
-    // Navigate to step 3
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    goToItEnvironmentStep();
 
     // Submit the form
     fireEvent.click(
@@ -202,9 +261,7 @@ describe("OnboardingPage Component", () => {
 
     render(<OnboardingPage />);
 
-    // Navigate to step 3
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    goToItEnvironmentStep();
 
     // Submit the form
     fireEvent.click(
@@ -234,9 +291,7 @@ describe("OnboardingPage Component", () => {
 
     render(<OnboardingPage />);
 
-    // Navigate to step 3
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    goToItEnvironmentStep();
 
     // Submit the form
     fireEvent.click(
@@ -256,5 +311,100 @@ describe("OnboardingPage Component", () => {
 
     // Restore console.error
     console.error = originalConsoleError;
+  });
+
+  it("shows the current step on the progress bar", () => {
+    render(<OnboardingPage />);
+
+    expect(
+      screen.getByRole("navigation", { name: "Step 1 of 3" }),
+    ).toBeInTheDocument();
+    expect(getCurrentProgressStep()).toHaveTextContent("1 Company");
+
+    fillCompanyStep();
+    clickNext();
+    expect(
+      screen.getByRole("navigation", { name: "Step 2 of 3" }),
+    ).toBeInTheDocument();
+    expect(getCurrentProgressStep()).toHaveTextContent("2 Contact");
+
+    fillContactStep();
+    clickNext();
+    expect(getCurrentProgressStep()).toHaveTextContent("3 IT environment");
+
+    fireEvent.click(screen.getByRole("button", { name: /Back/i }));
+    expect(getCurrentProgressStep()).toHaveTextContent("2 Contact");
+  });
+
+  it("keeps an incomplete step open with an inline error on each empty field", () => {
+    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+    render(<OnboardingPage />);
+
+    clickNext();
+
+    expect(screen.getByText("Company Information")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Company Name/i)).toHaveAccessibleDescription(
+      "Fix: enter your company name",
+    );
+    expect(screen.getByLabelText(/Industry/i)).toHaveAccessibleDescription(
+      "Fix: enter your industry",
+    );
+    expect(
+      screen.getByLabelText(/Number of Employees/i),
+    ).toHaveAccessibleDescription("Fix: choose your team size");
+    expect(screen.getByLabelText(/Company Name/i)).toHaveFocus();
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    // Editing a field clears its error
+    fireEvent.change(screen.getByLabelText(/Industry/i), {
+      target: { value: "Technology" },
+    });
+    expect(screen.getByLabelText(/Industry/i)).not.toHaveAttribute(
+      "aria-invalid",
+    );
+
+    alertSpy.mockRestore();
+  });
+
+  it("checks the contact step the way the onboarding API does", () => {
+    render(<OnboardingPage />);
+
+    fillCompanyStep();
+    clickNext();
+    fillContactStep();
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "john@" },
+    });
+    fireEvent.change(
+      document.getElementById("contactPhone") as HTMLInputElement,
+      { target: { value: "1289" } },
+    );
+    fireEvent.change(screen.getByLabelText(/City/i), {
+      target: { value: "" },
+    });
+    clickNext();
+
+    expect(screen.getByText("Contact Details")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/i)).toHaveAccessibleDescription(
+      "Fix: enter the full address, like dana@company.ca",
+    );
+    expect(document.getElementById("contactPhone")).toHaveAccessibleDescription(
+      "Fix: enter a phone number with at least 10 digits",
+    );
+    expect(screen.getByLabelText(/City/i)).toHaveAccessibleDescription(
+      "Fix: enter your city",
+    );
+    expect(screen.getByLabelText(/Contact Name/i)).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expect(screen.getByLabelText(/Email/i)).toHaveFocus();
+  });
+
+  it("marks the IT environment questions optional", () => {
+    render(<OnboardingPage />);
+
+    goToItEnvironmentStep();
+
+    expect(screen.getAllByText("optional")).toHaveLength(4);
   });
 });

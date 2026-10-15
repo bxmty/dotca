@@ -294,6 +294,22 @@ fieldset.fld{border:0;padding:0;margin:0}
 .callout{padding:18px 20px;display:grid;gap:6px}
 .callout h3{font-size:18px;font-weight:600}
 .callout p{color:var(--ink);font-size:16px;line-height:1.5}
+.post-head{display:grid;grid-template-columns:7fr 5fr;gap:40px;align-items:end;padding-bottom:28px}
+.post-head h1{font-weight:300;font-size:clamp(28px,5vw,60px);line-height:1.04;letter-spacing:-.02em;text-wrap:balance}
+.post-head p{font-size:20px;line-height:1.4;color:var(--muted)}
+.post-cover{aspect-ratio:5/2;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:repeating-linear-gradient(135deg,var(--rule) 0 2px,transparent 2px 10px);margin:0 -28px}
+.post-body{display:grid;grid-template-columns:220px minmax(0,66ch);gap:64px;padding-top:36px}
+.rail{display:grid;gap:20px;align-content:start}
+.rail dl{margin:0;border-top:2px solid var(--ink);font:12px var(--mono)}
+.rail dl div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--rule);padding:8px 0}
+.rail dt{color:var(--muted)}
+.rail dd{margin:0}
+.rail .tags{display:flex;gap:6px;flex-wrap:wrap}
+.rail-box{display:grid;gap:12px;padding:16px}
+.rail-box p{font-size:14px;line-height:1.35}
+.post-tags{display:none;gap:6px;flex-wrap:wrap}
+@media (max-width:860px){.post-head{grid-template-columns:1fr;gap:18px}.post-body{grid-template-columns:1fr;gap:32px}.rail .tags,.rail-box{display:none}.post-tags{display:flex}}
+@media (max-width:520px){.post-cover{margin:0 -18px}}
 .endcta{border-top:2px solid var(--ink);padding-top:16px;display:grid;gap:12px}
 .endcta h3{font-size:20px;font-weight:600}
 .endcta p{color:var(--muted);font-size:16px}
@@ -343,7 +359,7 @@ pre.code i{font-style:normal;color:var(--muted)}
       <div class="sheet-wrap"><table class="sheet">
         <thead><tr><th>Choice</th><th>Settled</th><th>Rejected</th></tr></thead>
         <tbody>
-          <tr><th><a class="link" href="#hero">Hero</a></th><td>Type only, on the page ground, with no photo</td><td class="m">Oxford band; photo under an overlay</td></tr>
+          <tr><th><a class="link" href="#hero">Hero</a></th><td>Type only, on the page ground, with no photo. A contour ground on every hero; waypoints on the home hero from <code>lg</code> up (2026-10-08)</td><td class="m">Oxford band; photo under an overlay</td></tr>
           <tr><th><a class="link" href="#bands">Section bands</a></th><td>Rules only. Oxford appears only in the footer.</td><td class="m">Alternating oxford bands</td></tr>
           <tr><th><a class="link" href="#pricing">Pricing on a phone</a></th><td>Plans stack below 900 px</td><td class="m">A sideways-scrolling table</td></tr>
           <tr><th><a class="link" href="#blog">Blog index</a></th><td>A ruled list with no cover images</td><td class="m">Image cards</td></tr>
@@ -380,11 +396,11 @@ pre.code i{font-style:normal;color:var(--muted)}
           <tr><th>Single offer</th><td class="m"><code>card shadow</code>, <code>alert-success</code>, <code>card-header bg-primary</code></td><td class="m">/ (bundle), /services/* ($1,250)</td><td class="m">Two ruled cells: the price and terms, then what's included</td></tr>
           <tr><th>FAQ</th><td class="m"><code>accordion</code> + Bootstrap Collapse</td><td class="m">/pricing, /services/*</td><td class="m"><code>&lt;details&gt;</code>. All items open independently, and the first one starts closed.</td></tr>
           <tr><th>Forms + status</th><td class="m"><code>form-control</code>, <code>form-check</code>, <code>form-select</code>, <code>alert-*</code></td><td class="m">/ (contact), /checkout, /onboarding, /checkout/confirmation</td><td class="m">Fields with 2 px corners and a 3:1 edge, inline errors, a 3-step progress bar. Q5 covers colour.</td></tr>
-          <tr><th>Blog index + post</th><td class="m"><code>card</code>, <code>badge</code>, <code>bi bi-*</code> icons, <code>prose</code></td><td class="m">/blog, /blog/[slug], /blog/tag/[tag]</td><td class="m">Q4. Bootstrap Icons go away, and meta is a mono line.</td></tr>
+          <tr><th>Blog index + post</th><td class="m"><code>card</code>, <code>badge</code>, <code>bi bi-*</code> icons, <code>prose</code></td><td class="m">/blog, /blog/[slug], /blog/tag/[tag]</td><td class="m">Q4. Bootstrap Icons go away. The post gets a split header and a left meta rail.</td></tr>
           <tr><th>Footer band <span class="st new">new</span></th><td class="m"><code>border-top</code> footer</td><td class="m">all (layout)</td><td class="m">Oxford band with the cultured lockup and grouped links, in both modes</td></tr>
         </tbody>
       </table></div>
-      <p class="note">Not restyled: <code>/sentry-example-page</code> (internal). <code>/privacy-policy</code> and <code>/terms-of-service</code> use the post typography without the dek or the end CTA.</p>
+      <p class="note">Not restyled: <code>/sentry-example-page</code> (internal). <code>/privacy-policy</code> and <code>/terms-of-service</code> use the post typography without the dek, the rail or the end CTA, in the plain 66 ch frame.</p>
     </div>
   </section>
 
@@ -428,7 +444,7 @@ pre.code i{font-style:normal;color:var(--muted)}
   <section class="row" id="hero">
     <p class="lbl"><b>Hero</b><span>/ · /services/* · /pricing</span></p>
     <div class="body">
-      <div class="ask"><span class="q">Q1 · Hero treatment</span><p>Today's hero is a stock office photo under a 75% black overlay. That image is the LCP element on mobile. A type-only hero removes the image request and fits the Technical Manual direction. The cost is that the top of the page has no picture.</p>
+      <div class="ask"><span class="q">Q1 · Hero treatment</span><p>Decided: the hero is type only on every route, over a contour ground, and the home hero adds a waypoint route in its right half on desktop (rules below). The demo here shows the type alone. The original question: today's hero is a stock office photo under a 75% black overlay. That image is the LCP element on mobile. A type-only hero removes the image request and fits the Technical Manual direction. The cost is that the top of the page has no picture.</p>
         <div class="seg" role="group" aria-label="Hero variant" data-target="heroDemo" data-attr="v">
           <button type="button" data-val="type" aria-pressed="true">Type only (proposed)</button>
           <button type="button" data-val="band" aria-pressed="false">Oxford band</button>
@@ -448,7 +464,10 @@ pre.code i{font-style:normal;color:var(--muted)}
         <li><b>Type</b><span>60 px Chivo Light, tracked −0.02 em, 17 ch measure. The subhead is 20 px muted. Left-aligned on every route, including /pricing, which is centred today.</span></li>
         <li><b>Fact line</b><span>An optional mono strip under a rule, for figures that are already published (the price at §2.3/§4.7). It isn't a stat banner. Only the published figure is queen; words like "Toronto" are ink.</span></li>
         <li><b>Dashes</b><span>A word joiner and no-break space go before a dash in display type (<code>&amp;#8288;&amp;nbsp;—</code>), so no line starts with "—".</span></li>
-        <li><b>Height</b><span>Set by the content. <code>vh-75</code> goes away.</span></li>
+        <li><b>Contour ground</b><span>Decided 2026-10-08 (hero prototype, round 2). Every hero route (/, /services/*, /pricing) sits on a topographic contour ground: inline SVG behind the copy, strongest top-right and fading out behind the text and toward the bottom edge. Index contours (every fifth) are queen at 1.4 px, the rest are rule at 0.8 px, so it follows the theme. Below <code>md</code> it dims to 35% so the subhead reads. It is decoration: <code>aria-hidden</code>, no pointer events.</span></li>
+        <li><b>Waypoints</b><span>Home only, from <code>lg</code> up (round 3, variant B). The right half plots one working day over the contours: four timestamped stops (06:40 Job site · 09:15 On the road · 13:30 Client's office · 21:05 Home) joined by a dashed queen route, captioned "One working day · four offices · one IT team" bottom-right. Each stop is a ringed queen marker, the time in 20 px mono ink, the place as a muted uppercase mono label. The stops are an ordered list for assistive tech; the route line is hidden. Below <code>lg</code> the waypoints don't render and the hero is the single column above. Service and pricing heroes carry the contours only.</span></li>
+        <li><b>LCP</b><span>Decision 7 still holds: the contours and waypoints are inline SVG and text, so there is no image request and the H1 stays the first text and the LCP element.</span></li>
+        <li><b>Height</b><span>Set by the content. <code>vh-75</code> goes away. With waypoints, the home hero has a 640 px minimum height from <code>lg</code> up so the stops have room.</span></li>
         <li><b>Dark</b><span>Type-only follows the theme. The band and photo variants are oxford in both modes, and their buttons invert to cultured on oxford.</span></li>
       </ul>
     </div>
@@ -664,22 +683,39 @@ pre.code i{font-style:normal;color:var(--muted)}
       </div><div class="stage-cap"><span>Post titles are illustrative</span><span>tags are mono chips, not filled badges</span></div></div>
 
       <div class="stage"><div class="pad">
-        <article class="prose">
+        <header class="post-head">
           <h1>What a payment-redirection scam looks like from the inside</h1>
-          <p class="dek">The bank-account-change email, and the one phone call that stops it.</p>
-          <div class="meta"><span>Matt Mattice</span><time class="num">2026-09-29</time><span class="num">6 min read</span></div>
-          <div class="callout hl"><h3>The short version</h3><p>If a supplier emails new banking details, call them on a number you already have before you pay.</p></div>
-          <p>A callout is the pale-purple highlight in both modes: ink on the tint, no icon, no button and no edge. Selected text is pale purple with ink; inside a highlight it inverts to ink with pale purple.</p>
-          <h2>How the email arrives</h2>
-          <ul><li>It replies inside a real thread.</li><li>The sender address is one character off.</li></ul>
-          <pre><code>From: accounts@suppl1er.ca</code></pre>
-          <div class="endcta"><h3>Want a second pair of eyes on your setup?</h3><p>The assessment is free, and you keep the findings.</p><div><a class="btn btn-primary" href="#">Get a Business-First IT Assessment</a></div></div>
-        </article>
-      </div><div class="stage-cap"><span>Post · 18 px / 1.6 / 66 ch</span><span>BlogCta becomes the end CTA</span></div></div>
+          <p>The bank-account-change email, and the one phone call that stops it.</p>
+        </header>
+        <div class="post-cover" role="img" aria-label="Cover image placeholder"></div>
+        <div class="post-body">
+          <aside class="rail" aria-label="About this post">
+            <dl>
+              <div><dt>Author</dt><dd>Matt Mattice</dd></div>
+              <div><dt>Published</dt><dd class="num">2026-09-29</dd></div>
+              <div><dt>Reading</dt><dd class="num">6 min</dd></div>
+            </dl>
+            <div class="tags"><a class="tagc" href="#">security</a><a class="tagc" href="#">email</a></div>
+            <div class="rail-box hl"><p>Free assessment. You keep the findings.</p><div><a class="btn btn-primary" href="#">Book it</a></div></div>
+          </aside>
+          <article class="prose">
+            <div class="callout hl"><h3>The short version</h3><p>If a supplier emails new banking details, call them on a number you already have before you pay.</p></div>
+            <p>A callout is the pale-purple highlight in both modes: ink on the tint, no icon, no button and no edge. Selected text is pale purple with ink; inside a highlight it inverts to ink with pale purple.</p>
+            <h2>How the email arrives</h2>
+            <ul><li>It replies inside a real thread.</li><li>The sender address is one character off.</li></ul>
+            <pre><code>From: accounts@suppl1er.ca</code></pre>
+            <div class="post-tags"><a class="tagc" href="#">security</a><a class="tagc" href="#">email</a></div>
+            <div class="endcta"><h3>Want a second pair of eyes on your setup?</h3><p>The assessment is free, and you keep the findings.</p><div><a class="btn btn-primary" href="#">Get a Business-First IT Assessment</a></div></div>
+          </article>
+        </div>
+      </div><div class="stage-cap"><span>Post · split header, 5:2 cover, left rail · body 18 px / 1.6 / 66 ch</span><span>BlogCta becomes the end CTA</span></div></div>
 
       <ul class="rules">
-        <li><b>Measure</b><span>Body 18 px Regular, line-height 1.6, 66 ch, flush left. The title is 42 px Light, left-aligned (it's centred bold today). List markers are muted.</span></li>
-        <li><b>Meta</b><span>Author, date, read time on one mono line between rules. Bootstrap Icons (<code>bi bi-*</code>) go away, so the icon font is dropped.</span></li>
+        <li><b>Header</b><span>Across the page on a 12-column grid from lg: the title spans 7 columns at 60 px Light, left-aligned, and the dek spans 5, bottom-aligned. There's no byline in the header. On phones the header stacks and the title steps down (28 px, 42 px from md).</span></li>
+        <li><b>Cover</b><span>Edge to edge under the header at 5:2, ruled top and bottom. A post with no cover goes straight from the header to the rail and article.</span></li>
+        <li><b>Rail</b><span>A left rail aligned under the logo, sticky from lg: 220 px wide (260 px from xl), 64 px from the article. Author, published date and reading time are ruled mono rows under a 2 px ink rule, then the tag chips, then the rail box. Bootstrap Icons (<code>bi bi-*</code>) go away, so the icon font is dropped. On phones the meta rows sit above the article and the tags move to the end of the post.</span></li>
+        <li><b>Rail box</b><span>A small pale-purple <code>.hl</code> island ending the rail, following the post's <code>cta</code>: the assessment offer ("Free assessment. You keep the findings." with a button to /book), the lead-magnet offer with the end CTA's label and target, or nothing for <code>none</code>. It's hidden on phones, where the end CTA covers it.</span></li>
+        <li><b>Measure</b><span>Body 18 px Regular, line-height 1.6, 66 ch, flush left beside the rail. List markers are muted. The legal pages keep the plain frame: a 42 px Light title over the body at the same measure.</span></li>
         <li><b>Prose</b><span>Hand-written element styles under a <code>.prose</code> scope, instead of <code>@tailwindcss/typography</code>. The markdown uses five elements (h2, h3, lists, one code block), so the plugin's weight isn't worth it.</span></li>
         <li><b>End CTA</b><span>A rule-topped block in place of the centred button. A lead-magnet variant uses the same block.</span></li>
       </ul>
