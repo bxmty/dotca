@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getBlogPostBySlug, getBlogPostSummaries } from "@/lib/blog";
+import { resolveBlogOffer } from "@/lib/blog-offer";
 import { getArticleSchema } from "@/lib/schema";
 import BlogPost from "@/app/components/BlogPost";
 import JsonLd from "@/app/components/JsonLd";
@@ -81,6 +82,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
       <BlogPost
         post={post}
+        offer={resolveBlogOffer(post.frontmatter.cta)}
         content={
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
