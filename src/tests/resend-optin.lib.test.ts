@@ -38,6 +38,11 @@ function resendError(name: string, statusCode = 422) {
   return { data: null, error: { name, message: "boom", statusCode } };
 }
 
+const existingContact = {
+  data: { id: "contact_123", object: "contact", email: "jane@example.com" },
+  error: null,
+};
+
 describe("subscribeToMonthlyBrief", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -53,6 +58,7 @@ describe("subscribeToMonthlyBrief", () => {
       data: { id: "contact_123" },
       error: null,
     });
+    mockGetContact.mockResolvedValue(resendError("not_found", 404));
     process.env = {
       ...originalEnv,
       RESEND_API_KEY: "re_test_key",
@@ -82,6 +88,30 @@ describe("subscribeToMonthlyBrief", () => {
       topics: [{ id: "topic_brief", subscription: "opt_in" }],
     });
     expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("writes the trimmed, lower-cased address so case and spacing share one contact", async () => {
+    await subscribeToMonthlyBrief({
+      ...subscriber,
+      email: "  Jane@Example.COM ",
+    });
+
+    expect(mockCreateContact.mock.calls[0][0].email).toBe("jane@example.com");
+    expect(mockSendEvent.mock.calls[0][0].email).toBe("jane@example.com");
+  });
+
+  it("re-subscribes the existing contact under the lower-cased address", async () => {
+    mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+    mockGetContact.mockResolvedValue(existingContact);
+
+    await subscribeToMonthlyBrief({ ...subscriber, email: "Jane@Example.com" });
+
+    expect(mockAddContactSegment.mock.calls[0][0].email).toBe(
+      "jane@example.com",
+    );
+    expect(mockUpdateContactTopics.mock.calls[0][0].email).toBe(
+      "jane@example.com",
+    );
   });
 
   it("reports a Resend failure as a PII-free Sentry warning, without throwing", async () => {
@@ -116,6 +146,7 @@ describe("subscribeToMonthlyBrief", () => {
 
   it("re-subscribes an existing contact when the create is refused", async () => {
     mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+    mockGetContact.mockResolvedValue(existingContact);
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
@@ -133,6 +164,7 @@ describe("subscribeToMonthlyBrief", () => {
 
   it("fails when the existing contact's topic update fails", async () => {
     mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+    mockGetContact.mockResolvedValue(existingContact);
     mockUpdateContactTopics.mockResolvedValue(
       resendError("rate_limit_exceeded", 429),
     );
@@ -179,6 +211,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     it("sends the event when an existing contact is re-subscribed", async () => {
       mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+      mockGetContact.mockResolvedValue(existingContact);
 
       await subscribeToMonthlyBrief(subscriber);
 
@@ -284,6 +317,18 @@ describe("markContactAsPaid", () => {
 
     expect(mockUpdateContact).not.toHaveBeenCalled();
     expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("looks up and flags the trimmed, lower-cased address", async () => {
+    mockGetContact.mockResolvedValue(existingContact);
+
+    await markContactAsPaid({ email: " Jane@Example.COM" });
+
+    expect(mockGetContact).toHaveBeenCalledWith({ email: "jane@example.com" });
+    expect(mockUpdateContact).toHaveBeenCalledWith({
+      email: "jane@example.com",
+      properties: { customer: "paid" },
+    });
   });
 
   it("reports a missing API key as a Sentry warning, with no Resend call", async () => {

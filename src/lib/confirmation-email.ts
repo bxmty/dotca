@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { Resend } from "resend";
+import { normalizeEmailAddress } from "@/lib/email-address";
 
 /**
  * The day-0 confirmation email (bxmty/dotca#646, #642 decisions 2, 4, 7, 10,
@@ -50,7 +51,7 @@ function buildIdempotencyKey(
   email: string,
 ): string {
   const emailHash = createHash("sha256")
-    .update(email.trim().toLowerCase())
+    .update(normalizeEmailAddress(email))
     .digest("hex");
   // en-CA formats as YYYY-MM-DD
   const date = new Intl.DateTimeFormat("en-CA", {

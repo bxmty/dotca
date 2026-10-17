@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { Resend } from "resend";
+import { normalizeEmailAddress } from "@/lib/email-address";
 
 /**
  * The monthly security brief opt-in (bxmty/dotca#599): a ticked checkbox on
@@ -105,7 +106,7 @@ function reportEventFailure(source: OptInSource, detail: string): void {
 }
 
 export async function subscribeToMonthlyBrief({
-  email,
+  email: rawEmail,
   firstName,
   lastName,
   source,
@@ -118,6 +119,7 @@ export async function subscribeToMonthlyBrief({
     return { isSubscribed: false, source };
   }
 
+  const email = normalizeEmailAddress(rawEmail);
   const resend = new Resend(process.env.RESEND_API_KEY);
   const segmentId = process.env.RESEND_OPTIN_SEGMENT_ID as string;
   const topics = [
@@ -211,7 +213,7 @@ function reportPaidFlagFailure(detail: string): void {
  * Sentry warning, so it can never change the Stripe webhook's response.
  */
 export async function markContactAsPaid({
-  email,
+  email: rawEmail,
 }: {
   email: string;
 }): Promise<void> {
@@ -222,6 +224,7 @@ export async function markContactAsPaid({
   }
 
   const resend = new Resend(apiKey);
+  const email = normalizeEmailAddress(rawEmail);
 
   const lookup = await findContact(resend, email);
   if (lookup === "missing") return;
