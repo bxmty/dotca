@@ -143,10 +143,19 @@ export async function subscribeToMonthlyBrief({
     return { isSubscribed: true, source };
   }
 
-  // The create is refused when the address is already a contact (an earlier
-  // opt-in, or someone who opted out and has now ticked the box again), so
-  // fall back to adding the existing contact to the segment and opting it
-  // back in to the topic. A fresh tick is fresh express consent.
+  // Resend has no documented "already exists" error code, so a refused
+  // create is only treated as an existing contact once a lookup confirms
+  // it. Anything else (a rate limit, an outage, a bad key) is reported as
+  // the create's own error.
+  const contactLookup = await lookUpContact(resend, email);
+  if (contactLookup.status !== "exists") {
+    reportFailure(source, `create ${createFailureCode}`);
+    return { isSubscribed: false, source };
+  }
+
+  // An existing contact (an earlier opt-in, or someone who opted out and
+  // has now ticked the box again) is added to the segment and opted back in
+  // to the topic. A fresh tick is fresh express consent.
   const segmentFailureCode = await getFailureCode(() =>
     resend.contacts.segments.add({ email, segmentId }),
   );
@@ -156,6 +165,9 @@ export async function subscribeToMonthlyBrief({
         resend.contacts.topics.update({ email, topics }),
       );
   if (!segmentFailureCode && !topicFailureCode) {
+    // The event is sent again for a returning contact on purpose: the
+    // automation's nurture_started_at guard absorbs repeat events (#642
+    // decision 13), so a re-opt-in never restarts the nurture.
     await sendOptInEvent({ resend, email, source });
     return { isSubscribed: true, source };
   }
@@ -171,20 +183,30 @@ export async function subscribeToMonthlyBrief({
   return { isSubscribed: false, source };
 }
 
+/** Whether an address is a Resend contact, as one discriminated result. */
+type ContactLookup =
+  | { status: "exists" }
+  | { status: "missing" }
+  | { status: "failed"; failureCode: string };
+
 /**
- * Whether the address is a Resend contact: "exists", "missing" (Resend's
- * `not_found`, a 404), or a PII-free failure code for anything else.
+ * Look the address up: Resend answers `not_found` (404) for an address that
+ * isn't a contact; any other error is a PII-free failure code (the API
+ * error name, or "exception" when the SDK threw).
  */
-async function findContact(resend: Resend, email: string): Promise<string> {
+async function lookUpContact(
+  resend: Resend,
+  email: string,
+): Promise<ContactLookup> {
   try {
     const { error } = await resend.contacts.get({ email });
-    if (!error) return "exists";
+    if (!error) return { status: "exists" };
     if (error.name === "not_found" || error.statusCode === 404) {
-      return "missing";
+      return { status: "missing" };
     }
-    return error.name;
+    return { status: "failed", failureCode: error.name };
   } catch {
-    return "exception";
+    return { status: "failed", failureCode: "exception" };
   }
 }
 
@@ -226,10 +248,10 @@ export async function markContactAsPaid({
   const resend = new Resend(apiKey);
   const email = normalizeEmailAddress(rawEmail);
 
-  const lookup = await findContact(resend, email);
-  if (lookup === "missing") return;
-  if (lookup !== "exists") {
-    reportPaidFlagFailure(`lookup ${lookup}`);
+  const contactLookup = await lookUpContact(resend, email);
+  if (contactLookup.status === "missing") return;
+  if (contactLookup.status === "failed") {
+    reportPaidFlagFailure(`lookup ${contactLookup.failureCode}`);
     return;
   }
 

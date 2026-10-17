@@ -106,12 +106,46 @@ describe("subscribeToMonthlyBrief", () => {
 
     await subscribeToMonthlyBrief({ ...subscriber, email: "Jane@Example.com" });
 
+    expect(mockGetContact).toHaveBeenCalledWith({ email: "jane@example.com" });
     expect(mockAddContactSegment.mock.calls[0][0].email).toBe(
       "jane@example.com",
     );
     expect(mockUpdateContactTopics.mock.calls[0][0].email).toBe(
       "jane@example.com",
     );
+  });
+
+  it("reports a refused create as itself when the address is not a contact", async () => {
+    mockCreateContact.mockResolvedValue(
+      resendError("rate_limit_exceeded", 429),
+    );
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result.isSubscribed).toBe(false);
+    expect(mockAddContactSegment).not.toHaveBeenCalled();
+    expect(mockUpdateContactTopics).not.toHaveBeenCalled();
+    expect(mockSendEvent).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Monthly brief opt-in failed (contact): create rate_limit_exceeded",
+      "warning",
+    );
+  });
+
+  it("reports the create error, not an update, when the lookup also fails", async () => {
+    mockCreateContact.mockResolvedValue(
+      resendError("internal_server_error", 500),
+    );
+    mockGetContact.mockRejectedValue(new Error("down for jane@example.com"));
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result.isSubscribed).toBe(false);
+    expect(mockAddContactSegment).not.toHaveBeenCalled();
+    const [detail] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    expect(detail).toContain("create internal_server_error");
+    expect(detail).not.toContain("existing-contact");
+    expect(detail).not.toContain("jane");
   });
 
   it("reports a Resend failure as a PII-free Sentry warning, without throwing", async () => {
