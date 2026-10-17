@@ -20,6 +20,58 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * The one Resend send path both public functions share: env check, send,
+ * error handling. Never throws; every failure is logged under `purpose` and
+ * returned as `false`.
+ */
+async function sendResendEmail({
+  purpose,
+  senderName,
+  to,
+  subject,
+  html,
+  text,
+}: {
+  /** Names the email in log lines, e.g. "Webmaster notification". */
+  purpose: string;
+  senderName: string;
+  /** Unset when the recipient's own env var is missing. */
+  to: string | undefined;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+  if (!apiKey || !fromEmail || !to) {
+    console.error(
+      `${purpose} skipped: RESEND_API_KEY, RESEND_FROM_EMAIL, or the recipient is not set`,
+    );
+    return false;
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: `${senderName} <${fromEmail}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
+    if (error) {
+      console.error(`${purpose} failed:`, error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(`${purpose} failed:`, error);
+    return false;
+  }
+}
+
 export async function sendWebmasterNotification({
   formType,
   submitterName,
@@ -29,17 +81,6 @@ export async function sendWebmasterNotification({
   submitterName: string;
   fields: Record<string, string>;
 }): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL;
-  const webmasterEmail = process.env.WEBMASTER_EMAIL;
-
-  if (!apiKey || !fromEmail || !webmasterEmail) {
-    console.error(
-      "Webmaster notification skipped: RESEND_API_KEY, RESEND_FROM_EMAIL, or WEBMASTER_EMAIL is not set",
-    );
-    return false;
-  }
-
   const rows = Object.entries(fields).filter(([, value]) => value !== "");
 
   const text = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
@@ -54,24 +95,15 @@ export async function sendWebmasterNotification({
     "</table>",
   ].join("\n");
 
-  try {
-    const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({
-      from: `Boximity Website <${fromEmail}>`,
-      to: webmasterEmail,
-      subject: `New ${formType} submission — ${submitterName}`,
-      html,
-      text,
-    });
-    if (error) {
-      console.error("Webmaster notification failed:", error);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("Webmaster notification failed:", error);
-    return false;
-  }
+  return sendResendEmail({
+    purpose: "Webmaster notification",
+    senderName: "Boximity Website",
+    // WEBMASTER_EMAIL is part of this email's env contract.
+    to: process.env.WEBMASTER_EMAIL,
+    subject: `New ${formType} submission — ${submitterName}`,
+    html,
+    text,
+  });
 }
 
 /**
@@ -90,16 +122,6 @@ export async function sendLeadMagnetDeliveryEmail({
   downloadUrl: string;
   title: string;
 }): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL;
-
-  if (!apiKey || !fromEmail) {
-    console.error(
-      "Lead magnet delivery email skipped: RESEND_API_KEY or RESEND_FROM_EMAIL is not set",
-    );
-    return false;
-  }
-
   const text = [
     `Here's your copy of ${title}:`,
     "",
@@ -116,22 +138,12 @@ export async function sendLeadMagnetDeliveryEmail({
     "<p>— Boximity</p>",
   ].join("\n");
 
-  try {
-    const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({
-      from: `Boximity <${fromEmail}>`,
-      to,
-      subject: `Your download: ${title}`,
-      html,
-      text,
-    });
-    if (error) {
-      console.error("Lead magnet delivery email failed:", error);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("Lead magnet delivery email failed:", error);
-    return false;
-  }
+  return sendResendEmail({
+    purpose: "Lead magnet delivery email",
+    senderName: "Boximity",
+    to,
+    subject: `Your download: ${title}`,
+    html,
+    text,
+  });
 }

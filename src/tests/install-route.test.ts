@@ -36,7 +36,7 @@ describe("/install redirect route", () => {
     ["blank", "   "],
   ])(
     "does not redirect when the installer URL is %s, and warns Sentry",
-    (_label, value) => {
+    async (_label, value) => {
       if (value === undefined) delete process.env.SYNCRO_FREE_INSTALLER_URL;
       else process.env.SYNCRO_FREE_INSTALLER_URL = value;
 
@@ -44,6 +44,9 @@ describe("/install redirect route", () => {
 
       expect(res.status).toBe(503);
       expect(res.headers.get("Location")).toBeNull();
+      expect(await res.text()).toBe(
+        "The installer link is temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+      );
       expect(Sentry.captureMessage).toHaveBeenCalledWith(
         expect.stringContaining("SYNCRO_FREE_INSTALLER_URL"),
         "warning",

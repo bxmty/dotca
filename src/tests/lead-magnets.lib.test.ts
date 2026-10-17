@@ -59,7 +59,6 @@ describe("getLeadMagnetBySlug", () => {
         assetFile: "test-guide.pdf",
         assetLabel: "Get the checklist",
         relatedBlogSlug: "some-post",
-        slug: "test-guide",
       },
     });
     expect(mockReadFileSync).toHaveBeenCalledWith(

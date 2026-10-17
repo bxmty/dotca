@@ -61,7 +61,6 @@ function parseLeadMagnet(slug: string): LeadMagnet | null {
       date: String(data.date),
       published: data.published !== false,
       assetFile: data.assetFile,
-      slug,
     };
     if (data.assetLabel) frontmatter.assetLabel = data.assetLabel;
     if (data.relatedBlogSlug)

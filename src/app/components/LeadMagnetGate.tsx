@@ -8,9 +8,8 @@ import {
   INCOMPLETE_EMAIL_MESSAGE,
   isEmailAddress,
 } from "../../lib/formValidation";
+import { DEFAULT_LEAD_MAGNET_ASSET_LABEL } from "../../lib/lead-magnet-labels";
 
-// The content model's default download label (LeadMagnetFrontmatter.assetLabel).
-const DEFAULT_ASSET_LABEL = "Download the guide";
 const EMAIL_FIELD_ID = "lead-magnet-email";
 const BRIEF_FIELD_ID = "lead-magnet-brief";
 
@@ -29,7 +28,7 @@ interface LeadMagnetGateProps {
 export default function LeadMagnetGate({
   slug,
   title,
-  assetLabel = DEFAULT_ASSET_LABEL,
+  assetLabel = DEFAULT_LEAD_MAGNET_ASSET_LABEL,
 }: LeadMagnetGateProps) {
   const [email, setEmail] = useState("");
   const [wantsBrief, setWantsBrief] = useState(false);

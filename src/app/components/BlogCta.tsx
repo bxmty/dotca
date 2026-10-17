@@ -1,11 +1,8 @@
 import type { BlogOffer } from "@/types/blog";
+import { DEFAULT_LEAD_MAGNET_ASSET_LABEL } from "@/lib/lead-magnet-labels";
 import { ButtonLink } from "./Button";
 
 const ASSESSMENT_HREF = "/book";
-
-// Default button text from the lead-magnet content model, used when the
-// magnet sets no assetLabel (the same default LeadMagnetGate uses).
-const DEFAULT_ASSET_LABEL = "Download the guide";
 
 const DEFAULT_OFFER: BlogOffer = { type: "assessment" };
 
@@ -36,7 +33,7 @@ type CtaContent = {
  */
 function getCtaContent(offer: ShownBlogOffer): CtaContent {
   if (offer.type === "lead-magnet") {
-    const label = offer.assetLabel ?? DEFAULT_ASSET_LABEL;
+    const label = offer.assetLabel ?? DEFAULT_LEAD_MAGNET_ASSET_LABEL;
     return {
       href: `/resources/${offer.slug}`,
       end: {
