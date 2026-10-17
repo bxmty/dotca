@@ -6,6 +6,7 @@ import {
   sendLeadMagnetDeliveryEmail,
   sendWebmasterNotification,
 } from "@/lib/notify";
+import { isEmailAddress } from "@/lib/formValidation";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { createSyncroLead } from "@/lib/syncro-leads";
 import { addResendMarketingContact } from "@/lib/resend-marketing";
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { slug, email, website, wantsBrief } = body ?? {};
+    const { slug, email: rawEmail, website, wantsBrief } = body ?? {};
 
     // Honeypot: the "website" field is hidden from humans. A filled value
     // means a bot — return success and record nothing.
@@ -52,13 +53,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Normalised once here; everything below uses the trimmed address.
+    const email = typeof rawEmail === "string" ? rawEmail.trim() : rawEmail;
     if (email === undefined || email === null || email === "") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    // Basic email validation (same regex as /api/contact)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (typeof email !== "string" || !emailRegex.test(email)) {
+    if (typeof email !== "string" || !isEmailAddress(email)) {
       return NextResponse.json(
         { error: "Please enter a valid email address" },
         { status: 400 },
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     }
 
     // Also a stub until #596-601, and deliberately not wrapped: it should
-    // fail loudly during development. Once real, it becomes best-effort
+    // fail loudly during development. bxmty/dotca#606 makes it best-effort
     // (Sentry.captureMessage on failure, never fail the response).
     if (wantsBrief === true) {
       await addResendMarketingContact({
@@ -100,7 +101,26 @@ export async function POST(request: Request) {
     // absolute for the email, from the fixed site origin rather than the
     // request's Host header, so a forged Host can't put another domain's
     // link into an email sent from ours.
-    const token = signLeadMagnetToken({ slug: magnet.slug, email });
+    // Throws only when LEAD_MAGNET_SIGNING_SECRET is unset or too short: a
+    // deploy misconfiguration, so answer like any other outage. The lead is
+    // already recorded, and the message carries no PII.
+    let token: string;
+    try {
+      token = signLeadMagnetToken({ slug: magnet.slug, email });
+    } catch (error) {
+      const detail = `Lead magnet download link unavailable (${magnet.slug}): ${
+        (error as Error).message
+      }`;
+      console.error(detail);
+      Sentry.captureMessage(detail, "error");
+      return NextResponse.json(
+        {
+          error:
+            "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+        },
+        { status: 503 },
+      );
+    }
     const downloadUrl = `/api/lead-magnet/download?${new URLSearchParams({
       slug: magnet.slug,
       token,
