@@ -77,10 +77,8 @@ runs:
           exit 1
         fi
 
-        if [[ -z "${LEAD_MAGNET_SIGNING_SECRET:-}" ]]; then
-          echo "::error::LEAD_MAGNET_SIGNING_SECRET environment variable is required"
-          exit 1
-        fi
+        # Required for production only; staging gets a ::warning:: (#604).
+        bash scripts/check-lead-magnet-secret.sh "${{ inputs.environment }}"
 
         # Optional on purpose: /install answers 503 until the Free-tier Syncro
         # installer link exists (#643), so a missing value must not block deploys.
