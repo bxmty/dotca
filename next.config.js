@@ -12,6 +12,12 @@ const nextConfig = {
   // from phones/other devices on the LAN. Allow private-network origins.
   // Patterns match hostname segments split on ".", so IPv4 needs one "*" per octet.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
+  // The Docker image ships only .next/standalone, so files read at runtime must
+  // be traced. Lead magnet PDFs are read via a path built from frontmatter,
+  // which tracing can't follow, so include the whole collection explicitly.
+  outputFileTracingIncludes: {
+    "/api/lead-magnet/download": ["./content/lead-magnets/**/*"],
+  },
   // Image optimization configuration
   images: {
     domains: [],
