@@ -34,15 +34,20 @@ jest.mock("@/lib/ga4", () => ({
   sendConversionEvent: jest.fn(),
 }));
 
-// The Resend SDK is the boundary for the brief opt-in (notify is mocked
-// above, so this only stands in for the opt-in's contact write and the
-// lead.opted_in event that follows it)
+// The Resend SDK is the boundary for the brief opt-in and the paid-customer
+// flag (notify is mocked above, so this only stands in for the opt-in's
+// contact write, the lead.opted_in event that follows it, and the contact
+// lookup and update that flag a paying customer)
 const mockCreateResendContact = jest.fn();
 const mockSendResendEvent = jest.fn();
+const mockGetResendContact = jest.fn();
+const mockUpdateResendContact = jest.fn();
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
     contacts: {
       create: mockCreateResendContact,
+      get: mockGetResendContact,
+      update: mockUpdateResendContact,
       segments: {
         add: jest.fn().mockResolvedValue({ error: { name: "not_found" } }),
       },
@@ -121,6 +126,19 @@ describe("POST /api/stripe/webhook", () => {
     });
     mockCreateResendContact.mockResolvedValue({
       data: { id: "contact_1" },
+      error: null,
+    });
+    // Most payers never opted in, so by default there is no Resend contact
+    mockGetResendContact.mockResolvedValue({
+      data: null,
+      error: {
+        name: "not_found",
+        message: "Contact not found",
+        statusCode: 404,
+      },
+    });
+    mockUpdateResendContact.mockResolvedValue({
+      data: { id: "contact_1", object: "contact" },
       error: null,
     });
     mockBrevo.mockResolvedValue({ ok: true });
@@ -459,6 +477,182 @@ describe("POST /api/stripe/webhook", () => {
       expect(Sentry.captureMessage).toHaveBeenCalledWith(
         expect.stringContaining("opt-in event not sent (checkout)"),
         "warning",
+      );
+    });
+  });
+
+  describe("paid-customer flag", () => {
+    function deliverInvoice(invoice: object) {
+      mockConstructEvent.mockReturnValueOnce({
+        type: "invoice.payment_succeeded",
+        data: { object: invoice },
+      });
+      return POST(buildRequest());
+    }
+
+    function existingContact(properties: object = {}) {
+      return {
+        data: {
+          object: "contact",
+          id: "contact_1",
+          email: "test@example.com",
+          first_name: "Test",
+          last_name: "User",
+          created_at: "2026-10-01T00:00:00.000Z",
+          unsubscribed: false,
+          properties,
+        },
+        error: null,
+      };
+    }
+
+    it("sets customer to paid on an existing Resend contact", async () => {
+      mockGetResendContact.mockResolvedValue(existingContact());
+
+      await deliverInvoice(paidInvoice);
+
+      expect(mockGetResendContact).toHaveBeenCalledWith({
+        email: "test@example.com",
+      });
+      expect(mockUpdateResendContact).toHaveBeenCalledTimes(1);
+      expect(mockUpdateResendContact).toHaveBeenCalledWith({
+        email: "test@example.com",
+        properties: { customer: "paid" },
+      });
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("makes no update and no create when the payer is not a Resend contact", async () => {
+      await deliverInvoice(paidInvoice);
+
+      expect(mockGetResendContact).toHaveBeenCalledTimes(1);
+      expect(mockUpdateResendContact).not.toHaveBeenCalled();
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("flags the payer on a renewal invoice too", async () => {
+      mockGetResendContact.mockResolvedValue(existingContact());
+
+      await deliverInvoice({
+        ...paidInvoice,
+        billing_reason: "subscription_cycle",
+      });
+
+      expect(mockUpdateResendContact).toHaveBeenCalledWith({
+        email: "test@example.com",
+        properties: { customer: "paid" },
+      });
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it("makes no Resend call when the invoice has no email", async () => {
+      await deliverInvoice({ ...paidInvoice, customer_email: null });
+
+      expect(mockGetResendContact).not.toHaveBeenCalled();
+      expect(mockUpdateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("flags a contact the checkout opt-in has just created", async () => {
+      const calls: string[] = [];
+      mockCreateResendContact.mockImplementation(async () => {
+        calls.push("create");
+        return { data: { id: "contact_1" }, error: null };
+      });
+      mockGetResendContact.mockImplementation(async () => {
+        calls.push("get");
+        return existingContact();
+      });
+
+      await deliverInvoice({
+        ...paidInvoice,
+        parent: {
+          subscription_details: {
+            metadata: {
+              ...paidInvoice.parent.subscription_details.metadata,
+              wants_brief: "true",
+            },
+          },
+        },
+      });
+
+      expect(calls).toEqual(["create", "get"]);
+      expect(mockUpdateResendContact).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports a failed lookup as a PII-free Sentry warning and still returns 200", async () => {
+      mockGetResendContact.mockResolvedValue({
+        data: null,
+        error: {
+          name: "internal_server_error",
+          message: "test@example.com lookup failed",
+          statusCode: 500,
+        },
+      });
+
+      await deliverInvoice(paidInvoice);
+
+      expect(mockUpdateResendContact).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      const [detail, level] = (Sentry.captureMessage as jest.Mock).mock
+        .calls[0];
+      expect(level).toBe("warning");
+      expect(detail).toContain("Paid-customer flag");
+      expect(detail).toContain("internal_server_error");
+      expect(detail).not.toContain("test@example.com");
+      expect(detail).not.toContain("Test User");
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("reports a thrown lookup as a Sentry warning and still returns 200", async () => {
+      mockGetResendContact.mockRejectedValue(
+        new Error("fetch failed for test@example.com"),
+      );
+
+      await deliverInvoice(paidInvoice);
+
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      const [detail, level] = (Sentry.captureMessage as jest.Mock).mock
+        .calls[0];
+      expect(level).toBe("warning");
+      expect(detail).not.toContain("test@example.com");
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("reports a failed update as a Sentry warning and still returns 200", async () => {
+      mockGetResendContact.mockResolvedValue(existingContact());
+      mockUpdateResendContact.mockResolvedValue({
+        data: null,
+        error: {
+          name: "validation_error",
+          message: "Property customer does not exist",
+          statusCode: 422,
+        },
+      });
+
+      await deliverInvoice(paidInvoice);
+
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("update validation_error"),
+        "warning",
+      );
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("does not turn a total delivery failure into a 200", async () => {
+      mockGetResendContact.mockResolvedValue(existingContact());
+      mockBrevo.mockResolvedValueOnce({ ok: false, status: 500 });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await deliverInvoice(paidInvoice);
+
+      expect(mockUpdateResendContact).toHaveBeenCalledTimes(1);
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { error: "Notification delivery failed" },
+        { status: 500 },
       );
     });
   });

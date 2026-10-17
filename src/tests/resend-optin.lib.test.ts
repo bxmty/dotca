@@ -2,11 +2,15 @@ const mockCreateContact = jest.fn();
 const mockAddContactSegment = jest.fn();
 const mockUpdateContactTopics = jest.fn();
 const mockSendEvent = jest.fn();
+const mockGetContact = jest.fn();
+const mockUpdateContact = jest.fn();
 
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
     contacts: {
       create: mockCreateContact,
+      get: mockGetContact,
+      update: mockUpdateContact,
       segments: { add: mockAddContactSegment },
       topics: { update: mockUpdateContactTopics },
     },
@@ -19,7 +23,7 @@ jest.mock("@sentry/nextjs", () => ({
 }));
 
 import * as Sentry from "@sentry/nextjs";
-import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { markContactAsPaid, subscribeToMonthlyBrief } from "@/lib/resend-optin";
 
 const originalEnv = process.env;
 
@@ -256,5 +260,41 @@ describe("subscribeToMonthlyBrief", () => {
       expect(level).toBe("warning");
       expect(detail).toContain("RESEND_OPTIN_EVENT");
     });
+  });
+});
+
+describe("markContactAsPaid", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = { ...originalEnv, RESEND_API_KEY: "re_test_key" };
+    mockUpdateContact.mockResolvedValue({
+      data: { id: "contact_123", object: "contact" },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("treats a 404 lookup as no contact, even without the not_found name", async () => {
+    mockGetContact.mockResolvedValue(resendError("application_error", 404));
+
+    await markContactAsPaid({ email: "jane@example.com" });
+
+    expect(mockUpdateContact).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("reports a missing API key as a Sentry warning, with no Resend call", async () => {
+    delete process.env.RESEND_API_KEY;
+
+    await markContactAsPaid({ email: "jane@example.com" });
+
+    expect(mockGetContact).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Paid-customer flag not set in Resend: RESEND_API_KEY not set",
+      "warning",
+    );
   });
 });

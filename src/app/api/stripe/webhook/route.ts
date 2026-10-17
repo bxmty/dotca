@@ -5,7 +5,7 @@ import { getServerStripe } from "@/lib/stripe";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { sendConversionEvent } from "@/lib/ga4";
-import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { markContactAsPaid, subscribeToMonthlyBrief } from "@/lib/resend-optin";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
@@ -159,12 +159,25 @@ export async function POST(request: Request) {
   switch (event.type) {
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.billing_reason !== "subscription_create") {
-        break; // renewals and one-off invoices are not new signups
+      // Renewals and one-off invoices are not new signups
+      const delivery =
+        invoice.billing_reason === "subscription_create"
+          ? await handleNewPaidSubscription(invoice)
+          : null;
+
+      // Every paid invoice flags the payer's Resend contact, if they have
+      // one, so the nurture skips its upsell (#648). Runs after the new
+      // signup's brief opt-in so a contact created at checkout is flagged
+      // too. Best-effort and outside the delivery matrix: it never throws
+      // and never changes the status returned below.
+      if (invoice.customer_email) {
+        await markContactAsPaid({ email: invoice.customer_email });
       }
 
-      const { brevoLanded, notifySent } =
-        await handleNewPaidSubscription(invoice);
+      if (!delivery) {
+        break;
+      }
+      const { brevoLanded, notifySent } = delivery;
 
       if (!brevoLanded || !notifySent) {
         const detail = `Brevo ${brevoLanded ? "ok" : "failed"}, webmaster email ${

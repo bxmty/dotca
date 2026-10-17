@@ -168,3 +168,72 @@ export async function subscribeToMonthlyBrief({
   );
   return { isSubscribed: false, source };
 }
+
+/**
+ * Whether the address is a Resend contact: "exists", "missing" (Resend's
+ * `not_found`, a 404), or a PII-free failure code for anything else.
+ */
+async function findContact(resend: Resend, email: string): Promise<string> {
+  try {
+    const { error } = await resend.contacts.get({ email });
+    if (!error) return "exists";
+    if (error.name === "not_found" || error.statusCode === 404) {
+      return "missing";
+    }
+    return error.name;
+  } catch {
+    return "exception";
+  }
+}
+
+function reportPaidFlagFailure(detail: string): void {
+  const message = `Paid-customer flag not set in Resend: ${detail}`;
+  console.warn(message);
+  Sentry.captureMessage(message, "warning");
+}
+
+/**
+ * Flag a paying customer's Resend contact with `customer = "paid"` (#648,
+ * #642 decision 14), so the nurture automation's condition skips the
+ * day-14 "what Standard adds" upsell for them.
+ *
+ * Only an existing contact is touched: a payer who never ticked the brief
+ * opt-in has no contact, and gets none here (#596 decision 6: no consent,
+ * no contact). The lookup tells the two apart: Resend answers `not_found`
+ * (404) for an address that isn't a contact, which ends it quietly with no
+ * further calls; any other lookup error is a genuine failure.
+ *
+ * The `customer` contact property must already exist in the Resend account
+ * (a manual setup step, like the brief segment and topic: see .env.example);
+ * until it does, expect the update to fail and land here as a warning.
+ *
+ * Best-effort like the opt-in: it never throws, and a failure is a PII-free
+ * Sentry warning, so it can never change the Stripe webhook's response.
+ */
+export async function markContactAsPaid({
+  email,
+}: {
+  email: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    reportPaidFlagFailure("RESEND_API_KEY not set");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+
+  const lookup = await findContact(resend, email);
+  if (lookup === "missing") return;
+  if (lookup !== "exists") {
+    reportPaidFlagFailure(`lookup ${lookup}`);
+    return;
+  }
+
+  const updateFailureCode = await getFailureCode(() =>
+    resend.contacts.update({ email, properties: { customer: "paid" } }),
+  );
+  if (updateFailureCode) {
+    reportPaidFlagFailure(`update ${updateFailureCode}`);
+  }
+}
