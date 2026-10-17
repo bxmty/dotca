@@ -88,6 +88,14 @@ runs:
           echo "::warning::SYNCRO_FREE_INSTALLER_URL is not set; /install will respond 503"
         fi
 
+        # Optional on purpose: the brief opt-in is best-effort and the Resend
+        # segment/topic may not exist yet (#598), so a missing ID only warns.
+        for optin_var in RESEND_OPTIN_SEGMENT_ID RESEND_OPTIN_TOPIC_ID; do
+          if [[ -z "${!optin_var:-}" ]]; then
+            echo "::warning::${optin_var} is not set; brief opt-ins will skip Resend"
+          fi
+        done
+
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
 
@@ -199,6 +207,8 @@ runs:
         WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
         LEAD_MAGNET_SIGNING_SECRET=${LEAD_MAGNET_SIGNING_SECRET:-}
         SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
+        RESEND_OPTIN_SEGMENT_ID=${RESEND_OPTIN_SEGMENT_ID:-}
+        RESEND_OPTIN_TOPIC_ID=${RESEND_OPTIN_TOPIC_ID:-}
         STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         GA_PRODUCTION_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
         GA_STAGING_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}
