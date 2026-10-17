@@ -1,0 +1,156 @@
+const mockCreateContact = jest.fn();
+const mockAddContactSegment = jest.fn();
+const mockUpdateContactTopics = jest.fn();
+
+jest.mock("resend", () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    contacts: {
+      create: mockCreateContact,
+      segments: { add: mockAddContactSegment },
+      topics: { update: mockUpdateContactTopics },
+    },
+  })),
+}));
+
+jest.mock("@sentry/nextjs", () => ({
+  captureMessage: jest.fn(),
+}));
+
+import * as Sentry from "@sentry/nextjs";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+
+const originalEnv = process.env;
+
+const subscriber = {
+  email: "jane@example.com",
+  firstName: "Jane",
+  lastName: "Doe",
+  source: "contact" as const,
+};
+
+function resendError(name: string, statusCode = 422) {
+  return { data: null, error: { name, message: "boom", statusCode } };
+}
+
+describe("subscribeToMonthlyBrief", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCreateContact.mockResolvedValue({
+      data: { id: "contact_123", object: "contact" },
+      error: null,
+    });
+    mockAddContactSegment.mockResolvedValue({
+      data: { id: "seg_brief" },
+      error: null,
+    });
+    mockUpdateContactTopics.mockResolvedValue({
+      data: { id: "contact_123" },
+      error: null,
+    });
+    process.env = {
+      ...originalEnv,
+      RESEND_API_KEY: "re_test_key",
+      RESEND_OPTIN_SEGMENT_ID: "seg_brief",
+      RESEND_OPTIN_TOPIC_ID: "topic_brief",
+    };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("creates the contact in the brief segment, opted in to the brief topic", async () => {
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result).toEqual({ isSubscribed: true, source: "contact" });
+    expect(mockCreateContact).toHaveBeenCalledWith({
+      email: "jane@example.com",
+      firstName: "Jane",
+      lastName: "Doe",
+      segments: [{ id: "seg_brief" }],
+      topics: [{ id: "topic_brief", subscription: "opt_in" }],
+    });
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("reports a Resend failure as a PII-free Sentry warning, without throwing", async () => {
+    mockCreateContact.mockResolvedValue(resendError("invalid_api_key", 403));
+    mockAddContactSegment.mockResolvedValue(
+      resendError("invalid_api_key", 403),
+    );
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result).toEqual({ isSubscribed: false, source: "contact" });
+    expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+    const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    expect(level).toBe("warning");
+    expect(detail).toContain("contact");
+    expect(detail).toContain("invalid_api_key");
+    expect(detail).not.toContain("jane@example.com");
+    expect(detail).not.toContain("Jane");
+  });
+
+  it("reports a thrown SDK error as a Sentry warning, without throwing", async () => {
+    mockCreateContact.mockRejectedValue(new Error("network down for jane@"));
+    mockAddContactSegment.mockRejectedValue(new Error("network down"));
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result).toEqual({ isSubscribed: false, source: "contact" });
+    const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    expect(level).toBe("warning");
+    expect(detail).not.toContain("jane");
+  });
+
+  it("re-subscribes an existing contact when the create is refused", async () => {
+    mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result).toEqual({ isSubscribed: true, source: "contact" });
+    expect(mockAddContactSegment).toHaveBeenCalledWith({
+      email: "jane@example.com",
+      segmentId: "seg_brief",
+    });
+    expect(mockUpdateContactTopics).toHaveBeenCalledWith({
+      email: "jane@example.com",
+      topics: [{ id: "topic_brief", subscription: "opt_in" }],
+    });
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("fails when the existing contact's topic update fails", async () => {
+    mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+    mockUpdateContactTopics.mockResolvedValue(
+      resendError("rate_limit_exceeded", 429),
+    );
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result).toEqual({ isSubscribed: false, source: "contact" });
+    const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    expect(level).toBe("warning");
+    expect(detail).toContain("rate_limit_exceeded");
+  });
+
+  it.each([
+    "RESEND_API_KEY",
+    "RESEND_OPTIN_SEGMENT_ID",
+    "RESEND_OPTIN_TOPIC_ID",
+  ])("skips Resend and warns Sentry when %s is not set", async (name) => {
+    delete process.env[name];
+
+    const result = await subscribeToMonthlyBrief({
+      ...subscriber,
+      source: "onboarding",
+    });
+
+    expect(result).toEqual({ isSubscribed: false, source: "onboarding" });
+    expect(mockCreateContact).not.toHaveBeenCalled();
+    const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    expect(level).toBe("warning");
+    expect(detail).toContain(name);
+    expect(detail).toContain("onboarding");
+  });
+});
