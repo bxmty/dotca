@@ -7,7 +7,7 @@ export interface LeadMagnetFrontmatter {
   published?: boolean;
   /** Bare PDF filename under content/lead-magnets/assets/. */
   assetFile: string;
-  /** Download button text; consumers default it to "Download the guide". */
+  /** Download button text; consumers default it to DEFAULT_LEAD_MAGNET_ASSET_LABEL. */
   assetLabel?: string;
   /** Optional backlink to an ungated companion blog post. */
   relatedBlogSlug?: string;
