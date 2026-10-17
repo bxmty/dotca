@@ -39,7 +39,8 @@ export default async function ResourcePage({ params }: PageProps) {
   const { slug } = await params;
   const magnet = getLeadMagnetBySlug(slug);
 
-  if (!magnet || !magnet.frontmatter.published) {
+  // The loader returns published magnets only.
+  if (!magnet) {
     notFound();
   }
 
