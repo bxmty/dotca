@@ -4,6 +4,7 @@ import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 
 // Onboarding leads land in Brevo list 10 (vacated by the old waitlist)
 const ONBOARDING_LIST_ID = 10;
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
           "Software used": data.softwareUsed || "",
           "Pain points": data.painPoints || "",
           Goals: data.goals || "",
+          "Monthly brief": data.wantsBrief === true ? "Yes" : "No",
         },
       }),
       // sendConversionEvent never throws — it swallows and reports its own
@@ -157,6 +159,21 @@ export async function POST(request: Request) {
     // An existing contact still counts as a landed submission
     const brevoLanded =
       brevoResult.ok || brevoResult.code === "duplicate_parameter";
+
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a Sentry
+    // warning inside subscribeToMonthlyBrief, never a failed submission.
+    if (data.wantsBrief === true) {
+      const [contactFirstName, ...contactOtherNames] = String(
+        data.contactName,
+      ).split(" ");
+      await subscribeToMonthlyBrief({
+        email: data.contactEmail,
+        firstName: contactFirstName,
+        lastName: contactOtherNames.join(" ") || undefined,
+        source: "onboarding",
+      });
+    }
 
     if (!brevoLanded || !notifySent) {
       const detail = `Brevo ${

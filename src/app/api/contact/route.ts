@@ -4,6 +4,7 @@ import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 
 function isMissingOrString(value: unknown): value is string | undefined {
   return value === undefined || value === null || typeof value === "string";
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       billingCycle,
       employeeCount,
       website,
+      wantsBrief,
     } = body ?? {};
 
     // Honeypot: the "website" field is hidden from humans. A filled value
@@ -161,6 +163,7 @@ export async function POST(request: Request) {
           Plan: plan || "",
           "Billing cycle": billingCycle || "",
           "Employee count": employeeCount ? employeeCount.toString() : "",
+          "Monthly brief": wantsBrief === true ? "Yes" : "No",
         },
       }),
       // sendConversionEvent never throws — it swallows and reports its own
@@ -198,6 +201,19 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    }
+
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a Sentry
+    // warning inside subscribeToMonthlyBrief, never a failed submission.
+    if (wantsBrief === true) {
+      const [submitterFirstName, ...submitterOtherNames] = fullName.split(" ");
+      await subscribeToMonthlyBrief({
+        email,
+        firstName: firstName || submitterFirstName,
+        lastName: lastName || submitterOtherNames.join(" ") || undefined,
+        source: "contact",
+      });
     }
 
     if (!brevoLanded || !notifySent) {
