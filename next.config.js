@@ -19,6 +19,7 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/lead-magnet/download": ["./content/lead-magnets/**/*"],
     "/api/lead-magnet": ["./content/lead-magnets/*.md"],
+    "/resources/[slug]": ["./content/lead-magnets/*.md"],
   },
   // Image optimization configuration
   images: {
