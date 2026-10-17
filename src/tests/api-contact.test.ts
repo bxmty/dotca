@@ -33,8 +33,10 @@ jest.mock("@/lib/ga4", () => ({
 }));
 
 // The Resend SDK is the boundary for the brief opt-in (notify is mocked
-// above, so this only stands in for the opt-in's contact write)
+// above, so this only stands in for the opt-in's contact write and the
+// lead.opted_in event that follows it)
 const mockCreateResendContact = jest.fn();
+const mockSendResendEvent = jest.fn();
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
     contacts: {
@@ -44,6 +46,7 @@ jest.mock("resend", () => ({
       },
       topics: { update: jest.fn() },
     },
+    events: { send: mockSendResendEvent },
   })),
 }));
 
@@ -85,7 +88,12 @@ describe("Contact API Route", () => {
       RESEND_API_KEY: "re_test_key",
       RESEND_OPTIN_SEGMENT_ID: "seg_brief",
       RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
+    mockSendResendEvent.mockResolvedValue({
+      data: { object: "event", event: "lead.opted_in.test" },
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -358,6 +366,7 @@ describe("Contact API Route", () => {
         await POST(buildRequest({ ...validBody, wantsBrief }));
 
         expect(mockCreateResendContact).not.toHaveBeenCalled();
+        expect(mockSendResendEvent).not.toHaveBeenCalled();
         expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
       },
     );
@@ -396,6 +405,45 @@ describe("Contact API Route", () => {
       );
 
       expect(mockCreateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("sends one lead.opted_in event with source contact for a ticked box", async () => {
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockSendResendEvent).toHaveBeenCalledTimes(1);
+      expect(mockSendResendEvent).toHaveBeenCalledWith({
+        event: "lead.opted_in.test",
+        email: "test@example.com",
+        payload: { source: "contact" },
+      });
+    });
+
+    it("sends no event when the contact write fails", async () => {
+      mockCreateResendContact.mockRejectedValue(new Error("socket hang up"));
+
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockSendResendEvent).not.toHaveBeenCalled();
+    });
+
+    it("still succeeds, with a Sentry warning, when the event send fails", async () => {
+      mockSendResendEvent.mockResolvedValue({
+        data: null,
+        error: {
+          name: "rate_limit_exceeded",
+          message: "slow",
+          statusCode: 429,
+        },
+      });
+
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("opt-in event not sent (contact)"),
+        "warning",
+      );
     });
   });
 });

@@ -6,14 +6,16 @@ import { Resend } from "resend";
  * the contact, onboarding or checkout form makes the submitter a Resend
  * contact in the brief segment, opted in to the brief topic. Callers only
  * call this when the box was ticked; an unticked box means no Resend call
- * at all (CASL: consent is express, never inferred).
+ * at all (CASL: consent is express, never inferred). Once the contact write
+ * lands, it also sends one lead.opted_in event so the nurture automation can
+ * start (#647).
  *
  * Best-effort by design: it never throws. A failure is a PII-free Sentry
  * warning and an `isSubscribed: false` result, so a missed newsletter signup
  * never fails the lead submission around it.
  */
 
-/** Where the opt-in was given; #647's lead.opted_in event carries it on. */
+/** Where the opt-in was given; the lead.opted_in event carries it on. */
 export type OptInSource = "contact" | "onboarding" | "checkout";
 
 export interface MonthlyBriefSubscriber {
@@ -24,8 +26,9 @@ export interface MonthlyBriefSubscriber {
 }
 
 /**
- * Whether the contact write landed. Follow-on work (the lead.opted_in event,
- * #647) must only run when `isSubscribed` is true: the event needs a contact.
+ * Whether the contact write landed. The lead.opted_in event is sent only when
+ * it did (the event needs a contact), and an event failure does not change
+ * it: the subscription itself still stands.
  */
 export interface MonthlyBriefSubscription {
   isSubscribed: boolean;
@@ -63,6 +66,44 @@ function reportFailure(source: OptInSource, detail: string): void {
   Sentry.captureMessage(message, "warning");
 }
 
+/**
+ * The lead.opted_in event (#647, #642 decisions 11 and 16) that starts the
+ * nurture automation. Only sent once the contact write has landed, since a
+ * Resend event needs a contact. The name comes from RESEND_OPTIN_EVENT
+ * (`lead.opted_in` in production, `lead.opted_in.staging` in staging) so
+ * staging never triggers the production automation. Best-effort like the
+ * rest of the opt-in: a failure is a PII-free Sentry warning, never a
+ * failed subscription.
+ */
+async function sendOptInEvent({
+  resend,
+  email,
+  source,
+}: {
+  resend: Resend;
+  email: string;
+  source: OptInSource;
+}): Promise<void> {
+  const event = process.env.RESEND_OPTIN_EVENT;
+  if (!event) {
+    reportEventFailure(source, "RESEND_OPTIN_EVENT not set");
+    return;
+  }
+
+  const failureCode = await getFailureCode(() =>
+    resend.events.send({ event, email, payload: { source } }),
+  );
+  if (failureCode) {
+    reportEventFailure(source, `${event} ${failureCode}`);
+  }
+}
+
+function reportEventFailure(source: OptInSource, detail: string): void {
+  const message = `Monthly brief opt-in event not sent (${source}): ${detail}`;
+  console.warn(message);
+  Sentry.captureMessage(message, "warning");
+}
+
 export async function subscribeToMonthlyBrief({
   email,
   firstName,
@@ -96,6 +137,7 @@ export async function subscribeToMonthlyBrief({
     }),
   );
   if (!createFailureCode) {
+    await sendOptInEvent({ resend, email, source });
     return { isSubscribed: true, source };
   }
 
@@ -112,6 +154,7 @@ export async function subscribeToMonthlyBrief({
         resend.contacts.topics.update({ email, topics }),
       );
   if (!segmentFailureCode && !topicFailureCode) {
+    await sendOptInEvent({ resend, email, source });
     return { isSubscribed: true, source };
   }
 

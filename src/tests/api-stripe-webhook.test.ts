@@ -35,8 +35,10 @@ jest.mock("@/lib/ga4", () => ({
 }));
 
 // The Resend SDK is the boundary for the brief opt-in (notify is mocked
-// above, so this only stands in for the opt-in's contact write)
+// above, so this only stands in for the opt-in's contact write and the
+// lead.opted_in event that follows it)
 const mockCreateResendContact = jest.fn();
+const mockSendResendEvent = jest.fn();
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
     contacts: {
@@ -46,6 +48,7 @@ jest.mock("resend", () => ({
       },
       topics: { update: jest.fn() },
     },
+    events: { send: mockSendResendEvent },
   })),
 }));
 
@@ -110,7 +113,12 @@ describe("POST /api/stripe/webhook", () => {
       RESEND_API_KEY: "re_test_key",
       RESEND_OPTIN_SEGMENT_ID: "seg_brief",
       RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
+    mockSendResendEvent.mockResolvedValue({
+      data: { object: "event", event: "lead.opted_in.test" },
+      error: null,
+    });
     mockCreateResendContact.mockResolvedValue({
       data: { id: "contact_1" },
       error: null,
@@ -383,6 +391,7 @@ describe("POST /api/stripe/webhook", () => {
       await deliverInvoice(paidInvoice);
 
       expect(mockCreateResendContact).not.toHaveBeenCalled();
+      expect(mockSendResendEvent).not.toHaveBeenCalled();
       expect(mockNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           fields: expect.objectContaining({ "Monthly brief": "No" }),
@@ -417,6 +426,38 @@ describe("POST /api/stripe/webhook", () => {
       expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
       expect(Sentry.captureMessage).toHaveBeenCalledWith(
         expect.stringContaining("Monthly brief opt-in failed (checkout)"),
+        "warning",
+      );
+    });
+
+    it("sends one lead.opted_in event with source checkout", async () => {
+      await deliverInvoice(optedInInvoice);
+
+      expect(mockSendResendEvent).toHaveBeenCalledTimes(1);
+      expect(mockSendResendEvent).toHaveBeenCalledWith({
+        event: "lead.opted_in.test",
+        email: "test@example.com",
+        payload: { source: "checkout" },
+      });
+    });
+
+    it("sends no event when the contact write fails", async () => {
+      mockCreateResendContact.mockRejectedValue(new Error("socket hang up"));
+
+      await deliverInvoice(optedInInvoice);
+
+      expect(mockSendResendEvent).not.toHaveBeenCalled();
+    });
+
+    it("still returns 200, with a Sentry warning, when the event send fails", async () => {
+      mockSendResendEvent.mockRejectedValue(new Error("socket hang up"));
+
+      await deliverInvoice(optedInInvoice);
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("opt-in event not sent (checkout)"),
         "warning",
       );
     });

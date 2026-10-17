@@ -43,9 +43,11 @@ jest.mock("@/lib/ga4", () => ({
 }));
 
 const mockCreateResendContact = jest.fn();
+const mockSendResendEvent = jest.fn();
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
     contacts: { create: mockCreateResendContact },
+    events: { send: mockSendResendEvent },
   })),
 }));
 
@@ -100,7 +102,12 @@ describe("checkout brief opt-in through Stripe metadata", () => {
       RESEND_API_KEY: "re_test_key",
       RESEND_OPTIN_SEGMENT_ID: "seg_brief",
       RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
+    mockSendResendEvent.mockResolvedValue({
+      data: { object: "event", event: "lead.opted_in.test" },
+      error: null,
+    });
     mockSubscriptionsCreate.mockResolvedValue({
       id: "sub_123",
       latest_invoice: { confirmation_secret: { client_secret: "cs_123" } },
@@ -126,11 +133,18 @@ describe("checkout brief opt-in through Stripe metadata", () => {
         topics: [{ id: "topic_brief", subscription: "opt_in" }],
       }),
     );
+    expect(mockSendResendEvent).toHaveBeenCalledTimes(1);
+    expect(mockSendResendEvent).toHaveBeenCalledWith({
+      event: "lead.opted_in.test",
+      email: "pat@example.com",
+      payload: { source: "checkout" },
+    });
   });
 
   it("makes no Resend call when the box was left unticked", async () => {
     await checkOutAndPay(false);
 
     expect(mockCreateResendContact).not.toHaveBeenCalled();
+    expect(mockSendResendEvent).not.toHaveBeenCalled();
   });
 });

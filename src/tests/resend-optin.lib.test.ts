@@ -1,6 +1,7 @@
 const mockCreateContact = jest.fn();
 const mockAddContactSegment = jest.fn();
 const mockUpdateContactTopics = jest.fn();
+const mockSendEvent = jest.fn();
 
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
@@ -9,6 +10,7 @@ jest.mock("resend", () => ({
       segments: { add: mockAddContactSegment },
       topics: { update: mockUpdateContactTopics },
     },
+    events: { send: mockSendEvent },
   })),
 }));
 
@@ -52,7 +54,12 @@ describe("subscribeToMonthlyBrief", () => {
       RESEND_API_KEY: "re_test_key",
       RESEND_OPTIN_SEGMENT_ID: "seg_brief",
       RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
+    mockSendEvent.mockResolvedValue({
+      data: { object: "event", event: "lead.opted_in.test" },
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -152,5 +159,102 @@ describe("subscribeToMonthlyBrief", () => {
     expect(level).toBe("warning");
     expect(detail).toContain(name);
     expect(detail).toContain("onboarding");
+  });
+
+  describe("lead.opted_in event (#647)", () => {
+    it("sends one event, named from the environment, once the contact lands", async () => {
+      await subscribeToMonthlyBrief({ ...subscriber, source: "onboarding" });
+
+      expect(mockSendEvent).toHaveBeenCalledTimes(1);
+      expect(mockSendEvent).toHaveBeenCalledWith({
+        event: "lead.opted_in.test",
+        email: "jane@example.com",
+        payload: { source: "onboarding" },
+      });
+    });
+
+    it("sends the event when an existing contact is re-subscribed", async () => {
+      mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+
+      await subscribeToMonthlyBrief(subscriber);
+
+      expect(mockSendEvent).toHaveBeenCalledTimes(1);
+      expect(mockSendEvent).toHaveBeenCalledWith({
+        event: "lead.opted_in.test",
+        email: "jane@example.com",
+        payload: { source: "contact" },
+      });
+    });
+
+    it("sends no event when the contact write fails", async () => {
+      mockCreateContact.mockResolvedValue(resendError("invalid_api_key", 403));
+      mockAddContactSegment.mockResolvedValue(
+        resendError("invalid_api_key", 403),
+      );
+
+      await subscribeToMonthlyBrief(subscriber);
+
+      expect(mockSendEvent).not.toHaveBeenCalled();
+    });
+
+    it("sends no event when the opt-in env is incomplete", async () => {
+      delete process.env.RESEND_OPTIN_SEGMENT_ID;
+
+      await subscribeToMonthlyBrief(subscriber);
+
+      expect(mockSendEvent).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        "returns an error",
+        () =>
+          mockSendEvent.mockResolvedValue(
+            resendError("rate_limit_exceeded", 429),
+          ),
+      ],
+      [
+        "throws",
+        () =>
+          mockSendEvent.mockRejectedValue(
+            new Error("down for jane@example.com"),
+          ),
+      ],
+    ])(
+      "keeps the subscription and warns Sentry without PII when the event send %s",
+      async (_label, arrangeFailure) => {
+        arrangeFailure();
+
+        const result = await subscribeToMonthlyBrief({
+          ...subscriber,
+          source: "checkout",
+        });
+
+        expect(result).toEqual({ isSubscribed: true, source: "checkout" });
+        expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+        const [detail, level] = (Sentry.captureMessage as jest.Mock).mock
+          .calls[0];
+        expect(level).toBe("warning");
+        expect(detail).toContain("lead.opted_in");
+        expect(detail).toContain("checkout");
+        expect(detail).not.toContain("jane");
+        expect(detail).not.toContain("Jane");
+      },
+    );
+
+    it("keeps the subscription, sends no event and warns Sentry when RESEND_OPTIN_EVENT is not set", async () => {
+      delete process.env.RESEND_OPTIN_EVENT;
+
+      const result = await subscribeToMonthlyBrief(subscriber);
+
+      expect(result).toEqual({ isSubscribed: true, source: "contact" });
+      expect(mockCreateContact).toHaveBeenCalledTimes(1);
+      expect(mockSendEvent).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      const [detail, level] = (Sentry.captureMessage as jest.Mock).mock
+        .calls[0];
+      expect(level).toBe("warning");
+      expect(detail).toContain("RESEND_OPTIN_EVENT");
+    });
   });
 });
