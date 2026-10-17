@@ -140,6 +140,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `BREVO_API_KEY`: Email service API key
 - `RESEND_API_KEY`: Resend API key for webmaster notification emails
 - `WEBMASTER_EMAIL`: Email address for webmaster form submission notifications
+- `LEAD_MAGNET_SIGNING_SECRET`: HMAC key for 24-hour lead magnet download links (`openssl rand -hex 32`)
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 

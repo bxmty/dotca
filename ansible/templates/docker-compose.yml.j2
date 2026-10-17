@@ -36,6 +36,7 @@ services:
       - RESEND_API_KEY={{ resend_api_key }}
       - RESEND_FROM_EMAIL={{ resend_from_email }}
       - WEBMASTER_EMAIL={{ webmaster_email }}
+      - LEAD_MAGNET_SIGNING_SECRET={{ lead_magnet_signing_secret }}
       - NEXT_PUBLIC_GA_ID={{ ga_id | default('') }}
       - HOST=0.0.0.0
       - HOSTNAME=0.0.0.0

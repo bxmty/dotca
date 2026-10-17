@@ -168,6 +168,7 @@ After successful verification (minimum 24 hours):
 | `BREVO_API_KEY`                      | Email service                    | Medium          |
 | `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
 | `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
+| `LEAD_MAGNET_SIGNING_SECRET`         | Lead magnet download links       | Low             |
 | `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
 | `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
 | `STRIPE_WEBHOOK_SECRET`              | Webhook signature verification   | High            |

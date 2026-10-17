@@ -77,6 +77,11 @@ runs:
           exit 1
         fi
 
+        if [[ -z "${LEAD_MAGNET_SIGNING_SECRET:-}" ]]; then
+          echo "::error::LEAD_MAGNET_SIGNING_SECRET environment variable is required"
+          exit 1
+        fi
+
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
 
@@ -186,6 +191,7 @@ runs:
         RESEND_API_KEY=${RESEND_API_KEY:-}
         RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
         WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
+        LEAD_MAGNET_SIGNING_SECRET=${LEAD_MAGNET_SIGNING_SECRET:-}
         STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         GA_PRODUCTION_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
         GA_STAGING_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}
