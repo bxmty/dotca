@@ -6,6 +6,7 @@ import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { sendConfirmationEmail } from "@/lib/confirmation-email";
+import { splitFullName } from "@/lib/person-name";
 
 function isMissingOrString(value: unknown): value is string | undefined {
   return value === undefined || value === null || typeof value === "string";
@@ -204,7 +205,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const [submitterFirstName, ...submitterOtherNames] = fullName.split(" ");
+    // Separate first/last fields win; otherwise split the single name field
+    const fullNameParts = splitFullName(fullName);
+    const submitterName = {
+      firstName: firstName || fullNameParts.firstName,
+      lastName: lastName || fullNameParts.lastName,
+    };
 
     // The day-0 confirmation goes to every submitter whose lead landed,
     // opted in or not, and sits outside the delivery matrix: a failed send
@@ -214,7 +220,7 @@ export async function POST(request: Request) {
       await sendConfirmationEmail({
         formType: "contact",
         email,
-        firstName: firstName || submitterFirstName,
+        firstName: submitterName.firstName,
       });
     }
 
@@ -224,8 +230,7 @@ export async function POST(request: Request) {
     if (wantsBrief === true) {
       await subscribeToMonthlyBrief({
         email,
-        firstName: firstName || submitterFirstName,
-        lastName: lastName || submitterOtherNames.join(" ") || undefined,
+        ...submitterName,
         source: "contact",
       });
     }

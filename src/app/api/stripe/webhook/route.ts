@@ -7,6 +7,7 @@ import { sendWebmasterNotification } from "@/lib/notify";
 import { sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { markContactAsPaid } from "@/lib/paid-customer-flag";
+import { splitFullName } from "@/lib/person-name";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
@@ -107,11 +108,9 @@ async function handleNewPaidSubscription(
   // status. A Stripe retry after a total failure re-runs it, harmlessly
   // (an existing contact is re-subscribed, not duplicated).
   if (wantsBrief && email) {
-    const [firstName, ...otherNames] = name.split(" ");
     await subscribeToMonthlyBrief({
       email,
-      firstName: firstName || undefined,
-      lastName: otherNames.join(" ") || undefined,
+      ...splitFullName(name),
       source: "checkout",
     });
   }

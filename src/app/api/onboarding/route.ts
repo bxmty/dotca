@@ -6,6 +6,7 @@ import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { sendConfirmationEmail } from "@/lib/confirmation-email";
+import { splitFullName } from "@/lib/person-name";
 
 // Onboarding leads land in Brevo list 10 (vacated by the old waitlist)
 const ONBOARDING_LIST_ID = 10;
@@ -161,9 +162,7 @@ export async function POST(request: Request) {
     const brevoLanded =
       brevoResult.ok || brevoResult.code === "duplicate_parameter";
 
-    const [contactFirstName, ...contactOtherNames] = String(
-      data.contactName,
-    ).split(" ");
+    const contactName = splitFullName(String(data.contactName));
 
     // The day-0 confirmation (with the /install link) goes to every signup
     // whose lead landed, opted in or not, and sits outside the delivery
@@ -174,7 +173,7 @@ export async function POST(request: Request) {
       await sendConfirmationEmail({
         formType: "onboarding",
         email: data.contactEmail,
-        firstName: contactFirstName,
+        firstName: contactName.firstName,
       });
     }
 
@@ -184,8 +183,7 @@ export async function POST(request: Request) {
     if (data.wantsBrief === true) {
       await subscribeToMonthlyBrief({
         email: data.contactEmail,
-        firstName: contactFirstName,
-        lastName: contactOtherNames.join(" ") || undefined,
+        ...contactName,
         source: "onboarding",
       });
     }
