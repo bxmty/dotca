@@ -37,7 +37,6 @@ export interface MonthlyBriefSubscriber {
  */
 export interface MonthlyBriefSubscription {
   isSubscribed: boolean;
-  source: OptInSource;
 }
 
 // All three come from the environment: the IDs differ per Resend account
@@ -99,7 +98,7 @@ export async function subscribeToMonthlyBrief({
   );
   if (missingEnvNames.length > 0) {
     reportFailure(source, `${missingEnvNames.join(", ")} not set`);
-    return { isSubscribed: false, source };
+    return { isSubscribed: false };
   }
 
   const email = normalizeEmailAddress(rawEmail);
@@ -123,7 +122,7 @@ export async function subscribeToMonthlyBrief({
   );
   if (!createFailureCode) {
     await sendOptInEvent({ resend, email, source });
-    return { isSubscribed: true, source };
+    return { isSubscribed: true };
   }
 
   // Resend has no documented "already exists" error code, so a refused
@@ -133,7 +132,7 @@ export async function subscribeToMonthlyBrief({
   const contactLookup = await lookUpContact(resend, email);
   if (contactLookup.status !== "exists") {
     reportFailure(source, `create ${createFailureCode}`);
-    return { isSubscribed: false, source };
+    return { isSubscribed: false };
   }
 
   // An existing contact (an earlier opt-in, or someone who opted out and
@@ -152,7 +151,7 @@ export async function subscribeToMonthlyBrief({
     // automation's nurture_started_at guard absorbs repeat events (#642
     // decision 13), so a re-opt-in never restarts the nurture.
     await sendOptInEvent({ resend, email, source });
-    return { isSubscribed: true, source };
+    return { isSubscribed: true };
   }
 
   reportFailure(
@@ -163,5 +162,5 @@ export async function subscribeToMonthlyBrief({
         : `topic ${topicFailureCode}`
     }`,
   );
-  return { isSubscribed: false, source };
+  return { isSubscribed: false };
 }

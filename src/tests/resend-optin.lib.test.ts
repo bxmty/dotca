@@ -77,7 +77,7 @@ describe("subscribeToMonthlyBrief", () => {
   it("creates the contact in the brief segment, opted in to the brief topic", async () => {
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result).toEqual({ isSubscribed: true, source: "contact" });
+    expect(result).toEqual({ isSubscribed: true });
     expect(mockCreateContact).toHaveBeenCalledWith({
       email: "jane@example.com",
       firstName: "Jane",
@@ -120,7 +120,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result.isSubscribed).toBe(false);
+    expect(result).toEqual({ isSubscribed: false });
     expect(mockAddContactSegment).not.toHaveBeenCalled();
     expect(mockUpdateContactTopics).not.toHaveBeenCalled();
     expect(mockSendEvent).not.toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result.isSubscribed).toBe(false);
+    expect(result).toEqual({ isSubscribed: false });
     expect(mockAddContactSegment).not.toHaveBeenCalled();
     const [detail] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
     expect(detail).toContain("create internal_server_error");
@@ -154,7 +154,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result).toEqual({ isSubscribed: false, source: "contact" });
+    expect(result).toEqual({ isSubscribed: false });
     expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
     const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
     expect(level).toBe("warning");
@@ -170,7 +170,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result).toEqual({ isSubscribed: false, source: "contact" });
+    expect(result).toEqual({ isSubscribed: false });
     const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
     expect(level).toBe("warning");
     expect(detail).not.toContain("jane");
@@ -182,7 +182,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result).toEqual({ isSubscribed: true, source: "contact" });
+    expect(result).toEqual({ isSubscribed: true });
     expect(mockAddContactSegment).toHaveBeenCalledWith({
       email: "jane@example.com",
       segmentId: "seg_brief",
@@ -203,7 +203,7 @@ describe("subscribeToMonthlyBrief", () => {
 
     const result = await subscribeToMonthlyBrief(subscriber);
 
-    expect(result).toEqual({ isSubscribed: false, source: "contact" });
+    expect(result).toEqual({ isSubscribed: false });
     const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
     expect(level).toBe("warning");
     expect(detail).toContain("rate_limit_exceeded");
@@ -221,7 +221,7 @@ describe("subscribeToMonthlyBrief", () => {
       source: "onboarding",
     });
 
-    expect(result).toEqual({ isSubscribed: false, source: "onboarding" });
+    expect(result).toEqual({ isSubscribed: false });
     expect(mockCreateContact).not.toHaveBeenCalled();
     const [detail, level] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
     expect(level).toBe("warning");
@@ -299,7 +299,7 @@ describe("subscribeToMonthlyBrief", () => {
           source: "checkout",
         });
 
-        expect(result).toEqual({ isSubscribed: true, source: "checkout" });
+        expect(result).toEqual({ isSubscribed: true });
         expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
         const [detail, level] = (Sentry.captureMessage as jest.Mock).mock
           .calls[0];
@@ -316,7 +316,7 @@ describe("subscribeToMonthlyBrief", () => {
 
       const result = await subscribeToMonthlyBrief(subscriber);
 
-      expect(result).toEqual({ isSubscribed: true, source: "contact" });
+      expect(result).toEqual({ isSubscribed: true });
       expect(mockCreateContact).toHaveBeenCalledTimes(1);
       expect(mockSendEvent).not.toHaveBeenCalled();
       expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
