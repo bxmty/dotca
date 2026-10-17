@@ -1,23 +1,45 @@
+// tests/not-found.test.tsx
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import NotFound from "@/app/not-found";
 
-describe("NotFound page", () => {
-  it("says the page was not found", () => {
+// Mock the Link component from next/link
+jest.mock("next/link", () => {
+  return function MockLink({
+    children,
+    href,
+    className,
+  }: {
+    children: React.ReactNode;
+    href: string;
+    className?: string;
+  }) {
+    return (
+      <a href={href} className={className}>
+        {children}
+      </a>
+    );
+  };
+});
+
+describe("NotFound Component", () => {
+  it("renders 404 message", () => {
     render(<NotFound />);
 
+    // Check if 404 message is displayed
+    expect(screen.getByText("404 - Page Not Found")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Page not found" }),
+      screen.getByText("The page you are looking for does not exist."),
     ).toBeInTheDocument();
-    expect(screen.getByText("404")).toBeInTheDocument();
   });
 
-  it("offers the way home as a secondary button, leaving the nav CTA as the one primary", () => {
+  it("renders a link to the home page", () => {
     render(<NotFound />);
 
-    const homeLink = screen.getByRole("link", { name: "Return to home" });
+    // Check if link to home is displayed
+    const homeLink = screen.getByRole("link", { name: /Return to Home/i });
+    expect(homeLink).toBeInTheDocument();
     expect(homeLink).toHaveAttribute("href", "/");
-    expect(homeLink).toHaveClass("border-ink", "rounded-ctl");
-    expect(homeLink).not.toHaveClass("btn");
+    expect(homeLink).toHaveClass("btn btn-primary");
   });
 });

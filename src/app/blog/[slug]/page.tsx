@@ -4,7 +4,6 @@ import { getBlogPostBySlug, getBlogPostSummaries } from "@/lib/blog";
 import { getArticleSchema } from "@/lib/schema";
 import BlogPost from "@/app/components/BlogPost";
 import JsonLd from "@/app/components/JsonLd";
-import { markdownComponents } from "@/app/components/markdownComponents";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -68,7 +67,7 @@ export default async function BlogPostPage({ params }: PageProps) {
   }
 
   return (
-    <>
+    <div className="container py-5">
       <JsonLd
         data={getArticleSchema({
           title: post.frontmatter.title,
@@ -82,14 +81,11 @@ export default async function BlogPostPage({ params }: PageProps) {
       <BlogPost
         post={post}
         content={
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={markdownComponents}
-          >
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {post.content}
           </ReactMarkdown>
         }
       />
-    </>
+    </div>
   );
 }

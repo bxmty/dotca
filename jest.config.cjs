@@ -19,13 +19,7 @@ const customJestConfig = {
   // directory, and testMatch is unanchored, so those stale duplicates would be
   // collected alongside the real suite. Matches .next/ and suffixed build dirs
   // (.next-local/, .next-verify/) without swallowing a real .nextra/-style dir.
-  // Agent worktrees under .claude/worktrees/ are full checkouts of other
-  // branches; collecting their tests runs another branch's suite.
-  testPathIgnorePatterns: [
-    "<rootDir>/e2e/",
-    "<rootDir>/\\.next(-[^/]+)?/",
-    "<rootDir>/\\.claude/",
-  ],
+  testPathIgnorePatterns: ["<rootDir>/e2e/", "<rootDir>/\\.next(-[^/]+)?/"],
   collectCoverage: true,
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",

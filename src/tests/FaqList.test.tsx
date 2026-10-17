@@ -9,19 +9,18 @@ const items = [
 ];
 
 describe("FaqList", () => {
-  it("renders each item as details/summary, all starting closed", () => {
+  it("renders each item as details/summary with the first open", () => {
     const { container } = render(<FaqList items={items} />);
     const details = container.querySelectorAll("details");
     expect(details).toHaveLength(3);
-    details.forEach((item) => expect(item).not.toHaveAttribute("open"));
+    expect(details[0]).toHaveAttribute("open");
+    expect(details[1]).not.toHaveAttribute("open");
     expect(screen.getByText("Q2").closest("summary")).not.toBeNull();
-    expect(screen.getByText("A2")).toHaveClass("text-muted");
   });
 
-  it("opens items independently of each other", () => {
+  it("opens one item without changing the others", () => {
     const { container } = render(<FaqList items={items} />);
     const details = container.querySelectorAll("details");
-    details[0].open = true;
     details[1].open = true;
     expect(details[0].open).toBe(true);
     expect(details[1].open).toBe(true);
