@@ -1,6 +1,10 @@
-import * as Sentry from "@sentry/nextjs";
 import { Resend } from "resend";
 import { normalizeEmailAddress } from "@/lib/email-address";
+import {
+  lookUpContact,
+  reportResendWarning,
+  runResendCall,
+} from "@/lib/resend-client";
 
 /**
  * The monthly security brief opt-in (bxmty/dotca#599): a ticked checkbox on
@@ -44,27 +48,8 @@ const REQUIRED_ENV_NAMES = [
   "RESEND_OPTIN_TOPIC_ID",
 ] as const;
 
-type ResendCallResult = { error: { name: string } | null };
-
-/**
- * A short, PII-free failure code for one Resend call: the API error name, or
- * "exception" when the SDK threw (its message could echo the address).
- */
-async function getFailureCode(
-  call: () => Promise<ResendCallResult>,
-): Promise<string | null> {
-  try {
-    const { error } = await call();
-    return error ? error.name : null;
-  } catch {
-    return "exception";
-  }
-}
-
 function reportFailure(source: OptInSource, detail: string): void {
-  const message = `Monthly brief opt-in failed (${source}): ${detail}`;
-  console.warn(message);
-  Sentry.captureMessage(message, "warning");
+  reportResendWarning(`Monthly brief opt-in failed (${source}): ${detail}`);
 }
 
 /**
@@ -85,24 +70,22 @@ async function sendOptInEvent({
   email: string;
   source: OptInSource;
 }): Promise<void> {
+  const reportEventFailure = (detail: string) =>
+    reportResendWarning(
+      `Monthly brief opt-in event not sent (${source}): ${detail}`,
+    );
   const event = process.env.RESEND_OPTIN_EVENT;
   if (!event) {
-    reportEventFailure(source, "RESEND_OPTIN_EVENT not set");
+    reportEventFailure("RESEND_OPTIN_EVENT not set");
     return;
   }
 
-  const failureCode = await getFailureCode(() =>
+  const failureCode = await runResendCall(() =>
     resend.events.send({ event, email, payload: { source } }),
   );
   if (failureCode) {
-    reportEventFailure(source, `${event} ${failureCode}`);
+    reportEventFailure(`${event} ${failureCode}`);
   }
-}
-
-function reportEventFailure(source: OptInSource, detail: string): void {
-  const message = `Monthly brief opt-in event not sent (${source}): ${detail}`;
-  console.warn(message);
-  Sentry.captureMessage(message, "warning");
 }
 
 export async function subscribeToMonthlyBrief({
@@ -129,7 +112,7 @@ export async function subscribeToMonthlyBrief({
     },
   ];
 
-  const createFailureCode = await getFailureCode(() =>
+  const createFailureCode = await runResendCall(() =>
     resend.contacts.create({
       email,
       firstName,
@@ -156,12 +139,12 @@ export async function subscribeToMonthlyBrief({
   // An existing contact (an earlier opt-in, or someone who opted out and
   // has now ticked the box again) is added to the segment and opted back in
   // to the topic. A fresh tick is fresh express consent.
-  const segmentFailureCode = await getFailureCode(() =>
+  const segmentFailureCode = await runResendCall(() =>
     resend.contacts.segments.add({ email, segmentId }),
   );
   const topicFailureCode = segmentFailureCode
     ? null
-    : await getFailureCode(() =>
+    : await runResendCall(() =>
         resend.contacts.topics.update({ email, topics }),
       );
   if (!segmentFailureCode && !topicFailureCode) {
@@ -181,84 +164,4 @@ export async function subscribeToMonthlyBrief({
     }`,
   );
   return { isSubscribed: false, source };
-}
-
-/** Whether an address is a Resend contact, as one discriminated result. */
-type ContactLookup =
-  | { status: "exists" }
-  | { status: "missing" }
-  | { status: "failed"; failureCode: string };
-
-/**
- * Look the address up: Resend answers `not_found` (404) for an address that
- * isn't a contact; any other error is a PII-free failure code (the API
- * error name, or "exception" when the SDK threw).
- */
-async function lookUpContact(
-  resend: Resend,
-  email: string,
-): Promise<ContactLookup> {
-  try {
-    const { error } = await resend.contacts.get({ email });
-    if (!error) return { status: "exists" };
-    if (error.name === "not_found" || error.statusCode === 404) {
-      return { status: "missing" };
-    }
-    return { status: "failed", failureCode: error.name };
-  } catch {
-    return { status: "failed", failureCode: "exception" };
-  }
-}
-
-function reportPaidFlagFailure(detail: string): void {
-  const message = `Paid-customer flag not set in Resend: ${detail}`;
-  console.warn(message);
-  Sentry.captureMessage(message, "warning");
-}
-
-/**
- * Flag a paying customer's Resend contact with `customer = "paid"` (#648,
- * #642 decision 14), so the nurture automation's condition skips the
- * day-14 "what Standard adds" upsell for them.
- *
- * Only an existing contact is touched: a payer who never ticked the brief
- * opt-in has no contact, and gets none here (#596 decision 6: no consent,
- * no contact). The lookup tells the two apart: Resend answers `not_found`
- * (404) for an address that isn't a contact, which ends it quietly with no
- * further calls; any other lookup error is a genuine failure.
- *
- * The `customer` contact property must already exist in the Resend account
- * (a manual setup step, like the brief segment and topic: see .env.example);
- * until it does, expect the update to fail and land here as a warning.
- *
- * Best-effort like the opt-in: it never throws, and a failure is a PII-free
- * Sentry warning, so it can never change the Stripe webhook's response.
- */
-export async function markContactAsPaid({
-  email: rawEmail,
-}: {
-  email: string;
-}): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    reportPaidFlagFailure("RESEND_API_KEY not set");
-    return;
-  }
-
-  const resend = new Resend(apiKey);
-  const email = normalizeEmailAddress(rawEmail);
-
-  const contactLookup = await lookUpContact(resend, email);
-  if (contactLookup.status === "missing") return;
-  if (contactLookup.status === "failed") {
-    reportPaidFlagFailure(`lookup ${contactLookup.failureCode}`);
-    return;
-  }
-
-  const updateFailureCode = await getFailureCode(() =>
-    resend.contacts.update({ email, properties: { customer: "paid" } }),
-  );
-  if (updateFailureCode) {
-    reportPaidFlagFailure(`update ${updateFailureCode}`);
-  }
 }

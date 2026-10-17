@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import * as Sentry from "@sentry/nextjs";
 import { Resend } from "resend";
 import { normalizeEmailAddress } from "@/lib/email-address";
+import { reportResendWarning, runResendCall } from "@/lib/resend-client";
 
 /**
  * The day-0 confirmation email (bxmty/dotca#646, #642 decisions 2, 4, 7, 10,
@@ -61,9 +61,7 @@ function buildIdempotencyKey(
 }
 
 function reportFailure(formType: ConfirmationFormType, detail: string): void {
-  const message = `Confirmation email not sent (${formType}): ${detail}`;
-  console.warn(message);
-  Sentry.captureMessage(message, "warning");
+  reportResendWarning(`Confirmation email not sent (${formType}): ${detail}`);
 }
 
 export async function sendConfirmationEmail({
@@ -89,12 +87,12 @@ export async function sendConfirmationEmail({
     ? { USER_FIRST_NAME: trimmedFirstName }
     : {};
 
-  // Only the API error's name or "exception" is reported: error messages
-  // can echo the recipient address
-  let failureCode: string | null;
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const { error } = await resend.emails.send(
+  // Not notify.ts's sendResendEmail: that path logs the raw SDK error
+  // (which can echo the address) and has no template, reply-to or
+  // idempotency key; this one reports PII-free failure codes only.
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const failureCode = await runResendCall(() =>
+    resend.emails.send(
       {
         from: `Boximity <${process.env.RESEND_FROM_EMAIL}>`,
         to: email,
@@ -105,11 +103,8 @@ export async function sendConfirmationEmail({
         },
       },
       { idempotencyKey: buildIdempotencyKey(formType, email) },
-    );
-    failureCode = error ? error.name : null;
-  } catch {
-    failureCode = "exception";
-  }
+    ),
+  );
 
   if (failureCode) {
     reportFailure(formType, failureCode);

@@ -5,7 +5,8 @@ import { getServerStripe } from "@/lib/stripe";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { sendConversionEvent } from "@/lib/ga4";
-import { markContactAsPaid, subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { markContactAsPaid } from "@/lib/paid-customer-flag";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
