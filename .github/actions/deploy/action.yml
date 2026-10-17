@@ -82,6 +82,12 @@ runs:
           exit 1
         fi
 
+        # Optional on purpose: /install answers 503 until the Free-tier Syncro
+        # installer link exists (#643), so a missing value must not block deploys.
+        if [[ -z "${SYNCRO_FREE_INSTALLER_URL:-}" ]]; then
+          echo "::warning::SYNCRO_FREE_INSTALLER_URL is not set; /install will respond 503"
+        fi
+
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
 
@@ -192,6 +198,7 @@ runs:
         RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
         WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
         LEAD_MAGNET_SIGNING_SECRET=${LEAD_MAGNET_SIGNING_SECRET:-}
+        SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
         STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         GA_PRODUCTION_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
         GA_STAGING_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}
