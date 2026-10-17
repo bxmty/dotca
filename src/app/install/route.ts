@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { formatUnavailableMessage } from "@/lib/service-unavailable";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,9 @@ export const dynamic = "force-dynamic";
 // a rotated link takes effect immediately rather than from a cached copy.
 // Not listed in the sitemap.
 
-const UNAVAILABLE_MESSAGE =
-  "The installer link is temporarily unavailable. Please contact us at hi@boximity.ca or (289) 539-0098.";
+const UNAVAILABLE_MESSAGE = formatUnavailableMessage(
+  "The installer link is temporarily unavailable.",
+);
 
 type InstallOutcome = "redirected" | "unavailable";
 

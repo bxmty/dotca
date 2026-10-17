@@ -166,6 +166,10 @@ describe("GET /api/lead-magnet/download", () => {
     const response = await download({ slug: SLUG, token });
 
     expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error:
+        "Downloads are temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+    });
     expect(Sentry.captureMessage).toHaveBeenCalledWith(
       expect.stringContaining("LEAD_MAGNET_SIGNING_SECRET"),
       "error",

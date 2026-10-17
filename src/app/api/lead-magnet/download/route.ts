@@ -7,6 +7,7 @@ import {
   getLeadMagnetBySlug,
 } from "@/lib/lead-magnets";
 import { verifyLeadMagnetToken } from "@/lib/lead-magnet-token";
+import { formatUnavailableMessage } from "@/lib/service-unavailable";
 
 // Every request checks a time-limited token, so never cache or prerender.
 export const dynamic = "force-dynamic";
@@ -68,7 +69,9 @@ export function GET(request: Request): Response {
     Sentry.captureMessage(detail, "error");
     return Response.json(
       {
-        error: "Downloads are temporarily unavailable. Please try again later.",
+        error: formatUnavailableMessage(
+          "Downloads are temporarily unavailable.",
+        ),
       },
       { status: 503 },
     );

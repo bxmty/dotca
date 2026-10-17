@@ -11,6 +11,7 @@ import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { createSyncroLead } from "@/lib/syncro-leads";
 import { addResendMarketingContact } from "@/lib/resend-marketing";
 import { SITE_URL } from "@/lib/schema";
+import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
  * Email gate for a lead magnet: records the lead, then hands back a signed
@@ -79,10 +80,7 @@ export async function POST(request: Request) {
       console.error(detail);
       Sentry.captureMessage(detail, "error");
       return NextResponse.json(
-        {
-          error:
-            "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
-        },
+        { error: SERVICE_UNAVAILABLE_MESSAGE },
         { status: 503 },
       );
     }
@@ -114,10 +112,7 @@ export async function POST(request: Request) {
       console.error(detail);
       Sentry.captureMessage(detail, "error");
       return NextResponse.json(
-        {
-          error:
-            "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
-        },
+        { error: SERVICE_UNAVAILABLE_MESSAGE },
         { status: 503 },
       );
     }
