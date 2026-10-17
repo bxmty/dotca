@@ -141,6 +141,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `RESEND_API_KEY`: Resend API key for webmaster notification emails
 - `WEBMASTER_EMAIL`: Email address for webmaster form submission notifications
 - `LEAD_MAGNET_SIGNING_SECRET`: HMAC key for 24-hour lead magnet download links (`openssl rand -hex 32`)
+- `SYNCRO_FREE_INSTALLER_URL`: Free-tier Syncro agent installer link behind `/install` (optional; `/install` responds 503 without it)
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 
