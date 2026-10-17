@@ -2,6 +2,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { BRIEF_OPT_IN_LABEL } from "@/app/components/BriefOptInCheckbox";
 import CheckoutPage from "@/app/checkout/page";
 
 // Mock next/navigation
@@ -39,15 +40,18 @@ jest.mock("@/app/components/StripeWrapper", () => ({
     employeeCount,
     billingCycle,
     customer,
+    wantsBrief,
   }: {
     children: React.ReactNode;
     plan: string;
     employeeCount: number;
     billingCycle: string;
     customer: { name: string; email: string };
+    wantsBrief: boolean;
   }) => (
     <div
       data-testid="stripe-wrapper"
+      data-wants-brief={String(wantsBrief)}
       data-plan={plan}
       data-employee-count={employeeCount}
       data-billing-cycle={billingCycle}
@@ -445,5 +449,63 @@ describe("CheckoutPage Component", () => {
         "Please select a plan from our pricing page to proceed with checkout.",
       ),
     ).toBeInTheDocument();
+  });
+
+  describe("monthly brief opt-in", () => {
+    async function renderCustomerStep() {
+      render(<CheckoutPage />);
+      selectBasicPlan();
+      await waitFor(() => {
+        expect(screen.getByLabelText("First Name*")).toBeInTheDocument();
+      });
+      await fillCustomerInformation();
+    }
+
+    function continueToPayment() {
+      fireEvent.click(screen.getByTestId("continue-to-payment"));
+      return screen.findByTestId("stripe-wrapper");
+    }
+
+    it("offers an unticked checkbox naming what they'll receive", async () => {
+      await renderCustomerStep();
+
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Send me Boximity's monthly security brief and occasional tips and offers",
+        }),
+      ).not.toBeChecked();
+    });
+
+    it("hands a ticked opt-in to the payment step", async () => {
+      await renderCustomerStep();
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: BRIEF_OPT_IN_LABEL }),
+      );
+
+      const wrapper = await continueToPayment();
+
+      expect(wrapper).toHaveAttribute("data-wants-brief", "true");
+    });
+
+    it("hands an unticked opt-in to the payment step as false", async () => {
+      await renderCustomerStep();
+
+      const wrapper = await continueToPayment();
+
+      expect(wrapper).toHaveAttribute("data-wants-brief", "false");
+    });
+
+    it("unmounts the payment form when the opt-in changes", async () => {
+      await renderCustomerStep();
+      await continueToPayment();
+
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: BRIEF_OPT_IN_LABEL }),
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("stripe-wrapper")).not.toBeInTheDocument();
+      });
+    });
   });
 });

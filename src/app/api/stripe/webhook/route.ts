@@ -5,6 +5,7 @@ import { getServerStripe } from "@/lib/stripe";
 import { addBrevoContact } from "@/lib/brevo";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { sendConversionEvent } from "@/lib/ga4";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
@@ -38,6 +39,8 @@ async function handleNewPaidSubscription(
   const company = metadata.company ?? "";
   const gaClientId = metadata.ga_client_id;
   const gaSessionId = metadata.ga_session_id;
+  // Set by create-subscription only when the checkout box was ticked
+  const wantsBrief = metadata.wants_brief === "true";
 
   // sendConversionEvent never throws (it swallows and reports its own
   // failures), so this settles like the other two even if the MP request
@@ -76,6 +79,7 @@ async function handleNewPaidSubscription(
           invoice.currency ?? "cad",
         ),
         Invoice: invoice.id ?? "",
+        "Monthly brief": wantsBrief ? "Yes" : "No",
       },
     }),
     sendConversionEvent({
@@ -96,6 +100,21 @@ async function handleNewPaidSubscription(
       brevoSettled.value.code === "duplicate_parameter");
   const notifySent =
     notifySettled.status === "fulfilled" && notifySettled.value;
+
+  // Outside the delivery matrix: a failed brief subscription is a Sentry
+  // warning inside subscribeToMonthlyBrief and never changes the webhook's
+  // status. A Stripe retry after a total failure re-runs it, harmlessly
+  // (an existing contact is re-subscribed, not duplicated).
+  if (wantsBrief && email) {
+    const [firstName, ...otherNames] = name.split(" ");
+    await subscribeToMonthlyBrief({
+      email,
+      firstName: firstName || undefined,
+      lastName: otherNames.join(" ") || undefined,
+      source: "checkout",
+    });
+  }
+
   return { brevoLanded, notifySent };
 }
 

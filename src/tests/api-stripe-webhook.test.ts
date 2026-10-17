@@ -34,6 +34,21 @@ jest.mock("@/lib/ga4", () => ({
   sendConversionEvent: jest.fn(),
 }));
 
+// The Resend SDK is the boundary for the brief opt-in (notify is mocked
+// above, so this only stands in for the opt-in's contact write)
+const mockCreateResendContact = jest.fn();
+jest.mock("resend", () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    contacts: {
+      create: mockCreateResendContact,
+      segments: {
+        add: jest.fn().mockResolvedValue({ error: { name: "not_found" } }),
+      },
+      topics: { update: jest.fn() },
+    },
+  })),
+}));
+
 const mockBrevo = addBrevoContact as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
 const mockSendConversionEvent = sendConversionEvent as jest.Mock;
@@ -89,7 +104,17 @@ const paidInvoiceWithGaIds = {
 describe("POST /api/stripe/webhook", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env = { ...originalEnv, STRIPE_WEBHOOK_SECRET: "whsec_test" };
+    process.env = {
+      ...originalEnv,
+      STRIPE_WEBHOOK_SECRET: "whsec_test",
+      RESEND_API_KEY: "re_test_key",
+      RESEND_OPTIN_SEGMENT_ID: "seg_brief",
+      RESEND_OPTIN_TOPIC_ID: "topic_brief",
+    };
+    mockCreateResendContact.mockResolvedValue({
+      data: { id: "contact_1" },
+      error: null,
+    });
     mockBrevo.mockResolvedValue({ ok: true });
     mockNotify.mockResolvedValue(true);
     mockSendConversionEvent.mockResolvedValue(undefined);
@@ -313,5 +338,87 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(mockBrevo).not.toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  describe("monthly brief opt-in", () => {
+    const optedInInvoice = {
+      ...paidInvoice,
+      parent: {
+        subscription_details: {
+          metadata: {
+            ...paidInvoice.parent.subscription_details.metadata,
+            wants_brief: "true",
+          },
+        },
+      },
+    };
+
+    function deliverInvoice(invoice: object) {
+      mockConstructEvent.mockReturnValueOnce({
+        type: "invoice.payment_succeeded",
+        data: { object: invoice },
+      });
+      return POST(buildRequest());
+    }
+
+    it("subscribes a paid signup who ticked the box at checkout", async () => {
+      await deliverInvoice(optedInInvoice);
+
+      expect(mockCreateResendContact).toHaveBeenCalledWith({
+        email: "test@example.com",
+        firstName: "Test",
+        lastName: "User",
+        segments: [{ id: "seg_brief" }],
+        topics: [{ id: "topic_brief", subscription: "opt_in" }],
+      });
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fields: expect.objectContaining({ "Monthly brief": "Yes" }),
+        }),
+      );
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("makes no Resend call when the metadata carries no opt-in", async () => {
+      await deliverInvoice(paidInvoice);
+
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fields: expect.objectContaining({ "Monthly brief": "No" }),
+        }),
+      );
+    });
+
+    it("makes no Resend call on a renewal invoice", async () => {
+      await deliverInvoice({
+        ...optedInInvoice,
+        billing_reason: "subscription_cycle",
+      });
+
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("makes no Resend call when the invoice has no email", async () => {
+      await deliverInvoice({ ...optedInInvoice, customer_email: null });
+
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("still returns 200, with a Sentry warning, when the Resend write fails", async () => {
+      mockCreateResendContact.mockResolvedValue({
+        data: null,
+        error: { name: "internal_server_error", message: "x", statusCode: 500 },
+      });
+
+      await deliverInvoice(optedInInvoice);
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Monthly brief opt-in failed (checkout)"),
+        "warning",
+      );
+    });
   });
 });
