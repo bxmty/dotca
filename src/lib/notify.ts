@@ -9,7 +9,8 @@ import { Resend } from "resend";
  * as an exception that masks the Brevo result.
  */
 
-export type NotificationFormType = "Contact" | "Onboarding" | "Paid signup";
+export type NotificationFormType =
+  "Contact" | "Onboarding" | "Paid signup" | "Lead magnet";
 
 function escapeHtml(value: string): string {
   return value

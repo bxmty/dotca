@@ -13,10 +13,12 @@ const nextConfig = {
   // Patterns match hostname segments split on ".", so IPv4 needs one "*" per octet.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
   // The Docker image ships only .next/standalone, so files read at runtime must
-  // be traced. Lead magnet PDFs are read via a path built from frontmatter,
-  // which tracing can't follow, so include the whole collection explicitly.
+  // be traced. Lead magnet files are read via paths built at runtime (slug,
+  // frontmatter assetFile), which tracing can't follow, so include them
+  // explicitly for every route that reads them.
   outputFileTracingIncludes: {
     "/api/lead-magnet/download": ["./content/lead-magnets/**/*"],
+    "/api/lead-magnet": ["./content/lead-magnets/*.md"],
   },
   // Image optimization configuration
   images: {
