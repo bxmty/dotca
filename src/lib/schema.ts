@@ -1,4 +1,4 @@
-const SITE_URL = "https://boximity.ca";
+export const SITE_URL = "https://boximity.ca";
 
 export function getLocalBusinessSchema() {
   return {

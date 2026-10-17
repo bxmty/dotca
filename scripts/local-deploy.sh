@@ -168,6 +168,9 @@ load_env_vars() {
         exit 1
     fi
 
+    # Fails for production, warns for staging (#604)
+    "$SCRIPT_DIR/check-lead-magnet-secret.sh" "$ENVIRONMENT"
+
     # Set GIT_REPO_URL if not already set
     if [[ -z "${GIT_REPO_URL:-}" ]]; then
         GIT_REPO_URL=$(git remote get-url origin 2>/dev/null || echo "https://github.com/bxmty/dotca.git")
@@ -457,6 +460,8 @@ STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
 RESEND_API_KEY=${RESEND_API_KEY:-}
 RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
 WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
+LEAD_MAGNET_SIGNING_SECRET=${LEAD_MAGNET_SIGNING_SECRET:-}
+SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
 STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
 GA_STAGING_ID=${GA_STAGING_ID:-}
 GA_PRODUCTION_ID=${GA_PRODUCTION_ID:-}

@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import BlogPost from "@/app/components/BlogPost";
-import type { BlogPost as BlogPostType } from "@/types/blog";
+import type { BlogOffer, BlogPost as BlogPostType } from "@/types/blog";
 
 const POST: BlogPostType = {
   slug: "payment-redirection",
@@ -20,10 +20,14 @@ const POST: BlogPostType = {
   },
 };
 
-function renderPost(overrides: Partial<BlogPostType["frontmatter"]> = {}) {
+function renderPost(
+  overrides: Partial<BlogPostType["frontmatter"]> = {},
+  offer: BlogOffer = { type: "assessment" },
+) {
   return render(
     <BlogPost
       post={{ ...POST, frontmatter: { ...POST.frontmatter, ...overrides } }}
+      offer={offer}
       content={<p>Body copy.</p>}
     />,
   );
@@ -155,11 +159,8 @@ describe("BlogPost", () => {
       return screen.getByRole("complementary", { name: "About this post" });
     }
 
-    it.each([
-      ["an omitted cta", {}],
-      ["an assessment cta", { cta: { type: "assessment" as const } }],
-    ])("offers the assessment for %s", (_name, overrides) => {
-      renderPost(overrides);
+    it("offers the assessment for an assessment offer", () => {
+      renderPost();
 
       const box = within(getRail()).getByRole("region", {
         name: "Free assessment offer",
@@ -171,11 +172,19 @@ describe("BlogPost", () => {
     });
 
     it("offers the guide with the end CTA's label and target", () => {
-      renderPost({ cta: { type: "lead-magnet", slug: "backup-checklist" } });
+      renderPost(
+        {},
+        {
+          type: "lead-magnet",
+          slug: "backup-checklist",
+          title: "Backup checklist",
+        },
+      );
 
       const box = within(getRail()).getByRole("region", {
         name: "Free guide offer",
       });
+      expect(box).toHaveTextContent("Backup checklist");
       const endCta = screen.getByRole("complementary", { name: "Next step" });
       const boxLink = within(box).getByRole("link");
       const endLink = within(endCta).getByRole("link");
@@ -186,7 +195,7 @@ describe("BlogPost", () => {
     });
 
     it("shows no box when the cta is suppressed", () => {
-      renderPost({ cta: { type: "none" } });
+      renderPost({}, { type: "none" });
 
       expect(within(getRail()).queryByRole("region")).not.toBeInTheDocument();
       expect(

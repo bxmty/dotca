@@ -116,6 +116,14 @@ describe("sitemap", () => {
     }
   });
 
+  it("leaves out the /install redirect to the RMM agent installer", () => {
+    const urls = sitemap().map((entry) => entry.url);
+
+    expect(urls.filter((url) => url.startsWith(`${BASE_URL}/install`))).toEqual(
+      [],
+    );
+  });
+
   it("does not mistake loose modules in the services folder for pages", () => {
     const urls = sitemap().map((entry) => entry.url);
 

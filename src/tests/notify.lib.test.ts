@@ -6,7 +6,10 @@ jest.mock("resend", () => ({
   })),
 }));
 
-import { sendWebmasterNotification } from "@/lib/notify";
+import {
+  sendLeadMagnetDeliveryEmail,
+  sendWebmasterNotification,
+} from "@/lib/notify";
 
 const originalEnv = process.env;
 
@@ -104,5 +107,79 @@ describe("sendWebmasterNotification", () => {
     });
 
     expect(result).toBe(false);
+  });
+});
+
+describe("sendLeadMagnetDeliveryEmail", () => {
+  const delivery = {
+    to: "jane.doe@example.com",
+    downloadUrl:
+      "https://boximity.ca/api/lead-magnet/download?slug=test-guide&token=abc",
+    title: "The Test Guide",
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSend.mockResolvedValue({ error: null });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    process.env = {
+      ...originalEnv,
+      RESEND_API_KEY: "re_test_key",
+      RESEND_FROM_EMAIL: "noreply@boximity.ca",
+    };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.restoreAllMocks();
+  });
+
+  it("emails the submitter the download link and returns true", async () => {
+    const result = await sendLeadMagnetDeliveryEmail(delivery);
+
+    expect(result).toBe(true);
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "Boximity <noreply@boximity.ca>",
+        to: "jane.doe@example.com",
+        subject: "Your download: The Test Guide",
+      }),
+    );
+    const { html, text } = mockSend.mock.calls[0][0];
+    expect(text).toContain(delivery.downloadUrl);
+    expect(html).toContain(
+      'href="https://boximity.ca/api/lead-magnet/download?slug=test-guide&amp;token=abc"',
+    );
+    expect(text).toMatch(/24 hours/);
+  });
+
+  it("escapes HTML in the title", async () => {
+    await sendLeadMagnetDeliveryEmail({
+      ...delivery,
+      title: "<script>alert(1)</script>",
+    });
+
+    const { html } = mockSend.mock.calls[0][0];
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("returns false without sending when env is missing", async () => {
+    delete process.env.RESEND_FROM_EMAIL;
+
+    await expect(sendLeadMagnetDeliveryEmail(delivery)).resolves.toBe(false);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("returns false when Resend reports an error", async () => {
+    mockSend.mockResolvedValueOnce({ error: { message: "domain not found" } });
+
+    await expect(sendLeadMagnetDeliveryEmail(delivery)).resolves.toBe(false);
+  });
+
+  it("does not propagate a Resend failure", async () => {
+    mockSend.mockRejectedValueOnce(new Error("network down"));
+
+    await expect(sendLeadMagnetDeliveryEmail(delivery)).resolves.toBe(false);
   });
 });

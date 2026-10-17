@@ -1,4 +1,4 @@
-import type { BlogPost as BlogPostType } from "@/types/blog";
+import type { BlogOffer, BlogPost as BlogPostType } from "@/types/blog";
 import BlogCta, { BlogRailOffer } from "./BlogCta";
 import OptimizedImage from "./OptimizedImage";
 import { TagChipList } from "./TagChip";
@@ -6,6 +6,8 @@ import { TagChipList } from "./TagChip";
 interface BlogPostProps {
   post: BlogPostType;
   content: React.ReactNode; // rendered markdown
+  /** The post's cta, resolved by the page with resolveBlogOffer. */
+  offer: BlogOffer;
 }
 
 // A post (Component Spec, blog): a split header (60 px Light title, dek on
@@ -13,7 +15,7 @@ interface BlogPostProps {
 // tag chips, offer box) beside the .prose article. The legal pages keep the
 // plain ProsePage frame.
 
-export default function BlogPost({ post, content }: BlogPostProps) {
+export default function BlogPost({ post, content, offer }: BlogPostProps) {
   const { frontmatter } = post;
   const tags = frontmatter.tags ?? [];
   const metaRows = [
@@ -78,7 +80,7 @@ export default function BlogPost({ post, content }: BlogPostProps) {
                 <TagChipList tags={tags} />
               </div>
             )}
-            <BlogRailOffer cta={frontmatter.cta} />
+            <BlogRailOffer offer={offer} />
           </div>
         </aside>
 
@@ -87,7 +89,7 @@ export default function BlogPost({ post, content }: BlogPostProps) {
           {tags.length > 0 && (
             <TagChipList tags={tags} className="mt-3 lg:hidden" />
           )}
-          <BlogCta cta={frontmatter.cta} />
+          <BlogCta offer={offer} />
         </article>
       </div>
     </div>
