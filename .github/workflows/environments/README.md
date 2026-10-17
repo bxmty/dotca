@@ -143,6 +143,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `LEAD_MAGNET_SIGNING_SECRET`: HMAC key for 24-hour lead magnet download links (`openssl rand -hex 32`, at least 32 characters). Required for production; staging deploys only warn when it is missing
 - `SYNCRO_FREE_INSTALLER_URL`: Free-tier Syncro agent installer link behind `/install` (optional; `/install` responds 503 without it)
 - `RESEND_OPTIN_SEGMENT_ID` / `RESEND_OPTIN_TOPIC_ID`: Resend "Monthly security brief" segment and topic IDs for the form opt-in (optional; opt-ins skip Resend with a Sentry warning without them)
+- `RESEND_OPTIN_EVENT`: Resend event name sent after an opt-in to start the nurture automation, `lead.opted_in` in production and `lead.opted_in.staging` in staging (optional; opt-ins send no event, with a Sentry warning, without it)
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 

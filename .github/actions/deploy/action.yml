@@ -93,6 +93,11 @@ runs:
             echo "::warning::${optin_var} is not set; brief opt-ins will skip Resend"
           fi
         done
+        # Same for the nurture trigger event (#647): opt-ins still subscribe
+        # without it, they just don't start the automation.
+        if [[ -z "${RESEND_OPTIN_EVENT:-}" ]]; then
+          echo "::warning::RESEND_OPTIN_EVENT is not set; brief opt-ins will send no lead.opted_in event"
+        fi
 
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
@@ -207,6 +212,7 @@ runs:
         SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
         RESEND_OPTIN_SEGMENT_ID=${RESEND_OPTIN_SEGMENT_ID:-}
         RESEND_OPTIN_TOPIC_ID=${RESEND_OPTIN_TOPIC_ID:-}
+        RESEND_OPTIN_EVENT=${RESEND_OPTIN_EVENT:-}
         STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         GA_PRODUCTION_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
         GA_STAGING_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}
