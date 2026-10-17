@@ -32,13 +32,16 @@ jest.mock("@/lib/ga4", () => ({
   sendConversionEvent: jest.fn(),
 }));
 
-// The Resend SDK is the boundary for the brief opt-in (notify is mocked
-// above, so this only stands in for the opt-in's contact write and the
-// lead.opted_in event that follows it)
+// The Resend SDK is the boundary for the brief opt-in and the day-0
+// confirmation (notify is mocked above, so this only stands in for the
+// opt-in's contact write, the lead.opted_in event that follows it, and the
+// confirmation's templated emails.send)
 const mockCreateResendContact = jest.fn();
 const mockSendResendEvent = jest.fn();
+const mockSendResendEmail = jest.fn();
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: mockSendResendEmail },
     contacts: {
       create: mockCreateResendContact,
       segments: {
@@ -89,7 +92,13 @@ describe("Contact API Route", () => {
       RESEND_OPTIN_SEGMENT_ID: "seg_brief",
       RESEND_OPTIN_TOPIC_ID: "topic_brief",
       RESEND_OPTIN_EVENT: "lead.opted_in.test",
+      RESEND_FROM_EMAIL: "noreply@example.test",
+      RESEND_TEMPLATE_CONTACT_CONFIRMATION: "tmpl_contact",
     };
+    mockSendResendEmail.mockResolvedValue({
+      data: { id: "email_1" },
+      error: null,
+    });
     mockSendResendEvent.mockResolvedValue({
       data: { object: "event", event: "lead.opted_in.test" },
       error: null,
@@ -335,6 +344,157 @@ describe("Contact API Route", () => {
       { status: 429 },
     );
     expect(mockBrevo).toHaveBeenCalledTimes(5);
+  });
+
+  describe("day-0 confirmation email", () => {
+    it("sends the contact confirmation template with the first word of the name", async () => {
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+      const [payload, options] = mockSendResendEmail.mock.calls[0];
+      expect(payload).toEqual({
+        from: "Boximity <noreply@example.test>",
+        to: "test@example.com",
+        replyTo: "hi@boximity.ca",
+        template: {
+          id: "tmpl_contact",
+          variables: { USER_FIRST_NAME: "Test" },
+        },
+      });
+      expect(options.idempotencyKey).toMatch(
+        /^followup-contact\/[0-9a-f]{64}\/\d{4}-\d{2}-\d{2}$/,
+      );
+    });
+
+    it("prefers an explicit firstName field", async () => {
+      await POST(
+        buildRequest({
+          firstName: "Jane",
+          lastName: "Doe",
+          email: "jane@example.com",
+          phone: "123-456-7890",
+        }),
+      );
+
+      expect(mockSendResendEmail.mock.calls[0][0].template.variables).toEqual({
+        USER_FIRST_NAME: "Jane",
+      });
+    });
+
+    it("is sent whether or not the brief box was ticked", async () => {
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it("is sent for a duplicate submission (the idempotency key dedupes same-day repeats)", async () => {
+      mockBrevo.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        code: "duplicate_parameter",
+        message: "Contact already exists",
+      });
+
+      await POST(buildRequest(validBody));
+
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it("still succeeds, with only a Sentry warning, when the send fails", async () => {
+      mockSendResendEmail.mockResolvedValue({
+        data: null,
+        error: { name: "application_error", message: "boom", statusCode: 500 },
+      });
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockBrevo).toHaveBeenCalledTimes(1);
+      expect(mockNotify).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Confirmation email not sent (contact): application_error",
+        "warning",
+      );
+    });
+
+    it("leaves the delivery matrix unchanged when the send fails", async () => {
+      mockSendResendEmail.mockRejectedValue(new Error("network down"));
+      mockBrevo.mockResolvedValueOnce({ ok: false, code: "unauthorized" });
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Contact form delivery failure: Brevo failed (unauthorized), webmaster email ok",
+        "error",
+      );
+    });
+
+    it("still succeeds when the template ID is not configured", async () => {
+      delete process.env.RESEND_TEMPLATE_CONTACT_CONFIRMATION;
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Confirmation email not sent (contact): RESEND_TEMPLATE_CONTACT_CONFIRMATION not set",
+        "warning",
+      );
+    });
+
+    it("is not sent for a honeypot submission", async () => {
+      await POST(
+        buildRequest({ ...validBody, website: "https://spam.example" }),
+      );
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent for a rate-limited submission", async () => {
+      for (let i = 0; i < 5; i++) {
+        await POST(buildRequest(validBody));
+      }
+      mockSendResendEmail.mockClear();
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenLastCalledWith(
+        { error: "Too many submissions. Please try again later." },
+        { status: 429 },
+      );
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when validation fails", async () => {
+      await POST(buildRequest({ ...validBody, email: "not-an-email" }));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when Brevo rejects the phone number", async () => {
+      mockBrevo.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        code: "invalid_parameter",
+        message: "Invalid phone number",
+      });
+
+      await POST(buildRequest(validBody));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when the submission fails with a 503", async () => {
+      mockBrevo.mockResolvedValueOnce({ ok: false, code: "unauthorized" });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest(validBody));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
   });
 
   describe("monthly brief opt-in", () => {

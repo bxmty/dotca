@@ -32,13 +32,16 @@ jest.mock("@/lib/ga4", () => ({
   sendConversionEvent: jest.fn(),
 }));
 
-// The Resend SDK is the boundary for the brief opt-in (notify is mocked
-// above, so this only stands in for the opt-in's contact write and the
-// lead.opted_in event that follows it)
+// The Resend SDK is the boundary for the brief opt-in and the day-0
+// confirmation (notify is mocked above, so this only stands in for the
+// opt-in's contact write, the lead.opted_in event that follows it, and the
+// confirmation's templated emails.send)
 const mockCreateResendContact = jest.fn();
 const mockSendResendEvent = jest.fn();
+const mockSendResendEmail = jest.fn();
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: mockSendResendEmail },
     contacts: {
       create: mockCreateResendContact,
       segments: {
@@ -100,7 +103,13 @@ describe("Onboarding API Route", () => {
       RESEND_OPTIN_SEGMENT_ID: "seg_brief",
       RESEND_OPTIN_TOPIC_ID: "topic_brief",
       RESEND_OPTIN_EVENT: "lead.opted_in.test",
+      RESEND_FROM_EMAIL: "noreply@example.test",
+      RESEND_TEMPLATE_ONBOARDING_CONFIRMATION: "tmpl_onboarding",
     };
+    mockSendResendEmail.mockResolvedValue({
+      data: { id: "email_1" },
+      error: null,
+    });
     mockSendResendEvent.mockResolvedValue({
       data: { object: "event", event: "lead.opted_in.test" },
       error: null,
@@ -312,6 +321,110 @@ describe("Onboarding API Route", () => {
       { status: 429 },
     );
     expect(mockBrevo).toHaveBeenCalledTimes(5);
+  });
+
+  describe("day-0 confirmation email", () => {
+    it("sends the onboarding confirmation template with the first word of the contact name", async () => {
+      await POST(
+        buildRequest({ ...validOnboardingData, contactName: "Jane Q Doe" }),
+      );
+
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+      const [payload, options] = mockSendResendEmail.mock.calls[0];
+      expect(payload).toEqual({
+        from: "Boximity <noreply@example.test>",
+        to: "test@example.com",
+        replyTo: "hi@boximity.ca",
+        template: {
+          id: "tmpl_onboarding",
+          variables: { USER_FIRST_NAME: "Jane" },
+        },
+      });
+      expect(options.idempotencyKey).toMatch(
+        /^followup-onboarding\/[0-9a-f]{64}\/\d{4}-\d{2}-\d{2}$/,
+      );
+      expect(options.idempotencyKey).not.toContain("test@example.com");
+    });
+
+    it("is sent whether or not the brief box was ticked", async () => {
+      await POST(buildRequest({ ...validOnboardingData, wantsBrief: true }));
+
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it("still succeeds, with only a Sentry warning, when the send fails", async () => {
+      mockSendResendEmail.mockRejectedValue(new Error("network down"));
+
+      await POST(buildRequest(validOnboardingData));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Onboarding data received successfully",
+      });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Confirmation email not sent (onboarding): exception",
+        "warning",
+      );
+    });
+
+    it("leaves the delivery matrix unchanged when the send fails", async () => {
+      mockSendResendEmail.mockResolvedValue({
+        data: null,
+        error: { name: "application_error", message: "boom", statusCode: 500 },
+      });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest(validOnboardingData));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Onboarding data received successfully",
+      });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Onboarding delivery failure: Brevo ok, webmaster email failed",
+        "error",
+      );
+    });
+
+    it("is not sent for a honeypot submission", async () => {
+      await POST(
+        buildRequest({
+          ...validOnboardingData,
+          website: "https://spam.example",
+        }),
+      );
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent for a rate-limited submission", async () => {
+      for (let i = 0; i < 5; i++) {
+        await POST(buildRequest(validOnboardingData));
+      }
+      mockSendResendEmail.mockClear();
+
+      await POST(buildRequest(validOnboardingData));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when validation fails", async () => {
+      await POST(
+        buildRequest({ ...validOnboardingData, contactEmail: "not-an-email" }),
+      );
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when the submission fails with a 503", async () => {
+      mockBrevo.mockResolvedValueOnce({ ok: false, code: "unauthorized" });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest(validOnboardingData));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
   });
 
   describe("monthly brief opt-in", () => {
