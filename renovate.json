@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "rangeStrategy": "pin",
-  "baseBranchPatterns": ["upgrades"],
+  "baseBranchPatterns": ["staging"],
   "schedule": ["at any time"],
   "timezone": "America/New_York",
   "lockFileMaintenance": {
@@ -13,26 +13,6 @@
     {
       "matchManagers": ["npm"],
       "enabled": true
-    },
-    {
-      "matchUpdateTypes": ["patch"],
-      "matchDepTypes": ["devDependencies"],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "merge-commit"
-    },
-    {
-      "matchUpdateTypes": ["patch"],
-      "matchDepTypes": ["dependencies"],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "merge-commit"
-    },
-    {
-      "matchUpdateTypes": ["minor"],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "merge-commit"
     }
   ]
 }
