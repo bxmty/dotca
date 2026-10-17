@@ -95,9 +95,7 @@ validate: _check-env-file
         if [ -z "$WEBMASTER_EMAIL" ]; then \
             echo "{{RED}}Error: WEBMASTER_EMAIL not set in .env.local{{NC}}" && exit 1; \
         fi && \
-        if [ -z "$LEAD_MAGNET_SIGNING_SECRET" ]; then \
-            echo "{{RED}}Error: LEAD_MAGNET_SIGNING_SECRET not set in .env.local{{NC}}" && exit 1; \
-        fi && \
+        {{SCRIPTS_DIR}}/check-lead-magnet-secret.sh {{ENVIRONMENT}} && \
         echo "{{GREEN}}✓ Environment variables configured{{NC}}"
     @# Test SSH agent
     @ssh-add -l >/dev/null 2>&1 || echo "{{YELLOW}}⚠ SSH agent not running or no keys loaded{{NC}}"

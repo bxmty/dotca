@@ -153,7 +153,7 @@ load_env_vars() {
     set +a
 
     # Validate required environment variables
-    local required_vars=("DO_TOKEN" "BREVO_API_KEY" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "STRIPE_WEBHOOK_SECRET" "RESEND_API_KEY" "RESEND_FROM_EMAIL" "WEBMASTER_EMAIL" "LEAD_MAGNET_SIGNING_SECRET")
+    local required_vars=("DO_TOKEN" "BREVO_API_KEY" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "STRIPE_WEBHOOK_SECRET" "RESEND_API_KEY" "RESEND_FROM_EMAIL" "WEBMASTER_EMAIL")
     local missing_vars=()
 
     for var in "${required_vars[@]}"; do
@@ -167,6 +167,9 @@ load_env_vars() {
         log_error "Please check your .env.local file"
         exit 1
     fi
+
+    # Fails for production, warns for staging (#604)
+    "$SCRIPT_DIR/check-lead-magnet-secret.sh" "$ENVIRONMENT"
 
     # Set GIT_REPO_URL if not already set
     if [[ -z "${GIT_REPO_URL:-}" ]]; then

@@ -1,21 +1,24 @@
-import type { BlogPostCta } from "@/types/blog";
+import type { BlogOffer } from "@/types/blog";
 import { ButtonLink } from "./Button";
 
 const ASSESSMENT_HREF = "/book";
 
-// Default button text from the lead-magnet content model. The loader that
-// resolves a magnet's title and assetLabel does not exist yet, so every
-// lead-magnet CTA uses this label until that lookup ships.
-const LEAD_MAGNET_FALLBACK_LABEL = "Download the guide";
+// Default button text from the lead-magnet content model, used when the
+// magnet sets no assetLabel (the same default LeadMagnetGate uses).
+const DEFAULT_ASSET_LABEL = "Download the guide";
 
-const DEFAULT_CTA: BlogPostCta = { type: "assessment" };
+const DEFAULT_OFFER: BlogOffer = { type: "assessment" };
 
-/** A cta that shows an offer: anything but `none`. */
-type ShownBlogPostCta = Exclude<BlogPostCta, { type: "none" }>;
+/** An offer that shows something: anything but `none`. */
+type ShownBlogOffer = Exclude<BlogOffer, { type: "none" }>;
 
-/** The props shared by the end CTA and the rail box: the post's cta. */
-interface BlogPostCtaProps {
-  cta?: BlogPostCta;
+/**
+ * The props shared by the end CTA and the rail box: the post's offer,
+ * already resolved server-side by resolveBlogOffer (src/lib/blog-offer.ts),
+ * so these components never touch the filesystem.
+ */
+interface BlogOfferProps {
+  offer?: BlogOffer;
 }
 
 type CtaContent = {
@@ -28,19 +31,20 @@ type CtaContent = {
 };
 
 /**
- * The single mapping from a shown cta to the copy and target of both
+ * The single mapping from a shown offer to the copy and target of both
  * surfaces, so the end CTA and the rail box cannot drift apart.
  */
-function getCtaContent(cta: ShownBlogPostCta): CtaContent {
-  if (cta.type === "lead-magnet") {
+function getCtaContent(offer: ShownBlogOffer): CtaContent {
+  if (offer.type === "lead-magnet") {
+    const label = offer.assetLabel ?? DEFAULT_ASSET_LABEL;
     return {
-      href: `/resources/${cta.slug}`,
-      end: { heading: "Keep a copy", label: LEAD_MAGNET_FALLBACK_LABEL },
-      rail: {
-        regionName: "Free guide offer",
-        text: "Keep a copy of the guide.",
-        label: LEAD_MAGNET_FALLBACK_LABEL,
+      href: `/resources/${offer.slug}`,
+      end: {
+        heading: offer.title,
+        lede: "A free guide. Keep a copy.",
+        label,
       },
+      rail: { regionName: "Free guide offer", text: offer.title, label },
     };
   }
 
@@ -63,12 +67,12 @@ function getCtaContent(cta: ShownBlogPostCta): CtaContent {
  * The post's end CTA (Component Spec, blog): a block under a 2 px ink rule
  * instead of a centred button. The lead-magnet variant uses the same block.
  */
-export default function BlogCta({ cta = DEFAULT_CTA }: BlogPostCtaProps) {
-  if (cta.type === "none") {
+export default function BlogCta({ offer = DEFAULT_OFFER }: BlogOfferProps) {
+  if (offer.type === "none") {
     return null;
   }
 
-  const ctaContent = getCtaContent(cta);
+  const ctaContent = getCtaContent(offer);
 
   return (
     <aside
@@ -95,12 +99,12 @@ export default function BlogCta({ cta = DEFAULT_CTA }: BlogPostCtaProps) {
  * blog). It makes the same offer as the end CTA, so it is hidden on phones,
  * where the end CTA follows the body closely.
  */
-export function BlogRailOffer({ cta = DEFAULT_CTA }: BlogPostCtaProps) {
-  if (cta.type === "none") {
+export function BlogRailOffer({ offer = DEFAULT_OFFER }: BlogOfferProps) {
+  if (offer.type === "none") {
     return null;
   }
 
-  const ctaContent = getCtaContent(cta);
+  const ctaContent = getCtaContent(offer);
 
   return (
     <section

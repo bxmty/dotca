@@ -30,7 +30,7 @@ function readSigningSecret(): string {
   return secret;
 }
 
-function hmac(secret: string, value: string): Buffer {
+function computeHmac(secret: string, value: string): Buffer {
   return createHmac("sha256", secret).update(value).digest();
 }
 
@@ -45,7 +45,9 @@ function signPayload({
   emailTag: string;
   expiresAt: number;
 }): string {
-  return hmac(secret, `${slug}:${emailTag}:${expiresAt}`).toString("base64url");
+  return computeHmac(secret, `${slug}:${emailTag}:${expiresAt}`).toString(
+    "base64url",
+  );
 }
 
 export function signLeadMagnetToken({
@@ -57,7 +59,7 @@ export function signLeadMagnetToken({
 }): string {
   const secret = readSigningSecret();
   const expiresAt = Date.now() + TOKEN_LIFETIME_MS;
-  const emailTag = hmac(secret, `email:${email.trim().toLowerCase()}`)
+  const emailTag = computeHmac(secret, `email:${email.trim().toLowerCase()}`)
     .subarray(0, EMAIL_TAG_BYTES)
     .toString("base64url");
   const signature = signPayload({ secret, slug, emailTag, expiresAt });
@@ -80,13 +82,16 @@ export function verifyLeadMagnetToken({
   const [expiresAtText, emailTag, signature] = parts;
   const expiresAt = Number(expiresAtText);
 
-  const expected = Buffer.from(
+  const expectedSignature = Buffer.from(
     signPayload({ secret, slug, emailTag, expiresAt }),
   );
-  const actual = Buffer.from(signature);
+  const providedSignature = Buffer.from(signature);
   // Compare the encoded strings, not decoded bytes: base64url has spare bits
   // in its last character, so two different strings can decode identically.
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+  if (
+    expectedSignature.length !== providedSignature.length ||
+    !timingSafeEqual(expectedSignature, providedSignature)
+  ) {
     return { isValid: false, reason: "invalid-signature" };
   }
 

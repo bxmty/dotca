@@ -101,6 +101,23 @@ describe("LeadMagnetGate", () => {
     expect(screen.getByLabelText(/email/i)).toHaveValue("jane@example.com");
   });
 
+  it("posts the trimmed email", async () => {
+    mockFetch.mockImplementationOnce(() =>
+      respondWith(200, { success: true, downloadUrl: "/d" }),
+    );
+    const user = renderGate();
+
+    await user.type(screen.getByLabelText(/email/i), "  jane@example.com  ");
+    await user.click(
+      screen.getByRole("button", { name: /get the checklist/i }),
+    );
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).email).toBe(
+      "jane@example.com",
+    );
+  });
+
   it("shows a generic error when the response has no message", async () => {
     mockFetch.mockImplementationOnce(() => respondWith(500, null));
     const user = renderGate();

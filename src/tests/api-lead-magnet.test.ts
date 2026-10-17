@@ -195,6 +195,42 @@ describe("POST /api/lead-magnet", () => {
       );
     });
 
+    it("trims the email before recording the lead", async () => {
+      const response = await post({ slug: SLUG, email: `  ${EMAIL}  ` });
+
+      expect(response.status).toBe(200);
+      expect(mockCreateSyncroLead).toHaveBeenCalledWith({
+        email: EMAIL,
+        source: `lead-magnet:${SLUG}`,
+      });
+      expect(mockDeliveryEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: EMAIL }),
+      );
+    });
+
+    it.each([
+      ["unset", undefined],
+      ["shorter than 32 characters", "too-short"],
+    ])(
+      "returns 503 with the failure copy when the signing secret is %s",
+      async (_name, secret) => {
+        process.env.LEAD_MAGNET_SIGNING_SECRET = secret;
+
+        await expectResponse(await post({ slug: SLUG, email: EMAIL }), 503, {
+          error: UNAVAILABLE_COPY,
+        });
+        expect(Sentry.captureMessage).toHaveBeenCalledWith(
+          expect.stringContaining("LEAD_MAGNET_SIGNING_SECRET"),
+          "error",
+        );
+        expect(Sentry.captureMessage).not.toHaveBeenCalledWith(
+          expect.stringContaining(EMAIL),
+          expect.anything(),
+        );
+        expect(mockDeliveryEmail).not.toHaveBeenCalled();
+      },
+    );
+
     it("succeeds even when both notifications fail", async () => {
       mockDeliveryEmail.mockRejectedValueOnce(new Error("resend down"));
       mockWebmasterNotification.mockResolvedValueOnce(false);

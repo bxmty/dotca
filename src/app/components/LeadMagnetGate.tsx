@@ -62,7 +62,12 @@ export default function LeadMagnetGate({
       const response = await fetch("/api/lead-magnet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, email, website, wantsBrief }),
+        body: JSON.stringify({
+          slug,
+          email: email.trim(),
+          website,
+          wantsBrief,
+        }),
       });
       const responseData = await response.json().catch(() => null);
 
