@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const NO_STORE = "private, no-store";
 
-function linkExpiredResponse(slug: string): Response {
+function buildLinkExpiredResponse(slug: string): Response {
   // Reached by clicking a link in an email, so answer with a page a person can
   // act on rather than JSON. slug has already passed the loader's slug guard.
   const resourcePath = `/resources/${slug}`;
@@ -75,7 +75,7 @@ export function GET(request: Request): Response {
   }
 
   if (!verification.isValid) {
-    return linkExpiredResponse(slug);
+    return buildLinkExpiredResponse(slug);
   }
 
   const { assetFile } = magnet.frontmatter;
