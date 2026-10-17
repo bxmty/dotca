@@ -144,6 +144,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `SYNCRO_FREE_INSTALLER_URL`: Free-tier Syncro agent installer link behind `/install` (optional; `/install` responds 503 without it)
 - `RESEND_OPTIN_SEGMENT_ID` / `RESEND_OPTIN_TOPIC_ID`: Resend "Monthly security brief" segment and topic IDs for the form opt-in (optional; opt-ins skip Resend with a Sentry warning without them)
 - `RESEND_OPTIN_EVENT`: Resend event name sent after an opt-in to start the nurture automation, `lead.opted_in` in production and `lead.opted_in.staging` in staging (optional; opt-ins send no event, with a Sentry warning, without it)
+- `RESEND_TEMPLATE_CONTACT_CONFIRMATION` / `RESEND_TEMPLATE_ONBOARDING_CONFIRMATION`: published Resend template IDs for the day-0 contact and onboarding confirmation emails, same value in both environments (optional; submissions send no confirmation, with a Sentry warning, without them)
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 
