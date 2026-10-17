@@ -12,16 +12,13 @@ jest.mock("@sentry/nextjs", () => ({
   captureException: jest.fn(),
 }));
 
-// The fixture magnet in content/lead-magnets is read from disk for real.
+// The fixture magnet is read from disk for real, from the test fixtures
+// directory the loader is pointed at below — never from content/, where the
+// site would publish it.
+const FIXTURE_DIR = path.join(__dirname, "fixtures", "lead-magnets");
 const SLUG = "test-fixture-guide";
 const FIXTURE_PDF = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "content",
-    "lead-magnets",
-    "assets",
-    "test-fixture-guide.pdf",
-  ),
+  path.join(FIXTURE_DIR, "assets", "test-fixture-guide.pdf"),
 );
 const EMAIL = "jane.doe@example.com";
 const HOUR_MS = 60 * 60 * 1000;
@@ -42,6 +39,7 @@ describe("GET /api/lead-magnet/download", () => {
     process.env = {
       ...originalEnv,
       LEAD_MAGNET_SIGNING_SECRET: "s".repeat(64),
+      LEAD_MAGNET_CONTENT_DIR: FIXTURE_DIR,
     };
     logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
   });

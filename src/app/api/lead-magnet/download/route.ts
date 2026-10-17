@@ -3,8 +3,8 @@ import fs from "fs";
 import path from "path";
 import * as Sentry from "@sentry/nextjs";
 import {
+  getLeadMagnetAssetsDir,
   getLeadMagnetBySlug,
-  LEAD_MAGNET_ASSETS_DIR,
 } from "@/lib/lead-magnets";
 import { verifyLeadMagnetToken } from "@/lib/lead-magnet-token";
 
@@ -81,7 +81,7 @@ export function GET(request: Request): Response {
   const { assetFile } = magnet.frontmatter;
   let pdf: Buffer;
   try {
-    pdf = fs.readFileSync(path.join(LEAD_MAGNET_ASSETS_DIR, assetFile));
+    pdf = fs.readFileSync(path.join(getLeadMagnetAssetsDir(), assetFile));
   } catch (error) {
     console.error(`Lead magnet asset missing for ${slug}:`, error);
     Sentry.captureException(error);

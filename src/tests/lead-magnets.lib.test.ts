@@ -135,6 +135,55 @@ describe("getLeadMagnetBySlug", () => {
   );
 });
 
+describe("content directory override", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockReadFileSync.mockReturnValue(leadMagnetFile({}));
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("reads magnets from LEAD_MAGNET_CONTENT_DIR in the test environment", () => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "test",
+      LEAD_MAGNET_CONTENT_DIR: "/fixtures/lead-magnets",
+    };
+
+    getLeadMagnetBySlug("test-guide");
+
+    expect(mockReadFileSync).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^[/\\]fixtures[/\\]lead-magnets[/\\]test-guide\.md$/,
+      ),
+      "utf8",
+    );
+  });
+
+  it("ignores LEAD_MAGNET_CONTENT_DIR outside the test environment", () => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "production",
+      LEAD_MAGNET_CONTENT_DIR: "/fixtures/lead-magnets",
+    };
+
+    getLeadMagnetBySlug("test-guide");
+
+    expect(mockReadFileSync).toHaveBeenCalledWith(
+      expect.stringMatching(/content[/\\]lead-magnets[/\\]test-guide\.md$/),
+      "utf8",
+    );
+    expect(mockReadFileSync).not.toHaveBeenCalledWith(
+      expect.stringContaining("fixtures"),
+      "utf8",
+    );
+  });
+});
+
 describe("getAllLeadMagnets", () => {
   beforeEach(() => {
     jest.clearAllMocks();

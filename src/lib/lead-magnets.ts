@@ -8,20 +8,30 @@ import { LeadMagnet, LeadMagnetFrontmatter } from "@/types/leadMagnet";
  * content/lead-magnets/assets — deliberately outside public/, so a PDF has no
  * static URL and can only be reached through the signed download route.
  */
-const LEAD_MAGNET_CONTENT_DIR = path.join(
-  process.cwd(),
-  "content",
-  "lead-magnets",
-);
-export const LEAD_MAGNET_ASSETS_DIR = path.join(
-  LEAD_MAGNET_CONTENT_DIR,
-  "assets",
-);
+const DEFAULT_CONTENT_DIR = path.join(process.cwd(), "content", "lead-magnets");
+
+/**
+ * Tests point the loader at fixture magnets with LEAD_MAGNET_CONTENT_DIR, so
+ * no fake magnet has to live in content/ where the site would publish it. The
+ * override is honored only under NODE_ENV=test: a stray variable on a deployed
+ * container can never redirect what the site serves.
+ */
+function getContentDir(): string {
+  const override = process.env.LEAD_MAGNET_CONTENT_DIR;
+  return process.env.NODE_ENV === "test" && override
+    ? override
+    : DEFAULT_CONTENT_DIR;
+}
+
+/** Where a magnet's assetFile lives: assets/ inside the content directory. */
+export function getLeadMagnetAssetsDir(): string {
+  return path.join(getContentDir(), "assets");
+}
 
 // Same guard blog.ts uses against path traversal, kept case-sensitive so a
 // slug maps to exactly one file on case-sensitive and case-insensitive disks.
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
-// assetFile is joined onto LEAD_MAGNET_ASSETS_DIR, so it must be a bare filename.
+// assetFile is joined onto the assets directory, so it must be a bare filename.
 const ASSET_FILE_PATTERN = /^[a-z0-9-]+\.pdf$/i;
 
 export function isLeadMagnetSlug(slug: string): boolean {
@@ -29,7 +39,7 @@ export function isLeadMagnetSlug(slug: string): boolean {
 }
 
 function parseLeadMagnet(slug: string): LeadMagnet | null {
-  const filePath = path.join(LEAD_MAGNET_CONTENT_DIR, `${slug}.md`);
+  const filePath = path.join(getContentDir(), `${slug}.md`);
   try {
     const { data, content } = parseFrontmatter<Partial<LeadMagnetFrontmatter>>(
       fs.readFileSync(filePath, "utf8"),
@@ -86,7 +96,7 @@ export function getLeadMagnetBySlug(slug: string): LeadMagnet | null {
 export function getAllLeadMagnets(): LeadMagnet[] {
   let files: string[];
   try {
-    files = fs.readdirSync(LEAD_MAGNET_CONTENT_DIR);
+    files = fs.readdirSync(getContentDir());
   } catch {
     console.warn("Lead magnet content directory not found");
     return [];
