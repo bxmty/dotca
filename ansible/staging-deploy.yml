@@ -24,7 +24,6 @@
     app_dir: /app
     public_ip: "{{ ansible_host }}"
     staging_domain: "staging.boximity.ca"
-    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"

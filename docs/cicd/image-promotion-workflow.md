@@ -361,7 +361,6 @@ The actual workflow has more granular states than basic promotion steps:
 
 ### External Service Integration
 
-- **Brevo (Email)**: Transactional email notifications
 - **Stripe**: Payment processing (if applicable)
 - **Google Analytics**: Usage tracking and analytics
 - **DigitalOcean Spaces**: Object storage for backups and assets

@@ -20,7 +20,7 @@ secret baked into Docker image, Umami removal.
        Environment secret (see docs/secrets-rotation-guide.md).
 3. [ ] **Waitlist submissions never record the selected plan.**
        `WaitlistForm.tsx` sends `planName`, but `api/contact/route.ts`
-       destructures `plan`, so Brevo's `PLAN_NAME` attribute is always empty.
+       destructures `plan`, so the CRM's plan attribute is always empty.
        Align the field names and add a regression test.
 
 ## Medium priority
@@ -33,10 +33,10 @@ secret baked into Docker image, Umami removal.
        Restructure when the payment path is re-enabled.
 6. [x] **`npm install --frozen-lockfile` in Dockerfile.** npm ignores that
        flag (it's yarn/pnpm); use `npm ci` to actually enforce the lockfile.
-7. [x] **Contact route error handling.** The `throw` for Brevo API errors at
+7. [x] **Contact route error handling.** The `throw` for CRM API errors at
        `api/contact/route.ts` is caught by its own JSON-parse `catch` and
        relabeled; non-string `phone` input causes a 500 instead of a 400; the
-       dev-only fallback to `NEXT_PUBLIC_BREVO_API_KEY` invites bundling a
+       dev-only fallback to a `NEXT_PUBLIC_` CRM key invites bundling a
        secret into client JS — remove it.
 8. [x] **Blog slug hardening.** `getBlogPostBySlug` joins the URL slug into a
        filesystem path unvalidated (add `/^[a-z0-9-]+$/i`) and does not filter

@@ -85,7 +85,7 @@ RUN apk add --no-cache curl
 WORKDIR /app
 
 # Set runtime environment variables with defaults.
-# Secrets (STRIPE_SECRET_KEY, BREVO_API_KEY) are never declared here:
+# Secrets (STRIPE_SECRET_KEY, RESEND_API_KEY, ...) are never declared here:
 # anything in ARG/ENV of this stage is readable via `docker inspect` on the
 # shipped image. They are injected at container runtime by docker-compose.
 ARG NODE_ENV=production

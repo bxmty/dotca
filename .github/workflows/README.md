@@ -122,7 +122,6 @@ Environment-specific configurations in `.github/workflows/environments/`:
 - `SSH_PRIVATE_KEY` - Server access key
 - `SSH_KEY_FINGERPRINT` - SSH key fingerprint
 - `SPACES_ACCESS_ID/SECRET_KEY` - Object storage
-- `BREVO_API_KEY` - Email service
 - `STRIPE_SECRET_KEY` - Payment processing
 - `GITHUB_TOKEN` - GitHub API access
 
@@ -141,7 +140,6 @@ Environment-specific configurations in `.github/workflows/environments/`:
 - `SSH_PRIVATE_KEY`: SSH key for server access
 - `SSH_KEY_FINGERPRINT`: SSH key fingerprint
 - `SPACES_ACCESS_ID`/`SPACES_SECRET_KEY`: DigitalOcean Spaces
-- `BREVO_API_KEY`: Email service
 - `STRIPE_SECRET_KEY`/`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`: Payment processing
 - `NEXT_PUBLIC_PRODUCTION_GA_ID`: Google Analytics
 

@@ -52,7 +52,6 @@ DO_TOKEN=your_digitalocean_api_token_here
 SSH_KEY_FINGERPRINT=your_ssh_key_fingerprint
 
 # Application Secrets
-BREVO_API_KEY=your_brevo_api_key_here
 RESEND_API_KEY=your_resend_api_key_here
 RESEND_FROM_EMAIL=noreply@boximity.ca
 WEBMASTER_EMAIL=webmaster@example.com

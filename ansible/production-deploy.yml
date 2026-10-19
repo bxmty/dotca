@@ -23,7 +23,6 @@
     git_branch: main
     app_dir: /app
     public_ip: "{{ ansible_host }}"
-    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
@@ -484,7 +483,6 @@
           🔍 Validating critical environment variables for production deployment
 
           Required Variables Status:
-          - BREVO_API_KEY: {{ '✅ SET' if brevo_api_key else '❌ MISSING' }}
           - STRIPE_SECRET_KEY: {{ '✅ SET' if stripe_secret_key else '❌ MISSING' }}
           - STRIPE_PUBLISHABLE_KEY: {{ '✅ SET' if stripe_publishable_key else '❌ MISSING' }}
           - GA_ID: {{ '✅ SET' if ga_id else '❌ MISSING' }} ({{ next_public_environment }})
@@ -507,7 +505,6 @@
           Critical environment variables are missing!
           Please set them in your environment or GitHub Secrets.
       when: >
-        not brevo_api_key or
         not stripe_secret_key or
         not stripe_publishable_key or
         not ga_id or
@@ -523,7 +520,6 @@
           NODE_ENV=production
           NEXT_PUBLIC_ENVIRONMENT=production
           NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-          BREVO_API_KEY={{ brevo_api_key }}
           STRIPE_SECRET_KEY={{ stripe_secret_key }}
           STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
           NEXT_PUBLIC_GA_ID={{ ga_id }}

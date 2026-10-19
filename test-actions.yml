@@ -44,7 +44,6 @@ jobs:
         env:
           DO_TOKEN: mock-do-token
           SSH_PRIVATE_KEY: mock-ssh-private-key
-          BREVO_API_KEY: mock-brevo-api-key
           STRIPE_SECRET_KEY: mock-stripe-secret-key
 
       - name: Test notify action

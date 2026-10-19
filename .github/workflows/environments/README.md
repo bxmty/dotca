@@ -137,7 +137,6 @@ For each environment configuration file, you need to create a corresponding GitH
 
 #### Application Secrets
 
-- `BREVO_API_KEY`: Email service API key
 - `RESEND_API_KEY`: Resend API key for webmaster notification emails
 - `WEBMASTER_EMAIL`: Email address for webmaster form submission notifications
 - `LEAD_MAGNET_SIGNING_SECRET`: HMAC key for 24-hour lead magnet download links (`openssl rand -hex 32`, at least 32 characters). Required for production; staging deploys only warn when it is missing
