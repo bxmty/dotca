@@ -36,6 +36,11 @@
     syncro_free_installer_url: "{{ SYNCRO_FREE_INSTALLER_URL | default('') }}"
     syncro_subdomain: "{{ SYNCRO_SUBDOMAIN | default('') }}"
     syncro_api_key: "{{ SYNCRO_API_KEY | default('') }}"
+    resend_optin_segment_id: "{{ RESEND_OPTIN_SEGMENT_ID | default('') }}"
+    resend_optin_topic_id: "{{ RESEND_OPTIN_TOPIC_ID | default('') }}"
+    resend_optin_event: "{{ RESEND_OPTIN_EVENT | default('') }}"
+    resend_template_contact_confirmation: "{{ RESEND_TEMPLATE_CONTACT_CONFIRMATION | default('') }}"
+    resend_template_onboarding_confirmation: "{{ RESEND_TEMPLATE_ONBOARDING_CONFIRMATION | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     next_public_environment: staging

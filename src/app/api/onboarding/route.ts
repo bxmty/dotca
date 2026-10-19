@@ -6,6 +6,9 @@ import { logLeadSubmission } from "@/lib/lead-log";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { sendConfirmationEmail } from "@/lib/confirmation-email";
+import { splitFullName } from "@/lib/person-name";
 
 export async function POST(request: Request) {
   try {
@@ -106,6 +109,7 @@ export async function POST(request: Request) {
       "Software used": data.softwareUsed || "",
       "Pain points": data.painPoints || "",
       Goals: data.goals || "",
+      "Monthly brief": data.wantsBrief === true ? "Yes" : "No",
     };
     const phone = formatE164Phone(data.contactPhone) ?? data.contactPhone;
 
@@ -151,6 +155,32 @@ export async function POST(request: Request) {
       syncro: syncroResult,
       isEmailSent: notifySent,
     });
+
+    const contactName = splitFullName(String(data.contactName));
+
+    // The day-0 confirmation (with the /install link) goes to every signup
+    // whose lead landed, opted in or not, and sits outside the delivery
+    // matrix: a failed send is a Sentry warning inside sendConfirmationEmail,
+    // never a failed submission. A 503 sends none, since the lead may not
+    // exist.
+    if (syncroResult.ok || notifySent) {
+      await sendConfirmationEmail({
+        formType: "onboarding",
+        email: data.contactEmail,
+        firstName: contactName.firstName,
+      });
+    }
+
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a Sentry
+    // warning inside subscribeToMonthlyBrief, never a failed submission.
+    if (data.wantsBrief === true) {
+      await subscribeToMonthlyBrief({
+        email: data.contactEmail,
+        ...contactName,
+        source: "onboarding",
+      });
+    }
 
     if (!syncroResult.ok || !notifySent) {
       // No submitted values in this string: it goes to Sentry

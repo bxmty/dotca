@@ -33,6 +33,29 @@ jest.mock("@/lib/ga4", () => ({
 }));
 
 const mockCreateLead = createLead as jest.Mock;
+// The Resend SDK is the boundary for the brief opt-in and the day-0
+// confirmation (notify is mocked above, so this only stands in for the
+// opt-in's contact write, the lead.opted_in event that follows it, and the
+// confirmation's templated emails.send)
+const mockCreateResendContact = jest.fn();
+const mockSendResendEvent = jest.fn();
+const mockSendResendEmail = jest.fn();
+jest.mock("resend", () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: mockSendResendEmail },
+    contacts: {
+      create: mockCreateResendContact,
+      segments: {
+        add: jest.fn().mockResolvedValue({ error: { name: "not_found" } }),
+      },
+      topics: { update: jest.fn() },
+    },
+    events: { send: mockSendResendEvent },
+  })),
+}));
+
+const originalEnv = process.env;
+
 const mockNotify = sendWebmasterNotification as jest.Mock;
 const mockSendConversionEvent = sendConversionEvent as jest.Mock;
 
@@ -59,6 +82,31 @@ describe("Contact API Route", () => {
     mockCreateLead.mockResolvedValue({ ok: true, leadId: 1 });
     mockNotify.mockResolvedValue(true);
     mockSendConversionEvent.mockResolvedValue(undefined);
+    mockCreateResendContact.mockResolvedValue({
+      data: { id: "contact_1" },
+      error: null,
+    });
+    process.env = {
+      ...originalEnv,
+      RESEND_API_KEY: "re_test_key",
+      RESEND_OPTIN_SEGMENT_ID: "seg_brief",
+      RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_OPTIN_EVENT: "lead.opted_in.test",
+      RESEND_FROM_EMAIL: "noreply@example.test",
+      RESEND_TEMPLATE_CONTACT_CONFIRMATION: "tmpl_contact",
+    };
+    mockSendResendEmail.mockResolvedValue({
+      data: { id: "email_1" },
+      error: null,
+    });
+    mockSendResendEvent.mockResolvedValue({
+      data: { object: "event", event: "lead.opted_in.test" },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   it("returns 400 if email is missing", async () => {
@@ -334,5 +382,261 @@ describe("Contact API Route", () => {
       { status: 429 },
     );
     expect(mockCreateLead).toHaveBeenCalledTimes(5);
+  });
+
+  describe("day-0 confirmation email", () => {
+    it("sends the contact confirmation template with the first word of the name", async () => {
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+      const [payload, options] = mockSendResendEmail.mock.calls[0];
+      expect(payload).toEqual({
+        from: "Boximity <noreply@example.test>",
+        to: "test@example.com",
+        replyTo: "hi@boximity.ca",
+        template: {
+          id: "tmpl_contact",
+          variables: { USER_FIRST_NAME: "Test" },
+        },
+      });
+      expect(options.idempotencyKey).toMatch(
+        /^followup-contact\/[0-9a-f]{64}\/\d{4}-\d{2}-\d{2}$/,
+      );
+    });
+
+    it("prefers an explicit firstName field", async () => {
+      await POST(
+        buildRequest({
+          firstName: "Jane",
+          lastName: "Doe",
+          email: "jane@example.com",
+          phone: "123-456-7890",
+        }),
+      );
+
+      expect(mockSendResendEmail.mock.calls[0][0].template.variables).toEqual({
+        USER_FIRST_NAME: "Jane",
+      });
+    });
+
+    it("is sent whether or not the brief box was ticked", async () => {
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it("is sent when only the webmaster email landed (Syncro rejected the lead)", async () => {
+      mockCreateLead.mockResolvedValueOnce({
+        ok: false,
+        reason: "rejected",
+        status: 422,
+      });
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it("still succeeds, with only a Sentry warning, when the send fails", async () => {
+      mockSendResendEmail.mockResolvedValue({
+        data: null,
+        error: { name: "application_error", message: "boom", statusCode: 500 },
+      });
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockCreateLead).toHaveBeenCalledTimes(1);
+      expect(mockNotify).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Confirmation email not sent (contact): application_error",
+        "warning",
+      );
+    });
+
+    it("leaves the delivery matrix unchanged when the send fails", async () => {
+      mockSendResendEmail.mockRejectedValue(new Error("network down"));
+      mockCreateLead.mockResolvedValueOnce({
+        ok: false,
+        reason: "unreachable",
+        code: "network_error",
+      });
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Contact form delivery failure: Syncro unreachable (network_error), webmaster email ok",
+        "error",
+      );
+    });
+
+    it("still succeeds when the template ID is not configured", async () => {
+      delete process.env.RESEND_TEMPLATE_CONTACT_CONFIRMATION;
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Confirmation email not sent (contact): RESEND_TEMPLATE_CONTACT_CONFIRMATION not set",
+        "warning",
+      );
+    });
+
+    it("is not sent for a honeypot submission", async () => {
+      await POST(
+        buildRequest({ ...validBody, website: "https://spam.example" }),
+      );
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent for a rate-limited submission", async () => {
+      for (let i = 0; i < 5; i++) {
+        await POST(buildRequest(validBody));
+      }
+      mockSendResendEmail.mockClear();
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenLastCalledWith(
+        { error: "Too many submissions. Please try again later." },
+        { status: 429 },
+      );
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when validation fails", async () => {
+      await POST(buildRequest({ ...validBody, email: "not-an-email" }));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+
+    it("is not sent when the submission fails with a 503", async () => {
+      mockCreateLead.mockResolvedValueOnce({
+        ok: false,
+        reason: "unreachable",
+        code: "missing_config",
+      });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest(validBody));
+
+      expect(mockSendResendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("monthly brief opt-in", () => {
+    it("subscribes a submitter who ticked the box to the brief", async () => {
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockCreateResendContact).toHaveBeenCalledWith({
+        email: "test@example.com",
+        firstName: "Test",
+        lastName: "User",
+        segments: [{ id: "seg_brief" }],
+        topics: [{ id: "topic_brief", subscription: "opt_in" }],
+      });
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fields: expect.objectContaining({ "Monthly brief": "Yes" }),
+        }),
+      );
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+    });
+
+    it.each([
+      ["absent", undefined],
+      ["false", false],
+      ["a truthy non-boolean", "true"],
+    ])(
+      "makes no Resend call when the box is %s",
+      async (_label, wantsBrief) => {
+        await POST(buildRequest({ ...validBody, wantsBrief }));
+
+        expect(mockCreateResendContact).not.toHaveBeenCalled();
+        expect(mockSendResendEvent).not.toHaveBeenCalled();
+        expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      },
+    );
+
+    it("still succeeds, with a Sentry warning, when the Resend write fails", async () => {
+      mockCreateResendContact.mockResolvedValue({
+        data: null,
+        error: { name: "restricted_api_key", message: "nope", statusCode: 401 },
+      });
+
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Monthly brief opt-in failed (contact)"),
+        "warning",
+      );
+    });
+
+    it("makes no Resend call for a honeypot submission", async () => {
+      await POST(
+        buildRequest({
+          ...validBody,
+          wantsBrief: true,
+          website: "https://spam.example",
+        }),
+      );
+
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("makes no Resend call when validation fails", async () => {
+      await POST(
+        buildRequest({ ...validBody, email: "not-an-email", wantsBrief: true }),
+      );
+
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("sends one lead.opted_in event with source contact for a ticked box", async () => {
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockSendResendEvent).toHaveBeenCalledTimes(1);
+      expect(mockSendResendEvent).toHaveBeenCalledWith({
+        event: "lead.opted_in.test",
+        email: "test@example.com",
+        payload: { source: "contact" },
+      });
+    });
+
+    it("sends no event when the contact write fails", async () => {
+      mockCreateResendContact.mockRejectedValue(new Error("socket hang up"));
+
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockSendResendEvent).not.toHaveBeenCalled();
+    });
+
+    it("still succeeds, with a Sentry warning, when the event send fails", async () => {
+      mockSendResendEvent.mockResolvedValue({
+        data: null,
+        error: {
+          name: "rate_limit_exceeded",
+          message: "slow",
+          statusCode: 429,
+        },
+      });
+
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("opt-in event not sent (contact)"),
+        "warning",
+      );
+    });
   });
 });

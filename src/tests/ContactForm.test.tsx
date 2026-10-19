@@ -84,6 +84,7 @@ describe("ContactForm Component", () => {
           email: "test@example.com",
           phone: "+1234567890",
           website: "",
+          wantsBrief: false,
         }),
       });
     });
@@ -330,5 +331,60 @@ describe("ContactForm Component", () => {
     // Check if button is disabled and shows loading text
     expect(screen.getByTestId("contact-submit-button")).toBeDisabled();
     expect(screen.getByText("Submitting...")).toBeInTheDocument();
+  });
+
+  describe("monthly brief opt-in", () => {
+    const OPT_IN_COPY =
+      "Send me Boximity's monthly security brief and occasional tips and offers";
+
+    function fillAndSubmit() {
+      fireEvent.change(screen.getByLabelText(/Name/i), {
+        target: { value: "Test User" },
+      });
+      fireEvent.change(screen.getByLabelText(/Email/i), {
+        target: { value: "test@example.com" },
+      });
+      fireEvent.change(screen.getByLabelText(/Phone/i), {
+        target: { value: "123-456-7890" },
+      });
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+    }
+
+    function getSentBody() {
+      return JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    }
+
+    it("offers an unticked checkbox naming what they'll receive", () => {
+      render(<ContactForm />);
+
+      expect(
+        screen.getByRole("checkbox", { name: OPT_IN_COPY }),
+      ).not.toBeChecked();
+    });
+
+    it("sends wantsBrief: true once the box is ticked", async () => {
+      render(<ContactForm />);
+      await userEvent
+        .setup()
+        .click(screen.getByRole("checkbox", { name: OPT_IN_COPY }));
+
+      fillAndSubmit();
+
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      expect(getSentBody()).toEqual(
+        expect.objectContaining({ wantsBrief: true }),
+      );
+    });
+
+    it("sends wantsBrief: false when the box is left unticked", async () => {
+      render(<ContactForm />);
+
+      fillAndSubmit();
+
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      expect(getSentBody()).toEqual(
+        expect.objectContaining({ wantsBrief: false }),
+      );
+    });
   });
 });
