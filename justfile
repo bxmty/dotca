@@ -74,9 +74,6 @@ validate: _check-env-file
         if [ -z "$DO_TOKEN" ]; then \
             echo "{{RED}}Error: DO_TOKEN not set in .env.local{{NC}}" && exit 1; \
         fi && \
-        if [ -z "$BREVO_API_KEY" ]; then \
-            echo "{{RED}}Error: BREVO_API_KEY not set in .env.local{{NC}}" && exit 1; \
-        fi && \
         if [ -z "$STRIPE_SECRET_KEY" ]; then \
             echo "{{RED}}Error: STRIPE_SECRET_KEY not set in .env.local{{NC}}" && exit 1; \
         fi && \
@@ -95,6 +92,7 @@ validate: _check-env-file
         if [ -z "$WEBMASTER_EMAIL" ]; then \
             echo "{{RED}}Error: WEBMASTER_EMAIL not set in .env.local{{NC}}" && exit 1; \
         fi && \
+        {{SCRIPTS_DIR}}/check-lead-magnet-secret.sh {{ENVIRONMENT}} && \
         echo "{{GREEN}}✓ Environment variables configured{{NC}}"
     @# Test SSH agent
     @ssh-add -l >/dev/null 2>&1 || echo "{{YELLOW}}⚠ SSH agent not running or no keys loaded{{NC}}"

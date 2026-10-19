@@ -64,6 +64,7 @@ describe("StripeWrapper", () => {
     employeeCount: 5,
     billingCycle: "monthly",
     customer,
+    wantsBrief: false,
   };
 
   function lastFetchBody(): Record<string, unknown> {
@@ -119,11 +120,30 @@ describe("StripeWrapper", () => {
       employeeCount: 5,
       billingCycle: "monthly",
       customer,
+      wantsBrief: false,
       idempotencyKey: expect.any(String),
     });
 
     // Verify getStripe was called
     expect(getStripe).toHaveBeenCalled();
+  });
+
+  it("passes a ticked brief opt-in to create-subscription", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(
+      <StripeWrapper {...orderProps} wantsBrief>
+        {mockChildComponent}
+      </StripeWrapper>,
+    );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(lastFetchBody()).toEqual(
+      expect.objectContaining({ wantsBrief: true }),
+    );
   });
 
   it("includes ga_client_id and ga_session_id when both GA cookies are present", async () => {

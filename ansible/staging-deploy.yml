@@ -24,7 +24,6 @@
     app_dir: /app
     public_ip: "{{ ansible_host }}"
     staging_domain: "staging.boximity.ca"
-    brevo_api_key: "{{ BREVO_API_KEY | default('') }}"
     stripe_secret_key: "{{ STRIPE_SECRET_KEY | default('') }}"
     stripe_publishable_key: "{{ STRIPE_PUBLISHABLE_KEY | default('') }}"
     stripe_webhook_secret: "{{ STRIPE_WEBHOOK_SECRET | default('') }}"
@@ -32,6 +31,15 @@
     resend_api_key: "{{ RESEND_API_KEY | default('') }}"
     resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
     webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
+    lead_magnet_signing_secret: "{{ LEAD_MAGNET_SIGNING_SECRET | default('') }}"
+    syncro_free_installer_url: "{{ SYNCRO_FREE_INSTALLER_URL | default('') }}"
+    syncro_subdomain: "{{ SYNCRO_SUBDOMAIN | default('') }}"
+    syncro_api_key: "{{ SYNCRO_API_KEY | default('') }}"
+    resend_monthly_brief_segment_id: "{{ RESEND_MONTHLY_BRIEF_SEGMENT_ID | default('') }}"
+    resend_monthly_brief_topic_id: "{{ RESEND_MONTHLY_BRIEF_TOPIC_ID | default('') }}"
+    resend_optin_event: "{{ RESEND_OPTIN_EVENT | default('') }}"
+    resend_template_contact_confirmation: "{{ RESEND_TEMPLATE_CONTACT_CONFIRMATION | default('') }}"
+    resend_template_onboarding_confirmation: "{{ RESEND_TEMPLATE_ONBOARDING_CONFIRMATION | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     next_public_environment: staging

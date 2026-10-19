@@ -161,6 +161,29 @@ describe("POST /api/stripe/create-subscription", () => {
     expect(params.metadata).not.toHaveProperty("ga_session_id");
   });
 
+  it("carries a ticked brief opt-in in the subscription metadata", async () => {
+    await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+    const [params] = mockSubscriptionsCreate.mock.calls[0];
+    expect(params.metadata).toMatchObject({ wants_brief: "true" });
+  });
+
+  it.each([
+    ["absent", undefined],
+    ["false", false],
+    ["a truthy non-boolean", "true"],
+  ])(
+    "leaves wants_brief out of the metadata when the opt-in is %s",
+    async (_label, wantsBrief) => {
+      await POST(buildRequest({ ...validBody, wantsBrief }));
+
+      const [customerParams] = mockCustomersCreate.mock.calls[0];
+      const [subscriptionParams] = mockSubscriptionsCreate.mock.calls[0];
+      expect(customerParams.metadata).not.toHaveProperty("wants_brief");
+      expect(subscriptionParams.metadata).not.toHaveProperty("wants_brief");
+    },
+  );
+
   it("threads only the identifier that is present when just one GA cookie was available", async () => {
     await POST(
       buildRequest({

@@ -2,6 +2,7 @@
 
 **Status:** Implemented locally (2026-07-12) — all phases coded, tested, and smoke-tested against Stripe test mode. The items below are the remaining manual steps.
 **Created:** 2026-07-11
+**Note (2026-10-19):** Brevo has since been retired; website leads go to Syncro Leads — see bxmty/dotca#596. The Brevo sections below are historical.
 **Supersedes:** `tasks/prd-resend-email-service.md` (written 2025-02-19, assumes the waitlist survives — delete it when this lands)
 
 ---

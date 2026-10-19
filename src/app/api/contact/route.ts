@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
-import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
-import { sendWebmasterNotification } from "@/lib/notify";
+import { formatE164Phone } from "@/lib/phone";
+import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { sendConfirmationEmail } from "@/lib/confirmation-email";
+import { splitFullName } from "@/lib/person-name";
 
 function isMissingOrString(value: unknown): value is string | undefined {
   return value === undefined || value === null || typeof value === "string";
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
       billingCycle,
       employeeCount,
       website,
+      wantsBrief,
     } = body ?? {};
 
     // Honeypot: the "website" field is hidden from humans. A filled value
@@ -119,109 +122,81 @@ export async function POST(request: Request) {
       request.headers.get("cookie"),
     );
 
-    // Validation is done; from here on the lead exists. Brevo (CRM) and the
-    // webmaster email (Resend) fire in parallel, and the submission succeeds
-    // if either lands — see the redundancy matrix in the PRD.
-    const [brevoSettled, notifySettled] = await Promise.allSettled([
-      addBrevoContact({
-        listId: 9,
-        email,
-        smsPhone: formattedPhone,
-        attributes: {
-          FULLNAME: fullName,
-          FIRSTNAME: firstName || fullName.split(" ")[0] || "",
-          LASTNAME:
-            lastName ||
-            (fullName.split(" ").length > 1
-              ? fullName.split(" ").slice(1).join(" ")
-              : ""),
-          PHONE: phone,
-          COMPANY: company || "",
-          ADDRESS: address || "",
-          CITY: city || "",
-          STATE: state || "",
-          ZIP: zip || "",
-          PLAN_NAME: plan || "",
-          BILLING_CYCLE: billingCycle || "",
-          EMPLOYEE_COUNT: employeeCount ? employeeCount.toString() : "",
-        },
-      }),
-      sendWebmasterNotification({
+    // Every submitted field, shared by the Syncro ticket description and the
+    // webmaster email so the two sinks always carry the same lead
+    const leadFields = {
+      Name: fullName,
+      Email: email,
+      Phone: formattedPhone,
+      Company: company || "",
+      Address: address || "",
+      City: city || "",
+      "Province/State": state || "",
+      "Postal code": zip || "",
+      Plan: plan || "",
+      "Billing cycle": billingCycle || "",
+      "Employee count": employeeCount ? employeeCount.toString() : "",
+    };
+
+    // Validation is done; from here on the lead exists. Syncro (PSA lead)
+    // and the webmaster email (Resend) fire in parallel, and the submission
+    // succeeds if either lands — see the redundancy matrix in the PRD.
+    // Syncro has no validation rejection we can map to a 400 (a 4xx there is
+    // our payload, not the visitor's), so validation stays route-side above.
+    const { isDelivered } = await deliverLead({
+      lead: {
         formType: "Contact",
-        submitterName: fullName,
-        fields: {
-          Name: fullName,
-          Email: email,
-          Phone: formattedPhone,
-          Company: company || "",
-          Address: address || "",
-          City: city || "",
-          "Province/State": state || "",
-          "Postal code": zip || "",
-          Plan: plan || "",
-          "Billing cycle": billingCycle || "",
-          "Employee count": employeeCount ? employeeCount.toString() : "",
-        },
-      }),
+        name: fullName,
+        email,
+        phone: formattedPhone,
+        company: company || "",
+        fields: leadFields,
+        hasOptedInToBrief: wantsBrief === true,
+      },
+      failureSummary: "Contact form delivery failure",
       // sendConversionEvent never throws — it swallows and reports its own
-      // failures — so a Measurement Protocol outage can't affect the
-      // submission outcome below, exactly like the other two settled calls.
-      sendConversionEvent({
-        name: "generate_lead",
-        clientId: gaClientId,
-        sessionId: gaSessionId,
-      }),
-    ]);
+      // failures — and is settled alongside the sinks, so a Measurement
+      // Protocol outage can't affect the submission outcome below.
+      alongside: [
+        sendConversionEvent({
+          name: "generate_lead",
+          clientId: gaClientId,
+          sessionId: gaSessionId,
+        }),
+      ],
+    });
 
-    const brevoResult =
-      brevoSettled.status === "fulfilled"
-        ? brevoSettled.value
-        : { ok: false as const, code: "exception" };
-    const notifySent =
-      notifySettled.status === "fulfilled" && notifySettled.value;
+    // Separate first/last fields win; otherwise split the single name field
+    const fullNameParts = splitFullName(fullName);
+    const submitterName = {
+      firstName: firstName || fullNameParts.firstName,
+      lastName: lastName || fullNameParts.lastName,
+    };
 
-    // A duplicate contact means the lead is already in the CRM — that's a
-    // landed submission, with its own long-standing success copy.
-    const isDuplicate = brevoResult.code === "duplicate_parameter";
-    const brevoLanded = brevoResult.ok || isDuplicate;
-
-    // Brevo rejecting the phone is a validation failure, not an outage
-    if (
-      !brevoResult.ok &&
-      brevoResult.code === "invalid_parameter" &&
-      brevoResult.message?.toLowerCase().includes("phone")
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!brevoLanded || !notifySent) {
-      const detail = `Brevo ${
-        brevoLanded
-          ? "ok"
-          : `failed (${brevoResult.code ?? brevoResult.status})`
-      }, webmaster email ${notifySent ? "ok" : "failed"}`;
-      console.error(`Contact form delivery failure: ${detail}`);
-      Sentry.captureMessage(
-        `Contact form delivery failure: ${detail}`,
-        "error",
-      );
-    }
-
-    if (isDuplicate) {
-      return NextResponse.json({
-        success: true,
-        message:
-          "Your information has already been submitted. We will contact you soon.",
+    // The day-0 confirmation goes to every submitter whose lead landed,
+    // opted in or not, and sits outside the delivery matrix: a failed send
+    // is a Sentry warning inside sendConfirmationEmail, never a failed
+    // submission. A 503 sends none, since the lead may not exist.
+    if (isDelivered) {
+      await sendConfirmationEmail({
+        formType: "contact",
+        email,
+        firstName: submitterName.firstName,
       });
     }
 
-    if (brevoLanded || notifySent) {
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a Sentry
+    // warning inside subscribeToMonthlyBrief, never a failed submission.
+    if (wantsBrief === true) {
+      await subscribeToMonthlyBrief({
+        email,
+        ...submitterName,
+        source: "contact",
+      });
+    }
+
+    if (isDelivered) {
       return NextResponse.json({ success: true });
     }
 

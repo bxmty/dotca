@@ -98,6 +98,9 @@ export async function POST(request: Request) {
 
   const gaClientId = parseOptionalMetadataString(body?.ga_client_id);
   const gaSessionId = parseOptionalMetadataString(body?.ga_session_id);
+  // Only an explicit true is consent (never inferred); the webhook reads
+  // wants_brief back off the paid invoice to subscribe them to the brief.
+  const wantsBrief = body?.wantsBrief === true;
 
   try {
     const priceId = await resolvePriceId({
@@ -113,6 +116,7 @@ export async function POST(request: Request) {
       company: customer.company,
       ...(gaClientId ? { ga_client_id: gaClientId } : {}),
       ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
+      ...(wantsBrief ? { wants_brief: "true" } : {}),
     };
 
     // Both creates share the client's idempotency key (with distinct

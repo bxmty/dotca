@@ -2,18 +2,24 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import type Stripe from "stripe";
 import { getServerStripe } from "@/lib/stripe";
-import { addBrevoContact } from "@/lib/brevo";
-import { sendWebmasterNotification } from "@/lib/notify";
+import { deliverLead, type LeadDelivery } from "@/lib/lead-delivery";
 import { sendConversionEvent } from "@/lib/ga4";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { markContactAsPaid } from "@/lib/paid-customer-flag";
+import { splitFullName } from "@/lib/person-name";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
 
-// Paid signups land in Brevo list 9 alongside the other leads
-const PAID_SIGNUP_LIST_ID = 9;
+const CENTS_PER_DOLLAR = 100;
 
-function formatAmount(amountCents: number, currency: string): string {
-  return `$${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}`;
+/** Stripe amounts are integer cents; Syncro, GA4 and the email take dollars */
+function convertCentsToDollars(amountInCents: number): number {
+  return amountInCents / CENTS_PER_DOLLAR;
+}
+
+function formatAmount(amountInCents: number, currency: string): string {
+  return `$${convertCentsToDollars(amountInCents).toFixed(2)} ${currency.toUpperCase()}`;
 }
 
 /**
@@ -26,7 +32,7 @@ function formatAmount(amountCents: number, currency: string): string {
  */
 async function handleNewPaidSubscription(
   invoice: Stripe.Invoice,
-): Promise<{ brevoLanded: boolean; notifySent: boolean }> {
+): Promise<LeadDelivery> {
   const metadata = invoice.parent?.subscription_details?.metadata ?? {};
   const email = invoice.customer_email ?? "";
   const name = invoice.customer_name ?? "";
@@ -38,65 +44,70 @@ async function handleNewPaidSubscription(
   const company = metadata.company ?? "";
   const gaClientId = metadata.ga_client_id;
   const gaSessionId = metadata.ga_session_id;
+  // Set by create-subscription only when the checkout box was ticked
+  const wantsBrief = metadata.wants_brief === "true";
 
-  // sendConversionEvent never throws (it swallows and reports its own
-  // failures), so this settles like the other two even if the MP request
-  // fails — a conversion-tracking outage must never fail the webhook or
-  // trigger a Stripe retry. Invoice id is the transaction_id: stable across
-  // a webhook redelivery for the same invoice, so GA4 dedupes the event
-  // rather than double-counting revenue.
-  const [brevoSettled, notifySettled] = await Promise.allSettled([
-    email
-      ? addBrevoContact({
-          listId: PAID_SIGNUP_LIST_ID,
-          email,
-          attributes: {
-            FULLNAME: name,
-            PHONE: phone,
-            COMPANY: company,
-            PLAN_NAME: plan,
-            BILLING_CYCLE: billingCycle,
-            EMPLOYEE_COUNT: employeeCount,
-          },
-        })
-      : Promise.resolve({ ok: false as const, code: "missing_email" }),
-    sendWebmasterNotification({
+  const amountPaidInDollars = convertCentsToDollars(invoice.amount_paid);
+  // Every field, shared by the Syncro ticket description and the email
+  const leadFields = {
+    Name: name,
+    Email: email,
+    Phone: phone,
+    Company: company,
+    Plan: plan,
+    "Billing cycle": billingCycle,
+    "Employee count": employeeCount,
+    "Amount paid": formatAmount(invoice.amount_paid, invoice.currency ?? "cad"),
+    Invoice: invoice.id ?? "",
+  };
+
+  const delivery = await deliverLead({
+    lead: {
       formType: "Paid signup",
-      submitterName: name || email,
-      fields: {
-        Name: name,
-        Email: email,
-        Phone: phone,
-        Company: company,
-        Plan: plan,
-        "Billing cycle": billingCycle,
-        "Employee count": employeeCount,
-        "Amount paid": formatAmount(
-          invoice.amount_paid,
-          invoice.currency ?? "cad",
-        ),
-        Invoice: invoice.id ?? "",
-      },
-    }),
-    sendConversionEvent({
-      name: "purchase",
-      clientId: gaClientId,
-      sessionId: gaSessionId,
-      params: {
-        transaction_id: invoice.id ?? "",
-        value: invoice.amount_paid / 100,
-        currency: (invoice.currency ?? "cad").toUpperCase(),
-      },
-    }),
-  ]);
+      name,
+      email,
+      phone,
+      company,
+      fields: leadFields,
+      opportunityAmountDollars: amountPaidInDollars,
+      hasOptedInToBrief: wantsBrief,
+    },
+    // No customer details in the Sentry message: the invoice id finds them
+    failureSummary: "Paid signup notification failure",
+    failureContext: `invoice ${invoice.id}`,
+    // sendConversionEvent never throws (it swallows and reports its own
+    // failures), and is settled alongside the sinks, so a conversion-tracking
+    // outage must never fail the webhook or trigger a Stripe retry. Invoice
+    // id is the transaction_id: stable across a webhook redelivery for the
+    // same invoice, so GA4 dedupes the event rather than double-counting
+    // revenue.
+    alongside: [
+      sendConversionEvent({
+        name: "purchase",
+        clientId: gaClientId,
+        sessionId: gaSessionId,
+        params: {
+          transaction_id: invoice.id ?? "",
+          value: amountPaidInDollars,
+          currency: (invoice.currency ?? "cad").toUpperCase(),
+        },
+      }),
+    ],
+  });
 
-  const brevoLanded =
-    brevoSettled.status === "fulfilled" &&
-    (brevoSettled.value.ok ||
-      brevoSettled.value.code === "duplicate_parameter");
-  const notifySent =
-    notifySettled.status === "fulfilled" && notifySettled.value;
-  return { brevoLanded, notifySent };
+  // Outside the delivery matrix: a failed brief subscription is a Sentry
+  // warning inside subscribeToMonthlyBrief and never changes the webhook's
+  // status. A Stripe retry after a total failure re-runs it, harmlessly
+  // (an existing contact is re-subscribed, not duplicated).
+  if (wantsBrief && email) {
+    await subscribeToMonthlyBrief({
+      email,
+      ...splitFullName(name),
+      source: "checkout",
+    });
+  }
+
+  return delivery;
 }
 
 export async function POST(request: Request) {
@@ -140,27 +151,29 @@ export async function POST(request: Request) {
   switch (event.type) {
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.billing_reason !== "subscription_create") {
-        break; // renewals and one-off invoices are not new signups
+      // Renewals and one-off invoices are not new signups
+      const delivery =
+        invoice.billing_reason === "subscription_create"
+          ? await handleNewPaidSubscription(invoice)
+          : null;
+
+      // Every paid invoice flags the payer's Resend contact, if they have
+      // one, so the nurture skips its upsell (#648). Runs after the new
+      // signup's brief opt-in so a contact created at checkout is flagged
+      // too. Best-effort and outside the delivery matrix: it never throws
+      // and never changes the status returned below.
+      if (invoice.customer_email) {
+        await markContactAsPaid({ email: invoice.customer_email });
       }
 
-      const { brevoLanded, notifySent } =
-        await handleNewPaidSubscription(invoice);
-
-      if (!brevoLanded || !notifySent) {
-        const detail = `Brevo ${brevoLanded ? "ok" : "failed"}, webmaster email ${
-          notifySent ? "ok" : "failed"
-        } (invoice ${invoice.id})`;
-        console.error(`Paid signup notification failure: ${detail}`);
-        Sentry.captureMessage(
-          `Paid signup notification failure: ${detail}`,
-          "error",
-        );
+      if (!delivery) {
+        break;
       }
-
-      // Total failure → non-2xx so Stripe retries. Brevo is idempotent and
-      // the email hasn't been sent, so a retry can only help.
-      if (!brevoLanded && !notifySent) {
+      // Total failure → non-2xx so Stripe retries. Neither sink landed, so a
+      // retry can't duplicate the Syncro lead or the email. Any partial
+      // success returns 2xx: Syncro leads aren't idempotent, and a retry
+      // after one landed would create a second lead.
+      if (!delivery.isDelivered) {
         return NextResponse.json(
           { error: "Notification delivery failed" },
           { status: 500 },
@@ -171,7 +184,9 @@ export async function POST(request: Request) {
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      const detail = `Invoice payment failed: ${invoice.id} (${invoice.customer_email ?? "unknown"}, billing_reason: ${billingReason})`;
+      // No customer details in this string: it goes to Sentry. The invoice
+      // id is enough to find the payer in the Stripe dashboard.
+      const detail = `Invoice payment failed: ${invoice.id} (billing_reason: ${billingReason})`;
       console.error(detail);
       Sentry.captureMessage(detail, "warning");
       break;

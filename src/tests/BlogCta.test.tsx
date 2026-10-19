@@ -13,7 +13,7 @@ describe("BlogCta", () => {
   });
 
   it("links an assessment cta to the assessment booking page", () => {
-    render(<BlogCta cta={{ type: "assessment" }} />);
+    render(<BlogCta offer={{ type: "assessment" }} />);
 
     const link = screen.getByRole("link", { name: ASSESSMENT_LABEL });
     expect(link).toHaveAttribute("href", "/book");
@@ -32,26 +32,49 @@ describe("BlogCta", () => {
   });
 
   it("renders nothing when the cta is suppressed", () => {
-    const { container } = render(<BlogCta cta={{ type: "none" }} />);
+    const { container } = render(<BlogCta offer={{ type: "none" }} />);
 
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("links a lead magnet cta to its resource page", () => {
+  it("offers a lead magnet under its title with its own button label", () => {
     render(
       <BlogCta
-        cta={{
+        offer={{
           type: "lead-magnet",
           slug: "cyber-insurance-readiness-checklist",
+          title: "Cyber insurance readiness checklist",
+          assetLabel: "Get the checklist",
+        }}
+      />,
+    );
+
+    const block = screen.getByRole("complementary", { name: "Next step" });
+    expect(
+      within(block).getByRole("heading", {
+        name: "Cyber insurance readiness checklist",
+      }),
+    ).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Get the checklist" });
+    expect(link).toHaveAttribute(
+      "href",
+      "/resources/cyber-insurance-readiness-checklist",
+    );
+  });
+
+  it("labels a lead magnet without its own button text with the default", () => {
+    render(
+      <BlogCta
+        offer={{
+          type: "lead-magnet",
+          slug: "backup-checklist",
+          title: "Backup checklist",
         }}
       />,
     );
 
     const link = screen.getByRole("link", { name: "Download the guide" });
-    expect(link).toHaveAttribute(
-      "href",
-      "/resources/cyber-insurance-readiness-checklist",
-    );
+    expect(link).toHaveAttribute("href", "/resources/backup-checklist");
   });
 });

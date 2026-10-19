@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
-import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
-import { sendWebmasterNotification } from "@/lib/notify";
+import { formatE164Phone } from "@/lib/phone";
+import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
-
-// Onboarding leads land in Brevo list 10 (vacated by the old waitlist)
-const ONBOARDING_LIST_ID = 10;
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import { sendConfirmationEmail } from "@/lib/confirmation-email";
+import { splitFullName } from "@/lib/person-name";
 
 export async function POST(request: Request) {
   try {
@@ -90,85 +89,81 @@ export async function POST(request: Request) {
       request.headers.get("cookie"),
     );
 
-    // Validation is done; from here on the lead exists. Brevo (CRM) and the
-    // webmaster email (Resend) fire in parallel, and the submission succeeds
-    // if either lands — see the redundancy matrix in the PRD.
-    const smsPhone = formatE164Phone(data.contactPhone) ?? undefined;
-    const [brevoSettled, notifySettled] = await Promise.allSettled([
-      addBrevoContact({
-        listId: ONBOARDING_LIST_ID,
-        email: data.contactEmail,
-        smsPhone,
-        attributes: {
-          FULLNAME: data.contactName,
-          COMPANY: data.companyName,
-          INDUSTRY: data.industry,
-          EMPLOYEE_COUNT: String(data.employeeCount),
-          PHONE: data.contactPhone,
-          ADDRESS: data.address,
-          CITY: data.city,
-          STATE: data.state,
-          ZIP: data.zipCode,
-          CURRENT_IT_PROVIDERS: data.currentITProviders || "",
-          SOFTWARE_USED: data.softwareUsed || "",
-          PAIN_POINTS: data.painPoints || "",
-          GOALS: data.goals || "",
-        },
-      }),
-      sendWebmasterNotification({
+    // Every submitted field, shared by the Syncro ticket description and the
+    // webmaster email so the two sinks always carry the same lead
+    const leadFields = {
+      "Contact name": data.contactName,
+      Email: data.contactEmail,
+      Phone: data.contactPhone,
+      Company: data.companyName,
+      Industry: data.industry,
+      "Employee count": String(data.employeeCount),
+      Address: data.address,
+      City: data.city,
+      "Province/State": data.state,
+      "Postal code": data.zipCode,
+      "Current IT providers": data.currentITProviders || "",
+      "Software used": data.softwareUsed || "",
+      "Pain points": data.painPoints || "",
+      Goals: data.goals || "",
+    };
+    const phone = formatE164Phone(data.contactPhone) ?? data.contactPhone;
+
+    // Validation is done; from here on the lead exists. Syncro (PSA lead)
+    // and the webmaster email (Resend) fire in parallel, and the submission
+    // succeeds if either lands — see the redundancy matrix in the PRD.
+    const { isDelivered } = await deliverLead({
+      lead: {
         formType: "Onboarding",
-        submitterName: data.contactName,
-        fields: {
-          "Contact name": data.contactName,
-          Email: data.contactEmail,
-          Phone: data.contactPhone,
-          Company: data.companyName,
-          Industry: data.industry,
-          "Employee count": String(data.employeeCount),
-          Address: data.address,
-          City: data.city,
-          "Province/State": data.state,
-          "Postal code": data.zipCode,
-          "Current IT providers": data.currentITProviders || "",
-          "Software used": data.softwareUsed || "",
-          "Pain points": data.painPoints || "",
-          Goals: data.goals || "",
-        },
-      }),
+        name: data.contactName,
+        email: data.contactEmail,
+        phone,
+        company: data.companyName,
+        fields: leadFields,
+        hasOptedInToBrief: data.wantsBrief === true,
+      },
+      failureSummary: "Onboarding delivery failure",
       // sendConversionEvent never throws — it swallows and reports its own
-      // failures — so a Measurement Protocol outage can't affect the
-      // submission outcome below, exactly like the other two settled calls.
+      // failures — and is settled alongside the sinks, so a Measurement
+      // Protocol outage can't affect the submission outcome below.
       // No value param: sign_up carries no monetary value, and a placeholder
       // would inflate Google Ads-imported conversion value.
-      sendConversionEvent({
-        name: "sign_up",
-        clientId: gaClientId,
-        sessionId: gaSessionId,
-      }),
-    ]);
+      alongside: [
+        sendConversionEvent({
+          name: "sign_up",
+          clientId: gaClientId,
+          sessionId: gaSessionId,
+        }),
+      ],
+    });
 
-    const brevoResult =
-      brevoSettled.status === "fulfilled"
-        ? brevoSettled.value
-        : { ok: false as const, code: "exception" };
-    const notifySent =
-      notifySettled.status === "fulfilled" && notifySettled.value;
+    const contactName = splitFullName(String(data.contactName));
 
-    // An existing contact still counts as a landed submission
-    const brevoLanded =
-      brevoResult.ok || brevoResult.code === "duplicate_parameter";
-
-    if (!brevoLanded || !notifySent) {
-      const detail = `Brevo ${
-        brevoLanded
-          ? "ok"
-          : `failed (${brevoResult.code ?? brevoResult.status})`
-      }, webmaster email ${notifySent ? "ok" : "failed"}`;
-      console.error(`Onboarding delivery failure: ${detail}`);
-      Sentry.captureMessage(`Onboarding delivery failure: ${detail}`, "error");
+    // The day-0 confirmation (with the /install link) goes to every signup
+    // whose lead landed, opted in or not, and sits outside the delivery
+    // matrix: a failed send is a Sentry warning inside sendConfirmationEmail,
+    // never a failed submission. A 503 sends none, since the lead may not
+    // exist.
+    if (isDelivered) {
+      await sendConfirmationEmail({
+        formType: "onboarding",
+        email: data.contactEmail,
+        firstName: contactName.firstName,
+      });
     }
 
-    if (brevoLanded || notifySent) {
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a Sentry
+    // warning inside subscribeToMonthlyBrief, never a failed submission.
+    if (data.wantsBrief === true) {
+      await subscribeToMonthlyBrief({
+        email: data.contactEmail,
+        ...contactName,
+        source: "onboarding",
+      });
+    }
+
+    if (isDelivered) {
       return NextResponse.json({
         success: true,
         message: "Onboarding data received successfully",

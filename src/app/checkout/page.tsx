@@ -8,6 +8,7 @@ import StripeWrapper, {
 } from "../components/StripeWrapper";
 import StripePaymentForm from "../components/StripePaymentForm";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import BriefOptInCheckbox from "../components/BriefOptInCheckbox";
 import { Button, ButtonLink } from "../components/Button";
 import {
   Field,
@@ -115,6 +116,9 @@ export default function Checkout() {
   const [confirmedCustomer, setConfirmedCustomer] =
     useState<CheckoutCustomer | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  // Never pre-checked: brief consent must be express (CASL), and paid
+  // signups get the box rather than relying on implied consent
+  const [wantsBrief, setWantsBrief] = useState(false);
   const [employeeCount, setEmployeeCount] = useState(5);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
@@ -219,6 +223,13 @@ export default function Checkout() {
       state: suggestion.state || prev.state,
       zip: suggestion.postalCode || prev.zip,
     }));
+  };
+
+  // Like a field edit, a changed opt-in invalidates the confirmed snapshot so
+  // the subscription's metadata carries what's on screen
+  const handleWantsBriefChange = (isChecked: boolean): void => {
+    setConfirmedCustomer(null);
+    setWantsBrief(isChecked);
   };
 
   const handleEmployeeCountChange = (
@@ -511,6 +522,11 @@ export default function Checkout() {
                 error={fieldErrors.zip}
               />
             </div>
+            <BriefOptInCheckbox
+              id="checkout-wants-brief"
+              isChecked={wantsBrief}
+              onChange={handleWantsBriefChange}
+            />
           </div>
 
           <div className="grid gap-4.5">
@@ -521,6 +537,7 @@ export default function Checkout() {
                 employeeCount={employeeCount}
                 billingCycle={billingCycle}
                 customer={confirmedCustomer}
+                wantsBrief={wantsBrief}
               >
                 <StripePaymentForm onSuccess={handlePaymentSuccess} />
               </StripeWrapper>

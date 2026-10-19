@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import BlogPost from "@/app/components/BlogPost";
 import { getBlogPostBySlug } from "@/lib/blog";
+import { resolveBlogOffer } from "@/lib/blog-offer";
 
 const ASSESSMENT_LABEL = "Get a Business-First IT Assessment";
 
@@ -40,7 +41,13 @@ describe("fixed blog post CTAs", () => {
 
       expect(post.content).not.toContain(deadCtaText);
 
-      render(<BlogPost post={post} content={post.content} />);
+      render(
+        <BlogPost
+          post={post}
+          offer={resolveBlogOffer(post.frontmatter.cta)}
+          content={post.content}
+        />,
+      );
 
       const link = screen.getByRole("link", { name: ASSESSMENT_LABEL });
       expect(link).toHaveAttribute("href", "/book");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import BriefOptInCheckbox from "./BriefOptInCheckbox";
 import { Button } from "./Button";
 import { PhoneField, TextField } from "./Field";
 import StatusNote from "./StatusNote";
@@ -56,6 +57,8 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
   const [phone, setPhone] = useState("");
   // Honeypot: humans never see this field; bots that fill it are dropped
   const [website, setWebsite] = useState("");
+  // Never pre-checked: brief consent must be express (CASL)
+  const [wantsBrief, setWantsBrief] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{
@@ -93,7 +96,7 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, phone, website }),
+        body: JSON.stringify({ name, email, phone, website, wantsBrief }),
       });
 
       const responseData = await response.json().catch(() => null);
@@ -128,6 +131,7 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
       setName("");
       setEmail("");
       setPhone("");
+      setWantsBrief(false);
       setIsSubmitting(false);
     } catch (error) {
       // Log error submitting form
@@ -226,6 +230,11 @@ const ContactForm = ({ className = "" }: ContactFormProps) => {
           clearFieldError("phone");
         }}
         error={fieldErrors.phone}
+      />
+      <BriefOptInCheckbox
+        id="contact-wants-brief"
+        isChecked={wantsBrief}
+        onChange={setWantsBrief}
       />
       <Button
         type="submit"

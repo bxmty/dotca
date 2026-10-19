@@ -42,11 +42,6 @@ runs:
           exit 1
         fi
 
-        if [[ -z "${BREVO_API_KEY:-}" ]]; then
-          echo "::error::BREVO_API_KEY environment variable is required"
-          exit 1
-        fi
-
         if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
           echo "::error::STRIPE_SECRET_KEY environment variable is required"
           exit 1
@@ -76,6 +71,40 @@ runs:
           echo "::error::WEBMASTER_EMAIL environment variable is required"
           exit 1
         fi
+
+        # Required for production only; staging gets a ::warning:: (#604).
+        bash scripts/check-lead-magnet-secret.sh "${{ inputs.environment }}"
+
+        # Optional on purpose: /install answers 503 until the Free-tier Syncro
+        # installer link exists (#643), so a missing value must not block deploys.
+        if [[ -z "${SYNCRO_FREE_INSTALLER_URL:-}" ]]; then
+          echo "::warning::SYNCRO_FREE_INSTALLER_URL is not set; /install will respond 503"
+        fi
+
+        # Optional on purpose (#565, #597): a missing Syncro key reads as an
+        # unreachable Syncro, so website leads still reach the webmaster email.
+        if [[ -z "${SYNCRO_SUBDOMAIN:-}" || -z "${SYNCRO_API_KEY:-}" ]]; then
+          echo "::warning::SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set; website leads will not reach Syncro"
+        fi
+        # Optional on purpose: the brief opt-in is best-effort and the Resend
+        # segment/topic may not exist yet (#598), so a missing ID only warns.
+        for optin_var in RESEND_MONTHLY_BRIEF_SEGMENT_ID RESEND_MONTHLY_BRIEF_TOPIC_ID; do
+          if [[ -z "${!optin_var:-}" ]]; then
+            echo "::warning::${optin_var} is not set; brief opt-ins will skip Resend"
+          fi
+        done
+        # Same for the nurture trigger event (#647): opt-ins still subscribe
+        # without it, they just don't start the automation.
+        if [[ -z "${RESEND_OPTIN_EVENT:-}" ]]; then
+          echo "::warning::RESEND_OPTIN_EVENT is not set; brief opt-ins will send no lead.opted_in event"
+        fi
+        # Same for the day-0 confirmation templates (#646): submissions still
+        # succeed without them, they just send no confirmation email.
+        for template_var in RESEND_TEMPLATE_CONTACT_CONFIRMATION RESEND_TEMPLATE_ONBOARDING_CONFIRMATION; do
+          if [[ -z "${!template_var:-}" ]]; then
+            echo "::warning::${template_var} is not set; submissions will send no confirmation email"
+          fi
+        done
 
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
@@ -179,13 +208,21 @@ runs:
         staging_domain=staging.boximity.ca
         next_public_environment=${{ inputs.environment }}
         next_public_api_url=${{ inputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
-        BREVO_API_KEY=${BREVO_API_KEY:-}
         STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
         STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
         GA4_MP_API_SECRET=${GA4_MP_API_SECRET:-}
         RESEND_API_KEY=${RESEND_API_KEY:-}
         RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
         WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
+        LEAD_MAGNET_SIGNING_SECRET=${LEAD_MAGNET_SIGNING_SECRET:-}
+        SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
+        SYNCRO_SUBDOMAIN=${SYNCRO_SUBDOMAIN:-}
+        SYNCRO_API_KEY=${SYNCRO_API_KEY:-}
+        RESEND_MONTHLY_BRIEF_SEGMENT_ID=${RESEND_MONTHLY_BRIEF_SEGMENT_ID:-}
+        RESEND_MONTHLY_BRIEF_TOPIC_ID=${RESEND_MONTHLY_BRIEF_TOPIC_ID:-}
+        RESEND_OPTIN_EVENT=${RESEND_OPTIN_EVENT:-}
+        RESEND_TEMPLATE_CONTACT_CONFIRMATION=${RESEND_TEMPLATE_CONTACT_CONFIRMATION:-}
+        RESEND_TEMPLATE_ONBOARDING_CONFIRMATION=${RESEND_TEMPLATE_ONBOARDING_CONFIRMATION:-}
         STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
         GA_PRODUCTION_ID=${NEXT_PUBLIC_PRODUCTION_GA_ID:-}
         GA_STAGING_ID=${NEXT_PUBLIC_STAGING_GA_ID:-}

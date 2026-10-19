@@ -17,14 +17,13 @@ Validates the format and basic integrity of all secrets used in the DotCA projec
 ./scripts/validate-secrets.sh
 
 # Validate specific environment variables
-STRIPE_SECRET_KEY=sk_test_... BREVO_API_KEY=... ./scripts/validate-secrets.sh
+STRIPE_SECRET_KEY=sk_test_... ./scripts/validate-secrets.sh
 ```
 
 **Validates:**
 
 - SSH key formats and accessibility
 - Stripe API key formats (secret and publishable)
-- Brevo API key format
 - Google Analytics ID formats
 - DigitalOcean token format
 - Spaces credentials format
@@ -77,7 +76,6 @@ Scripts expect these environment variables to be set for validation:
 
 - `STRIPE_SECRET_KEY` - Stripe secret key
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
-- `BREVO_API_KEY` - Brevo API key
 - `NEXT_PUBLIC_PRODUCTION_GA_ID` - Production Google Analytics ID
 - `NEXT_PUBLIC_STAGING_GA_ID` - Staging Google Analytics ID
 - `DO_TOKEN` - DigitalOcean API token

@@ -25,6 +25,8 @@ interface StripeWrapperProps {
   employeeCount: number;
   billingCycle: string;
   customer: CheckoutCustomer;
+  /** The monthly brief opt-in; create-subscription carries it in metadata. */
+  wantsBrief: boolean;
 }
 
 export default function StripeWrapper({
@@ -33,6 +35,7 @@ export default function StripeWrapper({
   employeeCount,
   billingCycle,
   customer,
+  wantsBrief,
 }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,7 +46,7 @@ export default function StripeWrapper({
   // replay the same subscription create, never mint a second one.
   const idempotencyKey = useMemo(
     () => globalThis.crypto.randomUUID(),
-    [plan, employeeCount, billingCycle, customer],
+    [plan, employeeCount, billingCycle, customer, wantsBrief],
   );
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export default function StripeWrapper({
             employeeCount,
             billingCycle,
             customer,
+            wantsBrief,
             idempotencyKey,
             ...(gaClientId ? { ga_client_id: gaClientId } : {}),
             ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
@@ -100,7 +104,7 @@ export default function StripeWrapper({
     };
 
     createSubscription();
-  }, [plan, employeeCount, billingCycle, customer, idempotencyKey]);
+  }, [plan, employeeCount, billingCycle, customer, wantsBrief, idempotencyKey]);
 
   // Elements re-themes the mounted Payment Element when appearance changes,
   // so an OS theme switch restyles it without a new subscription.
