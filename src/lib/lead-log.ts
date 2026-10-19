@@ -10,18 +10,19 @@ import { describeLeadOutcome, type CreateLeadResult } from "@/lib/syncro";
  */
 export function logLeadSubmission({
   formType,
-  name,
-  company,
+  name = "",
+  company = "",
   email,
-  phone,
+  phone = "",
   syncro,
   isEmailSent,
 }: {
   formType: NotificationFormType;
-  name: string;
-  company: string;
+  /** Omitted fields log as "", so every line has the same shape */
+  name?: string;
+  company?: string;
   email: string;
-  phone: string;
+  phone?: string;
   syncro: CreateLeadResult;
   isEmailSent: boolean;
 }): void {
