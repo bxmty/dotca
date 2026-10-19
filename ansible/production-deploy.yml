@@ -33,6 +33,8 @@
     webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
     lead_magnet_signing_secret: "{{ LEAD_MAGNET_SIGNING_SECRET | default('') }}"
     syncro_free_installer_url: "{{ SYNCRO_FREE_INSTALLER_URL | default('') }}"
+    syncro_subdomain: "{{ SYNCRO_SUBDOMAIN | default('') }}"
+    syncro_api_key: "{{ SYNCRO_API_KEY | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     next_public_environment: production
@@ -484,6 +486,7 @@
           - GA4_MP_API_SECRET: {{ '✅ SET' if ga4_mp_api_secret else '❌ MISSING' }}
           - LEAD_MAGNET_SIGNING_SECRET: {{ '✅ SET' if lead_magnet_signing_secret else '❌ MISSING' }}
           - SYNCRO_FREE_INSTALLER_URL: {{ '✅ SET' if syncro_free_installer_url else '⚠️ MISSING (optional; /install responds 503)' }}
+          - SYNCRO_SUBDOMAIN / SYNCRO_API_KEY: {{ '✅ SET' if (syncro_subdomain and syncro_api_key) else '⚠️ MISSING (optional; website leads reach the webmaster email only)' }}
           - GITHUB_TOKEN: {{ '✅ SET' if github_token else '❌ MISSING' }}
           - GITHUB_USERNAME: {{ '✅ SET' if github_username else '❌ MISSING' }}
           - GIT_REPO_URL: {{ '✅ SET' if git_repo_url else '❌ MISSING' }}

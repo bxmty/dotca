@@ -34,6 +34,8 @@
     webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
     lead_magnet_signing_secret: "{{ LEAD_MAGNET_SIGNING_SECRET | default('') }}"
     syncro_free_installer_url: "{{ SYNCRO_FREE_INSTALLER_URL | default('') }}"
+    syncro_subdomain: "{{ SYNCRO_SUBDOMAIN | default('') }}"
+    syncro_api_key: "{{ SYNCRO_API_KEY | default('') }}"
     ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
     next_public_environment: staging
