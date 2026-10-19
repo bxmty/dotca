@@ -1,5 +1,6 @@
 import type { NotificationFormType } from "@/lib/notify";
 import { formatTorontoDate } from "@/lib/toronto-date";
+import { splitFullName } from "@/lib/person-name";
 
 /**
  * Syncro (PSA) writes. Website leads land here as Syncro Leads; the
@@ -60,29 +61,27 @@ const SUBJECT_PREFIX: Record<NotificationFormType, string> = {
 const STAGING_NOTE =
   "Created by the STAGING website (staging.boximity.ca): a test submission, not a real prospect.";
 
-interface SyncroConfig {
-  baseUrl: string;
-  apiKey: string;
-}
+type SyncroConfig =
+  | { isConfigured: true; baseUrl: string; apiKey: string }
+  | { isConfigured: false };
 
-/** Shared by every Syncro call. Null when either secret is unset. */
-function readSyncroConfig(): SyncroConfig | null {
+/** Shared by every Syncro call. Not configured when either secret is unset. */
+function readSyncroConfig(): SyncroConfig {
   const subdomain = process.env.SYNCRO_SUBDOMAIN?.trim();
   const apiKey = process.env.SYNCRO_API_KEY?.trim();
   if (!subdomain || !apiKey) {
-    return null;
+    return { isConfigured: false };
   }
-  return { baseUrl: `https://${subdomain}.syncromsp.com/api/v1`, apiKey };
+  return {
+    isConfigured: true,
+    baseUrl: `https://${subdomain}.syncromsp.com/api/v1`,
+    apiKey,
+  };
 }
 
 // Staging signal from #554 (same as the Sentry environment tag), not NODE_ENV
 function isStagingDeploy(): boolean {
   return process.env.NEXT_PUBLIC_ENVIRONMENT === "staging";
-}
-
-function splitName(name: string): { firstName: string; lastName: string } {
-  const [firstName = "", ...rest] = name.trim().split(/\s+/);
-  return { firstName, lastName: rest.join(" ") };
 }
 
 /** One line per note; empty when there is nothing to record */
@@ -100,7 +99,8 @@ function buildHiddenNotes(lead: LeadSubmission, isStaging: boolean): string {
 }
 
 function buildLeadPayload(lead: LeadSubmission): Record<string, unknown> {
-  const { firstName, lastName } = splitName(lead.name);
+  // Syncro always gets both name fields, "" where the name has no such part
+  const { firstName = "", lastName = "" } = splitFullName(lead.name);
   const subject = `${SUBJECT_PREFIX[lead.formType]} — ${lead.company || lead.name}`;
   const isStaging = isStagingDeploy();
   const hiddenNotes = buildHiddenNotes(lead, isStaging);
@@ -173,7 +173,7 @@ export async function createLead(
   lead: LeadSubmission,
 ): Promise<CreateLeadResult> {
   const config = readSyncroConfig();
-  if (!config) {
+  if (!config.isConfigured) {
     console.error(
       "Syncro lead skipped: SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set",
     );
