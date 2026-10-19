@@ -53,7 +53,7 @@ The DotCA project uses multiple types of secrets across different systems. Prope
 
 ### 3. API Keys and Tokens
 
-- **Services**: Stripe, Brevo, Resend, Google Analytics
+- **Services**: Stripe, Resend, Google Analytics
 - **Rotation**: Every 90 days
 - **Impact**: Affects payment processing, emails, analytics
 
@@ -165,7 +165,6 @@ After successful verification (minimum 24 hours):
 | `SSH_KEY_FINGERPRINT`                | Terraform validation             | Medium          |
 | `SPACES_ACCESS_ID`                   | Object storage access            | Medium          |
 | `SPACES_SECRET_KEY`                  | Object storage secret            | Medium          |
-| `BREVO_API_KEY`                      | Email service                    | Medium          |
 | `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
 | `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
 | `LEAD_MAGNET_SIGNING_SECRET`         | Lead magnet download links       | Low             |
@@ -286,26 +285,6 @@ copy one environment's value into another — signature verification will
 3. **Redeploy and Verify**
    - Redeploy the environment (runtime secret — no rebuild needed)
    - Confirm webhook deliveries return 200 in Workbench → Webhooks
-
-### Brevo (Sendinblue) API Keys
-
-1. **Generate New API Key**
-   - Log in to Brevo dashboard
-   - Go to SMTP & API → API Keys
-   - Create new API key with appropriate permissions
-
-2. **Update Secrets**
-
-   ```bash
-   # Update GitHub secret
-   gh secret set BREVO_API_KEY -R owner/repo --body "new_brevo_api_key"
-
-   # Test deployment
-   gh workflow run deploy.yml -f promoted_image_tag=main
-   ```
-
-3. **Clean Up**
-   - Delete old API key after verification
 
 ### Resend API Keys
 
@@ -488,7 +467,6 @@ gh secret set SSH_KEY_FINGERPRINT -R owner/repo --body "$FINGERPRINT"
 ```bash
 # Restore previous API keys from backup
 gh secret set STRIPE_SECRET_KEY -R owner/repo --body "$BACKUP_STRIPE_KEY"
-gh secret set BREVO_API_KEY -R owner/repo --body "$BACKUP_BREVO_KEY"
 gh secret set RESEND_API_KEY -R owner/repo --body "$BACKUP_RESEND_KEY"
 
 # Deploy with backup keys
@@ -530,7 +508,7 @@ gh workflow run deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
 - [ ] SSH access to production servers works
 - [ ] Deployment pipeline completes successfully
 - [ ] Payment processing works (Stripe)
-- [ ] Email delivery works (Brevo, Resend webmaster notifications)
+- [ ] Email delivery works (Resend webmaster notifications)
 - [ ] Analytics tracking works (GA)
 - [ ] Application loads without errors
 - [ ] Database connections work
@@ -553,12 +531,6 @@ fi
 # Check Stripe key format
 if [[ ! $STRIPE_SECRET_KEY =~ ^sk_(test|live)_ ]]; then
   echo "❌ Invalid Stripe secret key format"
-  exit 1
-fi
-
-# Check Brevo API key format (should be base64-like)
-if [[ ! $BREVO_API_KEY =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
-  echo "❌ Invalid Brevo API key format"
   exit 1
 fi
 
