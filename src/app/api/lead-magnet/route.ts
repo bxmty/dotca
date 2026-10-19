@@ -5,17 +5,13 @@ import { signLeadMagnetToken } from "@/lib/lead-magnet-token";
 import { sendLeadMagnetDeliveryEmail } from "@/lib/notify";
 import { isEmailAddress } from "@/lib/formValidation";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
-import {
-  notifyWebmasterOfRecordedLead,
-  recordLeadInSyncro,
-  type LeadDetails,
-} from "@/lib/lead-delivery";
+import { deliverLead } from "@/lib/lead-delivery";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { SITE_URL } from "@/lib/schema";
 import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
- * Email gate for a lead magnet: records the lead, then hands back a signed
+ * Email gate for a lead magnet: delivers the lead, then hands back a signed
  * download link. Deliberately the same shape as /api/contact (JSON parse,
  * honeypot, rate limit, email regex, 503 copy) with a lighter payload.
  */
@@ -70,27 +66,26 @@ export async function POST(request: Request) {
 
     const { title } = magnet.frontmatter;
     const hasOptedInToBrief = wantsBrief === true;
-    // Shared by the Syncro ticket description and the webmaster email. The
-    // Source line is what tells a lead-magnet Lead apart in Syncro. There is
-    // no name field on the gate, so the address stands in for it.
-    const lead: LeadDetails = {
-      formType: "Lead magnet",
-      email,
-      fields: {
-        Email: email,
-        Resource: title,
-        Source: `lead-magnet:${magnet.slug}`,
+    // Validation is done; from here on the lead exists. Syncro and the
+    // webmaster email fire in parallel and the download is released if either
+    // lands, like the other lead routes (#596 decision 4); only a total
+    // failure answers 503 and releases nothing. The Source line is what tells
+    // a lead-magnet Lead apart in Syncro. There is no name field on the gate,
+    // so the address stands in for it.
+    const { isDelivered } = await deliverLead({
+      lead: {
+        formType: "Lead magnet",
+        email,
+        fields: {
+          Email: email,
+          Resource: title,
+          Source: `lead-magnet:${magnet.slug}`,
+        },
+        hasOptedInToBrief,
       },
-      hasOptedInToBrief,
-    };
-
-    // The lead must exist in Syncro before the asset is released: a Syncro
-    // rejection or outage answers 503 and sends nothing.
-    const { isRecorded } = await recordLeadInSyncro({
-      lead,
-      failureSummary: `Lead magnet capture failure (${magnet.slug})`,
+      failureSummary: `Lead magnet delivery failure (${magnet.slug})`,
     });
-    if (!isRecorded) {
+    if (!isDelivered) {
       return NextResponse.json(
         { error: SERVICE_UNAVAILABLE_MESSAGE },
         { status: 503 },
@@ -130,19 +125,15 @@ export async function POST(request: Request) {
       token,
     })}`;
 
-    // The lead already exists; both emails are notifications about it, so
-    // neither can fail the response.
-    await notifyWebmasterOfRecordedLead({
-      lead,
-      failureSummary: `Lead magnet delivery failure (${magnet.slug})`,
-      alongside: [
-        sendLeadMagnetDeliveryEmail({
-          to: email,
-          downloadUrl: `${SITE_URL}${downloadUrl}`,
-          title,
-        }),
-      ],
-    });
+    // The durable copy of the link. The lead already exists, so this can't
+    // fail the response: settled, in case the never-throws contract breaks.
+    await Promise.allSettled([
+      sendLeadMagnetDeliveryEmail({
+        to: email,
+        downloadUrl: `${SITE_URL}${downloadUrl}`,
+        title,
+      }),
+    ]);
 
     return NextResponse.json({ success: true, downloadUrl });
   } catch (error) {

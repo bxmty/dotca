@@ -5,8 +5,6 @@ import * as Sentry from "@sentry/nextjs";
 import {
   deliverLead,
   describeBriefOptIn,
-  notifyWebmasterOfRecordedLead,
-  recordLeadInSyncro,
   type LeadDetails,
 } from "@/lib/lead-delivery";
 import { createLead } from "@/lib/syncro";
@@ -198,50 +196,26 @@ describe("lead delivery", () => {
         expect.objectContaining({ submitterName: EMAIL }),
       );
     });
-  });
 
-  describe("recordLeadInSyncro", () => {
-    const magnetLead: LeadDetails = {
-      formType: "Lead magnet",
-      email: EMAIL,
-      fields: { Email: EMAIL },
-    };
-
-    it("records the lead with the address standing in for the name, logging nothing yet", async () => {
-      const record = await recordLeadInSyncro({
-        lead: magnetLead,
-        failureSummary: "Lead magnet capture failure (guide)",
+    it("lets the address stand in for an omitted name, logging the name blank", async () => {
+      await deliverLead({
+        lead: {
+          formType: "Lead magnet",
+          email: EMAIL,
+          fields: { Email: EMAIL },
+        },
+        failureSummary: "Lead magnet delivery failure (guide)",
       });
 
-      expect(record).toEqual({ isRecorded: true });
       expect(mockCreateLead).toHaveBeenCalledWith(
         expect.objectContaining({
           name: EMAIL,
           fields: { Email: EMAIL, "Monthly brief": "No" },
         }),
       );
-      expect(mockNotification).not.toHaveBeenCalled();
-      expect(readLeadLogLines(log)).toEqual([]);
-    });
-
-    it("logs the only record of a lead Syncro refused, and reports it without PII", async () => {
-      mockCreateLead.mockResolvedValue({
-        ok: false,
-        reason: "unreachable",
-        code: "network_error",
-      });
-
-      const record = await recordLeadInSyncro({
-        lead: magnetLead,
-        failureSummary: "Lead magnet capture failure (guide)",
-      });
-
-      expect(record).toEqual({ isRecorded: false });
-      expect(mockCaptureMessage).toHaveBeenCalledWith(
-        "Lead magnet capture failure (guide): Syncro unreachable (network_error)",
-        "error",
+      expect(mockNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ submitterName: EMAIL }),
       );
-      expectNoPiiInSentry();
       expect(readLeadLogLines(log)).toEqual([
         {
           event: "lead_submission",
@@ -250,50 +224,10 @@ describe("lead delivery", () => {
           company: "",
           email: EMAIL,
           phone: "",
-          syncro: "unreachable (network_error)",
-          webmasterEmail: "failed",
+          syncro: "ok",
+          webmasterEmail: "ok",
         },
       ]);
-    });
-  });
-
-  describe("notifyWebmasterOfRecordedLead", () => {
-    const magnetLead: LeadDetails = {
-      formType: "Lead magnet",
-      email: EMAIL,
-      fields: { Email: EMAIL },
-    };
-
-    it("emails the webmaster and logs the recorded lead", async () => {
-      await notifyWebmasterOfRecordedLead({
-        lead: magnetLead,
-        failureSummary: "Lead magnet delivery failure (guide)",
-      });
-
-      expect(mockNotification).toHaveBeenCalledWith({
-        formType: "Lead magnet",
-        submitterName: EMAIL,
-        fields: { Email: EMAIL, "Monthly brief": "No" },
-      });
-      expect(mockCaptureMessage).not.toHaveBeenCalled();
-      expect(readLeadLogLines(log)).toEqual([
-        expect.objectContaining({ syncro: "ok", webmasterEmail: "ok" }),
-      ]);
-    });
-
-    it("reports a failed webmaster email without PII", async () => {
-      mockNotification.mockResolvedValue(false);
-
-      await notifyWebmasterOfRecordedLead({
-        lead: magnetLead,
-        failureSummary: "Lead magnet delivery failure (guide)",
-      });
-
-      expect(mockCaptureMessage).toHaveBeenCalledWith(
-        "Lead magnet delivery failure (guide): Syncro ok, webmaster email failed",
-        "error",
-      );
-      expectNoPiiInSentry();
     });
   });
 });

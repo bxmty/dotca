@@ -296,47 +296,78 @@ describe("POST /api/lead-magnet", () => {
       "unreachable (network_error)",
     ],
   ])(
-    "returns 503 and releases nothing when Syncro %s",
+    "still releases the download when Syncro %s but the webmaster email lands",
     async (_name, syncroResult, outcome) => {
       mockCreateLead.mockResolvedValue(syncroResult);
 
-      await expectResponse(
-        await post({ slug: SLUG, email: EMAIL, wantsBrief: true }),
-        503,
-        { error: UNAVAILABLE_COPY },
-      );
+      const response = await post({
+        slug: SLUG,
+        email: EMAIL,
+        wantsBrief: true,
+      });
 
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.downloadUrl).toContain("/api/lead-magnet/download?");
+      expect(mockWebmasterNotification).toHaveBeenCalled();
+      expect(mockDeliveryEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: EMAIL }),
+      );
+      expect(mockCreateResendContact).toHaveBeenCalled();
       expect(mockCaptureMessage).toHaveBeenCalledWith(
-        `Lead magnet capture failure (${SLUG}): Syncro ${outcome}`,
+        `Lead magnet delivery failure (${SLUG}): Syncro ${outcome}, webmaster email ok`,
         "error",
       );
       expectNoEmailInSentry();
-      // The structured log is the only record of this lead
       expect(readLeadLogLines(log)).toEqual([
-        expect.objectContaining({
-          formType: "Lead magnet",
-          email: EMAIL,
-          syncro: outcome,
-          webmasterEmail: "failed",
-        }),
+        expect.objectContaining({ syncro: outcome, webmasterEmail: "ok" }),
       ]);
-      expect(mockCreateResendContact).not.toHaveBeenCalled();
-      expect(mockDeliveryEmail).not.toHaveBeenCalled();
-      expect(mockWebmasterNotification).not.toHaveBeenCalled();
     },
   );
 
-  it("reads a thrown Syncro write as unreachable", async () => {
-    mockCreateLead.mockRejectedValue(new Error(`boom for ${EMAIL}`));
+  it("still releases the download when Syncro lands but the webmaster email fails", async () => {
+    mockWebmasterNotification.mockResolvedValue(false);
 
     const response = await post({ slug: SLUG, email: EMAIL });
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
+    expect((await response.json()).downloadUrl).toContain(
+      "/api/lead-magnet/download?",
+    );
+    expect(mockDeliveryEmail).toHaveBeenCalled();
     expect(mockCaptureMessage).toHaveBeenCalledWith(
-      `Lead magnet capture failure (${SLUG}): Syncro unreachable (exception)`,
+      `Lead magnet delivery failure (${SLUG}): Syncro ok, webmaster email failed`,
+      "error",
+    );
+  });
+
+  it("returns 503 and releases nothing when neither sink lands", async () => {
+    mockCreateLead.mockRejectedValue(new Error(`boom for ${EMAIL}`));
+    mockWebmasterNotification.mockResolvedValue(false);
+
+    await expectResponse(
+      await post({ slug: SLUG, email: EMAIL, wantsBrief: true }),
+      503,
+      { error: UNAVAILABLE_COPY },
+    );
+
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      `Lead magnet delivery failure (${SLUG}): Syncro unreachable (exception), webmaster email failed`,
       "error",
     );
     expectNoEmailInSentry();
+    // The structured log is the only record of this lead
+    expect(readLeadLogLines(log)).toEqual([
+      expect.objectContaining({
+        formType: "Lead magnet",
+        email: EMAIL,
+        syncro: "unreachable (exception)",
+        webmasterEmail: "failed",
+      }),
+    ]);
+    expect(mockCreateResendContact).not.toHaveBeenCalled();
+    expect(mockDeliveryEmail).not.toHaveBeenCalled();
   });
 
   it.each([

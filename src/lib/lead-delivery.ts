@@ -16,16 +16,10 @@ import {
  * here, so the sinks always carry the same fields and the log and Sentry
  * wording stay alike.
  *
- * Two delivery policies, one per route shape:
- * - deliverLead (contact, onboarding, paid signup): both sinks fire in
- *   parallel, and the lead is delivered if either lands (the PRD's
- *   redundancy matrix).
- * - recordLeadInSyncro then notifyWebmasterOfRecordedLead (lead magnet):
- *   Syncro gates the download, so it runs alone first, and the webmaster
- *   email only follows once the route has its download link.
- *
- * None of these throw: every sink is settled, and a throw reads as a failed
- * sink.
+ * Both sinks fire in parallel, and the lead is delivered if either lands
+ * (the PRD's redundancy matrix, #596 decision 4); the route decides what a
+ * total failure means for its response. Never throws: every sink is
+ * settled, and a throw reads as a failed sink.
  */
 
 /**
@@ -49,8 +43,8 @@ export interface LeadDeliveryRequest {
   /** PII-free identifier appended to the Sentry message, e.g. "invoice in_123" */
   failureContext?: string;
   /**
-   * Other best-effort calls (the GA4 conversion event, the lead-magnet
-   * delivery email) settled alongside the sinks. Their outcomes never count
+   * Other best-effort calls (the GA4 conversion event) settled alongside
+   * the sinks. Their outcomes never count
    * towards delivery.
    */
   alongside?: Promise<unknown>[];
@@ -59,11 +53,6 @@ export interface LeadDeliveryRequest {
 export interface LeadDelivery {
   /** At least one sink landed, so the lead exists somewhere */
   isDelivered: boolean;
-}
-
-export interface SyncroLeadRecord {
-  /** The Syncro Lead exists; the route may release what it gates */
-  isRecorded: boolean;
 }
 
 /** The "Monthly brief" field every lead carries: Yes only on explicit consent */
@@ -112,31 +101,6 @@ function logLead(
   });
 }
 
-/** Log and capture a PII-free delivery failure as a Sentry error. */
-function reportFailure({
-  failureSummary,
-  failureContext,
-  detail,
-}: {
-  failureSummary: string;
-  failureContext?: string;
-  detail: string;
-}): void {
-  const context = failureContext ? ` (${failureContext})` : "";
-  const message = `${failureSummary}: ${detail}${context}`;
-  console.error(message);
-  Sentry.captureMessage(message, "error");
-}
-
-function describeDelivery(
-  syncroResult: CreateLeadResult,
-  isEmailSent: boolean,
-): string {
-  return `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
-    isEmailSent ? "ok" : "failed"
-  }`;
-}
-
 /** Fire both sinks in parallel; delivered when either lands. */
 export async function deliverLead({
   lead,
@@ -154,63 +118,14 @@ export async function deliverLead({
 
   logLead(lead, syncroResult, isEmailSent);
   if (!syncroResult.ok || !isEmailSent) {
-    reportFailure({
-      failureSummary,
-      failureContext,
-      detail: describeDelivery(syncroResult, isEmailSent),
-    });
+    // No submitted values in this string: it goes to Sentry
+    const detail = `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
+      isEmailSent ? "ok" : "failed"
+    }`;
+    const context = failureContext ? ` (${failureContext})` : "";
+    const message = `${failureSummary}: ${detail}${context}`;
+    console.error(message);
+    Sentry.captureMessage(message, "error");
   }
   return { isDelivered: syncroResult.ok || isEmailSent };
-}
-
-/**
- * Write the Syncro Lead alone, for a route that releases something only
- * once the lead exists. On failure this is the lead's only record, so it
- * logs the line itself; on success the log waits for
- * notifyWebmasterOfRecordedLead.
- */
-export async function recordLeadInSyncro({
-  lead,
-  failureSummary,
-}: Pick<
-  LeadDeliveryRequest,
-  "lead" | "failureSummary"
->): Promise<SyncroLeadRecord> {
-  const [syncroSettled] = await Promise.allSettled([
-    createLead(toLeadSubmission(lead)),
-  ]);
-  const syncroResult = toLeadResult(syncroSettled);
-  if (!syncroResult.ok) {
-    logLead(lead, syncroResult, false);
-    reportFailure({
-      failureSummary,
-      detail: `Syncro ${describeLeadOutcome(syncroResult)}`,
-    });
-  }
-  return { isRecorded: syncroResult.ok };
-}
-
-/**
- * Send the webmaster email for a lead recordLeadInSyncro has recorded. The
- * lead already exists, so a failed email is reported but changes nothing.
- */
-export async function notifyWebmasterOfRecordedLead({
-  lead,
-  failureSummary,
-  alongside = [],
-}: Omit<LeadDeliveryRequest, "failureContext">): Promise<void> {
-  const [[notificationSettled]] = await Promise.all([
-    Promise.allSettled([sendNotification(toLeadSubmission(lead))]),
-    Promise.allSettled(alongside),
-  ]);
-  const syncroResult: CreateLeadResult = { ok: true };
-  const isEmailSent = isNotificationSent(notificationSettled);
-
-  logLead(lead, syncroResult, isEmailSent);
-  if (!isEmailSent) {
-    reportFailure({
-      failureSummary,
-      detail: describeDelivery(syncroResult, isEmailSent),
-    });
-  }
 }
