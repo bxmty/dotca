@@ -24,7 +24,8 @@ export type CreateLeadResult =
   | {
       ok: false;
       reason: "unreachable";
-      code: "missing_config" | "network_error" | "server_error";
+      /** "exception" only ever comes from toLeadResult: createLead never throws */
+      code: "missing_config" | "network_error" | "server_error" | "exception";
       /** HTTP status, when Syncro answered with a 5xx */
       status?: number;
     };
@@ -132,6 +133,18 @@ export function describeLeadOutcome(result: CreateLeadResult): string {
   if (result.reason === "rejected") return `rejected (HTTP ${result.status})`;
   const status = result.status === undefined ? "" : `, HTTP ${result.status}`;
   return `unreachable (${result.code}${status})`;
+}
+
+/**
+ * Unwrap createLead from Promise.allSettled. It never rejects, but the
+ * routes settle every sink defensively; a rejection reads as unreachable.
+ */
+export function toLeadResult(
+  settled: PromiseSettledResult<CreateLeadResult>,
+): CreateLeadResult {
+  return settled.status === "fulfilled"
+    ? settled.value
+    : { ok: false, reason: "unreachable", code: "exception" };
 }
 
 /** Create a Syncro Lead (POST /leads) for a website submission. */

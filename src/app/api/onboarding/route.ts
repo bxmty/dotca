@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { addBrevoContact, formatE164Phone } from "@/lib/brevo";
+import { formatE164Phone } from "@/lib/phone";
+import { createLead, describeLeadOutcome, toLeadResult } from "@/lib/syncro";
+import { logLeadSubmission } from "@/lib/lead-log";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
-
-// Onboarding leads land in Brevo list 10 (vacated by the old waitlist)
-const ONBOARDING_LIST_ID = 10;
 
 export async function POST(request: Request) {
   try {
@@ -90,50 +89,42 @@ export async function POST(request: Request) {
       request.headers.get("cookie"),
     );
 
-    // Validation is done; from here on the lead exists. Brevo (CRM) and the
-    // webmaster email (Resend) fire in parallel, and the submission succeeds
-    // if either lands — see the redundancy matrix in the PRD.
-    const smsPhone = formatE164Phone(data.contactPhone) ?? undefined;
-    const [brevoSettled, notifySettled] = await Promise.allSettled([
-      addBrevoContact({
-        listId: ONBOARDING_LIST_ID,
+    // Every submitted field, shared by the Syncro ticket description and the
+    // webmaster email so the two sinks always carry the same lead
+    const fields = {
+      "Contact name": data.contactName,
+      Email: data.contactEmail,
+      Phone: data.contactPhone,
+      Company: data.companyName,
+      Industry: data.industry,
+      "Employee count": String(data.employeeCount),
+      Address: data.address,
+      City: data.city,
+      "Province/State": data.state,
+      "Postal code": data.zipCode,
+      "Current IT providers": data.currentITProviders || "",
+      "Software used": data.softwareUsed || "",
+      "Pain points": data.painPoints || "",
+      Goals: data.goals || "",
+    };
+    const phone = formatE164Phone(data.contactPhone) ?? data.contactPhone;
+
+    // Validation is done; from here on the lead exists. Syncro (PSA lead)
+    // and the webmaster email (Resend) fire in parallel, and the submission
+    // succeeds if either lands — see the redundancy matrix in the PRD.
+    const [syncroSettled, notifySettled] = await Promise.allSettled([
+      createLead({
+        formType: "Onboarding",
+        name: data.contactName,
         email: data.contactEmail,
-        smsPhone,
-        attributes: {
-          FULLNAME: data.contactName,
-          COMPANY: data.companyName,
-          INDUSTRY: data.industry,
-          EMPLOYEE_COUNT: String(data.employeeCount),
-          PHONE: data.contactPhone,
-          ADDRESS: data.address,
-          CITY: data.city,
-          STATE: data.state,
-          ZIP: data.zipCode,
-          CURRENT_IT_PROVIDERS: data.currentITProviders || "",
-          SOFTWARE_USED: data.softwareUsed || "",
-          PAIN_POINTS: data.painPoints || "",
-          GOALS: data.goals || "",
-        },
+        phone,
+        company: data.companyName,
+        fields,
       }),
       sendWebmasterNotification({
         formType: "Onboarding",
         submitterName: data.contactName,
-        fields: {
-          "Contact name": data.contactName,
-          Email: data.contactEmail,
-          Phone: data.contactPhone,
-          Company: data.companyName,
-          Industry: data.industry,
-          "Employee count": String(data.employeeCount),
-          Address: data.address,
-          City: data.city,
-          "Province/State": data.state,
-          "Postal code": data.zipCode,
-          "Current IT providers": data.currentITProviders || "",
-          "Software used": data.softwareUsed || "",
-          "Pain points": data.painPoints || "",
-          Goals: data.goals || "",
-        },
+        fields,
       }),
       // sendConversionEvent never throws — it swallows and reports its own
       // failures — so a Measurement Protocol outage can't affect the
@@ -147,28 +138,30 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    const brevoResult =
-      brevoSettled.status === "fulfilled"
-        ? brevoSettled.value
-        : { ok: false as const, code: "exception" };
+    const syncroResult = toLeadResult(syncroSettled);
     const notifySent =
       notifySettled.status === "fulfilled" && notifySettled.value;
 
-    // An existing contact still counts as a landed submission
-    const brevoLanded =
-      brevoResult.ok || brevoResult.code === "duplicate_parameter";
+    logLeadSubmission({
+      formType: "Onboarding",
+      name: data.contactName,
+      company: data.companyName,
+      email: data.contactEmail,
+      phone,
+      syncro: syncroResult,
+      isEmailSent: notifySent,
+    });
 
-    if (!brevoLanded || !notifySent) {
-      const detail = `Brevo ${
-        brevoLanded
-          ? "ok"
-          : `failed (${brevoResult.code ?? brevoResult.status})`
-      }, webmaster email ${notifySent ? "ok" : "failed"}`;
+    if (!syncroResult.ok || !notifySent) {
+      // No submitted values in this string: it goes to Sentry
+      const detail = `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
+        notifySent ? "ok" : "failed"
+      }`;
       console.error(`Onboarding delivery failure: ${detail}`);
       Sentry.captureMessage(`Onboarding delivery failure: ${detail}`, "error");
     }
 
-    if (brevoLanded || notifySent) {
+    if (syncroResult.ok || notifySent) {
       return NextResponse.json({
         success: true,
         message: "Onboarding data received successfully",

@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import type Stripe from "stripe";
 import { getServerStripe } from "@/lib/stripe";
-import { addBrevoContact } from "@/lib/brevo";
+import {
+  createLead,
+  describeLeadOutcome,
+  toLeadResult,
+  type CreateLeadResult,
+} from "@/lib/syncro";
+import { logLeadSubmission } from "@/lib/lead-log";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { sendConversionEvent } from "@/lib/ga4";
 
 // The Stripe SDK will not run on Edge
 export const runtime = "nodejs";
-
-// Paid signups land in Brevo list 9 alongside the other leads
-const PAID_SIGNUP_LIST_ID = 9;
 
 function formatAmount(amountCents: number, currency: string): string {
   return `$${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}`;
@@ -26,7 +29,7 @@ function formatAmount(amountCents: number, currency: string): string {
  */
 async function handleNewPaidSubscription(
   invoice: Stripe.Invoice,
-): Promise<{ brevoLanded: boolean; notifySent: boolean }> {
+): Promise<{ syncroResult: CreateLeadResult; notifySent: boolean }> {
   const metadata = invoice.parent?.subscription_details?.metadata ?? {};
   const email = invoice.customer_email ?? "";
   const name = invoice.customer_name ?? "";
@@ -45,38 +48,33 @@ async function handleNewPaidSubscription(
   // trigger a Stripe retry. Invoice id is the transaction_id: stable across
   // a webhook redelivery for the same invoice, so GA4 dedupes the event
   // rather than double-counting revenue.
-  const [brevoSettled, notifySettled] = await Promise.allSettled([
-    email
-      ? addBrevoContact({
-          listId: PAID_SIGNUP_LIST_ID,
-          email,
-          attributes: {
-            FULLNAME: name,
-            PHONE: phone,
-            COMPANY: company,
-            PLAN_NAME: plan,
-            BILLING_CYCLE: billingCycle,
-            EMPLOYEE_COUNT: employeeCount,
-          },
-        })
-      : Promise.resolve({ ok: false as const, code: "missing_email" }),
+  // Every field, shared by the Syncro ticket description and the email
+  const fields = {
+    Name: name,
+    Email: email,
+    Phone: phone,
+    Company: company,
+    Plan: plan,
+    "Billing cycle": billingCycle,
+    "Employee count": employeeCount,
+    "Amount paid": formatAmount(invoice.amount_paid, invoice.currency ?? "cad"),
+    Invoice: invoice.id ?? "",
+  };
+
+  const [syncroSettled, notifySettled] = await Promise.allSettled([
+    createLead({
+      formType: "Paid signup",
+      name,
+      email,
+      phone,
+      company,
+      fields,
+      opportunityAmountDollars: invoice.amount_paid / 100,
+    }),
     sendWebmasterNotification({
       formType: "Paid signup",
       submitterName: name || email,
-      fields: {
-        Name: name,
-        Email: email,
-        Phone: phone,
-        Company: company,
-        Plan: plan,
-        "Billing cycle": billingCycle,
-        "Employee count": employeeCount,
-        "Amount paid": formatAmount(
-          invoice.amount_paid,
-          invoice.currency ?? "cad",
-        ),
-        Invoice: invoice.id ?? "",
-      },
+      fields,
     }),
     sendConversionEvent({
       name: "purchase",
@@ -90,13 +88,20 @@ async function handleNewPaidSubscription(
     }),
   ]);
 
-  const brevoLanded =
-    brevoSettled.status === "fulfilled" &&
-    (brevoSettled.value.ok ||
-      brevoSettled.value.code === "duplicate_parameter");
+  const syncroResult = toLeadResult(syncroSettled);
   const notifySent =
     notifySettled.status === "fulfilled" && notifySettled.value;
-  return { brevoLanded, notifySent };
+
+  logLeadSubmission({
+    formType: "Paid signup",
+    name,
+    company,
+    email,
+    phone,
+    syncro: syncroResult,
+    isEmailSent: notifySent,
+  });
+  return { syncroResult, notifySent };
 }
 
 export async function POST(request: Request) {
@@ -144,11 +149,12 @@ export async function POST(request: Request) {
         break; // renewals and one-off invoices are not new signups
       }
 
-      const { brevoLanded, notifySent } =
+      const { syncroResult, notifySent } =
         await handleNewPaidSubscription(invoice);
 
-      if (!brevoLanded || !notifySent) {
-        const detail = `Brevo ${brevoLanded ? "ok" : "failed"}, webmaster email ${
+      if (!syncroResult.ok || !notifySent) {
+        // No customer details in this string: it goes to Sentry
+        const detail = `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
           notifySent ? "ok" : "failed"
         } (invoice ${invoice.id})`;
         console.error(`Paid signup notification failure: ${detail}`);
@@ -158,9 +164,11 @@ export async function POST(request: Request) {
         );
       }
 
-      // Total failure → non-2xx so Stripe retries. Brevo is idempotent and
-      // the email hasn't been sent, so a retry can only help.
-      if (!brevoLanded && !notifySent) {
+      // Total failure → non-2xx so Stripe retries. Neither sink landed, so a
+      // retry can't duplicate the Syncro lead or the email. Any partial
+      // success returns 2xx: Syncro leads aren't idempotent, and a retry
+      // after one landed would create a second lead.
+      if (!syncroResult.ok && !notifySent) {
         return NextResponse.json(
           { error: "Notification delivery failed" },
           { status: 500 },

@@ -2,7 +2,7 @@
 import { POST } from "@/app/api/contact/route";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { addBrevoContact } from "@/lib/brevo";
+import { createLead } from "@/lib/syncro";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { sendConversionEvent } from "@/lib/ga4";
@@ -18,10 +18,10 @@ jest.mock("@sentry/nextjs", () => ({
   captureMessage: jest.fn(),
 }));
 
-// Mock the delivery modules; phone formatting stays real
-jest.mock("@/lib/brevo", () => ({
-  ...jest.requireActual("@/lib/brevo"),
-  addBrevoContact: jest.fn(),
+// Mock the delivery modules; outcome summaries stay real
+jest.mock("@/lib/syncro", () => ({
+  ...jest.requireActual("@/lib/syncro"),
+  createLead: jest.fn(),
 }));
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
@@ -32,7 +32,7 @@ jest.mock("@/lib/ga4", () => ({
   sendConversionEvent: jest.fn(),
 }));
 
-const mockBrevo = addBrevoContact as jest.Mock;
+const mockCreateLead = createLead as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
 const mockSendConversionEvent = sendConversionEvent as jest.Mock;
 
@@ -56,7 +56,7 @@ describe("Contact API Route", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetRateLimits();
-    mockBrevo.mockResolvedValue({ ok: true });
+    mockCreateLead.mockResolvedValue({ ok: true, leadId: 1 });
     mockNotify.mockResolvedValue(true);
     mockSendConversionEvent.mockResolvedValue(undefined);
   });
@@ -68,7 +68,7 @@ describe("Contact API Route", () => {
       { error: "Email is required" },
       { status: 400 },
     );
-    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
   });
 
@@ -100,7 +100,7 @@ describe("Contact API Route", () => {
       { error: "Please enter a valid phone number" },
       { status: 400 },
     );
-    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
   });
 
@@ -118,20 +118,26 @@ describe("Contact API Route", () => {
     );
   });
 
-  it("writes the lead to Brevo list 9 and emails the webmaster", async () => {
-    await POST(buildRequest(validBody));
+  it("writes a Syncro lead carrying every field and emails the webmaster", async () => {
+    await POST(buildRequest({ ...validBody, company: "Acme", plan: "Core" }));
 
-    expect(mockBrevo).toHaveBeenCalledWith({
-      listId: 9,
+    const [lead] = mockCreateLead.mock.calls[0];
+    expect(lead).toEqual({
+      formType: "Contact",
+      name: "Test User",
       email: "test@example.com",
-      smsPhone: "+11234567890",
-      attributes: expect.objectContaining({
-        FULLNAME: "Test User",
-        FIRSTNAME: "Test",
-        LASTNAME: "User",
-        PHONE: "123-456-7890",
+      phone: "+11234567890",
+      company: "Acme",
+      fields: expect.objectContaining({
+        Name: "Test User",
+        Email: "test@example.com",
+        Phone: "+11234567890",
+        Company: "Acme",
+        Plan: "Core",
       }),
     });
+    // The ticket description and the email carry the same submitted fields
+    expect(lead.fields).toEqual(mockNotify.mock.calls[0][0].fields);
     expect(mockNotify).toHaveBeenCalledWith({
       formType: "Contact",
       submitterName: "Test User",
@@ -192,93 +198,125 @@ describe("Contact API Route", () => {
     expect(mockSendConversionEvent).not.toHaveBeenCalled();
   });
 
-  it("does not send an IS_WAITLIST attribute", async () => {
-    await POST(buildRequest(validBody));
+  describe("delivery matrix", () => {
+    const syncroUnreachable = {
+      ok: false,
+      reason: "unreachable",
+      code: "network_error",
+    };
 
-    const { attributes } = mockBrevo.mock.calls[0][0];
-    expect(attributes.IS_WAITLIST).toBeUndefined();
+    it("succeeds quietly when both Syncro and the email land", async () => {
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
+
+    it("succeeds and reports Syncro when only the email lands", async () => {
+      mockCreateLead.mockResolvedValueOnce(syncroUnreachable);
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Contact form delivery failure: Syncro unreachable (network_error), webmaster email ok",
+        "error",
+      );
+    });
+
+    it("succeeds and reports the email when only Syncro lands", async () => {
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Contact form delivery failure: Syncro ok, webmaster email failed",
+        "error",
+      );
+    });
+
+    it("returns 503 with direct contact info when neither lands", async () => {
+      mockCreateLead.mockResolvedValueOnce({
+        ok: false,
+        reason: "rejected",
+        status: 422,
+      });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        {
+          error:
+            "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+        },
+        { status: 503 },
+      );
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Contact form delivery failure: Syncro rejected (HTTP 422), webmaster email failed",
+        "error",
+      );
+    });
+
+    it("treats a createLead exception as Syncro not landing", async () => {
+      mockCreateLead.mockRejectedValueOnce(new Error("boom"));
+
+      await POST(buildRequest(validBody));
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Syncro unreachable"),
+        "error",
+      );
+    });
   });
 
-  it("succeeds when Brevo fails but the webmaster email lands", async () => {
-    mockBrevo.mockResolvedValueOnce({ ok: false, status: 500 });
-
-    await POST(buildRequest(validBody));
-
-    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
-    expect(Sentry.captureMessage).toHaveBeenCalledWith(
-      expect.stringContaining("Brevo failed"),
-      "error",
-    );
-  });
-
-  it("succeeds when the webmaster email fails but Brevo lands", async () => {
+  it("keeps submitted values out of the Sentry message", async () => {
+    // Syncro's rejection message echoes the submission; it must not leak
+    mockCreateLead.mockResolvedValueOnce({
+      ok: false,
+      reason: "rejected",
+      status: 422,
+      message: "Email test@example.com is invalid for Acme",
+    });
     mockNotify.mockResolvedValueOnce(false);
 
-    await POST(buildRequest(validBody));
+    await POST(buildRequest({ ...validBody, company: "Acme" }));
 
-    expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
-    expect(Sentry.captureMessage).toHaveBeenCalledWith(
-      expect.stringContaining("webmaster email failed"),
-      "error",
-    );
+    const [captured] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    for (const value of ["Test User", "test@example.com", "4567890", "Acme"]) {
+      expect(captured).not.toContain(value);
+    }
   });
 
-  it("returns 503 with direct contact info when both channels fail", async () => {
-    mockBrevo.mockResolvedValueOnce({ ok: false, code: "unauthorized" });
-    mockNotify.mockResolvedValueOnce(false);
+  it("logs one structured line per submission", async () => {
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
 
-    await POST(buildRequest(validBody));
+    await POST(buildRequest({ ...validBody, company: "Acme" }));
 
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      {
-        error:
-          "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
-      },
-      { status: 503 },
-    );
-  });
-
-  it("handles duplicate contact submissions gracefully", async () => {
-    mockBrevo.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      code: "duplicate_parameter",
-      message: "Contact already exists",
+    const leadLines = log.mock.calls
+      .map(([line]) => String(line))
+      .filter((line) => line.includes('"event":"lead_submission"'));
+    expect(leadLines).toHaveLength(1);
+    expect(JSON.parse(leadLines[0])).toEqual({
+      event: "lead_submission",
+      formType: "Contact",
+      name: "Test User",
+      company: "Acme",
+      email: "test@example.com",
+      phone: "+11234567890",
+      syncro: "ok",
+      webmasterEmail: "ok",
     });
-
-    await POST(buildRequest(validBody));
-
-    expect(NextResponse.json).toHaveBeenCalledWith({
-      success: true,
-      message:
-        "Your information has already been submitted. We will contact you soon.",
-    });
-  });
-
-  it("returns 400 when Brevo rejects the phone number", async () => {
-    mockBrevo.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      code: "invalid_parameter",
-      message: "Invalid phone number",
-    });
-
-    await POST(buildRequest(validBody));
-
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      {
-        error:
-          "The provided phone number format is not valid. Please use a standard format like +1XXXXXXXXXX.",
-      },
-      { status: 400 },
-    );
+    log.mockRestore();
   });
 
   it("silently accepts honeypot submissions without sending anything", async () => {
     await POST(buildRequest({ ...validBody, website: "https://spam.example" }));
 
     expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
-    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
     expect(mockSendConversionEvent).not.toHaveBeenCalled();
   });
@@ -287,7 +325,7 @@ describe("Contact API Route", () => {
     for (let i = 0; i < 5; i++) {
       await POST(buildRequest(validBody));
     }
-    expect(mockBrevo).toHaveBeenCalledTimes(5);
+    expect(mockCreateLead).toHaveBeenCalledTimes(5);
 
     await POST(buildRequest(validBody));
 
@@ -295,6 +333,6 @@ describe("Contact API Route", () => {
       { error: "Too many submissions. Please try again later." },
       { status: 429 },
     );
-    expect(mockBrevo).toHaveBeenCalledTimes(5);
+    expect(mockCreateLead).toHaveBeenCalledTimes(5);
   });
 });

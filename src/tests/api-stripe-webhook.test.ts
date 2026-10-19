@@ -1,7 +1,7 @@
 import { POST } from "@/app/api/stripe/webhook/route";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { addBrevoContact } from "@/lib/brevo";
+import { createLead } from "@/lib/syncro";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { sendConversionEvent } from "@/lib/ga4";
 
@@ -24,8 +24,9 @@ jest.mock("@/lib/stripe", () => ({
   }),
 }));
 
-jest.mock("@/lib/brevo", () => ({
-  addBrevoContact: jest.fn(),
+jest.mock("@/lib/syncro", () => ({
+  ...jest.requireActual("@/lib/syncro"),
+  createLead: jest.fn(),
 }));
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
@@ -34,7 +35,7 @@ jest.mock("@/lib/ga4", () => ({
   sendConversionEvent: jest.fn(),
 }));
 
-const mockBrevo = addBrevoContact as jest.Mock;
+const mockCreateLead = createLead as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
 const mockSendConversionEvent = sendConversionEvent as jest.Mock;
 
@@ -90,7 +91,7 @@ describe("POST /api/stripe/webhook", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv, STRIPE_WEBHOOK_SECRET: "whsec_test" };
-    mockBrevo.mockResolvedValue({ ok: true });
+    mockCreateLead.mockResolvedValue({ ok: true, leadId: 1 });
     mockNotify.mockResolvedValue(true);
     mockSendConversionEvent.mockResolvedValue(undefined);
     mockConstructEvent.mockReturnValue({
@@ -149,16 +150,23 @@ describe("POST /api/stripe/webhook", () => {
   it("notifies on the first paid invoice of a new subscription", async () => {
     await POST(buildRequest());
 
-    expect(mockBrevo).toHaveBeenCalledWith({
-      listId: 9,
+    const [lead] = mockCreateLead.mock.calls[0];
+    expect(lead).toEqual({
+      formType: "Paid signup",
+      name: "Test User",
       email: "test@example.com",
-      attributes: expect.objectContaining({
-        FULLNAME: "Test User",
-        PLAN_NAME: "basic",
-        BILLING_CYCLE: "monthly",
-        EMPLOYEE_COUNT: "5",
+      phone: "+11234567890",
+      company: "Test Co",
+      opportunityAmountDollars: 495,
+      fields: expect.objectContaining({
+        Plan: "basic",
+        "Billing cycle": "monthly",
+        "Employee count": "5",
+        "Amount paid": "$495.00 CAD",
+        Invoice: "in_123",
       }),
     });
+    expect(lead.fields).toEqual(mockNotify.mock.calls[0][0].fields);
     expect(mockNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         formType: "Paid signup",
@@ -212,7 +220,7 @@ describe("POST /api/stripe/webhook", () => {
 
     await POST(buildRequest());
 
-    expect(mockBrevo).toHaveBeenCalled();
+    expect(mockCreateLead).toHaveBeenCalled();
     expect(mockNotify).toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
@@ -227,7 +235,7 @@ describe("POST /api/stripe/webhook", () => {
 
     await POST(buildRequest());
 
-    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
     expect(mockSendConversionEvent).not.toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
@@ -241,34 +249,105 @@ describe("POST /api/stripe/webhook", () => {
 
     await POST(buildRequest());
 
-    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
     expect(mockSendConversionEvent).not.toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
 
-  it("still returns 200 and reports to Sentry on partial delivery failure", async () => {
-    mockBrevo.mockResolvedValueOnce({ ok: false, status: 500 });
+  describe("delivery matrix", () => {
+    const syncroRejected = { ok: false, reason: "rejected", status: 422 };
 
-    await POST(buildRequest());
+    it("returns 200 quietly when both Syncro and the email land", async () => {
+      await POST(buildRequest());
 
-    expect(Sentry.captureMessage).toHaveBeenCalledWith(
-      expect.stringContaining("Paid signup notification failure"),
-      "error",
-    );
-    expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
+
+    it("returns 200 and reports Syncro when only the email lands", async () => {
+      mockCreateLead.mockResolvedValueOnce(syncroRejected);
+
+      await POST(buildRequest());
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Paid signup notification failure: Syncro rejected (HTTP 422), webmaster email ok (invoice in_123)",
+        "error",
+      );
+    });
+
+    it("returns 200 and reports the email when only Syncro lands", async () => {
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest());
+
+      expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        "Paid signup notification failure: Syncro ok, webmaster email failed (invoice in_123)",
+        "error",
+      );
+    });
+
+    it("returns 500 so Stripe retries when neither lands", async () => {
+      mockCreateLead.mockResolvedValueOnce({
+        ok: false,
+        reason: "unreachable",
+        code: "network_error",
+      });
+      mockNotify.mockResolvedValueOnce(false);
+
+      await POST(buildRequest());
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { error: "Notification delivery failed" },
+        { status: 500 },
+      );
+    });
   });
 
-  it("returns 500 so Stripe retries when both channels fail", async () => {
-    mockBrevo.mockResolvedValueOnce({ ok: false, status: 500 });
+  it("keeps customer details out of the Sentry message", async () => {
+    mockCreateLead.mockResolvedValueOnce({
+      ok: false,
+      reason: "rejected",
+      status: 422,
+      message: "Email test@example.com is invalid for Test Co",
+    });
     mockNotify.mockResolvedValueOnce(false);
 
     await POST(buildRequest());
 
-    expect(NextResponse.json).toHaveBeenCalledWith(
-      { error: "Notification delivery failed" },
-      { status: 500 },
-    );
+    const [captured] = (Sentry.captureMessage as jest.Mock).mock.calls[0];
+    for (const value of [
+      "Test User",
+      "test@example.com",
+      "4567890",
+      "Test Co",
+    ]) {
+      expect(captured).not.toContain(value);
+    }
+  });
+
+  it("logs one structured line per paid signup", async () => {
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    await POST(buildRequest());
+
+    const leadLines = log.mock.calls
+      .map(([line]) => String(line))
+      .filter((line) => line.includes('"event":"lead_submission"'));
+    expect(leadLines).toHaveLength(1);
+    expect(JSON.parse(leadLines[0])).toEqual({
+      event: "lead_submission",
+      formType: "Paid signup",
+      name: "Test User",
+      company: "Test Co",
+      email: "test@example.com",
+      phone: "+11234567890",
+      syncro: "ok",
+      webmasterEmail: "ok",
+    });
+    log.mockRestore();
   });
 
   it("logs failed renewal payments to Sentry and returns 200", async () => {
@@ -311,7 +390,7 @@ describe("POST /api/stripe/webhook", () => {
 
     await POST(buildRequest());
 
-    expect(mockBrevo).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
 });
