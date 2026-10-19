@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 import { formatE164Phone } from "@/lib/phone";
-import { createLead, describeLeadOutcome, toLeadResult } from "@/lib/syncro";
-import { logLeadSubmission } from "@/lib/lead-log";
-import { sendWebmasterNotification } from "@/lib/notify";
+import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
@@ -94,7 +91,7 @@ export async function POST(request: Request) {
 
     // Every submitted field, shared by the Syncro ticket description and the
     // webmaster email so the two sinks always carry the same lead
-    const fields = {
+    const leadFields = {
       "Contact name": data.contactName,
       Email: data.contactEmail,
       Phone: data.contactPhone,
@@ -109,52 +106,35 @@ export async function POST(request: Request) {
       "Software used": data.softwareUsed || "",
       "Pain points": data.painPoints || "",
       Goals: data.goals || "",
-      "Monthly brief": data.wantsBrief === true ? "Yes" : "No",
     };
     const phone = formatE164Phone(data.contactPhone) ?? data.contactPhone;
 
     // Validation is done; from here on the lead exists. Syncro (PSA lead)
     // and the webmaster email (Resend) fire in parallel, and the submission
     // succeeds if either lands — see the redundancy matrix in the PRD.
-    const [syncroSettled, notifySettled] = await Promise.allSettled([
-      createLead({
+    const { isDelivered } = await deliverLead({
+      lead: {
         formType: "Onboarding",
         name: data.contactName,
         email: data.contactEmail,
         phone,
         company: data.companyName,
-        fields,
+        fields: leadFields,
         hasOptedInToBrief: data.wantsBrief === true,
-      }),
-      sendWebmasterNotification({
-        formType: "Onboarding",
-        submitterName: data.contactName,
-        fields,
-      }),
+      },
+      failureSummary: "Onboarding delivery failure",
       // sendConversionEvent never throws — it swallows and reports its own
-      // failures — so a Measurement Protocol outage can't affect the
-      // submission outcome below, exactly like the other two settled calls.
+      // failures — and is settled alongside the sinks, so a Measurement
+      // Protocol outage can't affect the submission outcome below.
       // No value param: sign_up carries no monetary value, and a placeholder
       // would inflate Google Ads-imported conversion value.
-      sendConversionEvent({
-        name: "sign_up",
-        clientId: gaClientId,
-        sessionId: gaSessionId,
-      }),
-    ]);
-
-    const syncroResult = toLeadResult(syncroSettled);
-    const notifySent =
-      notifySettled.status === "fulfilled" && notifySettled.value;
-
-    logLeadSubmission({
-      formType: "Onboarding",
-      name: data.contactName,
-      company: data.companyName,
-      email: data.contactEmail,
-      phone,
-      syncro: syncroResult,
-      isEmailSent: notifySent,
+      alongside: [
+        sendConversionEvent({
+          name: "sign_up",
+          clientId: gaClientId,
+          sessionId: gaSessionId,
+        }),
+      ],
     });
 
     const contactName = splitFullName(String(data.contactName));
@@ -164,7 +144,7 @@ export async function POST(request: Request) {
     // matrix: a failed send is a Sentry warning inside sendConfirmationEmail,
     // never a failed submission. A 503 sends none, since the lead may not
     // exist.
-    if (syncroResult.ok || notifySent) {
+    if (isDelivered) {
       await sendConfirmationEmail({
         formType: "onboarding",
         email: data.contactEmail,
@@ -183,16 +163,7 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!syncroResult.ok || !notifySent) {
-      // No submitted values in this string: it goes to Sentry
-      const detail = `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
-        notifySent ? "ok" : "failed"
-      }`;
-      console.error(`Onboarding delivery failure: ${detail}`);
-      Sentry.captureMessage(`Onboarding delivery failure: ${detail}`, "error");
-    }
-
-    if (syncroResult.ok || notifySent) {
+    if (isDelivered) {
       return NextResponse.json({
         success: true,
         message: "Onboarding data received successfully",

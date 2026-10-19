@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 import { formatE164Phone } from "@/lib/phone";
-import { createLead, describeLeadOutcome, toLeadResult } from "@/lib/syncro";
-import { logLeadSubmission } from "@/lib/lead-log";
-import { sendWebmasterNotification } from "@/lib/notify";
+import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
@@ -127,7 +124,7 @@ export async function POST(request: Request) {
 
     // Every submitted field, shared by the Syncro ticket description and the
     // webmaster email so the two sinks always carry the same lead
-    const fields = {
+    const leadFields = {
       Name: fullName,
       Email: email,
       Phone: formattedPhone,
@@ -139,49 +136,34 @@ export async function POST(request: Request) {
       Plan: plan || "",
       "Billing cycle": billingCycle || "",
       "Employee count": employeeCount ? employeeCount.toString() : "",
-      "Monthly brief": wantsBrief === true ? "Yes" : "No",
     };
 
     // Validation is done; from here on the lead exists. Syncro (PSA lead)
     // and the webmaster email (Resend) fire in parallel, and the submission
     // succeeds if either lands — see the redundancy matrix in the PRD.
-    const [syncroSettled, notifySettled] = await Promise.allSettled([
-      createLead({
+    // Syncro has no validation rejection we can map to a 400 (a 4xx there is
+    // our payload, not the visitor's), so validation stays route-side above.
+    const { isDelivered } = await deliverLead({
+      lead: {
         formType: "Contact",
         name: fullName,
         email,
         phone: formattedPhone,
         company: company || "",
-        fields,
+        fields: leadFields,
         hasOptedInToBrief: wantsBrief === true,
-      }),
-      sendWebmasterNotification({
-        formType: "Contact",
-        submitterName: fullName,
-        fields,
-      }),
+      },
+      failureSummary: "Contact form delivery failure",
       // sendConversionEvent never throws — it swallows and reports its own
-      // failures — so a Measurement Protocol outage can't affect the
-      // submission outcome below, exactly like the other two settled calls.
-      sendConversionEvent({
-        name: "generate_lead",
-        clientId: gaClientId,
-        sessionId: gaSessionId,
-      }),
-    ]);
-
-    const syncroResult = toLeadResult(syncroSettled);
-    const notifySent =
-      notifySettled.status === "fulfilled" && notifySettled.value;
-
-    logLeadSubmission({
-      formType: "Contact",
-      name: fullName,
-      company: company || "",
-      email,
-      phone: formattedPhone,
-      syncro: syncroResult,
-      isEmailSent: notifySent,
+      // failures — and is settled alongside the sinks, so a Measurement
+      // Protocol outage can't affect the submission outcome below.
+      alongside: [
+        sendConversionEvent({
+          name: "generate_lead",
+          clientId: gaClientId,
+          sessionId: gaSessionId,
+        }),
+      ],
     });
 
     // Separate first/last fields win; otherwise split the single name field
@@ -195,7 +177,7 @@ export async function POST(request: Request) {
     // opted in or not, and sits outside the delivery matrix: a failed send
     // is a Sentry warning inside sendConfirmationEmail, never a failed
     // submission. A 503 sends none, since the lead may not exist.
-    if (syncroResult.ok || notifySent) {
+    if (isDelivered) {
       await sendConfirmationEmail({
         formType: "contact",
         email,
@@ -214,21 +196,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // Syncro has no validation rejection we can map to a 400 (a 4xx there is
-    // our payload, not the visitor's), so validation stays route-side above.
-    if (!syncroResult.ok || !notifySent) {
-      // No submitted values in this string: it goes to Sentry
-      const detail = `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
-        notifySent ? "ok" : "failed"
-      }`;
-      console.error(`Contact form delivery failure: ${detail}`);
-      Sentry.captureMessage(
-        `Contact form delivery failure: ${detail}`,
-        "error",
-      );
-    }
-
-    if (syncroResult.ok || notifySent) {
+    if (isDelivered) {
       return NextResponse.json({ success: true });
     }
 
