@@ -1,10 +1,11 @@
 import { Resend } from "resend";
 import { normalizeEmailAddress } from "@/lib/email-address";
 import {
-  lookUpContact,
+  fetchContactStatus,
   reportResendWarning,
   runResendCall,
 } from "@/lib/resend-client";
+import { describeMissingEnv, readRequiredEnv } from "@/lib/required-env";
 
 /**
  * The monthly security brief opt-in (bxmty/dotca#599): a ticked checkbox on
@@ -61,10 +62,6 @@ const REQUIRED_ENV_NAMES = [
   "RESEND_MONTHLY_BRIEF_TOPIC_ID",
 ] as const;
 
-function reportFailure(source: OptInSource, detail: string): void {
-  reportResendWarning(`Monthly brief opt-in failed (${source}): ${detail}`);
-}
-
 /**
  * The lead.opted_in event (#647, #642 decisions 11 and 16) that starts the
  * nurture automation. Only sent once the contact write has landed, since a
@@ -83,21 +80,22 @@ async function sendOptInEvent({
   email: string;
   source: NurtureSource;
 }): Promise<void> {
-  const reportEventFailure = (detail: string) =>
+  const failureSummary = `Monthly brief opt-in event not sent (${source})`;
+  const requiredEnv = readRequiredEnv(["RESEND_OPTIN_EVENT"]);
+  if (!requiredEnv.isComplete) {
     reportResendWarning(
-      `Monthly brief opt-in event not sent (${source}): ${detail}`,
+      failureSummary,
+      describeMissingEnv(requiredEnv.missingNames),
     );
-  const event = process.env.RESEND_OPTIN_EVENT;
-  if (!event) {
-    reportEventFailure("RESEND_OPTIN_EVENT not set");
     return;
   }
 
-  const failureCode = await runResendCall(() =>
+  const event = requiredEnv.valuesByName.RESEND_OPTIN_EVENT;
+  const sendResult = await runResendCall(() =>
     resend.events.send({ event, email, payload: { source } }),
   );
-  if (failureCode) {
-    reportEventFailure(`${event} ${failureCode}`);
+  if (!sendResult.ok) {
+    reportResendWarning(failureSummary, `${event} ${sendResult.failureCode}`);
   }
 }
 
@@ -107,25 +105,28 @@ export async function subscribeToMonthlyBrief({
   lastName,
   source,
 }: MonthlyBriefSubscriber): Promise<MonthlyBriefSubscription> {
-  const missingEnvNames = REQUIRED_ENV_NAMES.filter(
-    (name) => !process.env[name],
-  );
-  if (missingEnvNames.length > 0) {
-    reportFailure(source, `${missingEnvNames.join(", ")} not set`);
+  const failureSummary = `Monthly brief opt-in failed (${source})`;
+  const requiredEnv = readRequiredEnv(REQUIRED_ENV_NAMES);
+  if (!requiredEnv.isComplete) {
+    reportResendWarning(
+      failureSummary,
+      describeMissingEnv(requiredEnv.missingNames),
+    );
     return { isSubscribed: false };
   }
+  const envValues = requiredEnv.valuesByName;
 
   const email = normalizeEmailAddress(rawEmail);
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const segmentId = process.env.RESEND_MONTHLY_BRIEF_SEGMENT_ID as string;
+  const resend = new Resend(envValues.RESEND_API_KEY);
+  const segmentId = envValues.RESEND_MONTHLY_BRIEF_SEGMENT_ID;
   const topics = [
     {
-      id: process.env.RESEND_MONTHLY_BRIEF_TOPIC_ID as string,
+      id: envValues.RESEND_MONTHLY_BRIEF_TOPIC_ID,
       subscription: "opt_in" as const,
     },
   ];
 
-  const createFailureCode = await runResendCall(() =>
+  const createResult = await runResendCall(() =>
     resend.contacts.create({
       email,
       firstName,
@@ -134,7 +135,7 @@ export async function subscribeToMonthlyBrief({
       topics,
     }),
   );
-  if (!createFailureCode) {
+  if (createResult.ok) {
     if (isNurtureSource(source)) {
       await sendOptInEvent({ resend, email, source });
     }
@@ -145,40 +146,42 @@ export async function subscribeToMonthlyBrief({
   // create is only treated as an existing contact once a lookup confirms
   // it. Anything else (a rate limit, an outage, a bad key) is reported as
   // the create's own error.
-  const contactLookup = await lookUpContact(resend, email);
-  if (contactLookup.status !== "exists") {
-    reportFailure(source, `create ${createFailureCode}`);
+  const contactStatus = await fetchContactStatus(resend, email);
+  if (contactStatus.status !== "exists") {
+    reportResendWarning(failureSummary, `create ${createResult.failureCode}`);
     return { isSubscribed: false };
   }
 
   // An existing contact (an earlier opt-in, or someone who opted out and
   // has now ticked the box again) is added to the segment and opted back in
   // to the topic. A fresh tick is fresh express consent.
-  const segmentFailureCode = await runResendCall(() =>
+  const createFailureDetail = `create ${createResult.failureCode}, existing-contact update`;
+  const segmentResult = await runResendCall(() =>
     resend.contacts.segments.add({ email, segmentId }),
   );
-  const topicFailureCode = segmentFailureCode
-    ? null
-    : await runResendCall(() =>
-        resend.contacts.topics.update({ email, topics }),
-      );
-  if (!segmentFailureCode && !topicFailureCode) {
-    // The event is sent again for a returning contact on purpose: the
-    // automation's nurture_started_at guard absorbs repeat events (#642
-    // decision 13), so a re-opt-in never restarts the nurture.
-    if (isNurtureSource(source)) {
-      await sendOptInEvent({ resend, email, source });
-    }
-    return { isSubscribed: true };
+  if (!segmentResult.ok) {
+    reportResendWarning(
+      failureSummary,
+      `${createFailureDetail} segment ${segmentResult.failureCode}`,
+    );
+    return { isSubscribed: false };
+  }
+  const topicResult = await runResendCall(() =>
+    resend.contacts.topics.update({ email, topics }),
+  );
+  if (!topicResult.ok) {
+    reportResendWarning(
+      failureSummary,
+      `${createFailureDetail} topic ${topicResult.failureCode}`,
+    );
+    return { isSubscribed: false };
   }
 
-  reportFailure(
-    source,
-    `create ${createFailureCode}, existing-contact update ${
-      segmentFailureCode
-        ? `segment ${segmentFailureCode}`
-        : `topic ${topicFailureCode}`
-    }`,
-  );
-  return { isSubscribed: false };
+  // The event is sent again for a returning contact on purpose: the
+  // automation's nurture_started_at guard absorbs repeat events (#642
+  // decision 13), so a re-opt-in never restarts the nurture.
+  if (isNurtureSource(source)) {
+    await sendOptInEvent({ resend, email, source });
+  }
+  return { isSubscribed: true };
 }

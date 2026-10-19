@@ -4,25 +4,29 @@ import type { Resend } from "resend";
 /**
  * What the best-effort Resend writes share (the brief opt-in, the
  * paid-customer flag and the confirmation email): running one SDK call down
- * to a PII-free failure code, looking a contact up, and reporting a failure
+ * to a PII-free result, fetching whether an address is a contact, and reporting a failure
  * as a Sentry warning. None of these throw.
  */
 
-type ResendCallResult = { error: { name: string } | null };
+type ResendSdkResult = { error: { name: string } | null };
+
+/** One Resend call's outcome: on failure, a PII-free failure code only. */
+export type ResendCallResult =
+  { ok: true } | { ok: false; failureCode: string };
 
 /**
- * Run one Resend call and return its failure code, or null when it worked.
- * The code is the API error's name, or "exception" when the SDK threw: error
- * messages can echo the address, so they are never reported.
+ * Run one Resend call down to its outcome. The failure code is the API
+ * error's name, or "exception" when the SDK threw: error messages can echo
+ * the address, so they are never reported.
  */
 export async function runResendCall(
-  call: () => Promise<ResendCallResult>,
-): Promise<string | null> {
+  call: () => Promise<ResendSdkResult>,
+): Promise<ResendCallResult> {
   try {
     const { error } = await call();
-    return error ? error.name : null;
+    return error ? { ok: false, failureCode: error.name } : { ok: true };
   } catch {
-    return "exception";
+    return { ok: false, failureCode: "exception" };
   }
 }
 
@@ -33,11 +37,11 @@ export type ContactLookup =
   | { status: "failed"; failureCode: string };
 
 /**
- * Look the address up: Resend answers `not_found` (404) for an address that
+ * Fetch whether the address is a contact: Resend answers `not_found` (404) for an address that
  * isn't a contact; any other error is a PII-free failure code, as in
  * runResendCall.
  */
-export async function lookUpContact(
+export async function fetchContactStatus(
   resend: Resend,
   email: string,
 ): Promise<ContactLookup> {
@@ -53,8 +57,14 @@ export async function lookUpContact(
   }
 }
 
-/** Log and send a PII-free failure message to Sentry as a warning. */
-export function reportResendWarning(message: string): void {
+/**
+ * Log and send a PII-free failure to Sentry as a warning, worded
+ * "<summary>: <detail>". The one reporter every best-effort Resend write
+ * uses, so their warnings read alike: the summary names the write (and its
+ * form or source), the detail is a failure code or missing-env list.
+ */
+export function reportResendWarning(summary: string, detail: string): void {
+  const message = `${summary}: ${detail}`;
   console.warn(message);
   Sentry.captureMessage(message, "warning");
 }

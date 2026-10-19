@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Resend } from "resend";
 import { normalizeEmailAddress } from "@/lib/email-address";
 import { reportResendWarning, runResendCall } from "@/lib/resend-client";
+import { describeMissingEnv, readRequiredEnv } from "@/lib/required-env";
 import { formatTorontoDate } from "@/lib/toronto-date";
 
 /**
@@ -53,25 +54,26 @@ function buildIdempotencyKey(
   return `followup-${formType}/${emailHash}/${formatTorontoDate()}`;
 }
 
-function reportFailure(formType: ConfirmationFormType, detail: string): void {
-  reportResendWarning(`Confirmation email not sent (${formType}): ${detail}`);
-}
-
 export async function sendConfirmationEmail({
   formType,
   email,
   firstName,
 }: ConfirmationEmail): Promise<ConfirmationEmailResult> {
+  const failureSummary = `Confirmation email not sent (${formType})`;
   const templateEnvName = TEMPLATE_ENV_NAMES[formType];
-  const missingEnvNames = [
+  const requiredEnv = readRequiredEnv([
     "RESEND_API_KEY",
     "RESEND_FROM_EMAIL",
     templateEnvName,
-  ].filter((name) => !process.env[name]);
-  if (missingEnvNames.length > 0) {
-    reportFailure(formType, `${missingEnvNames.join(", ")} not set`);
+  ]);
+  if (!requiredEnv.isComplete) {
+    reportResendWarning(
+      failureSummary,
+      describeMissingEnv(requiredEnv.missingNames),
+    );
     return { isSent: false };
   }
+  const envValues = requiredEnv.valuesByName;
 
   // Omitted, not "", when unknown: the template's fallback is documented to
   // apply to a missing variable, not to an empty one
@@ -83,15 +85,15 @@ export async function sendConfirmationEmail({
   // Not notify.ts's sendResendEmail: that path logs the raw SDK error
   // (which can echo the address) and has no template, reply-to or
   // idempotency key; this one reports PII-free failure codes only.
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const failureCode = await runResendCall(() =>
+  const resend = new Resend(envValues.RESEND_API_KEY);
+  const sendResult = await runResendCall(() =>
     resend.emails.send(
       {
-        from: `Boximity <${process.env.RESEND_FROM_EMAIL}>`,
+        from: `Boximity <${envValues.RESEND_FROM_EMAIL}>`,
         to: email,
         replyTo: REPLY_TO,
         template: {
-          id: process.env[templateEnvName] as string,
+          id: envValues[templateEnvName],
           variables,
         },
       },
@@ -99,8 +101,8 @@ export async function sendConfirmationEmail({
     ),
   );
 
-  if (failureCode) {
-    reportFailure(formType, failureCode);
+  if (!sendResult.ok) {
+    reportResendWarning(failureSummary, sendResult.failureCode);
     return { isSent: false };
   }
   return { isSent: true };

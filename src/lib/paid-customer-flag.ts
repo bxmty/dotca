@@ -1,14 +1,13 @@
 import { Resend } from "resend";
 import { normalizeEmailAddress } from "@/lib/email-address";
 import {
-  lookUpContact,
+  fetchContactStatus,
   reportResendWarning,
   runResendCall,
 } from "@/lib/resend-client";
+import { describeMissingEnv, readRequiredEnv } from "@/lib/required-env";
 
-function reportFailure(detail: string): void {
-  reportResendWarning(`Paid-customer flag not set in Resend: ${detail}`);
-}
+const FAILURE_SUMMARY = "Paid-customer flag not set in Resend";
 
 /**
  * Flag a paying customer's Resend contact with `customer = "paid"` (#648,
@@ -33,26 +32,29 @@ export async function markContactAsPaid({
 }: {
   email: string;
 }): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    reportFailure("RESEND_API_KEY not set");
+  const requiredEnv = readRequiredEnv(["RESEND_API_KEY"]);
+  if (!requiredEnv.isComplete) {
+    reportResendWarning(
+      FAILURE_SUMMARY,
+      describeMissingEnv(requiredEnv.missingNames),
+    );
     return;
   }
 
-  const resend = new Resend(apiKey);
+  const resend = new Resend(requiredEnv.valuesByName.RESEND_API_KEY);
   const email = normalizeEmailAddress(rawEmail);
 
-  const contactLookup = await lookUpContact(resend, email);
-  if (contactLookup.status === "missing") return;
-  if (contactLookup.status === "failed") {
-    reportFailure(`lookup ${contactLookup.failureCode}`);
+  const contactStatus = await fetchContactStatus(resend, email);
+  if (contactStatus.status === "missing") return;
+  if (contactStatus.status === "failed") {
+    reportResendWarning(FAILURE_SUMMARY, `lookup ${contactStatus.failureCode}`);
     return;
   }
 
-  const updateFailureCode = await runResendCall(() =>
+  const updateResult = await runResendCall(() =>
     resend.contacts.update({ email, properties: { customer: "paid" } }),
   );
-  if (updateFailureCode) {
-    reportFailure(`update ${updateFailureCode}`);
+  if (!updateResult.ok) {
+    reportResendWarning(FAILURE_SUMMARY, `update ${updateResult.failureCode}`);
   }
 }
