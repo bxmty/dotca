@@ -209,6 +209,7 @@ describe("POST /api/stripe/webhook", () => {
       phone: "+11234567890",
       company: "Test Co",
       opportunityAmountDollars: 495,
+      hasOptedInToBrief: false,
       fields: expect.objectContaining({
         Plan: "basic",
         "Billing cycle": "monthly",
@@ -482,6 +483,22 @@ describe("POST /api/stripe/webhook", () => {
         }),
       );
       expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+    });
+
+    it("records the checkout opt-in on the Syncro lead", async () => {
+      await deliverInvoice(optedInInvoice);
+
+      expect(mockCreateLead).toHaveBeenCalledWith(
+        expect.objectContaining({ hasOptedInToBrief: true }),
+      );
+    });
+
+    it("records no consent on the Syncro lead without the opt-in", async () => {
+      await deliverInvoice(paidInvoice);
+
+      expect(mockCreateLead).toHaveBeenCalledWith(
+        expect.objectContaining({ hasOptedInToBrief: false }),
+      );
     });
 
     it("makes no Resend call when the metadata carries no opt-in", async () => {

@@ -133,6 +133,58 @@ describe("createLead", () => {
     expect(body.hidden_notes).toMatch(/staging/i);
   });
 
+  describe("monthly brief consent", () => {
+    beforeEach(() => {
+      // 02:30 UTC on the 20th is still the evening of the 19th in Toronto
+      jest.useFakeTimers({ now: new Date("2026-10-20T02:30:00Z") });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("records the opt-in and its Toronto date in the hidden notes", async () => {
+      const fetchMock = mockFetchResponse({ status: 200, body: { lead: {} } });
+
+      await createLead({ ...contactLead, hasOptedInToBrief: true });
+
+      expect(sentBody(fetchMock).hidden_notes).toBe(
+        "Opted in to the monthly security brief on 2026-10-19",
+      );
+    });
+
+    it("keeps the staging note alongside the consent line", async () => {
+      process.env.NEXT_PUBLIC_ENVIRONMENT = "staging";
+      const fetchMock = mockFetchResponse({ status: 200, body: { lead: {} } });
+
+      await createLead({ ...contactLead, hasOptedInToBrief: true });
+
+      const notes = String(sentBody(fetchMock).hidden_notes).split("\n");
+      expect(notes).toHaveLength(2);
+      expect(notes[0]).toMatch(/staging/i);
+      expect(notes[1]).toBe(
+        "Opted in to the monthly security brief on 2026-10-19",
+      );
+    });
+
+    it.each([
+      ["not ticked", false],
+      ["not given", undefined],
+    ])(
+      "sends no hidden notes in production when the box was %s",
+      async (_label, hasOptedInToBrief) => {
+        const fetchMock = mockFetchResponse({
+          status: 200,
+          body: { lead: {} },
+        });
+
+        await createLead({ ...contactLead, hasOptedInToBrief });
+
+        expect(sentBody(fetchMock)).not.toHaveProperty("hidden_notes");
+      },
+    );
+  });
+
   it("reports a 4xx as a rejection with Syncro's status and message", async () => {
     mockFetchResponse({
       status: 422,

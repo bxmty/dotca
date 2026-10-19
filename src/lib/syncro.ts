@@ -1,4 +1,5 @@
 import type { NotificationFormType } from "@/lib/notify";
+import { formatTorontoDate } from "@/lib/toronto-date";
 
 /**
  * Syncro (PSA) writes. Website leads land here as Syncro Leads; the
@@ -42,6 +43,11 @@ export interface LeadSubmission {
   fields: Record<string, string>;
   /** Paid signups: the amount charged */
   opportunityAmountDollars?: number;
+  /**
+   * The submitter ticked the monthly security brief box. Recorded, with the
+   * date, in the Lead's hidden notes so the consent shows in Syncro (#599).
+   */
+  hasOptedInToBrief?: boolean;
 }
 
 const SUBJECT_PREFIX: Record<NotificationFormType, string> = {
@@ -79,10 +85,25 @@ function splitName(name: string): { firstName: string; lastName: string } {
   return { firstName, lastName: rest.join(" ") };
 }
 
+/** One line per note; empty when there is nothing to record */
+function buildHiddenNotes(lead: LeadSubmission, isStaging: boolean): string {
+  const notes: string[] = [];
+  if (isStaging) {
+    notes.push(STAGING_NOTE);
+  }
+  if (lead.hasOptedInToBrief === true) {
+    notes.push(
+      `Opted in to the monthly security brief on ${formatTorontoDate()}`,
+    );
+  }
+  return notes.join("\n");
+}
+
 function buildLeadPayload(lead: LeadSubmission): Record<string, unknown> {
   const { firstName, lastName } = splitName(lead.name);
   const subject = `${SUBJECT_PREFIX[lead.formType]} — ${lead.company || lead.name}`;
   const isStaging = isStagingDeploy();
+  const hiddenNotes = buildHiddenNotes(lead, isStaging);
 
   return {
     first_name: firstName,
@@ -94,7 +115,7 @@ function buildLeadPayload(lead: LeadSubmission): Record<string, unknown> {
     ticket_description: Object.entries(lead.fields)
       .map(([label, value]) => `${label}: ${value}`)
       .join("\n"),
-    ...(isStaging ? { hidden_notes: STAGING_NOTE } : {}),
+    ...(hiddenNotes ? { hidden_notes: hiddenNotes } : {}),
     ...(lead.opportunityAmountDollars !== undefined
       ? { opportunity_amount_dollars: lead.opportunityAmountDollars }
       : {}),

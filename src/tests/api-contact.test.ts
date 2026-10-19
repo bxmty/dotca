@@ -176,6 +176,7 @@ describe("Contact API Route", () => {
       email: "test@example.com",
       phone: "+11234567890",
       company: "Acme",
+      hasOptedInToBrief: false,
       fields: expect.objectContaining({
         Name: "Test User",
         Email: "test@example.com",
@@ -560,9 +561,20 @@ describe("Contact API Route", () => {
 
         expect(mockCreateResendContact).not.toHaveBeenCalled();
         expect(mockSendResendEvent).not.toHaveBeenCalled();
+        expect(mockCreateLead).toHaveBeenCalledWith(
+          expect.objectContaining({ hasOptedInToBrief: false }),
+        );
         expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
       },
     );
+
+    it("records the opt-in on the Syncro lead", async () => {
+      await POST(buildRequest({ ...validBody, wantsBrief: true }));
+
+      expect(mockCreateLead).toHaveBeenCalledWith(
+        expect.objectContaining({ hasOptedInToBrief: true }),
+      );
+    });
 
     it("still succeeds, with a Sentry warning, when the Resend write fails", async () => {
       mockCreateResendContact.mockResolvedValue({

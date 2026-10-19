@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         phone: formattedPhone,
         company: company || "",
         fields,
+        hasOptedInToBrief: wantsBrief === true,
       }),
       sendWebmasterNotification({
         formType: "Contact",

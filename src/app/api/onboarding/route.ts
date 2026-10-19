@@ -124,6 +124,7 @@ export async function POST(request: Request) {
         phone,
         company: data.companyName,
         fields,
+        hasOptedInToBrief: data.wantsBrief === true,
       }),
       sendWebmasterNotification({
         formType: "Onboarding",

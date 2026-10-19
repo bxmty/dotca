@@ -76,6 +76,7 @@ async function handleNewPaidSubscription(
       company,
       fields,
       opportunityAmountDollars: invoice.amount_paid / 100,
+      hasOptedInToBrief: wantsBrief,
     }),
     sendWebmasterNotification({
       formType: "Paid signup",

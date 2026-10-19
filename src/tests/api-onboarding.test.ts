@@ -130,6 +130,7 @@ describe("Onboarding API Route", () => {
       email: "test@example.com",
       phone: "+11234567890",
       company: "Test Company",
+      hasOptedInToBrief: false,
       fields: expect.objectContaining({
         Company: "Test Company",
         Industry: "Technology",
@@ -553,8 +554,19 @@ describe("Onboarding API Route", () => {
             fields: expect.objectContaining({ "Monthly brief": "No" }),
           }),
         );
+        expect(mockCreateLead).toHaveBeenCalledWith(
+          expect.objectContaining({ hasOptedInToBrief: false }),
+        );
       },
     );
+
+    it("records the opt-in on the Syncro lead", async () => {
+      await POST(buildRequest({ ...validOnboardingData, wantsBrief: true }));
+
+      expect(mockCreateLead).toHaveBeenCalledWith(
+        expect.objectContaining({ hasOptedInToBrief: true }),
+      );
+    });
 
     it("still succeeds, with a Sentry warning, when the Resend write fails", async () => {
       mockCreateResendContact.mockRejectedValue(new Error("socket hang up"));
