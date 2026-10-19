@@ -32,8 +32,9 @@ jest.mock("@/lib/stripe", () => ({
   MissingStripePriceError: class extends Error {},
 }));
 
-jest.mock("@/lib/brevo", () => ({
-  addBrevoContact: jest.fn().mockResolvedValue({ ok: true }),
+jest.mock("@/lib/syncro", () => ({
+  ...jest.requireActual("@/lib/syncro"),
+  createLead: jest.fn().mockResolvedValue({ ok: true, leadId: 1 }),
 }));
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn().mockResolvedValue(true),
