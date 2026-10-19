@@ -5,7 +5,8 @@ import LeadMagnetGate from "@/app/components/LeadMagnetGate";
 
 const UNAVAILABLE_COPY =
   "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.";
-const BRIEF_LABEL = "Send me Boximity's monthly security brief";
+const BRIEF_LABEL =
+  "Send me Boximity's monthly security brief and occasional tips and offers";
 
 const mockFetch = global.fetch as jest.Mock;
 

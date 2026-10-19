@@ -3,7 +3,8 @@
 /**
  * The monthly security brief opt-in (bxmty/dotca#599, copy widened by #642
  * so the consent covers the nurture sequence). One component so the contact
- * form, onboarding and checkout all ask for consent in the same words.
+ * form, onboarding, checkout and the lead-magnet gate all ask for consent
+ * in the same words.
  *
  * CASL: consent must be express, so the box is never pre-checked and the
  * caller starts its state at false.
