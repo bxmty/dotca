@@ -1,5 +1,3 @@
-import { isPossiblePhoneNumber, parsePhoneNumber } from "libphonenumber-js";
-
 /**
  * Brevo (CRM) contact writes, shared by the contact route, the onboarding
  * route, and the Stripe webhook.
@@ -17,24 +15,8 @@ export interface BrevoContactResult {
   message?: string;
 }
 
-/**
- * Format a phone number to the E.164 form Brevo's SMS field expects.
- * Numbers without a country code are assumed North American (+1).
- * Returns null when the number can't possibly be valid.
- */
-export function formatE164Phone(phone: string): string | null {
-  try {
-    const phoneInput = phone.startsWith("+")
-      ? phone
-      : `+1${phone.replace(/\D/g, "")}`;
-    if (!isPossiblePhoneNumber(phoneInput)) {
-      return null;
-    }
-    return parsePhoneNumber(phoneInput).format("E.164");
-  } catch {
-    return null;
-  }
-}
+// Moved to @/lib/phone; re-exported until this module is deleted (#600)
+export { formatE164Phone } from "@/lib/phone";
 
 export async function addBrevoContact({
   listId,
