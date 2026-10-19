@@ -110,27 +110,6 @@ validate_stripe_key() {
     return 0
 }
 
-validate_brevo_key() {
-    local key="$1"
-
-    if [[ -z "$key" ]]; then
-        log_error "Brevo API key is empty"
-        ((FAILED++))
-        return 1
-    fi
-
-    # Brevo API keys are typically base64-like strings
-    if [[ ! "$key" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
-        log_error "Invalid Brevo API key format (should be base64-like string)"
-        ((FAILED++))
-        return 1
-    fi
-
-    log_success "Brevo API key format valid"
-    ((PASSED++))
-    return 0
-}
-
 validate_ga_id() {
     local ga_id="$1"
     local environment="$2"
@@ -227,10 +206,6 @@ main() {
     # Stripe webhook signing secret
     log_info "Validating Stripe webhook secret..."
     validate_secret_format "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET:-}" '^whsec_[A-Za-z0-9]{20,}$'
-
-    # Brevo API Key
-    log_info "Validating Brevo API key..."
-    validate_brevo_key "${BREVO_API_KEY:-}"
 
     # Resend (email redundancy)
     log_info "Validating Resend configuration..."
