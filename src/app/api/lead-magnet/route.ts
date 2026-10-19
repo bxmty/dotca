@@ -8,8 +8,9 @@ import {
 } from "@/lib/notify";
 import { isEmailAddress } from "@/lib/formValidation";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
-import { createSyncroLead } from "@/lib/syncro-leads";
-import { addResendMarketingContact } from "@/lib/resend-marketing";
+import { createLead, describeLeadOutcome, toLeadResult } from "@/lib/syncro";
+import { logLeadSubmission } from "@/lib/lead-log";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { SITE_URL } from "@/lib/schema";
 import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
@@ -67,16 +68,47 @@ export async function POST(request: Request) {
       );
     }
 
-    // The lead must exist somewhere before the asset is released. Until
-    // #596-601 lands this is a stub that always throws, so every real
-    // submission takes the 503 path below — the same one a Syncro outage
-    // would take.
-    try {
-      await createSyncroLead({ email, source: `lead-magnet:${magnet.slug}` });
-    } catch (error) {
-      const detail = `Lead magnet capture failure (${magnet.slug}): ${
-        (error as Error).message
-      }`;
+    const { title } = magnet.frontmatter;
+    const hasOptedInToBrief = wantsBrief === true;
+    // Shared by the Syncro ticket description and the webmaster email. The
+    // Source line is what tells a lead-magnet Lead apart in Syncro.
+    const fields = {
+      Email: email,
+      Resource: title,
+      Source: `lead-magnet:${magnet.slug}`,
+      "Monthly brief": hasOptedInToBrief ? "Yes" : "No",
+    };
+
+    // The lead must exist in Syncro before the asset is released: a Syncro
+    // rejection or outage answers 503 and sends nothing. There is no name
+    // field on the gate, so the address stands in for it (as it does in the
+    // webmaster email). Settled like the other routes' sinks, so even a
+    // throw reads as an unreachable Syncro.
+    const [syncroSettled] = await Promise.allSettled([
+      createLead({
+        formType: "Lead magnet",
+        name: email,
+        email,
+        fields,
+        hasOptedInToBrief,
+      }),
+    ]);
+    const syncroResult = toLeadResult(syncroSettled);
+    if (!syncroResult.ok) {
+      // Nothing else was sent, so this line is the only record of the lead
+      logLeadSubmission({
+        formType: "Lead magnet",
+        name: "",
+        company: "",
+        email,
+        phone: "",
+        syncro: syncroResult,
+        isEmailSent: false,
+      });
+      // No submitted values in this string: it goes to Sentry
+      const detail = `Lead magnet capture failure (${magnet.slug}): Syncro ${describeLeadOutcome(
+        syncroResult,
+      )}`;
       console.error(detail);
       Sentry.captureMessage(detail, "error");
       return NextResponse.json(
@@ -85,14 +117,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Also a stub until #596-601, and deliberately not wrapped: it should
-    // fail loudly during development. bxmty/dotca#606 makes it best-effort
-    // (Sentry.captureMessage on failure, never fail the response).
-    if (wantsBrief === true) {
-      await addResendMarketingContact({
-        email,
-        topic: "monthly-security-brief",
-      });
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a PII-free
+    // Sentry warning inside subscribeToMonthlyBrief, never a failed response.
+    if (hasOptedInToBrief) {
+      await subscribeToMonthlyBrief({ email, source: "lead-magnet" });
     }
 
     // Relative for the on-page link, so it works on every environment;
@@ -120,19 +149,14 @@ export async function POST(request: Request) {
       slug: magnet.slug,
       token,
     })}`;
-    const { title } = magnet.frontmatter;
 
     // The lead already exists; both emails are notifications about it, so
     // neither can fail the response.
-    await Promise.allSettled([
+    const [notifySettled] = await Promise.allSettled([
       sendWebmasterNotification({
         formType: "Lead magnet",
         submitterName: email,
-        fields: {
-          Email: email,
-          Resource: title,
-          "Monthly brief": wantsBrief === true ? "Yes" : "No",
-        },
+        fields,
       }),
       sendLeadMagnetDeliveryEmail({
         to: email,
@@ -140,6 +164,25 @@ export async function POST(request: Request) {
         title,
       }),
     ]);
+    const isNotifySent =
+      notifySettled.status === "fulfilled" && notifySettled.value;
+
+    logLeadSubmission({
+      formType: "Lead magnet",
+      name: "",
+      company: "",
+      email,
+      phone: "",
+      syncro: syncroResult,
+      isEmailSent: isNotifySent,
+    });
+
+    if (!isNotifySent) {
+      // No submitted values in this string: it goes to Sentry
+      const detail = `Lead magnet delivery failure (${magnet.slug}): Syncro ok, webmaster email failed`;
+      console.error(detail);
+      Sentry.captureMessage(detail, "error");
+    }
 
     return NextResponse.json({ success: true, downloadUrl });
   } catch (error) {

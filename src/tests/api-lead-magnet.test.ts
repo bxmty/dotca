@@ -1,11 +1,12 @@
 /**
  * @jest-environment node
  */
+import fs from "fs";
 import path from "path";
 import * as Sentry from "@sentry/nextjs";
 import { POST } from "@/app/api/lead-magnet/route";
-import { createSyncroLead } from "@/lib/syncro-leads";
-import { addResendMarketingContact } from "@/lib/resend-marketing";
+import { GET } from "@/app/api/lead-magnet/download/route";
+import { createLead } from "@/lib/syncro";
 import {
   sendLeadMagnetDeliveryEmail,
   sendWebmasterNotification,
@@ -21,26 +22,38 @@ jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
   sendLeadMagnetDeliveryEmail: jest.fn(),
 }));
-// The stubs run for real (they throw) unless a test overrides one call to
-// exercise the path that opens up once #596-601 replaces them.
-jest.mock("@/lib/syncro-leads", () => {
-  const actual = jest.requireActual("@/lib/syncro-leads");
-  return { createSyncroLead: jest.fn(actual.createSyncroLead) };
-});
-jest.mock("@/lib/resend-marketing", () => {
-  const actual = jest.requireActual("@/lib/resend-marketing");
-  return {
-    addResendMarketingContact: jest.fn(actual.addResendMarketingContact),
-  };
-});
+// The Syncro write is mocked; its outcome summaries stay real
+jest.mock("@/lib/syncro", () => ({
+  ...jest.requireActual("@/lib/syncro"),
+  createLead: jest.fn(),
+}));
+// The Resend SDK is the boundary for the brief opt-in (notify is mocked
+// above, so this only stands in for the opt-in's contact write and event)
+const mockCreateResendContact = jest.fn();
+const mockSendResendEvent = jest.fn();
+jest.mock("resend", () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    contacts: {
+      create: mockCreateResendContact,
+      get: jest.fn().mockResolvedValue({
+        data: null,
+        error: { name: "not_found", message: "", statusCode: 404 },
+      }),
+      segments: { add: jest.fn() },
+      topics: { update: jest.fn() },
+    },
+    events: { send: mockSendResendEvent },
+  })),
+}));
 
-const mockCreateSyncroLead = createSyncroLead as jest.Mock;
-const mockAddResendMarketingContact = addResendMarketingContact as jest.Mock;
+const mockCreateLead = createLead as jest.Mock;
 const mockWebmasterNotification = sendWebmasterNotification as jest.Mock;
 const mockDeliveryEmail = sendLeadMagnetDeliveryEmail as jest.Mock;
+const mockCaptureMessage = Sentry.captureMessage as jest.Mock;
 
 const FIXTURE_DIR = path.join(__dirname, "fixtures", "lead-magnets");
 const SLUG = "test-fixture-guide";
+const TITLE = "Test fixture guide (not real content)";
 const EMAIL = "jane.doe@example.com";
 const UNAVAILABLE_COPY =
   "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.";
@@ -68,7 +81,23 @@ async function expectResponse(
   expect(await response.json()).toEqual(body);
 }
 
+function readLeadLogLines(log: jest.SpyInstance): unknown[] {
+  return log.mock.calls
+    .map(([line]) => String(line))
+    .filter((line) => line.includes('"event":"lead_submission"'))
+    .map((line) => JSON.parse(line));
+}
+
+function expectNoEmailInSentry() {
+  for (const [detail] of mockCaptureMessage.mock.calls) {
+    expect(String(detail)).not.toContain(EMAIL);
+    expect(String(detail)).not.toContain("jane");
+  }
+}
+
 describe("POST /api/lead-magnet", () => {
+  let log: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
     resetRateLimits();
@@ -76,10 +105,21 @@ describe("POST /api/lead-magnet", () => {
       ...originalEnv,
       LEAD_MAGNET_CONTENT_DIR: FIXTURE_DIR,
       LEAD_MAGNET_SIGNING_SECRET: "s".repeat(64),
+      RESEND_API_KEY: "re_test_key",
+      RESEND_MONTHLY_BRIEF_SEGMENT_ID: "seg_brief",
+      RESEND_MONTHLY_BRIEF_TOPIC_ID: "topic_brief",
+      RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
     jest.spyOn(console, "error").mockImplementation(() => {});
+    log = jest.spyOn(console, "log").mockImplementation(() => {});
+    mockCreateLead.mockResolvedValue({ ok: true, leadId: 42 });
     mockWebmasterNotification.mockResolvedValue(true);
     mockDeliveryEmail.mockResolvedValue(true);
+    mockCreateResendContact.mockResolvedValue({
+      data: { id: "contact_123", object: "contact" },
+      error: null,
+    });
+    mockSendResendEvent.mockResolvedValue({ data: {}, error: null });
   });
 
   afterEach(() => {
@@ -99,7 +139,7 @@ describe("POST /api/lead-magnet", () => {
       200,
       { success: true },
     );
-    expect(mockCreateSyncroLead).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
     expect(mockDeliveryEmail).not.toHaveBeenCalled();
   });
 
@@ -111,7 +151,7 @@ describe("POST /api/lead-magnet", () => {
     await expectResponse(await post({ slug: SLUG, email: EMAIL }), 429, {
       error: "Too many submissions. Please try again later.",
     });
-    expect(mockCreateSyncroLead).toHaveBeenCalledTimes(5);
+    expect(mockCreateLead).toHaveBeenCalledTimes(5);
   });
 
   it.each([
@@ -123,7 +163,7 @@ describe("POST /api/lead-magnet", () => {
     await expectResponse(await post({ slug, email: EMAIL }), 404, {
       error: "Resource not found",
     });
-    expect(mockCreateSyncroLead).not.toHaveBeenCalled();
+    expect(mockCreateLead).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the email is missing", async () => {
@@ -138,127 +178,257 @@ describe("POST /api/lead-magnet", () => {
       await expectResponse(await post({ slug: SLUG, email }), 400, {
         error: "Please enter a valid email address",
       });
-      expect(mockCreateSyncroLead).not.toHaveBeenCalled();
+      expect(mockCreateLead).not.toHaveBeenCalled();
     },
   );
 
-  it("returns 503 with the failure copy while createSyncroLead is a stub", async () => {
-    await expectResponse(
-      await post({ slug: SLUG, email: EMAIL, wantsBrief: true }),
-      503,
-      { error: UNAVAILABLE_COPY },
-    );
-    expect(mockCreateSyncroLead).toHaveBeenCalledWith({
+  it("records a Syncro Lead tagged with the magnet slug", async () => {
+    await post({ slug: SLUG, email: EMAIL });
+
+    expect(mockCreateLead).toHaveBeenCalledTimes(1);
+    expect(mockCreateLead).toHaveBeenCalledWith({
+      formType: "Lead magnet",
+      name: EMAIL,
       email: EMAIL,
-      source: `lead-magnet:${SLUG}`,
+      fields: {
+        Email: EMAIL,
+        Resource: TITLE,
+        Source: `lead-magnet:${SLUG}`,
+        "Monthly brief": "No",
+      },
+      hasOptedInToBrief: false,
     });
-    expect(Sentry.captureMessage).toHaveBeenCalledWith(
-      expect.stringContaining("not yet implemented"),
-      "error",
-    );
-    expect(mockAddResendMarketingContact).not.toHaveBeenCalled();
-    expect(mockDeliveryEmail).not.toHaveBeenCalled();
-    expect(mockWebmasterNotification).not.toHaveBeenCalled();
   });
 
-  describe("once the lead is recorded", () => {
-    beforeEach(() => {
-      mockCreateSyncroLead.mockResolvedValueOnce(undefined);
-    });
+  it("records the brief consent on the Lead when the box is ticked", async () => {
+    await post({ slug: SLUG, email: EMAIL, wantsBrief: true });
 
-    it("returns a signed download link and sends both notifications", async () => {
-      const response = await post({ slug: SLUG, email: EMAIL });
+    expect(mockCreateLead).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hasOptedInToBrief: true,
+        fields: expect.objectContaining({ "Monthly brief": "Yes" }),
+      }),
+    );
+  });
 
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.success).toBe(true);
-      const downloadUrl = new URL(body.downloadUrl, "https://boximity.ca");
-      expect(downloadUrl.pathname).toBe("/api/lead-magnet/download");
-      expect(downloadUrl.searchParams.get("slug")).toBe(SLUG);
-      expect(
-        verifyLeadMagnetToken({
-          slug: SLUG,
-          token: downloadUrl.searchParams.get("token") ?? "",
-        }).isValid,
-      ).toBe(true);
+  it("trims the email before recording the lead", async () => {
+    const response = await post({ slug: SLUG, email: `  ${EMAIL}  ` });
 
-      expect(mockDeliveryEmail).toHaveBeenCalledWith({
-        to: EMAIL,
-        downloadUrl: `https://boximity.ca${body.downloadUrl}`,
-        title: "Test fixture guide (not real content)",
-      });
-      expect(mockWebmasterNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          formType: "Lead magnet",
-          fields: expect.objectContaining({ Email: EMAIL }),
-        }),
-      );
-    });
+    expect(response.status).toBe(200);
+    expect(mockCreateLead).toHaveBeenCalledWith(
+      expect.objectContaining({ email: EMAIL }),
+    );
+    expect(mockDeliveryEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: EMAIL }),
+    );
+  });
 
-    it("trims the email before recording the lead", async () => {
-      const response = await post({ slug: SLUG, email: `  ${EMAIL}  ` });
+  it("returns a signed download link that serves the PDF, and sends both notifications", async () => {
+    const response = await post({ slug: SLUG, email: EMAIL });
 
-      expect(response.status).toBe(200);
-      expect(mockCreateSyncroLead).toHaveBeenCalledWith({
-        email: EMAIL,
-        source: `lead-magnet:${SLUG}`,
-      });
-      expect(mockDeliveryEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ to: EMAIL }),
-      );
-    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    const downloadUrl = new URL(body.downloadUrl, "https://boximity.ca");
+    expect(downloadUrl.pathname).toBe("/api/lead-magnet/download");
+    expect(downloadUrl.searchParams.get("slug")).toBe(SLUG);
+    expect(
+      verifyLeadMagnetToken({
+        slug: SLUG,
+        token: downloadUrl.searchParams.get("token") ?? "",
+      }).isValid,
+    ).toBe(true);
 
-    it.each([
-      ["unset", undefined],
-      ["shorter than 32 characters", "too-short"],
-    ])(
-      "returns 503 with the failure copy when the signing secret is %s",
-      async (_name, secret) => {
-        process.env.LEAD_MAGNET_SIGNING_SECRET = secret;
-
-        await expectResponse(await post({ slug: SLUG, email: EMAIL }), 503, {
-          error: UNAVAILABLE_COPY,
-        });
-        expect(Sentry.captureMessage).toHaveBeenCalledWith(
-          expect.stringContaining("LEAD_MAGNET_SIGNING_SECRET"),
-          "error",
-        );
-        expect(Sentry.captureMessage).not.toHaveBeenCalledWith(
-          expect.stringContaining(EMAIL),
-          expect.anything(),
-        );
-        expect(mockDeliveryEmail).not.toHaveBeenCalled();
-      },
+    // The link the visitor is handed actually downloads the asset
+    const download = await GET(
+      new Request(`http://localhost${body.downloadUrl}`),
+    );
+    expect(download.status).toBe(200);
+    expect(download.headers.get("Content-Type")).toBe("application/pdf");
+    expect(Buffer.from(await download.arrayBuffer())).toEqual(
+      fs.readFileSync(path.join(FIXTURE_DIR, "assets", `${SLUG}.pdf`)),
     );
 
-    it("succeeds even when both notifications fail", async () => {
-      mockDeliveryEmail.mockRejectedValueOnce(new Error("resend down"));
-      mockWebmasterNotification.mockResolvedValueOnce(false);
-
-      const response = await post({ slug: SLUG, email: EMAIL });
-
-      expect(response.status).toBe(200);
-      expect((await response.json()).success).toBe(true);
+    expect(mockDeliveryEmail).toHaveBeenCalledWith({
+      to: EMAIL,
+      downloadUrl: `https://boximity.ca${body.downloadUrl}`,
+      title: TITLE,
     });
+    expect(mockWebmasterNotification).toHaveBeenCalledWith({
+      formType: "Lead magnet",
+      submitterName: EMAIL,
+      fields: {
+        Email: EMAIL,
+        Resource: TITLE,
+        Source: `lead-magnet:${SLUG}`,
+        "Monthly brief": "No",
+      },
+    });
+    expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
 
-    it("does not opt the lead into the brief unless asked", async () => {
+  it("logs one structured line for a recorded lead", async () => {
+    await post({ slug: SLUG, email: EMAIL });
+
+    expect(readLeadLogLines(log)).toEqual([
+      {
+        event: "lead_submission",
+        formType: "Lead magnet",
+        name: "",
+        company: "",
+        email: EMAIL,
+        phone: "",
+        syncro: "ok",
+        webmasterEmail: "ok",
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      "rejects",
+      { ok: false, reason: "rejected", status: 422, message: EMAIL },
+      "rejected (HTTP 422)",
+    ],
+    [
+      "is unreachable",
+      { ok: false, reason: "unreachable", code: "network_error" },
+      "unreachable (network_error)",
+    ],
+  ])(
+    "returns 503 and releases nothing when Syncro %s",
+    async (_name, syncroResult, outcome) => {
+      mockCreateLead.mockResolvedValue(syncroResult);
+
+      await expectResponse(
+        await post({ slug: SLUG, email: EMAIL, wantsBrief: true }),
+        503,
+        { error: UNAVAILABLE_COPY },
+      );
+
+      expect(mockCaptureMessage).toHaveBeenCalledWith(
+        `Lead magnet capture failure (${SLUG}): Syncro ${outcome}`,
+        "error",
+      );
+      expectNoEmailInSentry();
+      // The structured log is the only record of this lead
+      expect(readLeadLogLines(log)).toEqual([
+        expect.objectContaining({
+          formType: "Lead magnet",
+          email: EMAIL,
+          syncro: outcome,
+          webmasterEmail: "failed",
+        }),
+      ]);
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+      expect(mockDeliveryEmail).not.toHaveBeenCalled();
+      expect(mockWebmasterNotification).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reads a thrown Syncro write as unreachable", async () => {
+    mockCreateLead.mockRejectedValue(new Error(`boom for ${EMAIL}`));
+
+    const response = await post({ slug: SLUG, email: EMAIL });
+
+    expect(response.status).toBe(503);
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      `Lead magnet capture failure (${SLUG}): Syncro unreachable (exception)`,
+      "error",
+    );
+    expectNoEmailInSentry();
+  });
+
+  it.each([
+    ["unset", undefined],
+    ["shorter than 32 characters", "too-short"],
+  ])(
+    "returns 503 with the failure copy when the signing secret is %s",
+    async (_name, secret) => {
+      process.env.LEAD_MAGNET_SIGNING_SECRET = secret;
+
+      await expectResponse(await post({ slug: SLUG, email: EMAIL }), 503, {
+        error: UNAVAILABLE_COPY,
+      });
+      expect(mockCaptureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("LEAD_MAGNET_SIGNING_SECRET"),
+        "error",
+      );
+      expectNoEmailInSentry();
+      expect(mockDeliveryEmail).not.toHaveBeenCalled();
+    },
+  );
+
+  it("succeeds even when both notifications fail, warning Sentry without PII", async () => {
+    mockDeliveryEmail.mockRejectedValueOnce(new Error("resend down"));
+    mockWebmasterNotification.mockResolvedValueOnce(false);
+
+    const response = await post({ slug: SLUG, email: EMAIL });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).success).toBe(true);
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      `Lead magnet delivery failure (${SLUG}): Syncro ok, webmaster email failed`,
+      "error",
+    );
+    expectNoEmailInSentry();
+    expect(readLeadLogLines(log)).toEqual([
+      expect.objectContaining({ syncro: "ok", webmasterEmail: "failed" }),
+    ]);
+  });
+
+  describe("monthly brief opt-in", () => {
+    it("makes no Resend contact when the box is unticked", async () => {
       await post({ slug: SLUG, email: EMAIL, wantsBrief: false });
 
-      expect(mockAddResendMarketingContact).not.toHaveBeenCalled();
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
     });
 
-    it("opts the lead into the brief when asked, failing loudly while stubbed", async () => {
+    it("only an explicit true opts in", async () => {
+      await post({ slug: SLUG, email: EMAIL, wantsBrief: "yes" });
+
+      expect(mockCreateResendContact).not.toHaveBeenCalled();
+    });
+
+    it("adds the lead to the brief segment and topic when ticked, without starting a nurture", async () => {
       const response = await post({
         slug: SLUG,
         email: EMAIL,
         wantsBrief: true,
       });
 
-      expect(mockAddResendMarketingContact).toHaveBeenCalledWith({
+      expect(response.status).toBe(200);
+      expect(mockCreateResendContact).toHaveBeenCalledTimes(1);
+      expect(mockCreateResendContact).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: EMAIL,
+          segments: [{ id: "seg_brief" }],
+          topics: [{ id: "topic_brief", subscription: "opt_in" }],
+        }),
+      );
+      // #642's automation has no lead-magnet branch: no lead.opted_in event
+      expect(mockSendResendEvent).not.toHaveBeenCalled();
+    });
+
+    it("still returns the download link when the opt-in fails, warning Sentry without PII", async () => {
+      mockCreateResendContact.mockRejectedValue(new Error(`down ${EMAIL}`));
+
+      const response = await post({
+        slug: SLUG,
         email: EMAIL,
-        topic: "monthly-security-brief",
+        wantsBrief: true,
       });
-      expect(response.status).toBe(500);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.downloadUrl).toContain("/api/lead-magnet/download?");
+      expect(mockCaptureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Monthly brief opt-in failed (lead-magnet)"),
+        "warning",
+      );
+      expectNoEmailInSentry();
+      expect(mockDeliveryEmail).toHaveBeenCalled();
     });
   });
 });
