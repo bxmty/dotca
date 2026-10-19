@@ -1,4 +1,5 @@
-// Client-side checks shared by the contact, checkout and onboarding forms.
+// Checks shared by the contact, checkout, onboarding and lead-magnet forms
+// (isEmailAddress is also the lead-magnet capture route's server-side check).
 // Errors are worded as the fix (Component Spec, forms).
 
 // The same pattern the contact, subscription and onboarding APIs apply
