@@ -413,10 +413,27 @@ describe("POST /api/stripe/webhook", () => {
     await POST(buildRequest());
 
     expect(Sentry.captureMessage).toHaveBeenCalledWith(
-      expect.stringContaining("Invoice payment failed"),
+      "Invoice payment failed: in_123 (billing_reason: subscription_cycle)",
       "warning",
     );
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  it("keeps the payer's details out of the failed-payment Sentry message", async () => {
+    mockConstructEvent.mockReturnValueOnce({
+      type: "invoice.payment_failed",
+      data: {
+        object: { ...paidInvoice, billing_reason: "subscription_cycle" },
+      },
+    });
+
+    await POST(buildRequest());
+
+    for (const [message] of (Sentry.captureMessage as jest.Mock).mock.calls) {
+      expect(String(message)).not.toContain("test@example.com");
+      expect(String(message)).not.toContain("Test User");
+      expect(String(message)).not.toContain("+11234567890");
+    }
   });
 
   it("logs cancellations to Sentry and returns 200", async () => {

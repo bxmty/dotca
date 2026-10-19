@@ -212,7 +212,9 @@ export async function POST(request: Request) {
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      const detail = `Invoice payment failed: ${invoice.id} (${invoice.customer_email ?? "unknown"}, billing_reason: ${billingReason})`;
+      // No customer details in this string: it goes to Sentry. The invoice
+      // id is enough to find the payer in the Stripe dashboard.
+      const detail = `Invoice payment failed: ${invoice.id} (billing_reason: ${billingReason})`;
       console.error(detail);
       Sentry.captureMessage(detail, "warning");
       break;
