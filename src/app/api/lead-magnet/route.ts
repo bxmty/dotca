@@ -2,19 +2,16 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { getLeadMagnetBySlug } from "@/lib/lead-magnets";
 import { signLeadMagnetToken } from "@/lib/lead-magnet-token";
-import {
-  sendLeadMagnetDeliveryEmail,
-  sendWebmasterNotification,
-} from "@/lib/notify";
+import { sendLeadMagnetDeliveryEmail } from "@/lib/notify";
 import { isEmailAddress } from "@/lib/formValidation";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
-import { createSyncroLead } from "@/lib/syncro-leads";
-import { addResendMarketingContact } from "@/lib/resend-marketing";
+import { deliverLead } from "@/lib/lead-delivery";
+import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { SITE_URL } from "@/lib/schema";
 import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
- * Email gate for a lead magnet: records the lead, then hands back a signed
+ * Email gate for a lead magnet: delivers the lead, then hands back a signed
  * download link. Deliberately the same shape as /api/contact (JSON parse,
  * honeypot, rate limit, email regex, 503 copy) with a lighter payload.
  */
@@ -67,32 +64,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // The lead must exist somewhere before the asset is released. Until
-    // #596-601 lands this is a stub that always throws, so every real
-    // submission takes the 503 path below — the same one a Syncro outage
-    // would take.
-    try {
-      await createSyncroLead({ email, source: `lead-magnet:${magnet.slug}` });
-    } catch (error) {
-      const detail = `Lead magnet capture failure (${magnet.slug}): ${
-        (error as Error).message
-      }`;
-      console.error(detail);
-      Sentry.captureMessage(detail, "error");
+    const { title } = magnet.frontmatter;
+    const hasOptedInToBrief = wantsBrief === true;
+    // Validation is done; from here on the lead exists. Syncro and the
+    // webmaster email fire in parallel and the download is released if either
+    // lands, like the other lead routes (#596 decision 4); only a total
+    // failure answers 503 and releases nothing. The Source line is what tells
+    // a lead-magnet Lead apart in Syncro. There is no name field on the gate,
+    // so the address stands in for it.
+    const { isDelivered } = await deliverLead({
+      lead: {
+        formType: "Lead magnet",
+        email,
+        fields: {
+          Email: email,
+          Resource: title,
+          Source: `lead-magnet:${magnet.slug}`,
+        },
+        hasOptedInToBrief,
+      },
+      failureSummary: `Lead magnet delivery failure (${magnet.slug})`,
+    });
+    if (!isDelivered) {
       return NextResponse.json(
         { error: SERVICE_UNAVAILABLE_MESSAGE },
         { status: 503 },
       );
     }
 
-    // Also a stub until #596-601, and deliberately not wrapped: it should
-    // fail loudly during development. bxmty/dotca#606 makes it best-effort
-    // (Sentry.captureMessage on failure, never fail the response).
-    if (wantsBrief === true) {
-      await addResendMarketingContact({
-        email,
-        topic: "monthly-security-brief",
-      });
+    // The brief opt-in sits outside the delivery matrix: only an explicit
+    // true subscribes (never inferred), and a failed write is a PII-free
+    // Sentry warning inside subscribeToMonthlyBrief, never a failed response.
+    if (hasOptedInToBrief) {
+      await subscribeToMonthlyBrief({ email, source: "lead-magnet" });
     }
 
     // Relative for the on-page link, so it works on every environment;
@@ -120,20 +124,10 @@ export async function POST(request: Request) {
       slug: magnet.slug,
       token,
     })}`;
-    const { title } = magnet.frontmatter;
 
-    // The lead already exists; both emails are notifications about it, so
-    // neither can fail the response.
+    // The durable copy of the link. The lead already exists, so this can't
+    // fail the response: settled, in case the never-throws contract breaks.
     await Promise.allSettled([
-      sendWebmasterNotification({
-        formType: "Lead magnet",
-        submitterName: email,
-        fields: {
-          Email: email,
-          Resource: title,
-          "Monthly brief": wantsBrief === true ? "Yes" : "No",
-        },
-      }),
       sendLeadMagnetDeliveryEmail({
         to: email,
         downloadUrl: `${SITE_URL}${downloadUrl}`,

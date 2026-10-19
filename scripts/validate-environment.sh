@@ -236,7 +236,6 @@ check_environment_variables() {
     # Required environment variables
     declare -A required_vars=(
         ["DO_TOKEN"]="DigitalOcean API token"
-        ["BREVO_API_KEY"]="Brevo email service API key"
         ["STRIPE_SECRET_KEY"]="Stripe payment processing secret key"
         ["NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"]="Stripe payment processing publishable key"
         ["STRIPE_WEBHOOK_SECRET"]="Stripe webhook signing secret"
@@ -263,13 +262,6 @@ check_environment_variables() {
                         add_issue "DO_TOKEN appears to be invalid (too short)"
                     else
                         log_success "DO_TOKEN ✓"
-                    fi
-                    ;;
-                "BREVO_API_KEY")
-                    if [[ ${#BREVO_API_KEY} -lt 20 ]]; then
-                        add_issue "BREVO_API_KEY appears to be invalid (too short)"
-                    else
-                        log_success "BREVO_API_KEY ✓"
                     fi
                     ;;
                 "STRIPE_SECRET_KEY")

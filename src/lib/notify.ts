@@ -3,10 +3,10 @@ import { Resend } from "resend";
 /**
  * Webmaster notification email — the redundancy path for form submissions.
  *
- * Fires alongside the Brevo write so a Brevo outage can't silently lose a
- * lead. Never throws: callers branch on the returned boolean to build the
- * success/failure matrix, so a Resend outage must surface as `false`, not
- * as an exception that masks the Brevo result.
+ * Fires alongside the Syncro lead write so a Syncro outage can't silently
+ * lose a lead. Never throws: callers branch on the returned boolean to build
+ * the success/failure matrix, so a Resend outage must surface as `false`, not
+ * as an exception that masks the Syncro result.
  */
 
 export type NotificationFormType =

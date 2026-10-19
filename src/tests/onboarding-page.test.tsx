@@ -9,6 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import OnboardingPage from "@/app/onboarding/page";
+import { BRIEF_OPT_IN_LABEL } from "@/app/components/BriefOptInCheckbox";
 
 // Mock Image component
 jest.mock("next/image", () => ({
@@ -406,5 +407,54 @@ describe("OnboardingPage Component", () => {
     goToItEnvironmentStep();
 
     expect(screen.getAllByText("optional")).toHaveLength(4);
+  });
+
+  describe("monthly brief opt-in", () => {
+    function submitAndGetSentBody() {
+      fireEvent.click(
+        screen.getByRole("button", { name: /Complete Onboarding/i }),
+      );
+      return waitFor(() => {
+        expect(global.fetch).toHaveBeenCalled();
+        return JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      });
+    }
+
+    it("offers an unticked checkbox naming what they'll receive", () => {
+      render(<OnboardingPage />);
+      goToItEnvironmentStep();
+
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Send me Boximity's monthly security brief and occasional tips and offers",
+        }),
+      ).not.toBeChecked();
+    });
+
+    it("sends wantsBrief: true once the box is ticked", async () => {
+      render(<OnboardingPage />);
+      goToItEnvironmentStep();
+      await userEvent
+        .setup()
+        .click(screen.getByRole("checkbox", { name: BRIEF_OPT_IN_LABEL }));
+
+      const body = await submitAndGetSentBody();
+
+      expect(body).toEqual(
+        expect.objectContaining({
+          wantsBrief: true,
+          contactEmail: "john@example.com",
+        }),
+      );
+    });
+
+    it("sends wantsBrief: false when the box is left unticked", async () => {
+      render(<OnboardingPage />);
+      goToItEnvironmentStep();
+
+      const body = await submitAndGetSentBody();
+
+      expect(body).toEqual(expect.objectContaining({ wantsBrief: false }));
+    });
   });
 });

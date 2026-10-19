@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import BriefOptInCheckbox from "../components/BriefOptInCheckbox";
 import { Button, ButtonLink } from "../components/Button";
 import {
   Field,
@@ -101,6 +102,8 @@ export default function OnboardingPage() {
   const [isComplete, setIsComplete] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  // Never pre-checked: brief consent must be express (CASL)
+  const [wantsBrief, setWantsBrief] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     companyName: "",
     industry: "",
@@ -163,7 +166,7 @@ export default function OnboardingPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, wantsBrief }),
       });
 
       const responseData = await response.json().catch(() => null);
@@ -445,6 +448,11 @@ export default function OnboardingPage() {
                 className={TEXTAREA_CLASS_NAME}
               />
             </Field>
+            <BriefOptInCheckbox
+              id="onboarding-wants-brief"
+              isChecked={wantsBrief}
+              onChange={setWantsBrief}
+            />
           </>
         )}
 

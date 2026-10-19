@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { Button, getButtonClassName } from "./Button";
 import { TextField } from "./Field";
 import StatusNote from "./StatusNote";
+import BriefOptInCheckbox from "./BriefOptInCheckbox";
 import {
   INCOMPLETE_EMAIL_MESSAGE,
   isEmailAddress,
@@ -152,19 +153,11 @@ export default function LeadMagnetGate({
         required
         error={emailError}
       />
-      <div className="flex items-start gap-2.5 text-small">
-        <input
-          type="checkbox"
-          id={BRIEF_FIELD_ID}
-          name="wantsBrief"
-          checked={wantsBrief}
-          onChange={(e) => setWantsBrief(e.target.checked)}
-          className="mt-0.5 size-4 shrink-0 accent-fig"
-        />
-        <label htmlFor={BRIEF_FIELD_ID}>
-          Send me Boximity&apos;s monthly security brief
-        </label>
-      </div>
+      <BriefOptInCheckbox
+        id={BRIEF_FIELD_ID}
+        isChecked={wantsBrief}
+        onChange={setWantsBrief}
+      />
       <Button type="submit" variant="primary" isBlock disabled={isSubmitting}>
         {isSubmitting ? "Sending…" : assetLabel}
       </Button>
