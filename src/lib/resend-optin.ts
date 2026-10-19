@@ -8,20 +8,34 @@ import {
 
 /**
  * The monthly security brief opt-in (bxmty/dotca#599): a ticked checkbox on
- * the contact, onboarding or checkout form makes the submitter a Resend
- * contact in the brief segment, opted in to the brief topic. Callers only
- * call this when the box was ticked; an unticked box means no Resend call
- * at all (CASL: consent is express, never inferred). Once the contact write
- * lands, it also sends one lead.opted_in event so the nurture automation can
- * start (#647).
+ * the contact, onboarding, checkout or lead-magnet form makes the submitter
+ * a Resend contact in the brief segment, opted in to the brief topic.
+ * Callers only call this when the box was ticked; an unticked box means no
+ * Resend call at all (CASL: consent is express, never inferred). Once the
+ * contact write lands, a nurture source also sends one lead.opted_in event
+ * so the nurture automation can start (#647).
  *
  * Best-effort by design: it never throws. A failure is a PII-free Sentry
  * warning and an `isSubscribed: false` result, so a missed newsletter signup
  * never fails the lead submission around it.
  */
 
-/** Where the opt-in was given; the lead.opted_in event carries it on. */
-export type OptInSource = "contact" | "onboarding" | "checkout";
+/**
+ * The sources #642's nurture automation branches on (decision 11): the
+ * lead.opted_in event carries one of these and nothing else.
+ */
+export type NurtureSource = "contact" | "onboarding" | "checkout";
+
+/**
+ * Where the opt-in was given. A lead-magnet opt-in joins the brief but sends
+ * no lead.opted_in event: #642 defines no lead-magnet cadence, so the event
+ * contract stays the three nurture sources until it does (#606).
+ */
+export type OptInSource = NurtureSource | "lead-magnet";
+
+function isNurtureSource(source: OptInSource): source is NurtureSource {
+  return source !== "lead-magnet";
+}
 
 export interface MonthlyBriefSubscriber {
   email: string;
@@ -67,7 +81,7 @@ async function sendOptInEvent({
 }: {
   resend: Resend;
   email: string;
-  source: OptInSource;
+  source: NurtureSource;
 }): Promise<void> {
   const reportEventFailure = (detail: string) =>
     reportResendWarning(
@@ -121,7 +135,9 @@ export async function subscribeToMonthlyBrief({
     }),
   );
   if (!createFailureCode) {
-    await sendOptInEvent({ resend, email, source });
+    if (isNurtureSource(source)) {
+      await sendOptInEvent({ resend, email, source });
+    }
     return { isSubscribed: true };
   }
 
@@ -150,7 +166,9 @@ export async function subscribeToMonthlyBrief({
     // The event is sent again for a returning contact on purpose: the
     // automation's nurture_started_at guard absorbs repeat events (#642
     // decision 13), so a re-opt-in never restarts the nurture.
-    await sendOptInEvent({ resend, email, source });
+    if (isNurtureSource(source)) {
+      await sendOptInEvent({ resend, email, source });
+    }
     return { isSubscribed: true };
   }
 

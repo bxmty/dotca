@@ -311,6 +311,26 @@ describe("subscribeToMonthlyBrief", () => {
       },
     );
 
+    // #642's automation only branches on contact/onboarding/checkout, so a
+    // lead-magnet opt-in joins the brief without entering any nurture.
+    it("subscribes a lead-magnet opt-in to the brief but sends no event", async () => {
+      const result = await subscribeToMonthlyBrief({
+        email: "jane@example.com",
+        source: "lead-magnet",
+      });
+
+      expect(result).toEqual({ isSubscribed: true });
+      expect(mockCreateContact).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "jane@example.com",
+          segments: [{ id: "seg_brief" }],
+          topics: [{ id: "topic_brief", subscription: "opt_in" }],
+        }),
+      );
+      expect(mockSendEvent).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
+
     it("keeps the subscription, sends no event and warns Sentry when RESEND_OPTIN_EVENT is not set", async () => {
       delete process.env.RESEND_OPTIN_EVENT;
 
