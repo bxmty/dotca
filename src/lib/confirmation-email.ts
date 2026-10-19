@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Resend } from "resend";
 import { normalizeEmailAddress } from "@/lib/email-address";
 import { reportResendWarning, runResendCall } from "@/lib/resend-client";
+import { formatTorontoDate } from "@/lib/toronto-date";
 
 /**
  * The day-0 confirmation email (bxmty/dotca#646, #642 decisions 2, 4, 7, 10,
@@ -35,14 +36,10 @@ const TEMPLATE_ENV_NAMES = {
 
 const REPLY_TO = "hi@boximity.ca";
 
-// The idempotency key's day is Toronto's calendar day, where the business
-// and nearly all submitters are, so "one per person per form per day"
-// matches the day the submitter sees.
-const KEY_TIME_ZONE = "America/Toronto";
-
 /**
  * `followup-<formType>/<sha256(email)>/<YYYY-MM-DD>` (#642 decision 10): a
- * repeat submission the same day sends nothing new. The address is trimmed
+ * repeat submission the same (Toronto) day sends nothing new, so "one per
+ * person per form per day" matches the day the submitter sees. The address is trimmed
  * and lower-cased before hashing so case or spacing differences share one
  * key, and only the hash is sent, never the raw address.
  */
@@ -53,11 +50,7 @@ function buildIdempotencyKey(
   const emailHash = createHash("sha256")
     .update(normalizeEmailAddress(email))
     .digest("hex");
-  // en-CA formats as YYYY-MM-DD
-  const date = new Intl.DateTimeFormat("en-CA", {
-    timeZone: KEY_TIME_ZONE,
-  }).format(new Date());
-  return `followup-${formType}/${emailHash}/${date}`;
+  return `followup-${formType}/${emailHash}/${formatTorontoDate()}`;
 }
 
 function reportFailure(formType: ConfirmationFormType, detail: string): void {
