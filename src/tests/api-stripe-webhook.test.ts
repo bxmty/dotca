@@ -118,8 +118,8 @@ describe("POST /api/stripe/webhook", () => {
       ...originalEnv,
       STRIPE_WEBHOOK_SECRET: "whsec_test",
       RESEND_API_KEY: "re_test_key",
-      RESEND_OPTIN_SEGMENT_ID: "seg_brief",
-      RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_MONTHLY_BRIEF_SEGMENT_ID: "seg_brief",
+      RESEND_MONTHLY_BRIEF_TOPIC_ID: "topic_brief",
       RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
     mockSendResendEvent.mockResolvedValue({

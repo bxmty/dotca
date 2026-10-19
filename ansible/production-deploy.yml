@@ -35,8 +35,8 @@
     syncro_free_installer_url: "{{ SYNCRO_FREE_INSTALLER_URL | default('') }}"
     syncro_subdomain: "{{ SYNCRO_SUBDOMAIN | default('') }}"
     syncro_api_key: "{{ SYNCRO_API_KEY | default('') }}"
-    resend_optin_segment_id: "{{ RESEND_OPTIN_SEGMENT_ID | default('') }}"
-    resend_optin_topic_id: "{{ RESEND_OPTIN_TOPIC_ID | default('') }}"
+    resend_monthly_brief_segment_id: "{{ RESEND_MONTHLY_BRIEF_SEGMENT_ID | default('') }}"
+    resend_monthly_brief_topic_id: "{{ RESEND_MONTHLY_BRIEF_TOPIC_ID | default('') }}"
     resend_optin_event: "{{ RESEND_OPTIN_EVENT | default('') }}"
     resend_template_contact_confirmation: "{{ RESEND_TEMPLATE_CONTACT_CONFIRMATION | default('') }}"
     resend_template_onboarding_confirmation: "{{ RESEND_TEMPLATE_ONBOARDING_CONFIRMATION | default('') }}"
@@ -492,8 +492,8 @@
           - LEAD_MAGNET_SIGNING_SECRET: {{ '✅ SET' if lead_magnet_signing_secret else '❌ MISSING' }}
           - SYNCRO_FREE_INSTALLER_URL: {{ '✅ SET' if syncro_free_installer_url else '⚠️ MISSING (optional; /install responds 503)' }}
           - SYNCRO_SUBDOMAIN / SYNCRO_API_KEY: {{ '✅ SET' if (syncro_subdomain and syncro_api_key) else '⚠️ MISSING (optional; website leads reach the webmaster email only)' }}
-          - RESEND_OPTIN_SEGMENT_ID: {{ '✅ SET' if resend_optin_segment_id else '⚠️ MISSING (optional; brief opt-ins skip Resend)' }}
-          - RESEND_OPTIN_TOPIC_ID: {{ '✅ SET' if resend_optin_topic_id else '⚠️ MISSING (optional; brief opt-ins skip Resend)' }}
+          - RESEND_MONTHLY_BRIEF_SEGMENT_ID: {{ '✅ SET' if resend_monthly_brief_segment_id else '⚠️ MISSING (optional; brief opt-ins skip Resend)' }}
+          - RESEND_MONTHLY_BRIEF_TOPIC_ID: {{ '✅ SET' if resend_monthly_brief_topic_id else '⚠️ MISSING (optional; brief opt-ins skip Resend)' }}
           - RESEND_OPTIN_EVENT: {{ '✅ SET' if resend_optin_event else '⚠️ MISSING (optional; brief opt-ins send no event)' }}
           - RESEND_TEMPLATE_CONTACT_CONFIRMATION: {{ '✅ SET' if resend_template_contact_confirmation else '⚠️ MISSING (optional; no contact confirmation email)' }}
           - RESEND_TEMPLATE_ONBOARDING_CONFIRMATION: {{ '✅ SET' if resend_template_onboarding_confirmation else '⚠️ MISSING (optional; no onboarding confirmation email)' }}

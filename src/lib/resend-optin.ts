@@ -43,8 +43,8 @@ export interface MonthlyBriefSubscription {
 // and must never be hardcoded (#599).
 const REQUIRED_ENV_NAMES = [
   "RESEND_API_KEY",
-  "RESEND_OPTIN_SEGMENT_ID",
-  "RESEND_OPTIN_TOPIC_ID",
+  "RESEND_MONTHLY_BRIEF_SEGMENT_ID",
+  "RESEND_MONTHLY_BRIEF_TOPIC_ID",
 ] as const;
 
 function reportFailure(source: OptInSource, detail: string): void {
@@ -103,10 +103,10 @@ export async function subscribeToMonthlyBrief({
 
   const email = normalizeEmailAddress(rawEmail);
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const segmentId = process.env.RESEND_OPTIN_SEGMENT_ID as string;
+  const segmentId = process.env.RESEND_MONTHLY_BRIEF_SEGMENT_ID as string;
   const topics = [
     {
-      id: process.env.RESEND_OPTIN_TOPIC_ID as string,
+      id: process.env.RESEND_MONTHLY_BRIEF_TOPIC_ID as string,
       subscription: "opt_in" as const,
     },
   ];

@@ -60,8 +60,8 @@ describe("subscribeToMonthlyBrief", () => {
     process.env = {
       ...originalEnv,
       RESEND_API_KEY: "re_test_key",
-      RESEND_OPTIN_SEGMENT_ID: "seg_brief",
-      RESEND_OPTIN_TOPIC_ID: "topic_brief",
+      RESEND_MONTHLY_BRIEF_SEGMENT_ID: "seg_brief",
+      RESEND_MONTHLY_BRIEF_TOPIC_ID: "topic_brief",
       RESEND_OPTIN_EVENT: "lead.opted_in.test",
     };
     mockSendEvent.mockResolvedValue({
@@ -211,8 +211,8 @@ describe("subscribeToMonthlyBrief", () => {
 
   it.each([
     "RESEND_API_KEY",
-    "RESEND_OPTIN_SEGMENT_ID",
-    "RESEND_OPTIN_TOPIC_ID",
+    "RESEND_MONTHLY_BRIEF_SEGMENT_ID",
+    "RESEND_MONTHLY_BRIEF_TOPIC_ID",
   ])("skips Resend and warns Sentry when %s is not set", async (name) => {
     delete process.env[name];
 
@@ -267,7 +267,7 @@ describe("subscribeToMonthlyBrief", () => {
     });
 
     it("sends no event when the opt-in env is incomplete", async () => {
-      delete process.env.RESEND_OPTIN_SEGMENT_ID;
+      delete process.env.RESEND_MONTHLY_BRIEF_SEGMENT_ID;
 
       await subscribeToMonthlyBrief(subscriber);
 

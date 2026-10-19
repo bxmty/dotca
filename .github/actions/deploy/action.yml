@@ -93,7 +93,7 @@ runs:
         fi
         # Optional on purpose: the brief opt-in is best-effort and the Resend
         # segment/topic may not exist yet (#598), so a missing ID only warns.
-        for optin_var in RESEND_OPTIN_SEGMENT_ID RESEND_OPTIN_TOPIC_ID; do
+        for optin_var in RESEND_MONTHLY_BRIEF_SEGMENT_ID RESEND_MONTHLY_BRIEF_TOPIC_ID; do
           if [[ -z "${!optin_var:-}" ]]; then
             echo "::warning::${optin_var} is not set; brief opt-ins will skip Resend"
           fi
@@ -224,8 +224,8 @@ runs:
         SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
         SYNCRO_SUBDOMAIN=${SYNCRO_SUBDOMAIN:-}
         SYNCRO_API_KEY=${SYNCRO_API_KEY:-}
-        RESEND_OPTIN_SEGMENT_ID=${RESEND_OPTIN_SEGMENT_ID:-}
-        RESEND_OPTIN_TOPIC_ID=${RESEND_OPTIN_TOPIC_ID:-}
+        RESEND_MONTHLY_BRIEF_SEGMENT_ID=${RESEND_MONTHLY_BRIEF_SEGMENT_ID:-}
+        RESEND_MONTHLY_BRIEF_TOPIC_ID=${RESEND_MONTHLY_BRIEF_TOPIC_ID:-}
         RESEND_OPTIN_EVENT=${RESEND_OPTIN_EVENT:-}
         RESEND_TEMPLATE_CONTACT_CONFIRMATION=${RESEND_TEMPLATE_CONTACT_CONFIRMATION:-}
         RESEND_TEMPLATE_ONBOARDING_CONFIRMATION=${RESEND_TEMPLATE_ONBOARDING_CONFIRMATION:-}
