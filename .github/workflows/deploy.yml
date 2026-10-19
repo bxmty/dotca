@@ -578,7 +578,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
           AWS_REGION: tor1
           AWS_DEFAULT_REGION: tor1
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           GA4_MP_API_SECRET: ${{ secrets.GA4_MP_API_SECRET }}

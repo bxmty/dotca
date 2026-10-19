@@ -42,11 +42,6 @@ runs:
           exit 1
         fi
 
-        if [[ -z "${BREVO_API_KEY:-}" ]]; then
-          echo "::error::BREVO_API_KEY environment variable is required"
-          exit 1
-        fi
-
         if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
           echo "::error::STRIPE_SECRET_KEY environment variable is required"
           exit 1
@@ -194,7 +189,6 @@ runs:
         staging_domain=staging.boximity.ca
         next_public_environment=${{ inputs.environment }}
         next_public_api_url=${{ inputs.environment == 'production' && 'https://boximity.ca/api' || 'https://staging.boximity.ca/api' }}
-        BREVO_API_KEY=${BREVO_API_KEY:-}
         STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
         STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
         GA4_MP_API_SECRET=${GA4_MP_API_SECRET:-}
