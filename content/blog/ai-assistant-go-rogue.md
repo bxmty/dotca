@@ -4,7 +4,7 @@ description: "AI assistants that act on their own are arriving in everyday busin
 date: "2026-10-21"
 author: "Matthew Mattice"
 tags: ["AI", "Cybersecurity", "Small Business"]
-published: false
+published: true
 featured: false
 coverImage: "/images/blog/ai-assistant-go-rogue.webp"
 ---
