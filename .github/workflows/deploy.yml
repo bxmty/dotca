@@ -328,6 +328,10 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         run: node scripts/validate-blog-posts.js
 
+      - name: Check secret wiring
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: bash scripts/check-secret-wiring.sh
+
       - name: Run type checking
         if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
         run: npm run typecheck

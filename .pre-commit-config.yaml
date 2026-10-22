@@ -67,6 +67,16 @@ repos:
         pass_filenames: false
         files: \.(js|jsx|ts|tsx)$
 
+  # Secret wiring: every deploy hop names the same secrets
+  - repo: local
+    hooks:
+      - id: secret-wiring
+        name: Secret Wiring
+        entry: bash scripts/check-secret-wiring.sh
+        language: system
+        pass_filenames: false
+        files: ^(\.github/workflows/deploy\.yml|\.github/actions/deploy/|\.github/workflows/environments/|ansible/|scripts/check-(deploy-secrets|secret-wiring)\.sh$)
+
   # Terraform linting and validation
   - repo: local
     hooks:
