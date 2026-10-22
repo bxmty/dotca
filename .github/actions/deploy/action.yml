@@ -31,84 +31,8 @@ runs:
         echo "📦 Image: ${{ inputs.image_tag }}"
         echo "⏰ $(date)"
 
-        # Validate required environment variables
-        if [[ -z "${DO_TOKEN:-}" ]]; then
-          echo "::error::DO_TOKEN environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${SSH_PRIVATE_KEY:-}" ]]; then
-          echo "::error::SSH_PRIVATE_KEY environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
-          echo "::error::STRIPE_SECRET_KEY environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${STRIPE_WEBHOOK_SECRET:-}" ]]; then
-          echo "::error::STRIPE_WEBHOOK_SECRET environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${GA4_MP_API_SECRET:-}" ]]; then
-          echo "::error::GA4_MP_API_SECRET environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${RESEND_API_KEY:-}" ]]; then
-          echo "::error::RESEND_API_KEY environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${RESEND_FROM_EMAIL:-}" ]]; then
-          echo "::error::RESEND_FROM_EMAIL environment variable is required"
-          exit 1
-        fi
-
-        if [[ -z "${WEBMASTER_EMAIL:-}" ]]; then
-          echo "::error::WEBMASTER_EMAIL environment variable is required"
-          exit 1
-        fi
-
-        # Required for production only; staging gets a ::warning:: (#604).
-        bash scripts/check-lead-magnet-secret.sh "${{ inputs.environment }}"
-
-        # Optional on purpose: /install answers 503 until the Free-tier Syncro
-        # installer link exists (#643), so a missing value must not block deploys.
-        if [[ -z "${SYNCRO_FREE_INSTALLER_URL:-}" ]]; then
-          echo "::warning::SYNCRO_FREE_INSTALLER_URL is not set; /install will respond 503"
-        fi
-
-        # Required (#572): without them the app reads Syncro as unreachable and
-        # website leads silently fall back to the webmaster email only.
-        for syncro_var in SYNCRO_SUBDOMAIN SYNCRO_API_KEY; do
-          if [[ -z "${!syncro_var:-}" ]]; then
-            echo "::error::${syncro_var} environment variable is required; website leads would not reach Syncro"
-            exit 1
-          fi
-        done
-
-        # Optional on purpose: the brief opt-in is best-effort and the Resend
-        # segment/topic may not exist yet (#598), so a missing ID only warns.
-        for optin_var in RESEND_MONTHLY_BRIEF_SEGMENT_ID RESEND_MONTHLY_BRIEF_TOPIC_ID; do
-          if [[ -z "${!optin_var:-}" ]]; then
-            echo "::warning::${optin_var} is not set; brief opt-ins will skip Resend"
-          fi
-        done
-        # Same for the nurture trigger event (#647): opt-ins still subscribe
-        # without it, they just don't start the automation.
-        if [[ -z "${RESEND_OPTIN_EVENT:-}" ]]; then
-          echo "::warning::RESEND_OPTIN_EVENT is not set; brief opt-ins will send no lead.opted_in event"
-        fi
-        # Same for the day-0 confirmation templates (#646): submissions still
-        # succeed without them, they just send no confirmation email.
-        for template_var in RESEND_TEMPLATE_CONTACT_CONFIRMATION RESEND_TEMPLATE_ONBOARDING_CONFIRMATION; do
-          if [[ -z "${!template_var:-}" ]]; then
-            echo "::warning::${template_var} is not set; submissions will send no confirmation email"
-          fi
-        done
+        # Required/optional tiers live in the script (one place per secret).
+        bash scripts/check-deploy-secrets.sh "${{ inputs.environment }}"
 
         # Set deployment environment variables
         echo "DEPLOY_ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV

@@ -8,8 +8,8 @@ import { join } from "path";
 /**
  * LEAD_MAGNET_SIGNING_SECRET must not block staging or local deploys (#604),
  * but production must never ship without it: every download link would 503.
- * One script holds that rule for the deploy action, `just validate` and
- * local-deploy.sh.
+ * One script holds that rule for the deploy gate (check-deploy-secrets.sh),
+ * `just validate` and local-deploy.sh.
  */
 const repoRoot = join(__dirname, "..", "..");
 const SCRIPT = join(repoRoot, "scripts", "check-lead-magnet-secret.sh");
@@ -81,7 +81,7 @@ describe("scripts/check-lead-magnet-secret.sh", () => {
   });
 
   it.each([
-    ".github/actions/deploy/action.yml",
+    "scripts/check-deploy-secrets.sh",
     "justfile",
     "scripts/local-deploy.sh",
   ])("is the guard %s uses", (relativePath) => {
