@@ -153,7 +153,7 @@ load_env_vars() {
     set +a
 
     # Validate required environment variables
-    local required_vars=("DO_TOKEN" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "STRIPE_WEBHOOK_SECRET" "RESEND_API_KEY" "RESEND_FROM_EMAIL" "WEBMASTER_EMAIL")
+    local required_vars=("DO_TOKEN" "STRIPE_SECRET_KEY" "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "STRIPE_WEBHOOK_SECRET" "RESEND_API_KEY" "RESEND_FROM_EMAIL" "WEBMASTER_EMAIL" "SYNCRO_SUBDOMAIN" "SYNCRO_API_KEY")
     local missing_vars=()
 
     for var in "${required_vars[@]}"; do
