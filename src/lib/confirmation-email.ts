@@ -24,6 +24,11 @@ export interface ConfirmationEmail {
   email: string;
   /** Omitted from the template variables when blank (template fallback). */
   firstName?: string;
+  /**
+   * The signup's signed /install link (install-link.ts), sent as
+   * INSTALL_URL. Onboarding only; omitted when absent.
+   */
+  installUrl?: string;
 }
 
 export interface ConfirmationEmailResult {
@@ -58,6 +63,7 @@ export async function sendConfirmationEmail({
   formType,
   email,
   firstName,
+  installUrl,
 }: ConfirmationEmail): Promise<ConfirmationEmailResult> {
   const failureSummary = `Confirmation email not sent (${formType})`;
   const templateEnvName = TEMPLATE_ENV_NAMES[formType];
@@ -78,9 +84,10 @@ export async function sendConfirmationEmail({
   // Omitted, not "", when unknown: the template's fallback is documented to
   // apply to a missing variable, not to an empty one
   const trimmedFirstName = firstName?.trim();
-  const variables: Record<string, string> = trimmedFirstName
-    ? { USER_FIRST_NAME: trimmedFirstName }
-    : {};
+  const variables: Record<string, string> = {
+    ...(trimmedFirstName && { USER_FIRST_NAME: trimmedFirstName }),
+    ...(installUrl && { INSTALL_URL: installUrl }),
+  };
 
   // Not notify.ts's sendResendEmail: that path logs the raw SDK error
   // (which can echo the address) and has no template, reply-to or

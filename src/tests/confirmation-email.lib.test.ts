@@ -93,6 +93,23 @@ describe("sendConfirmationEmail", () => {
     );
   });
 
+  it("passes the signup's install link as INSTALL_URL", async () => {
+    await sendConfirmationEmail({
+      formType: "onboarding",
+      email: "jane@example.com",
+      firstName: "Jane",
+      installUrl: "https://boximity.ca/install?t=abc",
+    });
+
+    expect(mockSendEmail.mock.calls[0][0].template).toEqual({
+      id: "tmpl_onboarding",
+      variables: {
+        USER_FIRST_NAME: "Jane",
+        INSTALL_URL: "https://boximity.ca/install?t=abc",
+      },
+    });
+  });
+
   it.each([undefined, "", "   "])(
     "omits USER_FIRST_NAME so the template fallback applies when the first name is %p",
     async (firstName) => {
