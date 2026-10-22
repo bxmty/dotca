@@ -6,7 +6,7 @@ terraform {
       version = "2.103.0"
     }
   }
-  required_version = "1.16.4"
+  required_version = "1.16.6"
 
   # Backend configuration is handled by separate backend-*.tf files
   # based on the use_local_state variable
