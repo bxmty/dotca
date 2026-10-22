@@ -145,6 +145,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `RESEND_MONTHLY_BRIEF_SEGMENT_ID` / `RESEND_MONTHLY_BRIEF_TOPIC_ID`: Resend "Monthly security brief" segment and topic IDs for the form opt-in (optional; opt-ins skip Resend with a Sentry warning without them)
 - `RESEND_OPTIN_EVENT`: Resend event name sent after an opt-in to start the nurture automation, `lead.opted_in` in production and `lead.opted_in.staging` in staging (optional; opt-ins send no event, with a Sentry warning, without it)
 - `RESEND_TEMPLATE_CONTACT_CONFIRMATION` / `RESEND_TEMPLATE_ONBOARDING_CONFIRMATION`: published Resend template IDs for the day-0 contact and onboarding confirmation emails, same value in both environments (optional; submissions send no confirmation, with a Sentry warning, without them)
+- `GA4_MP_API_SECRET`: GA4 Measurement Protocol API secret for server-side conversion events. Required; the deploy fails at the gate without it
 - `STRIPE_SECRET_KEY`: Stripe payment processing secret key
 - `GITHUB_TOKEN`: GitHub API token (automatically provided)
 
@@ -236,6 +237,21 @@ The validation script provides detailed feedback:
 4. Test deployment in staging environment first
 5. Deploy to production with appropriate review process
 
+### Adding a Secret
+
+A runtime secret travels through every file below; `scripts/check-secret-wiring.sh` (pre-commit and CI) fails when one is missed.
+
+1. `staging.yml` and `production.yml`: add the name under `secrets:`
+2. `../deploy.yml`: pass it in the `Deploy application` step's `env:` as `NAME: ${{ secrets.NAME }}`
+3. `../../actions/deploy/action.yml`: write it to the Ansible inventory as `NAME=${NAME:-}`
+4. `../../../ansible/staging-deploy.yml` and `production-deploy.yml`: read it under `vars:` as `name: "{{ NAME | default('') }}"`
+5. `../../../ansible/templates/docker-compose.yml.j2`: pass it to the app container as `- NAME={{ name }}`
+6. `../../../scripts/check-deploy-secrets.sh`: give it a tier, `require` or `warn_if_missing`
+7. `.env.example`, the Application Secrets list above, and the table in `docs/secrets-rotation-guide.md`
+8. Set it in both GitHub environments (`gh secret set NAME --env staging`, then `--env production`)
+
+Steps 7 and 8 aren't checked. Local deploys keep separate lists in `scripts/local-deploy.sh` and `scripts/validate-environment.sh`; add the secret there too if local deploys need it.
+
 ### Adding New Environments
 
 1. Create new `.yml` configuration file
@@ -249,4 +265,6 @@ The validation script provides detailed feedback:
 - `../deploy.yml`: Main deployment workflow
 - `../deploy.yml.test.yml`: Workflow testing
 - `../../scripts/validate-environment-config.sh`: Configuration validation
+- `../../scripts/check-deploy-secrets.sh`: Deploy gate (which secrets are required)
+- `../../scripts/check-secret-wiring.sh`: Secret wiring check across deploy files
 - `../../../docs/ci-cd-architecture.md`: Architecture documentation
