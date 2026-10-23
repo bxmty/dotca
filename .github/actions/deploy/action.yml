@@ -81,11 +81,15 @@ runs:
           echo "::warning::SYNCRO_FREE_INSTALLER_URL is not set; /install will respond 503"
         fi
 
-        # Optional on purpose (#565, #597): a missing Syncro key reads as an
-        # unreachable Syncro, so website leads still reach the webmaster email.
-        if [[ -z "${SYNCRO_SUBDOMAIN:-}" || -z "${SYNCRO_API_KEY:-}" ]]; then
-          echo "::warning::SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set; website leads will not reach Syncro"
-        fi
+        # Required (#572): without them the app reads Syncro as unreachable and
+        # website leads silently fall back to the webmaster email only.
+        for syncro_var in SYNCRO_SUBDOMAIN SYNCRO_API_KEY; do
+          if [[ -z "${!syncro_var:-}" ]]; then
+            echo "::error::${syncro_var} environment variable is required; website leads would not reach Syncro"
+            exit 1
+          fi
+        done
+
         # Optional on purpose: the brief opt-in is best-effort and the Resend
         # segment/topic may not exist yet (#598), so a missing ID only warns.
         for optin_var in RESEND_MONTHLY_BRIEF_SEGMENT_ID RESEND_MONTHLY_BRIEF_TOPIC_ID; do
