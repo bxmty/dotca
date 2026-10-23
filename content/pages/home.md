@@ -81,16 +81,13 @@ Average data breach costs of **$108,000** for small businesses
 
 ## Limited Time Offer for Small Businesses
 
-### Complete Bundle: $99/month per user
+### Basic Bundle: $99/month per user
 
 - Password Manager
-- Web Hosting
 - Business Email
-- Microsoft Collaboration Tools
-- Email Support
-- Quarterly IT Assessment
-- Reduced Web Design Rates
-- Server Monitoring
+- Email Support (Business Hours)
+- Setup & Onboarding Assistance
+- Periodic security posture reviews
 
 First month free when you sign up for annual service
 
@@ -124,4 +121,4 @@ We'll contact you to schedule your session
 
 [Book Your Consult]
 
-We'll reach out within 24 hours to schedule your consultation.
+We'll reach out within one business day to schedule your consultation.
