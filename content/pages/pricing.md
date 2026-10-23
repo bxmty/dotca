@@ -14,11 +14,13 @@ Enterprise-grade technology solutions without enterprise-level complexity or cos
 
 _per user per month_
 
-Ideal for startups and freelancers looking to secure their digital assets
+Ideal for startups and freelancers looking to understand their security posture
 
-- Automatic Windows Updates
-- Basic Antivirus Protection
-- 24/7 Device Monitoring
+- Syncro security agent (Windows only — Mac and Linux planned)
+- Periodic malware scans, plus a deeper scan when your security posture is poor
+- Remote support on request (billed separately)
+
+The Free plan is information only: it includes no antivirus, no automated alerts, and no monitoring. Boximity is not liable if your device is breached.
 
 [Choose Free]
 
@@ -34,8 +36,8 @@ Perfect for small teams needing essential IT security and communication tools
 - Password Manager
 - Business Email Solution
 - Email Support (Business Hours)
-- Basic Security Monitoring
 - Setup & Onboarding Assistance
+- Periodic security posture reviews
 
 [Choose Basic]
 
