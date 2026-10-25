@@ -1,6 +1,6 @@
 import type { BlogOffer } from "@/types/blog";
 import { DEFAULT_LEAD_MAGNET_ASSET_LABEL } from "@/lib/lead-magnet-labels";
-import { ButtonLink } from "./Button";
+import { ButtonLink, UnboxLink } from "./Button";
 
 const ASSESSMENT_HREF = "/book";
 
@@ -22,7 +22,13 @@ type CtaContent = {
   /** The target both surfaces link to. */
   href: string;
   /** The end CTA block (BlogCta). */
-  end: { heading: string; lede?: string; label: string };
+  end: {
+    heading: string;
+    lede?: string;
+    label: string;
+    /** Set to draw the end CTA as the unbox button; what the interior says. */
+    peek?: string;
+  };
   /** The rail box's region name, one line and button text (BlogRailOffer). */
   rail: { regionName: string; text: string; label: string };
 };
@@ -51,6 +57,7 @@ function getCtaContent(offer: ShownBlogOffer): CtaContent {
       heading: "Want a second pair of eyes on your setup?",
       lede: "The assessment is free, and you keep the findings.",
       label: "Get a Business-First IT Assessment",
+      peek: "opens Bookings",
     },
     rail: {
       regionName: "Free assessment offer",
@@ -83,9 +90,15 @@ export default function BlogCta({ offer = DEFAULT_OFFER }: BlogOfferProps) {
         <p className="m-0 text-body text-muted">{ctaContent.end.lede}</p>
       )}
       <div>
-        <ButtonLink variant="primary" href={ctaContent.href}>
-          {ctaContent.end.label}
-        </ButtonLink>
+        {ctaContent.end.peek ? (
+          <UnboxLink href={ctaContent.href} peek={ctaContent.end.peek}>
+            {ctaContent.end.label}
+          </UnboxLink>
+        ) : (
+          <ButtonLink variant="primary" href={ctaContent.href}>
+            {ctaContent.end.label}
+          </ButtonLink>
+        )}
       </div>
     </aside>
   );

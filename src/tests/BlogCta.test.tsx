@@ -19,6 +19,24 @@ describe("BlogCta", () => {
     expect(link).toHaveAttribute("href", "/book");
   });
 
+  it("draws the assessment end CTA as the unbox button, the lead magnet as a plain one", () => {
+    const { unmount } = render(<BlogCta />);
+    expect(screen.getByText("opens Bookings")).toBeInTheDocument();
+    unmount();
+
+    render(
+      <BlogCta
+        offer={{
+          type: "lead-magnet",
+          slug: "x",
+          title: "A guide",
+          assetLabel: "Get the guide",
+        }}
+      />,
+    );
+    expect(screen.queryByText("opens Bookings")).not.toBeInTheDocument();
+  });
+
   it("renders a rule-topped end block with a heading", () => {
     render(<BlogCta />);
 
