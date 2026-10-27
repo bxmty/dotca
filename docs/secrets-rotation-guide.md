@@ -165,10 +165,14 @@ After successful verification (minimum 24 hours):
 | `SSH_KEY_FINGERPRINT`                | Terraform validation             | Medium          |
 | `SPACES_ACCESS_ID`                   | Object storage access            | Medium          |
 | `SPACES_SECRET_KEY`                  | Object storage secret            | Medium          |
-| `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
+| `RESEND_API_KEY`                     | Full access: send and contacts   | Medium          |
+| `RESEND_MONTHLY_BRIEF_SEGMENT_ID`    | Monthly security brief segment   | Low             |
+| `RESEND_MONTHLY_BRIEF_TOPIC_ID`      | Monthly security brief topic     | Low             |
 | `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
 | `LEAD_MAGNET_SIGNING_SECRET`         | Lead magnet download links       | Low             |
-| `SYNCRO_FREE_INSTALLER_URL`          | Free-tier agent installer link   | Low             |
+| `SYNCRO_SUBDOMAIN`                   | Syncro account subdomain         | Low             |
+| `SYNCRO_API_KEY`                     | Scoped Syncro API token (leads)  | High            |
+| `SYNCRO_FREE_INSTALLER_URL`          | Free-tier agent installer link   | High            |
 | `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
 | `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
 | `STRIPE_WEBHOOK_SECRET`              | Webhook signature verification   | High            |
@@ -288,27 +292,57 @@ copy one environment's value into another — signature verification will
 
 ### Resend API Keys
 
-1. **Generate New API Key**
-   - Log in to Resend dashboard
-   - Go to API Keys → Create API Key
-   - Create new API key with appropriate permissions (sending scope)
+`RESEND_API_KEY` has to be **Full access**. A sending-only key can send mail but fails contact, segment, and topic writes with `restricted_api_key`. Staging and production each have their own key. Local `.env.local` uses the staging key.
 
-2. **Update Secrets**
+`RESEND_MONTHLY_BRIEF_SEGMENT_ID` and `RESEND_MONTHLY_BRIEF_TOPIC_ID` identify the `Monthly security brief` segment and topic. They are IDs, not keys, so rotating `RESEND_API_KEY` does not change them. Staging, production, and `.env.local` carry the same IDs. The topic's default subscription is Opt-out and cannot be changed after creation.
+
+To raise an existing key from Sending access to Full access, change its permission in the Resend dashboard. The secret value stays the same, so there is nothing to store or revoke. Mint a replacement only to rotate:
+
+1. **Generate a replacement in Resend.** API Keys → Create API Key. Permission: Full access. Name it for the environment (`dotca-staging` or `dotca-production`).
+2. **Update that environment's secret.** `gh` prompts for the value, so the key never lands in shell history:
 
    ```bash
-   # Update GitHub secret
-   gh secret set RESEND_API_KEY -R owner/repo --body "re_xxxxxxxxxxxx"
-
-   # WEBMASTER_EMAIL is not a secret; update in environment variables
-   # If stored as secret, update via GitHub:
-   gh secret set WEBMASTER_EMAIL -R owner/repo --body "webmaster@example.com"
+   gh secret set RESEND_API_KEY --env staging -R bxmty/dotca
+   gh secret set RESEND_API_KEY --env production -R bxmty/dotca
    ```
 
-3. **Update Deployment Configuration**
-   - Deploy and verify webmaster notification emails are delivered
+   When the staging key changes, update `RESEND_API_KEY` in `.env.local` too.
 
-4. **Clean Up**
-   - Revoke old API key in Resend dashboard after verification
+3. **Redeploy** that environment and confirm a webmaster notification still arrives.
+4. **Revoke the previous key** in the Resend dashboard after that deploy succeeds.
+
+### Syncro API Token
+
+`SYNCRO_SUBDOMAIN` and `SYNCRO_API_KEY` let website leads be written to Syncro. Both are required at the deploy gate, so a missing value fails the deploy.
+
+1. **Create a replacement token in Syncro** with the same scoped permissions as the current one. Do not use a full-admin token.
+2. **Update each environment that holds the old token** (`gh` prompts for the value):
+
+   ```bash
+   gh secret set SYNCRO_API_KEY --env staging -R bxmty/dotca
+   gh secret set SYNCRO_API_KEY --env production -R bxmty/dotca
+   ```
+
+3. **Redeploy staging**, submit a test lead, and confirm it appears in Syncro Leads. Then redeploy production.
+4. **Revoke the previous token** in Syncro after both deploys succeed.
+
+### Free-tier Syncro Installer Link
+
+`SYNCRO_FREE_INSTALLER_URL` is the agent installer for the Free-tier Syncro customer only. Anyone with the URL can enroll a device into the RMM. Never point it at a paying customer's folder or policy, and never paste it into an issue, a commit, or a chat.
+
+A weekly review of new assets on the Free-tier customer is the standing check when no Syncro alert is configured. If an unknown device shows up, rotate the link:
+
+1. **Generate a new RMM Agent Installer link in Syncro** from the Free-tier organization's restricted policy folder.
+2. **Check the dialog for an expiry.** Syncro's Linux agent docs say a copied link stays active for 7 days. If the link expires, rotate it on that schedule as well as when an unknown device appears.
+3. **Update the secret in both environments.** Staging and production carry the same link:
+
+   ```bash
+   gh secret set SYNCRO_FREE_INSTALLER_URL --env staging -R bxmty/dotca
+   gh secret set SYNCRO_FREE_INSTALLER_URL --env production -R bxmty/dotca
+   ```
+
+4. **Redeploy staging and production** so `/install` serves the new link.
+5. **Retire the previous installer link in Syncro** after both deploys succeed, so it can no longer enroll devices.
 
 ### Google Analytics
 
