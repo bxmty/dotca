@@ -19,6 +19,7 @@ const footerGroups: readonly FooterGroup[] = [
         label: "Architecture firms",
       },
       { href: "/pricing", label: "Pricing" },
+      { href: "/security-assessment", label: "Security assessment" },
     ],
   },
   {
