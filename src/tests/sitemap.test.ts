@@ -82,6 +82,11 @@ describe("sitemap", () => {
       changeFrequency: "weekly",
       priority: 0.8,
     });
+    expect(findEntry(urls, `${BASE_URL}/security-assessment`)).toEqual({
+      url: `${BASE_URL}/security-assessment`,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    });
     expect(
       findEntry(urls, `${BASE_URL}/security-assessment/checklist`),
     ).toEqual({

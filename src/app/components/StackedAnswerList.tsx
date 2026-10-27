@@ -13,7 +13,8 @@ type StackedAnswerListProps<Value extends string> = {
   legend: string;
   name: string;
   options: readonly StackedAnswerOption<Value>[];
-  value: Value;
+  /** Empty string means no option is selected yet. */
+  value: Value | "";
   onChange: (value: Value) => void;
 };
 
