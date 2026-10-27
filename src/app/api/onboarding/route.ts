@@ -4,8 +4,27 @@ import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
+import * as Sentry from "@sentry/nextjs";
 import { sendConfirmationEmail } from "@/lib/confirmation-email";
+import { buildInstallUrl } from "@/lib/install-link";
 import { splitFullName } from "@/lib/person-name";
+
+/**
+ * This signup's signed /install link, or undefined when it cannot be signed
+ * (LEAD_MAGNET_SIGNING_SECRET missing). The confirmation still sends; the
+ * template's INSTALL_URL fallback applies.
+ */
+function tryBuildInstallUrl(email: string): string | undefined {
+  try {
+    return buildInstallUrl(email);
+  } catch (error) {
+    Sentry.captureMessage(
+      `Onboarding install link not signed: ${(error as Error).message}`,
+      "warning",
+    );
+    return undefined;
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -149,6 +168,7 @@ export async function POST(request: Request) {
         formType: "onboarding",
         email: data.contactEmail,
         firstName: contactName.firstName,
+        installUrl: tryBuildInstallUrl(data.contactEmail),
       });
     }
 
