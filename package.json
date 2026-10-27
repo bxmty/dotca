@@ -34,7 +34,7 @@
     "react-markdown": "10.1.0",
     "react-phone-input-2": "2.15.1",
     "remark-gfm": "4.0.1",
-    "resend": "6.34.1",
+    "resend": "6.35.0",
     "stripe": "23.0.1",
     "web-vitals": "6.2.3"
   },
