@@ -220,6 +220,19 @@ describe("POST /api/security-assessment", () => {
     expect(mockCreateLead).not.toHaveBeenCalled();
   });
 
+  it("returns 400 when an answer index is out of range", async () => {
+    const answers = buildAnswers("solo", () => 0);
+    const [firstQuestion] = getQuestionsForSegment(config, "solo");
+    answers[firstQuestion.id] = 99;
+
+    const response = await POST(buildRequest(buildSubmission({ answers })));
+
+    await expectJson(response, 400, {
+      error: "Please answer every question",
+    });
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when the request body is not valid JSON", async () => {
     const request = {
       json: jest.fn().mockRejectedValueOnce(new Error("JSON parsing error")),
