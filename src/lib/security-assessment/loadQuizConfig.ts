@@ -1,3 +1,4 @@
+import "server-only";
 import fs from "fs";
 import { load } from "js-yaml";
 import type { QuizConfig } from "./quizTypes";

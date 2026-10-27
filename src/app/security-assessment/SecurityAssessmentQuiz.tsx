@@ -16,15 +16,12 @@ import {
   isEmailAddress,
 } from "@/lib/formValidation";
 import { event as trackGaEvent } from "@/lib/gtag";
+import { QUIZ_SEGMENTS, type QuizConfig, type QuizResult, type QuizSegment } from "@/lib/security-assessment/quizTypes";
 import {
-  QUIZ_SEGMENTS,
   getQuestionsForSegment,
   getSectionKeysForSegment,
-  scoreQuizAnswers,
-  type QuizConfig,
-  type QuizResult,
-  type QuizSegment,
-} from "@/lib/security-assessment";
+} from "@/lib/security-assessment/validateQuizConfig";
+import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
 
 type QuizScreen = "landing" | "size" | "questions" | "results";
 

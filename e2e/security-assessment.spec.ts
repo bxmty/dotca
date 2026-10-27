@@ -38,9 +38,13 @@ test.describe("Security assessment", () => {
     await expect(tierHeadline).toBeVisible();
     await expect(tierHeadline).not.toHaveText(/How exposed is your business/i);
 
-    await page.getByLabel("Email").fill("e2e-security-assessment@example.com");
-    await page
-      .getByRole("form", { name: "Email assessment results" })
+    const captureForm = page.getByRole("form", {
+      name: "Email assessment results",
+    });
+    await captureForm
+      .getByRole("textbox", { name: "Email" })
+      .fill("e2e-security-assessment@example.com");
+    await captureForm
       .getByRole("button", { name: /Send my results/i })
       .click();
 
