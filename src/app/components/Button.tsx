@@ -84,3 +84,41 @@ export function ButtonLink({
     />
   );
 }
+
+type UnboxLinkProps = Omit<ComponentProps<typeof Link>, "className"> & {
+  children: ReactNode;
+  /** What happens next, shown inside the box once the lid opens. */
+  peek: string;
+};
+
+// The standout CTA: the button is a box. The lid carries the label; on hover
+// or focus it flips open on its back edge and the oxford interior says what
+// happens next. Only the lid is read aloud, the interior is decoration. Under
+// reduced motion the lid simply gives way, with no flip. Use it once per page,
+// at the end CTA: the Technical Manual rations its accents.
+export function UnboxLink({ children, peek, ...linkProps }: UnboxLinkProps) {
+  return (
+    <Link
+      className="group relative inline-block min-h-13 min-w-0 rounded-ctl no-underline [perspective:700px] max-sm:block sm:min-w-82"
+      {...linkProps}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 flex items-center justify-center gap-2.5 rounded-ctl border border-band-fig bg-band font-mono text-small text-band-ink"
+      >
+        <span className="text-band-fig">&gt;</span>
+        {peek}
+      </span>
+      <span className="relative flex min-h-13 [transform-origin:50%_0] items-center justify-center gap-2.5 rounded-ctl bg-cta px-5 py-3.5 text-body leading-none font-semibold text-cta-ink transition-[transform,filter] duration-450 ease-[cubic-bezier(.3,1.25,.5,1)] [backface-visibility:hidden] group-hover:brightness-92 group-hover:[transform:rotateX(-118deg)] group-focus-visible:[transform:rotateX(-118deg)] group-active:[transform:rotateX(-118deg)_scale(.98)] motion-reduce:transition-none motion-reduce:group-hover:[transform:none] motion-reduce:group-hover:opacity-0 motion-reduce:group-focus-visible:[transform:none] motion-reduce:group-focus-visible:opacity-0 max-sm:text-center sm:whitespace-nowrap">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-1/2 -ml-1.25 w-2.5 bg-[color-mix(in_srgb,var(--cta-ink)_14%,transparent)]"
+        />
+        <span className="relative">{children}</span>
+        <span aria-hidden="true" className="relative font-mono font-normal">
+          &rarr;
+        </span>
+      </span>
+    </Link>
+  );
+}
