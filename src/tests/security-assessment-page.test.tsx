@@ -238,7 +238,7 @@ describe("SecurityAssessmentQuiz", () => {
     });
   });
 
-  it("shows scored results without an email gate", async () => {
+  it("shows scored results with optional email capture below", async () => {
     startSoloQuiz();
     await answerSoloQuestions();
 
@@ -247,7 +247,8 @@ describe("SecurityAssessmentQuiz", () => {
     });
     expect(screen.getByText("Backups weak copy")).toBeInTheDocument();
     expect(screen.getByText("CTA solo reactive")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Email me these results")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Email$/i)).toBeInTheDocument();
   });
 });
 

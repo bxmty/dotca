@@ -1,13 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button, ButtonLink } from "@/app/components/Button";
+import BriefOptInCheckbox from "@/app/components/BriefOptInCheckbox";
+import { TextField } from "@/app/components/Field";
 import PageHero from "@/app/components/PageHero";
 import RuledGrid from "@/app/components/RuledGrid";
 import Section from "@/app/components/Section";
 import SegmentedChoice from "@/app/components/SegmentedChoice";
 import StackedAnswerList from "@/app/components/StackedAnswerList";
+import StatusNote from "@/app/components/StatusNote";
 import StepProgress from "@/app/components/StepProgress";
+import {
+  INCOMPLETE_EMAIL_MESSAGE,
+  isEmailAddress,
+} from "@/lib/formValidation";
+import { event as trackGaEvent } from "@/lib/gtag";
 import {
   QUIZ_SEGMENTS,
   getQuestionsForSegment,
@@ -21,6 +29,8 @@ import {
 type QuizScreen = "landing" | "size" | "questions" | "results";
 
 const AUTO_ADVANCE_MS = 250;
+const CAPTURE_EMAIL_FIELD_ID = "security-assessment-email";
+const CAPTURE_BRIEF_FIELD_ID = "security-assessment-brief";
 
 export default function SecurityAssessmentQuiz({
   config,
@@ -32,6 +42,16 @@ export default function SecurityAssessmentQuiz({
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [captureEmail, setCaptureEmail] = useState("");
+  const [wantsBrief, setWantsBrief] = useState(false);
+  const [website, setWebsite] = useState("");
+  const [captureEmailError, setCaptureEmailError] = useState<
+    string | undefined
+  >();
+  const [captureErrorMessage, setCaptureErrorMessage] = useState("");
+  const [isCaptureSubmitting, setIsCaptureSubmitting] = useState(false);
+  const [isCaptureSent, setIsCaptureSent] = useState(false);
+  const hasTrackedAssessmentComplete = useRef(false);
 
   const questions = useMemo(
     () => (segment ? getQuestionsForSegment(config, segment) : []),
@@ -120,7 +140,79 @@ export default function SecurityAssessmentQuiz({
     setQuestionIndex(0);
     setAnswers({});
     setResult(null);
+    setIsCaptureSent(false);
+    setCaptureEmail("");
+    setCaptureErrorMessage("");
+    setCaptureEmailError(undefined);
+    hasTrackedAssessmentComplete.current = false;
     setScreen("questions");
+  };
+
+  useEffect(() => {
+    if (screen !== "results" || !result || hasTrackedAssessmentComplete.current) {
+      return;
+    }
+    hasTrackedAssessmentComplete.current = true;
+    trackGaEvent({
+      action: "assessment_complete",
+      category: "security_assessment",
+      label: `${segment}_${result.tier}`,
+      params: { segment, tier: result.tier },
+    });
+  }, [screen, result, segment]);
+
+  const submitCapture = async (
+    submitEvent: FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
+    submitEvent.preventDefault();
+
+    const fieldError = !captureEmail.trim()
+      ? "enter your email address"
+      : !isEmailAddress(captureEmail)
+        ? INCOMPLETE_EMAIL_MESSAGE
+        : undefined;
+    setCaptureEmailError(fieldError);
+    if (fieldError) {
+      setCaptureErrorMessage("");
+      document.getElementById(CAPTURE_EMAIL_FIELD_ID)?.focus();
+      return;
+    }
+
+    setIsCaptureSubmitting(true);
+    setCaptureErrorMessage("");
+
+    try {
+      const response = await fetch("/api/security-assessment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: captureEmail.trim(),
+          website,
+          wantsBrief,
+          segment,
+          answers,
+        }),
+      });
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok || !responseData?.success) {
+        throw new Error(
+          responseData?.error ??
+            "Something went wrong. Please try again in a moment.",
+        );
+      }
+
+      setIsCaptureSent(true);
+    } catch (error) {
+      console.error("Security assessment capture error:", error);
+      setCaptureErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again in a moment.",
+      );
+    } finally {
+      setIsCaptureSubmitting(false);
+    }
   };
 
   if (screen === "landing") {
@@ -208,6 +300,72 @@ export default function SecurityAssessmentQuiz({
               </ButtonLink>
             )}
           </div>
+        </div>
+
+        <div className="mb-10 grid max-w-[560px] content-start gap-4.5 border-t border-rule pt-8">
+          <h2 className="m-0 text-h3 font-semibold">Email me these results</h2>
+          <p className="m-0 text-body text-muted">
+            Optional — we&apos;ll send a copy of this summary to your inbox.
+          </p>
+          {isCaptureSent ? (
+            <StatusNote tone="ok" label="Sent">
+              <p className="m-0">Check your inbox for a copy of your results.</p>
+            </StatusNote>
+          ) : (
+            <form
+              className="grid content-start gap-4.5"
+              onSubmit={submitCapture}
+              noValidate
+              aria-label="Email assessment results"
+            >
+              {captureErrorMessage && (
+                <StatusNote tone="error" label="Error">
+                  {captureErrorMessage}
+                </StatusNote>
+              )}
+              <div
+                aria-hidden="true"
+                style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+              >
+                <label htmlFor="security-assessment-website">Website</label>
+                <input
+                  type="text"
+                  id="security-assessment-website"
+                  name="website"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
+              <TextField
+                id={CAPTURE_EMAIL_FIELD_ID}
+                label="Email"
+                type="email"
+                name="email"
+                autoComplete="email"
+                value={captureEmail}
+                onChange={(e) => {
+                  setCaptureEmail(e.target.value);
+                  setCaptureEmailError(undefined);
+                }}
+                required
+                error={captureEmailError}
+              />
+              <BriefOptInCheckbox
+                id={CAPTURE_BRIEF_FIELD_ID}
+                isChecked={wantsBrief}
+                onChange={setWantsBrief}
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={isCaptureSubmitting}
+              >
+                {isCaptureSubmitting ? "Sending…" : "Send my results"}
+              </Button>
+            </form>
+          )}
         </div>
 
         <Button type="button" variant="secondary" onClick={goBack}>

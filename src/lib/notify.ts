@@ -10,7 +10,11 @@ import { Resend } from "resend";
  */
 
 export type NotificationFormType =
-  "Contact" | "Onboarding" | "Paid signup" | "Lead magnet";
+  | "Contact"
+  | "Onboarding"
+  | "Paid signup"
+  | "Lead magnet"
+  | "Security assessment";
 
 function escapeHtml(value: string): string {
   return value
