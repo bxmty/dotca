@@ -6,7 +6,7 @@
   "schedule": ["at any time"],
   "timezone": "America/New_York",
   "constraints": {
-    "npm": "11.21.1"
+    "npm": "12.2.1"
   },
   "lockFileMaintenance": {
     "enabled": true,
