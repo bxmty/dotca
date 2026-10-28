@@ -23,7 +23,7 @@
     "pre-commit:run": "pre-commit run --all-files"
   },
   "dependencies": {
-    "@sentry/nextjs": "11.9.0",
+    "@sentry/nextjs": "11.10.0",
     "@stripe/react-stripe-js": "7.0.1",
     "@stripe/stripe-js": "10.2.0",
     "js-yaml": "5.5.0",
