@@ -170,7 +170,6 @@ describe("POST /api/security-assessment/call", () => {
 
     it("rejects a token signed for another scope", async () => {
       const token = signSubjectLinkToken({
-        secretEnvName: "SDR_LINK_SIGNING_SECRET",
         scope: "install:link",
         subject: "Alex Doe",
         lifetimeMs: 60_000,

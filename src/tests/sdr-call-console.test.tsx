@@ -6,7 +6,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import CallConsole from "@/app/security-assessment/call/CallConsole";
-import { SdrCallSession } from "@/app/security-assessment/call/SdrCallSession";
 import { event as trackGaEvent } from "@/lib/gtag";
 import {
   QUIZ_SEGMENTS,
@@ -149,11 +148,7 @@ function respondWith(status: number, body: unknown) {
 }
 
 function renderConsole() {
-  return render(
-    <SdrCallSession sdrName="Alex Doe">
-      <CallConsole config={config} sdr={sdr} />
-    </SdrCallSession>,
-  );
+  return render(<CallConsole sdrName="Alex Doe" config={config} sdr={sdr} />);
 }
 
 const click = (name: string | RegExp) =>

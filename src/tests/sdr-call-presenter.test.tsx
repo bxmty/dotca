@@ -11,7 +11,6 @@ import CallPresenter from "@/app/security-assessment/call/CallPresenter";
 import PresenterPage, {
   metadata,
 } from "@/app/security-assessment/call/present/page";
-import { SdrCallSession } from "@/app/security-assessment/call/SdrCallSession";
 import {
   QUIZ_SEGMENTS,
   RISK_TIERS,
@@ -152,9 +151,7 @@ function renderTab(testId: string, tab: React.ReactNode) {
 function openConsole() {
   return renderTab(
     "console",
-    <SdrCallSession sdrName="Alex Doe">
-      <CallConsole config={config} sdr={sdr} />
-    </SdrCallSession>,
+    <CallConsole sdrName="Alex Doe" config={config} sdr={sdr} />,
   );
 }
 
@@ -484,9 +481,7 @@ describe("the presenter tab", () => {
     // A second console tab, on another call's first screen.
     render(
       <div data-testid="second-console">
-        <SdrCallSession sdrName="Alex Doe">
-          <CallConsole config={config} sdr={sdr} />
-        </SdrCallSession>
+        <CallConsole sdrName="Alex Doe" config={config} sdr={sdr} />
       </div>,
     );
     await flush();

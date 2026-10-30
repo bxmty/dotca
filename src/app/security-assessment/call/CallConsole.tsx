@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -59,7 +60,6 @@ import {
   projectPresenterScreen,
   useBroadcastToPresenter,
 } from "./presenterBroadcast";
-import { useSdrCallSession } from "./SdrCallSession";
 
 const HEADING_ID = "call-console-heading";
 const HEADING_CLASS_NAME =
@@ -556,12 +556,14 @@ function CurrentScreen(
     case "opening":
     case "closing": {
       const questions = getDiscoveryQuestions(content.sdr, screen.name);
-      const group = screen.name === "opening" ? "Opening" : "Closing";
+      const sectionTitle = SECTIONS.find(
+        ({ name }) => name === screen.name,
+      )?.title;
       return (
         <DiscoveryScreen
           {...props}
           question={questions[screen.index]}
-          label={`${group} discovery ${screen.index + 1} of ${questions.length}`}
+          label={`${sectionTitle} discovery ${screen.index + 1} of ${questions.length}`}
         />
       );
     }
@@ -613,8 +615,12 @@ async function postCall(body: unknown): Promise<CallPostOutcome> {
  * The private console an SDR runs a discovery call from: one reducer holds the
  * call, every screen reads from it, and it survives a reload in sessionStorage.
  */
-export default function CallConsole(content: CallContent) {
-  const { sdrName } = useSdrCallSession();
+export default function CallConsole({
+  config,
+  sdr,
+  sdrName,
+}: CallContent & { sdrName: string }) {
+  const content = useMemo(() => ({ config, sdr }), [config, sdr]);
   const [state, dispatch] = useReducer(
     (current: CallState, action: CallAction) =>
       reduceCall(content, current, action),

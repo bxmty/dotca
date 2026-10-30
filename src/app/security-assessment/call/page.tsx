@@ -5,7 +5,6 @@ import { readSdrName } from "@/lib/sdr-session";
 import { loadQuizConfig, loadSdrContent } from "@/lib/security-assessment";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
 import CallConsole from "./CallConsole";
-import { SdrCallSession } from "./SdrCallSession";
 
 export const metadata: Metadata = {
   title: "Discovery call console",
@@ -26,8 +25,10 @@ export default async function CallConsolePage() {
   if (sdrName === undefined) notFound();
 
   return (
-    <SdrCallSession sdrName={sdrName}>
-      <CallConsole config={loadQuizConfig()} sdr={loadSdrContent()} />
-    </SdrCallSession>
+    <CallConsole
+      config={loadQuizConfig()}
+      sdr={loadSdrContent()}
+      sdrName={sdrName}
+    />
   );
 }

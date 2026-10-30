@@ -153,12 +153,14 @@ describe("SDR link token", () => {
 
   describe("scope and secret separation", () => {
     it("rejects an assessment:sdr token signed with the lead-magnet secret", () => {
+      const sdrSecret = process.env.SDR_LINK_SIGNING_SECRET;
+      process.env.SDR_LINK_SIGNING_SECRET = LEAD_MAGNET_SECRET;
       const token = signSubjectLinkToken({
-        secretEnvName: "LEAD_MAGNET_SIGNING_SECRET",
         scope: "assessment:sdr",
         subject: "Alex Doe",
         lifetimeMs: DAY_MS,
       });
+      process.env.SDR_LINK_SIGNING_SECRET = sdrSecret;
 
       expect(verifySdrToken(token)).toEqual({
         isValid: false,
@@ -168,7 +170,6 @@ describe("SDR link token", () => {
 
     it("rejects a token signed with the SDR secret for another scope", () => {
       const token = signSubjectLinkToken({
-        secretEnvName: "SDR_LINK_SIGNING_SECRET",
         scope: "assessment:other",
         subject: "Alex Doe",
         lifetimeMs: DAY_MS,
