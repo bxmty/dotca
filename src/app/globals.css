@@ -116,6 +116,44 @@
   --radius-ctl: 2px;
 }
 
+/* Motion (Component Spec, motion): each plays once, never loops, and is
+ * applied through motion-safe: so reduced motion shows the end state. */
+@theme {
+  --animate-rise: rise 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-sweep: sweep 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-light-up: light-up 300ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  /* A new screen or question settles in from 8 px below */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /* The perimeter's scan wedge: one turn, fading out as it finishes */
+  @keyframes sweep {
+    from {
+      opacity: 0.16;
+      transform: rotate(-60deg);
+    }
+    85% {
+      opacity: 0.16;
+    }
+    to {
+      opacity: 0;
+      transform: rotate(300deg);
+    }
+  }
+
+  /* A covered point or a scored tick, lit as the scan reaches it */
+  @keyframes light-up {
+    from {
+      opacity: 0.25;
+    }
+  }
+}
+
 @layer base {
   body {
     background-color: var(--bg);

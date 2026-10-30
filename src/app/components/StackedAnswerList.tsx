@@ -2,15 +2,25 @@ import { LABEL_CLASS_NAME } from "./Field";
 
 // Stacked answer list from the Component Spec: long prose options, one ruled
 // row per answer on the shared --field edge, the selected row ringed in the
-// accent. Real radio inputs stay grouped under the legend.
+// accent. Real radio inputs stay grouped under the legend. The ring draws in
+// over 200 ms (none under reduced motion), so a quiz that advances on select
+// shows the choice before it moves on.
 
 export type StackedAnswerOption<Value extends string> = {
   value: Value;
   label: string;
+  /** A mono line under the label, e.g. a team size. */
+  detail?: string;
 };
 
 type StackedAnswerListProps<Value extends string> = {
-  legend: string;
+  /**
+   * Visible label above the rows. Omit it and pass `labelledBy` when a
+   * heading on the page already asks the question.
+   */
+  legend?: string;
+  /** Id of the element that names the group, in place of a legend. */
+  labelledBy?: string;
   name: string;
   options: readonly StackedAnswerOption<Value>[];
   /** Empty string means no option is selected yet. */
@@ -20,19 +30,25 @@ type StackedAnswerListProps<Value extends string> = {
 
 export default function StackedAnswerList<Value extends string>({
   legend,
+  labelledBy,
   name,
   options,
   value,
   onChange,
 }: StackedAnswerListProps<Value>) {
   return (
-    <fieldset className="m-0 min-w-0 border-0 p-0">
-      <legend className={`mb-1.5 p-0 ${LABEL_CLASS_NAME}`}>{legend}</legend>
+    <fieldset
+      className="m-0 min-w-0 border-0 p-0"
+      aria-labelledby={legend ? undefined : labelledBy}
+    >
+      {legend && (
+        <legend className={`mb-1.5 p-0 ${LABEL_CLASS_NAME}`}>{legend}</legend>
+      )}
       <div className="overflow-hidden rounded-ctl border border-field bg-cell">
         {options.map((option) => (
           <label
             key={option.value}
-            className="grid cursor-pointer grid-cols-[20px_1fr] gap-2.5 p-3 not-first:border-t not-first:border-field has-checked:shadow-[inset_0_0_0_2px_var(--fig)]"
+            className="grid cursor-pointer grid-cols-[20px_1fr] gap-2.5 p-3 shadow-[inset_0_0_0_0_var(--fig)] transition-shadow duration-200 not-first:border-t not-first:border-field has-checked:shadow-[inset_0_0_0_2px_var(--fig)] motion-reduce:transition-none"
           >
             <input
               type="radio"
@@ -42,7 +58,14 @@ export default function StackedAnswerList<Value extends string>({
               onChange={() => onChange(option.value)}
               className="mt-0.5 size-4.5 accent-cta"
             />
-            <span className="text-body text-ink">{option.label}</span>
+            <span className="text-body text-ink">
+              {option.label}
+              {option.detail && (
+                <small className="block font-mono text-label text-muted">
+                  {option.detail}
+                </small>
+              )}
+            </span>
           </label>
         ))}
       </div>

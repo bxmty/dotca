@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { Button, ButtonLink } from "@/app/components/Button";
 import BriefOptInCheckbox from "@/app/components/BriefOptInCheckbox";
 import { TextField } from "@/app/components/Field";
 import PageHero from "@/app/components/PageHero";
 import RuledGrid from "@/app/components/RuledGrid";
-import Section from "@/app/components/Section";
-import SegmentedChoice from "@/app/components/SegmentedChoice";
 import StackedAnswerList from "@/app/components/StackedAnswerList";
 import StatusNote from "@/app/components/StatusNote";
 import StepProgress from "@/app/components/StepProgress";
@@ -19,15 +25,20 @@ import {
 import { event as trackGaEvent } from "@/lib/gtag";
 import {
   QUIZ_SEGMENTS,
+  RISK_TIERS,
   type QuizConfig,
   type QuizResult,
   type QuizSegment,
+  type RiskTier,
 } from "@/lib/security-assessment/quizTypes";
 import {
   getQuestionsForSegment,
   getSectionKeysForSegment,
 } from "@/lib/security-assessment/validateQuizConfig";
 import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
+import DotGridPanel from "./DotGridPanel";
+import PerimeterRings from "./PerimeterRings";
+import ScoreRuler from "./ScoreRuler";
 
 type QuizScreen = "landing" | "size" | "details" | "questions" | "results";
 
@@ -36,7 +47,14 @@ type LeadFieldName = keyof LeadFields;
 type LeadFieldErrors = Partial<Record<LeadFieldName, string>>;
 type DeliveryStatus = "idle" | "sending" | "sent" | "error";
 
-const AUTO_ADVANCE_MS = 250;
+// Long enough for the selected ring to draw in and be seen before moving on
+const AUTO_ADVANCE_MS = 400;
+const SCREEN_HEADING_ID = "security-assessment-heading";
+const SCREEN_HEADING_CLASS_NAME = "m-0 text-h2 font-semibold outline-none";
+// Questions run to two or three lines; a step down on phones keeps the
+// answers in the first screen
+const QUESTION_HEADING_CLASS_NAME =
+  "m-0 text-h3 leading-snug font-semibold outline-none md:text-h2 md:leading-tight";
 // Field order, for moving focus to the first invalid one
 const LEAD_FIELD_NAMES: readonly LeadFieldName[] = ["name", "email", "company"];
 const CAPTURE_BRIEF_FIELD_ID = "security-assessment-brief";
@@ -66,6 +84,28 @@ function validateLeadFields({
   return errors;
 }
 
+/**
+ * One centred column for every screen after the landing, the same width as
+ * onboarding, so the quiz doesn't jump between layouts as it advances. Key
+ * it by screen so each new screen rises in.
+ */
+function QuizColumn({
+  columnRef,
+  children,
+}: {
+  columnRef: Ref<HTMLElement>;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      ref={columnRef}
+      className="mx-auto grid w-full max-w-[720px] content-start gap-6 px-4 py-12 motion-safe:animate-rise md:py-16"
+    >
+      {children}
+    </section>
+  );
+}
+
 export default function SecurityAssessmentQuiz({
   config,
 }: {
@@ -92,6 +132,9 @@ export default function SecurityAssessmentQuiz({
   // One lead per completed assessment: revisiting answers re-scores on
   // screen but does not open a second Syncro ticket
   const hasRequestedDelivery = useRef(false);
+  const columnRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const hasLeftLanding = useRef(false);
 
   const questions = useMemo(
     () => (segment ? getQuestionsForSegment(config, segment) : []),
@@ -208,6 +251,22 @@ export default function SecurityAssessmentQuiz({
     startQuestions();
   };
 
+  // Each new screen or question starts at its heading: scroll back up when
+  // the visitor has scrolled past it (phones) and move focus there, so
+  // screen readers announce the change. The landing on first load is left
+  // alone rather than stealing focus from the page.
+  useEffect(() => {
+    if (screen === "landing" && !hasLeftLanding.current) {
+      return;
+    }
+    hasLeftLanding.current = true;
+    const column = columnRef.current;
+    if (column && column.getBoundingClientRect().top < 0) {
+      column.scrollIntoView?.({ block: "start" });
+    }
+    headingRef.current?.focus({ preventScroll: true });
+  }, [screen, questionIndex]);
+
   useEffect(() => {
     if (
       screen !== "results" ||
@@ -289,21 +348,30 @@ export default function SecurityAssessmentQuiz({
             {config.landing.startLabel}
           </Button>
         }
+        aside={<PerimeterRings />}
       />
     );
   }
 
   if (screen === "size") {
     return (
-      <Section>
-        <SegmentedChoice
-          legend={config.sizeQuestion}
+      <QuizColumn key={screen} columnRef={columnRef}>
+        <h1
+          id={SCREEN_HEADING_ID}
+          ref={headingRef}
+          tabIndex={-1}
+          className={SCREEN_HEADING_CLASS_NAME}
+        >
+          {config.sizeQuestion}
+        </h1>
+        <StackedAnswerList
+          labelledBy={SCREEN_HEADING_ID}
           name="businessSize"
           options={segmentOptions}
           value={segment}
           onChange={(nextSegment) => setSegment(nextSegment)}
         />
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-2 flex flex-wrap gap-3">
           <Button type="button" variant="secondary" onClick={goBack}>
             Back
           </Button>
@@ -315,22 +383,29 @@ export default function SecurityAssessmentQuiz({
             Continue
           </Button>
         </div>
-      </Section>
+      </QuizColumn>
     );
   }
 
   if (screen === "details") {
     return (
-      <Section>
-        <h1 className="m-0 mb-3 text-h2 font-semibold">
-          First, a little about you
-        </h1>
-        <p className="m-0 mb-8 text-body text-muted">
-          Your score shows on screen as soon as you finish, and our team uses
-          these details to follow up on it.
-        </p>
+      <QuizColumn key={screen} columnRef={columnRef}>
+        <div className="grid gap-3">
+          <h1
+            id={SCREEN_HEADING_ID}
+            ref={headingRef}
+            tabIndex={-1}
+            className={SCREEN_HEADING_CLASS_NAME}
+          >
+            First, a little about you
+          </h1>
+          <p className="m-0 text-body text-muted">
+            Your score shows on screen as soon as you finish, and our team uses
+            these details to follow up on it.
+          </p>
+        </div>
         <form
-          className="grid max-w-[560px] content-start gap-4.5"
+          className="grid content-start gap-4.5"
           onSubmit={submitLeadDetails}
           noValidate
           aria-label="Your details"
@@ -395,37 +470,59 @@ export default function SecurityAssessmentQuiz({
             </Button>
           </div>
         </form>
-      </Section>
+      </QuizColumn>
     );
   }
 
   if (screen === "results" && result && segment) {
     const tierCopy = config.tiers[result.tier];
     const cta = config.ctas[segment][result.tier];
-    const weakAreaItems = result.riskCategories.map((categoryKey) => ({
-      title: config.categories[categoryKey].label,
-      body: config.categories[categoryKey].weakCopy,
-    }));
+    const weakAreaItems = result.riskCategories.map((categoryKey) => {
+      const category = config.categories[categoryKey];
+      return {
+        kicker: config.sections[category.section]?.label,
+        title: category.label,
+        body: category.weakCopy,
+      };
+    });
+    const tierLabels = Object.fromEntries(
+      RISK_TIERS.map((tier) => [tier, config.tiers[tier].label]),
+    ) as Record<RiskTier, string>;
 
     return (
-      <Section>
-        <p className="m-0 mb-2 font-mono text-label text-muted">
-          {tierCopy.label}
-        </p>
-        <h1 className="m-0 mb-3 text-h2 font-semibold">{tierCopy.headline}</h1>
-        <p className="m-0 mb-6 font-mono text-label text-muted">
-          Score {result.score} / {result.maxScore}
-        </p>
-        <p className="m-0 mb-8 text-body text-muted">{tierCopy.body}</p>
+      <QuizColumn key={screen} columnRef={columnRef}>
+        <div className="grid gap-3">
+          <p className="m-0 font-mono text-label text-muted">
+            {tierCopy.label}
+          </p>
+          <h1
+            id={SCREEN_HEADING_ID}
+            ref={headingRef}
+            tabIndex={-1}
+            className={SCREEN_HEADING_CLASS_NAME}
+          >
+            {tierCopy.headline}
+          </h1>
+        </div>
+        <DotGridPanel className="px-5 pt-6 pb-5">
+          <ScoreRuler
+            score={result.score}
+            maxScore={result.maxScore}
+            thresholds={config.thresholds[segment]}
+            tier={result.tier}
+            tierLabels={tierLabels}
+          />
+        </DotGridPanel>
+        <p className="m-0 text-body text-muted">{tierCopy.body}</p>
 
         {weakAreaItems.length > 0 && (
-          <div className="mb-10">
+          <div className="mt-4">
             <h2 className="m-0 mb-4 text-h3 font-semibold">Where to focus</h2>
             <RuledGrid items={weakAreaItems} />
           </div>
         )}
 
-        <div className="mb-10 grid gap-3 border-t border-rule pt-8">
+        <div className="mt-4 grid gap-3 border-t border-rule pt-8">
           <h2 className="m-0 text-h3 font-semibold">{cta.heading}</h2>
           <p className="m-0 text-body text-muted">{cta.body}</p>
           <div className="flex flex-wrap gap-3">
@@ -441,7 +538,7 @@ export default function SecurityAssessmentQuiz({
         </div>
 
         <div
-          className="mb-10 grid max-w-[560px] content-start gap-4.5 border-t border-rule pt-8"
+          className="grid content-start gap-4.5 border-t border-rule pt-8"
           aria-live="polite"
         >
           {deliveryStatus === "sending" && (
@@ -473,10 +570,12 @@ export default function SecurityAssessmentQuiz({
           )}
         </div>
 
-        <Button type="button" variant="secondary" onClick={goBack}>
-          Review answers
-        </Button>
-      </Section>
+        <div>
+          <Button type="button" variant="secondary" onClick={goBack}>
+            Review answers
+          </Button>
+        </div>
+      </QuizColumn>
     );
   }
 
@@ -489,32 +588,56 @@ export default function SecurityAssessmentQuiz({
     const selectedValue =
       typeof selectedIndex === "number" ? String(selectedIndex) : "";
 
+    const sectionQuestions = questions.filter(
+      (question) =>
+        config.categories[question.category].section === currentSectionKey,
+    );
+    const sectionFraction =
+      (sectionQuestions.indexOf(currentQuestion) + 1) / sectionQuestions.length;
+
     return (
-      <Section>
+      <QuizColumn key={screen} columnRef={columnRef}>
         <StepProgress
           steps={sectionStepTitles}
           currentStep={currentSectionStep}
           onStepSelect={goToSectionStep}
+          currentStepFraction={sectionFraction}
         />
-        <p className="mt-4 mb-1 font-mono text-label text-muted">
-          Question {questionIndex + 1} of {questions.length}
-        </p>
-        <h1 className="m-0 mb-6 text-h2 font-semibold">
-          {currentQuestion.text}
-        </h1>
-        <StackedAnswerList
-          legend={currentQuestion.text}
-          name={currentQuestion.id}
-          options={answerOptions}
-          value={selectedValue}
-          onChange={(value) => selectAnswer(Number(value))}
-        />
-        <div className="mt-8">
+        {/* Keyed per question, so each one rises in */}
+        <div
+          key={currentQuestion.id}
+          className="grid gap-6 motion-safe:animate-rise"
+        >
+          <div className="grid gap-4">
+            <DotGridPanel className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-4 pt-3.5 pb-3 font-mono text-label tracking-[.06em] text-muted uppercase">
+              <span>{config.categories[currentQuestion.category].label}</span>
+              <span className="text-ink tabular-nums">
+                {`Question ${questionIndex + 1} of ${questions.length}`}
+              </span>
+            </DotGridPanel>
+            <h1
+              id={SCREEN_HEADING_ID}
+              ref={headingRef}
+              tabIndex={-1}
+              className={QUESTION_HEADING_CLASS_NAME}
+            >
+              {currentQuestion.text}
+            </h1>
+          </div>
+          <StackedAnswerList
+            labelledBy={SCREEN_HEADING_ID}
+            name={currentQuestion.id}
+            options={answerOptions}
+            value={selectedValue}
+            onChange={(value) => selectAnswer(Number(value))}
+          />
+        </div>
+        <div className="mt-2">
           <Button type="button" variant="secondary" onClick={goBack}>
             Back
           </Button>
         </div>
-      </Section>
+      </QuizColumn>
     );
   }
 
