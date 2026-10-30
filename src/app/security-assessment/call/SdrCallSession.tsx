@@ -1,13 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo } from "react";
-import { SDR_TOKEN_PARAM } from "@/lib/sdr-console-route";
+import { createContext, useContext, useMemo } from "react";
 
-type SdrCallSessionValue = { sdrName: string; token: string };
+type SdrCallSessionValue = { sdrName: string };
 
 const SdrCallSessionContext = createContext<SdrCallSessionValue | null>(null);
 
-/** The SDR's name and signed token, for console components and API calls. */
+/** The SDR's name, for console components. The token stays in an httpOnly cookie. */
 export function useSdrCallSession(): SdrCallSessionValue {
   const session = useContext(SdrCallSessionContext);
   if (!session) {
@@ -16,23 +15,11 @@ export function useSdrCallSession(): SdrCallSessionValue {
   return session;
 }
 
-/**
- * Removes the token from the address bar on load, in case the wrong tab gets
- * shared, and holds it in memory. Never write it to web storage.
- */
 export function SdrCallSession({
   sdrName,
-  token,
   children,
 }: SdrCallSessionValue & { children: React.ReactNode }) {
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has(SDR_TOKEN_PARAM)) return;
-    url.searchParams.delete(SDR_TOKEN_PARAM);
-    window.history.replaceState(null, "", url);
-  }, []);
-
-  const session = useMemo(() => ({ sdrName, token }), [sdrName, token]);
+  const session = useMemo(() => ({ sdrName }), [sdrName]);
 
   return (
     <SdrCallSessionContext.Provider value={session}>
