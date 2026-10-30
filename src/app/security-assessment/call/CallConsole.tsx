@@ -583,21 +583,29 @@ function CurrentScreen(
   }
 }
 
-async function postCall(body: unknown): Promise<string | null> {
+type CallPostOutcome = { isSaved: true } | { isSaved: false; message: string };
+
+async function postCall(body: unknown): Promise<CallPostOutcome> {
+  const failWith = (message: string): CallPostOutcome => ({
+    isSaved: false,
+    message,
+  });
   try {
     const response = await fetch("/api/security-assessment/call", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (response.status === 401) return SESSION_ENDED_MESSAGE;
-    const data: SdrCallLeadResponse = await response
+    if (response.status === 401) return failWith(SESSION_ENDED_MESSAGE);
+    const responseBody: SdrCallLeadResponse = await response
       .json()
       .catch(() => ({ error: SAVE_ERROR_MESSAGE }));
-    if (response.ok && "success" in data) return null;
-    return "error" in data ? data.error : SAVE_ERROR_MESSAGE;
+    if (response.ok && "success" in responseBody) return { isSaved: true };
+    return failWith(
+      "error" in responseBody ? responseBody.error : SAVE_ERROR_MESSAGE,
+    );
   } catch {
-    return SAVE_ERROR_MESSAGE;
+    return failWith(SAVE_ERROR_MESSAGE);
   }
 }
 
@@ -659,11 +667,11 @@ export default function CallConsole(content: CallContent) {
   const save = async () => {
     if (isCallLocked(state)) return;
     dispatch({ type: "saveStarted" });
-    const failure = await postCall(buildCallLeadRequest(content, state));
+    const outcome = await postCall(buildCallLeadRequest(content, state));
     dispatch(
-      failure === null
+      outcome.isSaved
         ? { type: "saveSucceeded" }
-        : { type: "saveFailed", message: failure },
+        : { type: "saveFailed", message: outcome.message },
     );
   };
 

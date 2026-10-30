@@ -5,7 +5,10 @@ import {
   type QuizResult,
   type QuizSegment,
 } from "@/lib/security-assessment/quizTypes";
-import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
+import {
+  hasAnswerToEveryQuestion,
+  scoreQuizAnswers,
+} from "@/lib/security-assessment/scoreQuizAnswers";
 import type {
   DiscoveryGroup,
   DiscoveryQuestion,
@@ -130,22 +133,14 @@ export function selectPostureQuestion(
     : undefined;
 }
 
-/** The score of the answers so far, or null until every question has one. */
+/** The score of the answers so far, or undefined until every question has one. */
 export function selectCallResult(
   { config }: Pick<CallContent, "config">,
   { segment, answers }: Pick<CallState, "segment" | "answers">,
-): QuizResult | null {
-  try {
-    const segmentAnswers = Object.fromEntries(
-      getQuestionsForSegment(config, segment).map(({ id }) => [
-        id,
-        answers[id],
-      ]),
-    );
-    return scoreQuizAnswers({ config, segment, answers: segmentAnswers });
-  } catch {
-    return null;
-  }
+): QuizResult | undefined {
+  return hasAnswerToEveryQuestion({ config, segment, answers })
+    ? scoreQuizAnswers({ config, segment, answers })
+    : undefined;
 }
 
 /** The save has started or finished, so the call can't change underneath it. */
@@ -318,15 +313,15 @@ const isDiscoveryEntry = (value: unknown): value is DiscoveryEntry =>
   isRecordOf(value, isString);
 
 /**
- * A stored call to resume, or null if it isn't one: storage outlives a deploy,
+ * A stored call to resume, or undefined if it isn't one: storage outlives a deploy,
  * so its contents may not match this page's questions. A screen that needs a
  * score falls back to the posture questions when the answers no longer give one.
  */
 export function parseStoredCall(
   content: CallContent,
   stored: unknown,
-): CallState | null {
-  if (!isRecord(stored)) return null;
+): CallState | undefined {
+  if (!isRecord(stored)) return undefined;
   const {
     lead,
     segment,
@@ -347,14 +342,14 @@ export function parseStoredCall(
     !isRecordOf(discovery, isDiscoveryEntry) ||
     !isString(callSummary)
   ) {
-    return null;
+    return undefined;
   }
 
   const screens = listCallScreens(content, segment as QuizSegment);
   const storedScreen = screens.find((candidate) =>
     isSameScreen(candidate, screen as CallScreen),
   );
-  if (!storedScreen) return null;
+  if (!storedScreen) return undefined;
 
   const call: CallState = {
     screen: storedScreen,

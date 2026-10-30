@@ -11,6 +11,21 @@ export function isQuizSegment(value: unknown): value is QuizSegment {
   return QUIZ_SEGMENTS.includes(value as QuizSegment);
 }
 
+/** Whether scoreQuizAnswers can score these: a real answer to every question. */
+export function hasAnswerToEveryQuestion({
+  config,
+  segment,
+  answers,
+}: {
+  config: QuizConfig;
+  segment: QuizSegment;
+  answers: Record<string, number>;
+}): boolean {
+  return getQuestionsForSegment(config, segment).every(
+    ({ id, answers: options }) => options[answers[id]] !== undefined,
+  );
+}
+
 /**
  * Score a completed response set. `answers` maps question id → index of
  * the selected answer. Throws on missing or out-of-range answers so API

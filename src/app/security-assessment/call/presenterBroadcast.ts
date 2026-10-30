@@ -126,7 +126,9 @@ export function projectPresenterScreen(
   const isShowingResults =
     screen.name === "results" ||
     (screen.name === "summary" && save.status === "saved");
-  const result = isShowingResults ? selectCallResult(content, state) : null;
+  const result = isShowingResults
+    ? selectCallResult(content, state)
+    : undefined;
   return result
     ? {
         view: "results",
@@ -135,11 +137,11 @@ export function projectPresenterScreen(
     : { view: "neutral" };
 }
 
-/** Null where there's no BroadcastChannel; the two tabs just stay unlinked. */
+/** Undefined where there's no BroadcastChannel; the tabs just stay unlinked. */
 export function openPresenterChannel<Incoming, Outgoing>(
   onMessage: (message: Incoming) => void,
-): { post: (message: Outgoing) => void; close: () => void } | null {
-  if (typeof BroadcastChannel === "undefined") return null;
+): { post: (message: Outgoing) => void; close: () => void } | undefined {
+  if (typeof BroadcastChannel === "undefined") return undefined;
   const channel = new window.BroadcastChannel(PRESENTER_CHANNEL_NAME);
   channel.onmessage = (event: { data: Incoming }) => onMessage(event.data);
   return {

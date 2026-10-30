@@ -5,13 +5,13 @@ const CALL_STORAGE_KEY = "sdr-call";
 // Every access tolerates storage being unavailable (private windows, blocked
 // site data): the call then just doesn't survive a reload.
 
-/** The stored call, unvalidated, or null. */
+/** The stored call, unvalidated, or undefined when there's none to read. */
 export function readStoredCall(): unknown {
   try {
     const stored = window.sessionStorage.getItem(CALL_STORAGE_KEY);
-    return stored === null ? null : JSON.parse(stored);
+    return stored === null ? undefined : JSON.parse(stored);
   } catch {
-    return null;
+    return undefined;
   }
 }
 

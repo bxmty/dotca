@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default async function CallConsolePage() {
   const token = (await cookies()).get(SDR_SESSION_COOKIE)?.value;
   const sdrName = readSdrName(token);
-  if (sdrName === null) notFound();
+  if (sdrName === undefined) notFound();
 
   return (
     <SdrCallSession sdrName={sdrName}>

@@ -45,8 +45,8 @@ export function proxy(request: NextRequest) {
   const links = request.nextUrl.searchParams.getAll(SDR_TOKEN_PARAM);
   if (links.length === 0) return NextResponse.next();
 
-  const token = links.length === 1 ? links[0] : null;
-  if (token === null || readSdrName(token) === null) {
+  const [token] = links;
+  if (links.length > 1 || readSdrName(token) === undefined) {
     return new NextResponse(NOT_FOUND_PAGE, {
       status: 404,
       headers: HTML_HEADERS,

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { deliverLead } from "@/lib/lead-delivery";
 import { isEmailAddress } from "@/lib/formValidation";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
-import { verifySdrToken, type SdrTokenVerification } from "@/lib/sdr-link";
+import { checkSdrSession } from "@/lib/sdr-session";
 import {
   getQuestionFieldLabels,
   getQuestionsForSegment,
@@ -147,18 +147,6 @@ function buildDiscoveryFields(
   );
 }
 
-/** Null when the token can't be checked because the secret isn't configured. */
-function verifySessionToken(request: NextRequest): SdrTokenVerification | null {
-  try {
-    return verifySdrToken(request.cookies.get(SDR_SESSION_COOKIE)?.value);
-  } catch {
-    console.error(
-      "/api/security-assessment/call requested but SDR_LINK_SIGNING_SECRET is unset or too short, so SDR tokens cannot be checked",
-    );
-    return null;
-  }
-}
-
 /**
  * Discovery-call lead delivery (#710): an SDR's saved call, authenticated
  * only by the httpOnly session cookie, so nothing in the body, a header or
@@ -168,12 +156,17 @@ function verifySessionToken(request: NextRequest): SdrTokenVerification | null {
  * No GA4 event, brief opt-in or prospect email (#710 decisions 8, 11, 23).
  */
 export async function POST(request: NextRequest) {
-  const verification = verifySessionToken(request);
-  if (verification === null) {
+  const session = checkSdrSession(
+    request.cookies.get(SDR_SESSION_COOKIE)?.value,
+  );
+  if (!session.isValid) {
+    if (session.reason !== "secret-unset") {
+      return respond({ error: "Unauthorized" }, 401);
+    }
+    console.error(
+      "/api/security-assessment/call requested but SDR_LINK_SIGNING_SECRET is unset or too short, so SDR tokens cannot be checked",
+    );
     return respond({ error: SERVICE_UNAVAILABLE_MESSAGE }, 503);
-  }
-  if (!verification.isValid) {
-    return respond({ error: "Unauthorized" }, 401);
   }
 
   try {
@@ -183,22 +176,21 @@ export async function POST(request: NextRequest) {
     } catch {
       return respond({ error: "Request body must be valid JSON" }, 400);
     }
-    const data = isRecord(body) ? body : {};
+    const submission = isRecord(body) ? body : {};
 
-    if (!isQuizSegment(data.segment)) {
+    if (!isQuizSegment(submission.segment)) {
       fail("Unknown business size segment");
     }
-    const segment = data.segment;
-    const name = readRequiredText(data.name, "Name");
-    const email = readRequiredText(data.email, "Email");
+    const segment = submission.segment;
+    const name = readRequiredText(submission.name, "Name");
+    const email = readRequiredText(submission.email, "Email");
     if (!isEmailAddress(email)) fail("Please enter a valid email address");
-    const company = readRequiredText(data.company, "Company");
+    const company = readRequiredText(submission.company, "Company");
 
     const config = loadQuizConfig();
-    const answers = (isRecord(data.answers) ? data.answers : {}) as Record<
-      string,
-      number
-    >;
+    const answers = (
+      isRecord(submission.answers) ? submission.answers : {}
+    ) as Record<string, number>;
     let result;
     try {
       result = scoreQuizAnswers({ config, segment, answers });
@@ -209,14 +201,14 @@ export async function POST(request: NextRequest) {
     const postureFields = buildPostureFields({
       answers,
       labels: getQuestionFieldLabels(config, segment),
-      notes: readOptionalRecord(data.notes, "Notes"),
+      notes: readOptionalRecord(submission.notes, "Notes"),
       questions: getQuestionsForSegment(config, segment),
     });
     const discoveryFields = buildDiscoveryFields(
       loadSdrContent().discovery,
-      readOptionalRecord(data.discovery, "Discovery answers"),
+      readOptionalRecord(submission.discovery, "Discovery answers"),
     );
-    const callSummary = readCallSummary(data.callSummary);
+    const callSummary = readCallSummary(submission.callSummary);
 
     const { isDelivered } = await deliverLead({
       lead: {
@@ -226,7 +218,7 @@ export async function POST(request: NextRequest) {
         company,
         isBriefOffered: false,
         fields: {
-          SDR: verification.sdrName,
+          SDR: session.sdrName,
           Channel: "Discovery call",
           Name: name,
           Email: email,

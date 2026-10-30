@@ -1,6 +1,7 @@
 import {
   INITIAL_CALL,
   reduceCall,
+  selectCallResult,
   type CallAction,
   type CallContent,
   type CallState,
@@ -83,5 +84,38 @@ describe("reduceCall moves", () => {
     };
 
     expect(reduce(unanswered, { type: "goNext" })).toBe(unanswered);
+  });
+});
+
+describe("selectCallResult", () => {
+  const scoredContent = {
+    ...content.config,
+    thresholds: { solo: { reactive: 1, managed: 2, resilient: 3 } },
+  } as unknown as QuizConfig;
+  const select = (config: QuizConfig, answers: Record<string, number>) =>
+    selectCallResult({ config }, { segment: "solo", answers });
+
+  it("scores once every question has an answer", () => {
+    expect(select(scoredContent, { q1: 0 })).toMatchObject({
+      score: 1,
+      maxScore: 1,
+    });
+  });
+
+  it.each([
+    ["missing", {}],
+    ["past the end of the list", { q1: 9 }],
+    ["not a whole number", { q1: 0.5 }],
+  ])("gives no result for an answer %s", (_label, answers) => {
+    expect(select(scoredContent, answers)).toBeUndefined();
+  });
+
+  it("doesn't hide a scoring error behind 'not finished yet'", () => {
+    const withoutThresholds = {
+      ...scoredContent,
+      thresholds: {},
+    } as unknown as QuizConfig;
+
+    expect(() => select(withoutThresholds, { q1: 0 })).toThrow(TypeError);
   });
 });
