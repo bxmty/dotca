@@ -17,5 +17,24 @@ export {
   getSectionKeysForSegment,
   validateQuizConfig,
 } from "./validateQuizConfig";
-export { clearQuizConfigCache, loadQuizConfig } from "./loadQuizConfig";
+export {
+  DISCOVERY_GROUPS,
+  DISCOVERY_KINDS,
+  SDR_COPY_STATUSES,
+  type DiscoveryChoiceQuestion,
+  type DiscoveryGroup,
+  type DiscoveryKind,
+  type DiscoveryQuestion,
+  type DiscoveryTextQuestion,
+  type NextStep,
+  type SdrContent,
+  type SdrCopyStatus,
+  type TalkTrack,
+} from "./sdrTypes";
+export { validateSdrContent } from "./validateSdrContent";
+export {
+  clearQuizConfigCache,
+  loadQuizConfig,
+  loadSdrContent,
+} from "./loadQuizConfig";
 export { isQuizSegment, scoreQuizAnswers } from "./scoreQuizAnswers";
