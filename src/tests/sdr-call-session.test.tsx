@@ -5,26 +5,19 @@ import {
 } from "@/app/security-assessment/call/SdrCallSession";
 
 function SessionProbe() {
-  const { sdrName, token } = useSdrCallSession();
-  return (
-    <p>
-      {sdrName}|{token}
-    </p>
-  );
+  const session = useSdrCallSession();
+  return <p>{JSON.stringify(session)}</p>;
 }
 
 describe("SdrCallSession", () => {
-  it("hands the name and in-memory token to descendants after stripping the URL", () => {
-    window.history.replaceState(null, "", "/security-assessment/call?t=abc");
-
+  it("hands descendants the SDR's name and nothing else", () => {
     render(
-      <SdrCallSession sdrName="Alex Doe" token="abc">
+      <SdrCallSession sdrName="Alex Doe">
         <SessionProbe />
       </SdrCallSession>,
     );
 
-    expect(screen.getByText("Alex Doe|abc")).toBeInTheDocument();
-    expect(window.location.search).toBe("");
+    expect(screen.getByText('{"sdrName":"Alex Doe"}')).toBeInTheDocument();
   });
 
   it("refuses to be read outside a session", () => {
@@ -35,20 +28,5 @@ describe("SdrCallSession", () => {
     expect(() => render(<SessionProbe />)).toThrow(/SdrCallSession/);
 
     consoleError.mockRestore();
-  });
-
-  it("never writes the token to web storage", () => {
-    window.history.replaceState(null, "", "/security-assessment/call?t=abc");
-    sessionStorage.clear();
-    localStorage.clear();
-
-    render(
-      <SdrCallSession sdrName="Alex Doe" token="abc">
-        <SessionProbe />
-      </SdrCallSession>,
-    );
-
-    expect(sessionStorage.length).toBe(0);
-    expect(localStorage.length).toBe(0);
   });
 });
