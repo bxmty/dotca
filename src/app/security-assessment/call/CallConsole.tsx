@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useReducer,
   useRef,
@@ -16,6 +17,7 @@ import StackedAnswerList from "@/app/components/StackedAnswerList";
 import StatusNote from "@/app/components/StatusNote";
 import StepProgress from "@/app/components/StepProgress";
 import { omitFieldErrors } from "@/lib/formValidation";
+import { SDR_PRESENTER_PATH } from "@/lib/sdr-console-route";
 import {
   QUIZ_SEGMENTS,
   type QuizQuestion,
@@ -51,6 +53,10 @@ import {
   type CallState,
 } from "./callState";
 import { clearStoredCall, readStoredCall, storeCall } from "./callStorage";
+import {
+  projectPresenterScreen,
+  useBroadcastToPresenter,
+} from "./presenterBroadcast";
 import { useSdrCallSession } from "./SdrCallSession";
 
 const HEADING_ID = "call-console-heading";
@@ -69,6 +75,11 @@ const SECTIONS: readonly { name: CallScreenName; title: string }[] = [
   { name: "closing", title: "Closing" },
   { name: "summary", title: "Summary" },
 ];
+
+// noopener is what keeps the call private: without it, a new window starts with
+// a copy of this tab's sessionStorage (the whole call) and can reach this page
+// through window.opener. It also makes window.open return null, on success too.
+const PRESENTER_WINDOW_FEATURES = "noopener,popup,width=1280,height=900";
 
 const getLeadFieldId = (field: LeadFieldName) => `call-lead-${field}`;
 
@@ -577,6 +588,7 @@ export default function CallConsole(content: CallContent) {
   );
   const headingRef = useRef<HTMLHeadingElement>(null);
   const hasRestored = useRef(false);
+  const [isRestored, setIsRestored] = useState(false);
   const hasRenderedScreen = useRef(false);
   const screenKey = JSON.stringify(state.screen);
 
@@ -586,7 +598,18 @@ export default function CallConsole(content: CallContent) {
     hasRestored.current = true;
     const call = parseStoredCall(content, readStoredCall());
     if (call) dispatch({ type: "restore", call });
+    setIsRestored(true);
   }, [content]);
+
+  const answerFromPresenter = useCallback(
+    (questionId: string, answerIndex: number) =>
+      dispatch({ type: "answerFromPresenter", questionId, answerIndex }),
+    [],
+  );
+  useBroadcastToPresenter(
+    isRestored ? projectPresenterScreen(content, state) : null,
+    answerFromPresenter,
+  );
 
   useEffect(() => {
     if (state === INITIAL_CALL || state.save.status === "saved") {
@@ -625,7 +648,23 @@ export default function CallConsole(content: CallContent) {
     <section className="mx-auto grid w-full max-w-[1040px] content-start gap-6 px-4 py-12">
       <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 font-mono text-label text-muted">
         <span>Discovery call. Signed in as {sdrName}.</span>
-        {content.sdr.status === "draft" && <span>Draft copy</span>}
+        <span className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+          {content.sdr.status === "draft" && <span>Draft copy</span>}
+          <Button
+            type="button"
+            variant="secondary"
+            isCompact
+            onClick={() =>
+              window.open(
+                SDR_PRESENTER_PATH,
+                "_blank",
+                PRESENTER_WINDOW_FEATURES,
+              )
+            }
+          >
+            Open presenter
+          </Button>
+        </span>
       </div>
       <StepProgress
         steps={SECTIONS.map(({ title }) => title)}

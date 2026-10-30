@@ -53,6 +53,7 @@ export type CallAction =
   | { type: "updateLead"; field: LeadFieldName; value: string }
   | { type: "selectSegment"; segment: QuizSegment }
   | { type: "answerPosture"; questionId: string; answerIndex: number }
+  | { type: "answerFromPresenter"; questionId: string; answerIndex: number }
   | { type: "notePosture"; questionId: string; note: string }
   | { type: "chooseDiscovery"; questionId: string; choice: string }
   | { type: "clearDiscoveryChoice"; questionId: string }
@@ -221,6 +222,21 @@ export function reduceCall(
   switch (action.type) {
     case "saveStarted":
       return { ...state, save: { status: "sending" } };
+    case "answerFromPresenter": {
+      // It crossed tabs, so the console may have moved on since the click.
+      const question = selectPostureQuestion(content, state);
+      const isCurrent =
+        question?.id === action.questionId &&
+        Number.isInteger(action.answerIndex) &&
+        question.answers[action.answerIndex] !== undefined;
+      return isCurrent
+        ? reduceEdit(state, {
+            type: "answerPosture",
+            questionId: action.questionId,
+            answerIndex: action.answerIndex,
+          })
+        : state;
+    }
     case "goBack":
       return { ...state, screen: moveBy(content, state, -1) };
     case "goNext": {
