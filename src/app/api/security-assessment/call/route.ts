@@ -216,7 +216,6 @@ export async function POST(request: NextRequest) {
         name,
         email,
         company,
-        isBriefOffered: false,
         fields: {
           SDR: session.sdrName,
           Channel: "Discovery call",
