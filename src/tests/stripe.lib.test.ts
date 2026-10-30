@@ -149,7 +149,7 @@ describe("stripe.ts utility", () => {
       const result = await getServerStripe();
 
       expect(mockStripeConstructor).toHaveBeenCalledWith("sk_test_456", {
-        apiVersion: "2026-09-30.endive",
+        apiVersion: "2026-10-28.endive",
       });
       expect(result).toBe(mockStripeInstance);
     });
@@ -286,8 +286,7 @@ describe("stripe.ts utility", () => {
 
     it("handles undefined environment variables", () => {
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = undefined as
-        | string
-        | undefined;
+        string | undefined;
       process.env.STRIPE_SECRET_KEY = undefined as string | undefined;
 
       const { getStripe } = require("@/lib/stripe");
