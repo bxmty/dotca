@@ -31,8 +31,12 @@ export type CallScreenName = CallScreen["name"];
 
 export type DiscoveryEntry = { choice?: string; note?: string };
 
+/**
+ * "interrupted": the page reloaded while a save was sending, so nobody knows
+ * whether it reached Syncro. Retrying needs the SDR's explicit confirmation.
+ */
 export type CallSave =
-  | { status: "idle" | "sending" | "saved" }
+  | { status: "idle" | "sending" | "saved" | "interrupted" }
   | { status: "error"; message: string };
 
 export type CallState = {
@@ -323,8 +327,16 @@ export function parseStoredCall(
   stored: unknown,
 ): CallState | null {
   if (!isRecord(stored)) return null;
-  const { lead, segment, answers, notes, discovery, callSummary, screen } =
-    stored;
+  const {
+    lead,
+    segment,
+    answers,
+    notes,
+    discovery,
+    callSummary,
+    screen,
+    save,
+  } = stored;
 
   if (
     !isRecordOf(lead, isString) ||
@@ -352,7 +364,12 @@ export function parseStoredCall(
     notes,
     discovery,
     callSummary,
-    save: { status: "idle" },
+    save: {
+      status:
+        isRecord(save) && save.status === "interrupted"
+          ? "interrupted"
+          : "idle",
+    },
   };
 
   const isPastPosture =

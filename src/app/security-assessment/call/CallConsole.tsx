@@ -49,6 +49,7 @@ import {
   selectPostureQuestion,
   type CallAction,
   type CallContent,
+  type CallSave,
   type CallScreenName,
   type CallState,
 } from "./callState";
@@ -65,6 +66,17 @@ const HEADING_CLASS_NAME =
 const SAVE_ERROR_MESSAGE = "The call didn't save. Please try again.";
 const SESSION_ENDED_MESSAGE =
   "Your session has ended, so the call didn't save. Open your SDR link again in this tab: everything you've entered will come back.";
+
+const INTERRUPTED_SAVE_MESSAGE =
+  "The page reloaded during the save, so this call may already have reached Syncro. Check Syncro first: saving again could create a duplicate lead.";
+
+const SAVE_LABEL_BY_STATUS: Record<CallSave["status"], string> = {
+  idle: "Save to Syncro",
+  sending: "Save to Syncro",
+  saved: "Save to Syncro",
+  error: "Try again",
+  interrupted: "Save again anyway",
+};
 
 const SECTIONS: readonly { name: CallScreenName; title: string }[] = [
   { name: "details", title: "Contact" },
@@ -485,6 +497,11 @@ function SummaryScreen({
             {save.message}
           </StatusNote>
         )}
+        {save.status === "interrupted" && (
+          <StatusNote tone="error" label="Check Syncro">
+            {INTERRUPTED_SAVE_MESSAGE}
+          </StatusNote>
+        )}
         {isSaved && (
           <StatusNote tone="ok" label="Saved">
             <p className="m-0">
@@ -504,12 +521,17 @@ function SummaryScreen({
           <BackButton dispatch={dispatch} />
           <Button
             type="button"
-            variant="primary"
+            variant={save.status === "interrupted" ? "secondary" : "primary"}
             disabled={save.status === "sending"}
             onClick={onSave}
           >
-            {save.status === "error" ? "Try again" : "Save to Syncro"}
+            {SAVE_LABEL_BY_STATUS[save.status]}
           </Button>
+          {save.status === "interrupted" && (
+            <Button type="button" variant="primary" onClick={onStartNewCall}>
+              Start a new call
+            </Button>
+          )}
         </div>
       )}
     </div>

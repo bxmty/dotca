@@ -15,12 +15,20 @@ export function readStoredCall(): unknown {
   }
 }
 
-/** The save's progress isn't kept: a resumed call hasn't been saved. */
+/**
+ * Of the save's progress, keeps only that one may have left this tab: restored,
+ * a save still sending has been cut off, and may have reached Syncro anyway.
+ */
 export function storeCall(call: CallState): void {
+  const mayHaveSaved =
+    call.save.status === "sending" || call.save.status === "interrupted";
   try {
     window.sessionStorage.setItem(
       CALL_STORAGE_KEY,
-      JSON.stringify({ ...call, save: undefined }),
+      JSON.stringify({
+        ...call,
+        save: mayHaveSaved ? { status: "interrupted" } : undefined,
+      }),
     );
   } catch {
     // Nothing to do; see above
