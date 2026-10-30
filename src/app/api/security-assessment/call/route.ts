@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { deliverLead } from "@/lib/lead-delivery";
+import { deliverLead, type LeadDetails } from "@/lib/lead-delivery";
 import { isEmailAddress } from "@/lib/formValidation";
 import { isRecord } from "@/lib/isRecord";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
@@ -156,6 +156,70 @@ function buildDiscoveryFields(
   );
 }
 
+function scoreSubmittedAnswers(
+  args: Parameters<typeof scoreQuizAnswers>[0],
+): ReturnType<typeof scoreQuizAnswers> {
+  try {
+    return scoreQuizAnswers(args);
+  } catch {
+    fail("Please answer every question");
+  }
+}
+
+/** A submission as a lead, or InvalidSubmissionError naming what's wrong. */
+function buildCallLead(body: unknown, sdrName: string): LeadDetails {
+  const submission = isRecord(body) ? body : {};
+
+  if (!isQuizSegment(submission.segment)) {
+    fail("Unknown business size segment");
+  }
+  const segment = submission.segment;
+  const name = readRequiredText(submission.name, "Name");
+  const email = readRequiredText(submission.email, "Email");
+  if (!isEmailAddress(email)) fail("Please enter a valid email address");
+  const company = readRequiredText(submission.company, "Company");
+
+  const config = loadQuizConfig();
+  const answers = (
+    isRecord(submission.answers) ? submission.answers : {}
+  ) as Record<string, number>;
+  const result = scoreSubmittedAnswers({ config, segment, answers });
+
+  const postureFields = buildPostureFields({
+    answers,
+    notes: readOptionalRecord(submission.notes, "Notes"),
+    labelledQuestions: getQuestionsWithFieldLabels(config, segment),
+  });
+  const discoveryFields = buildDiscoveryFields(
+    loadSdrContent().discovery,
+    readOptionalRecord(submission.discovery, "Discovery answers"),
+  );
+  const callSummary = readCallSummary(submission.callSummary);
+
+  return {
+    formType: "Discovery call assessment",
+    name,
+    email,
+    company,
+    fields: {
+      SDR: sdrName,
+      Channel: "Discovery call",
+      Name: name,
+      Email: email,
+      Company: company,
+      "Business size": config.segments[segment].label,
+      "Risk tier": config.tiers[result.tier].label,
+      Score: `${result.score}/${result.maxScore}`,
+      "Weak areas": result.riskCategories
+        .map((categoryKey) => config.categories[categoryKey].label)
+        .join(", "),
+      ...postureFields,
+      ...discoveryFields,
+      ...(callSummary === "" ? {} : { "Call summary": callSummary }),
+    },
+  };
+}
+
 /**
  * Discovery-call lead delivery (#710): an SDR's saved call, authenticated
  * only by the httpOnly session cookie, so nothing in the body, a header or
@@ -185,62 +249,9 @@ export async function POST(request: NextRequest) {
     } catch {
       return respond({ error: "Request body must be valid JSON" }, 400);
     }
-    const submission = isRecord(body) ? body : {};
-
-    if (!isQuizSegment(submission.segment)) {
-      fail("Unknown business size segment");
-    }
-    const segment = submission.segment;
-    const name = readRequiredText(submission.name, "Name");
-    const email = readRequiredText(submission.email, "Email");
-    if (!isEmailAddress(email)) fail("Please enter a valid email address");
-    const company = readRequiredText(submission.company, "Company");
-
-    const config = loadQuizConfig();
-    const answers = (
-      isRecord(submission.answers) ? submission.answers : {}
-    ) as Record<string, number>;
-    let result;
-    try {
-      result = scoreQuizAnswers({ config, segment, answers });
-    } catch {
-      fail("Please answer every question");
-    }
-
-    const postureFields = buildPostureFields({
-      answers,
-      notes: readOptionalRecord(submission.notes, "Notes"),
-      labelledQuestions: getQuestionsWithFieldLabels(config, segment),
-    });
-    const discoveryFields = buildDiscoveryFields(
-      loadSdrContent().discovery,
-      readOptionalRecord(submission.discovery, "Discovery answers"),
-    );
-    const callSummary = readCallSummary(submission.callSummary);
 
     const { isDelivered } = await deliverLead({
-      lead: {
-        formType: "Discovery call assessment",
-        name,
-        email,
-        company,
-        fields: {
-          SDR: session.sdrName,
-          Channel: "Discovery call",
-          Name: name,
-          Email: email,
-          Company: company,
-          "Business size": config.segments[segment].label,
-          "Risk tier": config.tiers[result.tier].label,
-          Score: `${result.score}/${result.maxScore}`,
-          "Weak areas": result.riskCategories
-            .map((categoryKey) => config.categories[categoryKey].label)
-            .join(", "),
-          ...postureFields,
-          ...discoveryFields,
-          ...(callSummary === "" ? {} : { "Call summary": callSummary }),
-        },
-      },
+      lead: buildCallLead(body, session.sdrName),
       failureSummary: "Discovery call delivery failure",
     });
 

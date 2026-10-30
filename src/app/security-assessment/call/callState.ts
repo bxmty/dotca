@@ -204,6 +204,22 @@ function reduceEdit(state: CallState, action: CallAction): CallState {
   }
 }
 
+/** It crossed tabs, so the console may have moved on since the click. */
+function reduceAnswerFromPresenter(
+  content: CallContent,
+  state: CallState,
+  { questionId, answerIndex }: { questionId: string; answerIndex: number },
+): CallState {
+  const question = selectPostureQuestion(content, state);
+  const isCurrent =
+    question?.id === questionId &&
+    Number.isInteger(answerIndex) &&
+    question.answers[answerIndex] !== undefined;
+  return isCurrent
+    ? reduceEdit(state, { type: "answerPosture", questionId, answerIndex })
+    : state;
+}
+
 export function reduceCall(
   content: CallContent,
   state: CallState,
@@ -226,21 +242,8 @@ export function reduceCall(
   switch (action.type) {
     case "saveStarted":
       return { ...state, save: { status: "sending" } };
-    case "answerFromPresenter": {
-      // It crossed tabs, so the console may have moved on since the click.
-      const question = selectPostureQuestion(content, state);
-      const isCurrent =
-        question?.id === action.questionId &&
-        Number.isInteger(action.answerIndex) &&
-        question.answers[action.answerIndex] !== undefined;
-      return isCurrent
-        ? reduceEdit(state, {
-            type: "answerPosture",
-            questionId: action.questionId,
-            answerIndex: action.answerIndex,
-          })
-        : state;
-    }
+    case "answerFromPresenter":
+      return reduceAnswerFromPresenter(content, state, action);
     case "goBack":
       return { ...state, screen: moveBy(content, state, -1) };
     case "goNext": {
@@ -313,49 +316,49 @@ const isNumber = (value: unknown): value is number => typeof value === "number";
 const isDiscoveryEntry = (value: unknown): value is DiscoveryEntry =>
   isRecordOf(value, isString);
 
+type StoredCall = Pick<
+  CallState,
+  "lead" | "segment" | "answers" | "notes" | "discovery" | "callSummary"
+> & { screen?: unknown; save?: unknown };
+
+function isStoredCall(stored: unknown): stored is StoredCall {
+  if (!isRecord(stored)) return false;
+  const { lead, segment, answers, notes, discovery, callSummary } = stored;
+  return (
+    isRecordOf(lead, isString) &&
+    ["name", "email", "company"].every((field) => field in lead) &&
+    QUIZ_SEGMENTS.includes(segment as QuizSegment) &&
+    isRecordOf(answers, isNumber) &&
+    isRecordOf(notes, isString) &&
+    isRecordOf(discovery, isDiscoveryEntry) &&
+    isString(callSummary)
+  );
+}
+
 /**
- * A stored call to resume, or undefined if it isn't one: storage outlives a deploy,
- * so its contents may not match this page's questions. A screen that needs a
- * score falls back to the posture questions when the answers no longer give one.
+ * A stored call to resume, or undefined if it isn't one: storage outlives a
+ * deploy, so its contents may not match this page's questions. A screen that
+ * needs a score falls back to the posture questions when the answers no longer
+ * give one.
  */
 export function parseStoredCall(
   content: CallContent,
   stored: unknown,
 ): CallState | undefined {
-  if (!isRecord(stored)) return undefined;
-  const {
-    lead,
-    segment,
-    answers,
-    notes,
-    discovery,
-    callSummary,
-    screen,
-    save,
-  } = stored;
+  if (!isStoredCall(stored)) return undefined;
+  const { lead, segment, answers, notes, discovery, callSummary, save } =
+    stored;
 
-  if (
-    !isRecordOf(lead, isString) ||
-    !["name", "email", "company"].every((field) => field in lead) ||
-    !QUIZ_SEGMENTS.includes(segment as QuizSegment) ||
-    !isRecordOf(answers, isNumber) ||
-    !isRecordOf(notes, isString) ||
-    !isRecordOf(discovery, isDiscoveryEntry) ||
-    !isString(callSummary)
-  ) {
-    return undefined;
-  }
-
-  const screens = listCallScreens(content, segment as QuizSegment);
+  const screens = listCallScreens(content, segment);
   const storedScreen = screens.find((candidate) =>
-    isSameScreen(candidate, screen as CallScreen),
+    isSameScreen(candidate, stored.screen as CallScreen),
   );
   if (!storedScreen) return undefined;
 
   const call: CallState = {
     screen: storedScreen,
-    lead: lead as LeadFields,
-    segment: segment as QuizSegment,
+    lead,
+    segment,
     answers,
     notes,
     discovery,

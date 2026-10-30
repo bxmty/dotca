@@ -158,6 +158,46 @@ function createConsoleId(): string {
 }
 
 /**
+ * Opens this console load's end of the channel. Answers any presenter's sync and
+ * says when the page goes away and comes back. Undefined with no channel.
+ */
+function linkConsoleToPresenters({
+  readScreen,
+  onAnswer,
+}: {
+  readScreen: () => PresenterScreen | null;
+  onAnswer: (questionId: string, answerIndex: number) => void;
+}): { sendScreen: () => void; unlink: () => void } | undefined {
+  const consoleId = createConsoleId();
+  const sendScreen = () => {
+    const screen = readScreen();
+    if (screen) channel?.post({ kind: "screen", consoleId, screen });
+  };
+  const channel = openPresenterChannel<PresenterRequest, ConsoleMessage>(
+    (request) => {
+      if (request.kind === "sync") sendScreen();
+      if (request.kind === "answer" && request.consoleId === consoleId) {
+        onAnswer(request.questionId, request.answerIndex);
+      }
+    },
+  );
+  if (!channel) return undefined;
+
+  const announceGone = () => channel.post({ kind: "gone", consoleId });
+  window.addEventListener("pagehide", announceGone);
+  window.addEventListener("pageshow", sendScreen);
+  return {
+    sendScreen,
+    unlink: () => {
+      window.removeEventListener("pagehide", announceGone);
+      window.removeEventListener("pageshow", sendScreen);
+      announceGone();
+      channel.close();
+    },
+  };
+}
+
+/**
  * Keeps any open presenter on `screen`. Null holds off (the console hasn't
  * restored its call yet), so a reload doesn't flash the first screen.
  *
@@ -180,38 +220,16 @@ export function useBroadcastToPresenter(
 
   useEffect(() => {
     if (!isReady) return;
-    const consoleId = createConsoleId();
-    const channel = openPresenterChannel<PresenterRequest, ConsoleMessage>(
-      (request) => {
-        if (request.kind === "sync") sendScreen.current();
-        if (request.kind === "answer" && request.consoleId === consoleId) {
-          onAnswer(request.questionId, request.answerIndex);
-        }
-      },
-    );
-    if (!channel) return;
-
-    sendScreen.current = () => {
-      if (latestScreen.current) {
-        channel.post({
-          kind: "screen",
-          consoleId,
-          screen: latestScreen.current,
-        });
-      }
-    };
-    const announceGone = () => channel.post({ kind: "gone", consoleId });
-    const announceBack = () => sendScreen.current();
-
-    sendScreen.current();
-    window.addEventListener("pagehide", announceGone);
-    window.addEventListener("pageshow", announceBack);
+    const link = linkConsoleToPresenters({
+      readScreen: () => latestScreen.current,
+      onAnswer,
+    });
+    if (!link) return;
+    sendScreen.current = link.sendScreen;
+    link.sendScreen();
     return () => {
-      window.removeEventListener("pagehide", announceGone);
-      window.removeEventListener("pageshow", announceBack);
-      announceGone();
       sendScreen.current = () => {};
-      channel.close();
+      link.unlink();
     };
   }, [isReady, onAnswer]);
 }

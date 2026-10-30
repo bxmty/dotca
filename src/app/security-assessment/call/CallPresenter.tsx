@@ -122,6 +122,63 @@ function PostureScreen({
   );
 }
 
+function CurrentPresenterScreen({
+  link,
+  post,
+  headingRef,
+}: {
+  link: ConsoleLink | null;
+  post: (request: PresenterRequest) => void;
+  headingRef: Ref<HTMLHeadingElement>;
+}) {
+  const screen = link?.screen;
+  switch (screen?.view) {
+    case undefined:
+      return (
+        <>
+          <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
+            Waiting for the console
+          </CallHeading>
+          <p className="m-0 text-body text-muted">
+            This screen follows the call once the console is open.
+          </p>
+        </>
+      );
+    case "neutral":
+      return (
+        <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
+          Getting to know your business
+        </CallHeading>
+      );
+    case "posture":
+      return (
+        <PostureScreen
+          screen={screen}
+          headingRef={headingRef}
+          onAnswer={(answerIndex) => {
+            if (link) {
+              post({
+                kind: "answer",
+                consoleId: link.consoleId,
+                questionId: screen.questionId,
+                answerIndex,
+              });
+            }
+          }}
+        />
+      );
+    case "results":
+      return (
+        <QuizResultSummary
+          view={screen.result}
+          headingId={CALL_HEADING_ID}
+          headingRef={headingRef}
+          headingClassName={HEADING_CLASS_NAME}
+        />
+      );
+  }
+}
+
 /**
  * What the prospect sees on a screen share: the console's broadcast and nothing
  * else. A click here is only a request; the choice shows once the console sends
@@ -134,60 +191,11 @@ export default function CallPresenter() {
     screen?.view === "posture"
       ? screen.questionId
       : (screen?.view ?? "waiting");
-
   const headingRef = useFocusHeadingOnNewScreen(screenKey);
-
-  const renderScreen = () => {
-    switch (screen?.view) {
-      case undefined:
-        return (
-          <>
-            <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
-              Waiting for the console
-            </CallHeading>
-            <p className="m-0 text-body text-muted">
-              This screen follows the call once the console is open.
-            </p>
-          </>
-        );
-      case "neutral":
-        return (
-          <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
-            Getting to know your business
-          </CallHeading>
-        );
-      case "posture":
-        return (
-          <PostureScreen
-            screen={screen}
-            headingRef={headingRef}
-            onAnswer={(answerIndex) => {
-              if (link) {
-                post({
-                  kind: "answer",
-                  consoleId: link.consoleId,
-                  questionId: screen.questionId,
-                  answerIndex,
-                });
-              }
-            }}
-          />
-        );
-      case "results":
-        return (
-          <QuizResultSummary
-            view={screen.result}
-            headingId={CALL_HEADING_ID}
-            headingRef={headingRef}
-            headingClassName={HEADING_CLASS_NAME}
-          />
-        );
-    }
-  };
 
   return (
     <section className="mx-auto grid w-full max-w-[720px] content-start gap-6 px-4 py-12 md:py-16">
-      {renderScreen()}
+      <CurrentPresenterScreen link={link} post={post} headingRef={headingRef} />
     </section>
   );
 }
