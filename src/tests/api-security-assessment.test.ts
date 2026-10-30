@@ -69,7 +69,9 @@ function buildAnswers(
 
 function buildSubmission(overrides: Record<string, unknown> = {}) {
   return {
+    name: "Dana Tester",
     email: "test@example.com",
+    company: "Tester Accounting",
     website: "",
     segment: "solo",
     answers: buildAnswers("solo", () => 0),
@@ -88,11 +90,7 @@ function buildRequest(
   } as unknown as Request;
 }
 
-async function expectJson(
-  response: Response,
-  status: number,
-  body: unknown,
-) {
+async function expectJson(response: Response, status: number, body: unknown) {
   expect(response.status).toBe(status);
   expect(await response.json()).toEqual(body);
 }
@@ -131,7 +129,9 @@ describe("POST /api/security-assessment", () => {
     expect(mockCreateLead).toHaveBeenCalledWith(
       expect.objectContaining({
         formType: "Security assessment",
+        name: "Dana Tester",
         email: "test@example.com",
+        company: "Tester Accounting",
         fields: expect.objectContaining({
           "Business size": "Solopreneur",
           "Risk tier": "Resilient",
@@ -140,9 +140,11 @@ describe("POST /api/security-assessment", () => {
     );
     expect(mockNotify).toHaveBeenCalledWith({
       formType: "Security assessment",
-      submitterName: "test@example.com",
+      submitterName: "Dana Tester",
       fields: expect.objectContaining({
+        Name: "Dana Tester",
         Email: "test@example.com",
+        Company: "Tester Accounting",
         "Business size": "Solopreneur",
         "Risk tier": "Resilient",
         Score: expect.stringMatching(/^\d+\/\d+$/),
@@ -199,6 +201,26 @@ describe("POST /api/security-assessment", () => {
     expect(mockCreateLead).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["name", "Name is required"],
+    ["company", "Company is required"],
+  ])("returns 400 when %s is blank", async (field, error) => {
+    const response = await POST(
+      buildRequest(buildSubmission({ [field]: "   " })),
+    );
+
+    await expectJson(response, 400, { error });
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when name is not a string", async () => {
+    const response = await POST(
+      buildRequest(buildSubmission({ name: { first: "Dana" } })),
+    );
+
+    await expectJson(response, 400, { error: "Name is required" });
+  });
+
   it("returns 400 for an invalid email", async () => {
     const response = await POST(
       buildRequest(buildSubmission({ email: "not-an-email" })),
@@ -210,9 +232,7 @@ describe("POST /api/security-assessment", () => {
   });
 
   it("returns 400 when answers are incomplete", async () => {
-    const response = await POST(
-      buildRequest(buildSubmission({ answers: {} })),
-    );
+    const response = await POST(buildRequest(buildSubmission({ answers: {} })));
 
     await expectJson(response, 400, {
       error: "Please answer every question",
@@ -248,9 +268,7 @@ describe("POST /api/security-assessment", () => {
 
   it("returns success to honeypot submissions without sending anything", async () => {
     const response = await POST(
-      buildRequest(
-        buildSubmission({ website: "https://spam.example" }),
-      ),
+      buildRequest(buildSubmission({ website: "https://spam.example" })),
     );
 
     await expectJson(response, 200, { success: true });
@@ -310,7 +328,9 @@ describe("POST /api/security-assessment", () => {
     await expectJson(response, 200, { success: true });
     expect(mockCreateResendContact).toHaveBeenCalled();
     expect(mockCaptureMessage).toHaveBeenCalledWith(
-      expect.stringContaining("Monthly brief opt-in failed (security-assessment)"),
+      expect.stringContaining(
+        "Monthly brief opt-in failed (security-assessment)",
+      ),
       "warning",
     );
   });
