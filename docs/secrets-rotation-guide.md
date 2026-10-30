@@ -170,6 +170,7 @@ After successful verification (minimum 24 hours):
 | `RESEND_MONTHLY_BRIEF_TOPIC_ID`      | Monthly security brief topic     | Low             |
 | `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
 | `LEAD_MAGNET_SIGNING_SECRET`         | Lead magnet download links       | Low             |
+| `SDR_LINK_SIGNING_SECRET`            | SDR call console links           | Medium          |
 | `SYNCRO_SUBDOMAIN`                   | Syncro account subdomain         | Low             |
 | `SYNCRO_API_KEY`                     | Scoped Syncro API token (leads)  | High            |
 | `SYNCRO_FREE_INSTALLER_URL`          | Free-tier agent installer link   | High            |
@@ -343,6 +344,30 @@ A weekly review of new assets on the Free-tier customer is the standing check wh
 
 4. **Redeploy staging and production** so `/install` serves the new link.
 5. **Retire the previous installer link in Syncro** after both deploys succeed, so it can no longer enroll devices.
+
+### SDR Link Signing Secret
+
+`SDR_LINK_SIGNING_SECRET` signs the 90-day links that open the discovery-call console (`/security-assessment/call`) and authorize its saves. Links are stateless, so this secret is the only revocation there is: **rotating it revokes every SDR link at once, not just one person's. Reissue a link to everyone on the team afterwards.** It never affects lead-magnet or `/install` links, which use `LEAD_MAGNET_SIGNING_SECRET`.
+
+Rotate when an SDR leaves or a link leaks. Each environment has its own value. Do staging first, then production:
+
+1. Generate a value with `openssl rand -hex 32` and save it in 1Password → DevOps → `DotCA-SDR-Link-Signing-Secret-Staging` (`-Production` for production), field `password`.
+2. Set it in the GitHub environment:
+
+   ```bash
+   gh secret set SDR_LINK_SIGNING_SECRET --env staging
+   ```
+
+3. Redeploy that environment. Old links now 404, and any call open in a console can't save until the SDR opens a new link.
+4. Mint and send a new link for each SDR:
+
+   ```bash
+   just sdr-link NAME="Alex Doe" ENVIRONMENT=staging
+   ```
+
+5. Open a new link to confirm it reaches the console, and an old one to confirm it 404s.
+
+Links also expire by themselves after 90 days, so reissue them on that schedule even without a rotation.
 
 ### Google Analytics
 

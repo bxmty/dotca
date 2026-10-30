@@ -93,6 +93,7 @@ validate: _check-env-file
             echo "{{RED}}Error: WEBMASTER_EMAIL not set in .env.local{{NC}}" && exit 1; \
         fi && \
         {{SCRIPTS_DIR}}/check-lead-magnet-secret.sh {{ENVIRONMENT}} && \
+        {{SCRIPTS_DIR}}/check-sdr-link-secret.sh {{ENVIRONMENT}} && \
         echo "{{GREEN}}✓ Environment variables configured{{NC}}"
     @# Test SSH agent
     @ssh-add -l >/dev/null 2>&1 || echo "{{YELLOW}}⚠ SSH agent not running or no keys loaded{{NC}}"
