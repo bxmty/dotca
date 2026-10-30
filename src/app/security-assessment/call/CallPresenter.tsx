@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState, type Ref } from "react";
 import StackedAnswerList from "@/app/components/StackedAnswerList";
 import StepProgress from "@/app/components/StepProgress";
-import DotGridPanel from "../DotGridPanel";
+import QuestionHeader from "../QuestionHeader";
 import QuizResultSummary from "../QuizResultSummary";
+import {
+  CALL_HEADING_ID,
+  CallHeading,
+  useFocusHeadingOnNewScreen,
+} from "./callHeading";
 import {
   openPresenterChannel,
   type ConsoleMessage,
@@ -12,10 +17,7 @@ import {
   type PresenterScreen,
 } from "./presenterBroadcast";
 
-const HEADING_ID = "call-presenter-heading";
 const HEADING_CLASS_NAME = "m-0 text-h2 font-semibold outline-none";
-const QUESTION_HEADING_CLASS_NAME =
-  "m-0 text-h3 leading-snug font-semibold outline-none md:text-h2 md:leading-tight";
 
 // Asking rather than listening for a console's heartbeat: a hidden tab's timers
 // get throttled to as little as once a minute, but it still answers a message.
@@ -73,25 +75,6 @@ function useConsoleLink() {
   };
 }
 
-function Heading({
-  headingRef,
-  children,
-}: {
-  headingRef: Ref<HTMLHeadingElement>;
-  children: string;
-}) {
-  return (
-    <h1
-      id={HEADING_ID}
-      ref={headingRef}
-      tabIndex={-1}
-      className={HEADING_CLASS_NAME}
-    >
-      {children}
-    </h1>
-  );
-}
-
 function PostureScreen({
   screen,
   headingRef,
@@ -113,24 +96,17 @@ function PostureScreen({
         key={screen.questionId}
         className="grid gap-6 motion-safe:animate-rise"
       >
-        <div className="grid gap-4">
-          <DotGridPanel className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-4 pt-3.5 pb-3 font-mono text-label tracking-[.06em] text-muted uppercase">
-            <span>{screen.categoryLabel}</span>
-            <span className="text-ink tabular-nums">
-              {`Question ${screen.position} of ${screen.total}`}
-            </span>
-          </DotGridPanel>
-          <h1
-            id={HEADING_ID}
-            ref={headingRef}
-            tabIndex={-1}
-            className={QUESTION_HEADING_CLASS_NAME}
-          >
-            {screen.text}
-          </h1>
-        </div>
+        <QuestionHeader
+          categoryLabel={screen.categoryLabel}
+          position={screen.position}
+          total={screen.total}
+          headingId={CALL_HEADING_ID}
+          headingRef={headingRef}
+        >
+          {screen.text}
+        </QuestionHeader>
         <StackedAnswerList
-          labelledBy={HEADING_ID}
+          labelledBy={CALL_HEADING_ID}
           name={screen.questionId}
           options={screen.answers.map((label, index) => ({
             value: String(index),
@@ -153,30 +129,22 @@ function PostureScreen({
  */
 export default function CallPresenter() {
   const { link, post } = useConsoleLink();
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const hasRenderedScreen = useRef(false);
   const screen = link?.screen;
   const screenKey =
     screen?.view === "posture"
       ? screen.questionId
       : (screen?.view ?? "waiting");
 
-  // Each new screen starts at its heading, so screen readers announce it.
-  useEffect(() => {
-    if (!hasRenderedScreen.current) {
-      hasRenderedScreen.current = true;
-      return;
-    }
-    headingRef.current?.focus({ preventScroll: true });
-    window.scrollTo?.({ top: 0 });
-  }, [screenKey]);
+  const headingRef = useFocusHeadingOnNewScreen(screenKey);
 
   const renderScreen = () => {
     switch (screen?.view) {
       case undefined:
         return (
           <>
-            <Heading headingRef={headingRef}>Waiting for the console</Heading>
+            <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
+              Waiting for the console
+            </CallHeading>
             <p className="m-0 text-body text-muted">
               This screen follows the call once the console is open.
             </p>
@@ -184,9 +152,9 @@ export default function CallPresenter() {
         );
       case "neutral":
         return (
-          <Heading headingRef={headingRef}>
+          <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
             Getting to know your business
-          </Heading>
+          </CallHeading>
         );
       case "posture":
         return (
@@ -209,7 +177,7 @@ export default function CallPresenter() {
         return (
           <QuizResultSummary
             view={screen.result}
-            headingId={HEADING_ID}
+            headingId={CALL_HEADING_ID}
             headingRef={headingRef}
             headingClassName={HEADING_CLASS_NAME}
           />

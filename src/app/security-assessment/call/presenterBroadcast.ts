@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   getQuestionsForSegment,
+  getSectionFraction,
   getSectionKeysForSegment,
 } from "@/lib/security-assessment/validateQuizConfig";
 import { buildQuizResultView, type QuizResultView } from "../quizResultView";
@@ -104,9 +105,6 @@ export function projectPresenterScreen(
     const questions = getQuestionsForSegment(config, segment);
     const sectionKeys = getSectionKeysForSegment(config, segment);
     const section = config.categories[question.category].section;
-    const sectionQuestions = questions.filter(
-      ({ category }) => config.categories[category].section === section,
-    );
     return {
       view: "posture",
       questionId: question.id,
@@ -118,8 +116,7 @@ export function projectPresenterScreen(
       total: questions.length,
       sections: sectionKeys.map((key) => config.sections[key].label),
       currentSection: sectionKeys.indexOf(section) + 1,
-      sectionFraction:
-        (sectionQuestions.indexOf(question) + 1) / sectionQuestions.length,
+      sectionFraction: getSectionFraction(config, segment, question),
     };
   }
 

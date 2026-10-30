@@ -1,3 +1,4 @@
+import { isRecord } from "@/lib/isRecord";
 import {
   QUIZ_SEGMENTS,
   type QuizConfig,
@@ -9,12 +10,11 @@ import {
   hasAnswerToEveryQuestion,
   scoreQuizAnswers,
 } from "@/lib/security-assessment/scoreQuizAnswers";
-import type {
-  DiscoveryGroup,
-  DiscoveryQuestion,
-  SdrCallLeadRequest,
-  SdrContent,
-  SdrDiscoveryAnswer,
+import {
+  getDiscoveryQuestions,
+  type SdrCallLeadRequest,
+  type SdrContent,
+  type SdrDiscoveryAnswer,
 } from "@/lib/security-assessment/sdrTypes";
 import { getQuestionsForSegment } from "@/lib/security-assessment/validateQuizConfig";
 import type { LeadFieldName, LeadFields } from "../leadFields";
@@ -87,13 +87,6 @@ export const INITIAL_CALL: CallState = {
   callSummary: "",
   save: { status: "idle" },
 };
-
-export function getDiscoveryQuestions(
-  sdr: SdrContent,
-  group: DiscoveryGroup,
-): DiscoveryQuestion[] {
-  return sdr.discovery.filter((question) => question.group === group);
-}
 
 /** Every screen of a call for this segment, in order. */
 function listCallScreens(
@@ -294,10 +287,6 @@ export function buildCallLeadRequest(
     ),
     ...(callSummary ? { callSummary } : {}),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isRecordOf<T>(

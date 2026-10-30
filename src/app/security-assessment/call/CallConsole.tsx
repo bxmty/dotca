@@ -26,6 +26,7 @@ import {
 import {
   SDR_CALL_SUMMARY_MAX_LENGTH,
   SDR_NOTE_MAX_LENGTH,
+  getDiscoveryQuestions,
   type DiscoveryQuestion,
   type SdrCallLeadResponse,
 } from "@/lib/security-assessment/sdrTypes";
@@ -38,11 +39,11 @@ import {
   type LeadFieldErrors,
   type LeadFieldName,
 } from "../leadFields";
+import { QuestionProgressPanel } from "../QuestionHeader";
 import QuizResultSummary from "../QuizResultSummary";
 import { buildQuizResultView } from "../quizResultView";
 import {
   buildCallLeadRequest,
-  getDiscoveryQuestions,
   INITIAL_CALL,
   isCallLocked,
   parseStoredCall,
@@ -55,13 +56,17 @@ import {
   type CallScreenName,
   type CallState,
 } from "./callState";
+import {
+  CALL_HEADING_ID,
+  CallHeading,
+  useFocusHeadingOnNewScreen,
+} from "./callHeading";
 import { clearStoredCall, readStoredCall, storeCall } from "./callStorage";
 import {
   projectPresenterScreen,
   useBroadcastToPresenter,
 } from "./presenterBroadcast";
 
-const HEADING_ID = "call-console-heading";
 const HEADING_CLASS_NAME =
   "m-0 text-h3 leading-snug font-semibold outline-none";
 const SAVE_ERROR_MESSAGE = "The call didn't save. Please try again.";
@@ -106,19 +111,11 @@ type ScreenProps = {
 function Heading({
   headingRef,
   children,
-}: {
-  headingRef: Ref<HTMLHeadingElement>;
-  children: ReactNode;
-}) {
+}: Pick<ScreenProps, "headingRef"> & { children: ReactNode }) {
   return (
-    <h1
-      id={HEADING_ID}
-      ref={headingRef}
-      tabIndex={-1}
-      className={HEADING_CLASS_NAME}
-    >
+    <CallHeading headingRef={headingRef} className={HEADING_CLASS_NAME}>
       {children}
-    </h1>
+    </CallHeading>
   );
 }
 
@@ -241,7 +238,7 @@ function SizeScreen({ state, dispatch, content, headingRef }: ScreenProps) {
       <Heading headingRef={headingRef}>{config.sizeQuestion}</Heading>
       <div className="max-w-[720px]">
         <StackedAnswerList
-          labelledBy={HEADING_ID}
+          labelledBy={CALL_HEADING_ID}
           name="businessSize"
           options={QUIZ_SEGMENTS.map((segment) => ({
             value: segment,
@@ -287,7 +284,7 @@ function DiscoveryScreen({
           <div className="grid justify-items-start gap-3">
             <div className="w-full">
               <StackedAnswerList
-                labelledBy={HEADING_ID}
+                labelledBy={CALL_HEADING_ID}
                 name={question.id}
                 options={question.choices.map((choice) => ({
                   value: choice,
@@ -362,16 +359,15 @@ function PostureScreen({
 
   return (
     <div key={question.id} className="grid gap-6 motion-safe:animate-rise">
-      <DotGridPanel className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-4 pt-3.5 pb-3 font-mono text-label tracking-[.06em] text-muted uppercase">
-        <span>{config.categories[question.category].label}</span>
-        <span className="text-ink tabular-nums">
-          {`Question ${position} of ${total}`}
-        </span>
-      </DotGridPanel>
+      <QuestionProgressPanel
+        categoryLabel={config.categories[question.category].label}
+        position={position}
+        total={total}
+      />
       <Heading headingRef={headingRef}>{question.text}</Heading>
       <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <StackedAnswerList
-          labelledBy={HEADING_ID}
+          labelledBy={CALL_HEADING_ID}
           name={question.id}
           options={question.answers.map((answer, index) => ({
             value: String(index),
@@ -443,7 +439,7 @@ function ResultsScreen({ state, dispatch, content, headingRef }: ScreenProps) {
     <div className="grid max-w-[720px] gap-6">
       <QuizResultSummary
         view={buildQuizResultView(config, state.segment, result)}
-        headingId={HEADING_ID}
+        headingId={CALL_HEADING_ID}
         headingRef={headingRef}
         headingClassName={HEADING_CLASS_NAME}
       />
@@ -626,11 +622,9 @@ export default function CallConsole({
       reduceCall(content, current, action),
     INITIAL_CALL,
   );
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = useFocusHeadingOnNewScreen(JSON.stringify(state.screen));
   const hasRestored = useRef(false);
   const [isRestored, setIsRestored] = useState(false);
-  const hasRenderedScreen = useRef(false);
-  const screenKey = JSON.stringify(state.screen);
 
   // After mount, so the server's and the first client render agree
   useEffect(() => {
@@ -658,17 +652,6 @@ export default function CallConsole({
       storeCall(state);
     }
   }, [state]);
-
-  // Each new screen starts at its heading, so screen readers announce it. The
-  // first load is left alone rather than stealing focus from the page.
-  useEffect(() => {
-    if (!hasRenderedScreen.current) {
-      hasRenderedScreen.current = true;
-      return;
-    }
-    headingRef.current?.focus({ preventScroll: true });
-    window.scrollTo?.({ top: 0 });
-  }, [screenKey]);
 
   const save = async () => {
     if (isCallLocked(state)) return;

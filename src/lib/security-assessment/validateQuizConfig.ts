@@ -54,6 +54,19 @@ export function getSectionKeysForSegment(
   return ordered;
 }
 
+/** How far through its section a question is, counting itself: 0 to 1. */
+export function getSectionFraction(
+  config: QuizConfig,
+  segment: QuizSegment,
+  question: QuizQuestion,
+): number {
+  const { section } = config.categories[question.category];
+  const sectionQuestions = getQuestionsForSegment(config, segment).filter(
+    ({ category }) => config.categories[category].section === section,
+  );
+  return (sectionQuestions.indexOf(question) + 1) / sectionQuestions.length;
+}
+
 /** Throws with a list of problems when the config is structurally invalid. */
 export function validateQuizConfig(config: QuizConfig): void {
   const problems: string[] = [];

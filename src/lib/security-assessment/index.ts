@@ -20,6 +20,7 @@ export {
 } from "./validateQuizConfig";
 export {
   DISCOVERY_GROUPS,
+  getDiscoveryQuestions,
   SDR_CALL_SUMMARY_MAX_LENGTH,
   SDR_NOTE_MAX_LENGTH,
   type DiscoveryChoiceQuestion,

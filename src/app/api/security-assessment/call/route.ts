@@ -1,9 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { deliverLead } from "@/lib/lead-delivery";
 import { isEmailAddress } from "@/lib/formValidation";
+import { isRecord } from "@/lib/isRecord";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
 import { checkSdrSession } from "@/lib/sdr-session";
 import {
+  DISCOVERY_GROUPS,
+  getDiscoveryQuestions,
   getQuestionsWithFieldLabels,
   isQuizSegment,
   loadQuizConfig,
@@ -30,32 +33,41 @@ function respond(body: SdrCallLeadResponse, status = 200) {
   return NextResponse.json(body, { status });
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function readRequiredText(value: unknown, label: string): string {
   const text = typeof value === "string" ? value.trim() : "";
   if (text === "") fail(`${label} is required`);
   return text;
 }
 
-/** The trimmed note, "" when blank or absent. */
-function readNote(value: unknown): string {
+/** Trimmed free text, "" when blank or absent. */
+function readCappedText(
+  value: unknown,
+  {
+    maxLength,
+    notTextMessage,
+    tooLongMessage,
+  }: { maxLength: number; notTextMessage: string; tooLongMessage: string },
+): string {
   if (value === undefined) return "";
-  if (typeof value !== "string") fail("Notes must be text");
-  const note = value.trim();
-  if (note.length > SDR_NOTE_MAX_LENGTH) fail(NOTE_TOO_LONG);
-  return note;
+  if (typeof value !== "string") fail(notTextMessage);
+  const text = value.trim();
+  if (text.length > maxLength) fail(tooLongMessage);
+  return text;
 }
 
-function readCallSummary(value: unknown): string {
-  if (value === undefined) return "";
-  if (typeof value !== "string") fail("The call summary must be text");
-  const summary = value.trim();
-  if (summary.length > SDR_CALL_SUMMARY_MAX_LENGTH) fail(SUMMARY_TOO_LONG);
-  return summary;
-}
+const readNote = (value: unknown) =>
+  readCappedText(value, {
+    maxLength: SDR_NOTE_MAX_LENGTH,
+    notTextMessage: "Notes must be text",
+    tooLongMessage: NOTE_TOO_LONG,
+  });
+
+const readCallSummary = (value: unknown) =>
+  readCappedText(value, {
+    maxLength: SDR_CALL_SUMMARY_MAX_LENGTH,
+    notTextMessage: "The call summary must be text",
+    tooLongMessage: SUMMARY_TOO_LONG,
+  });
 
 function readOptionalRecord(
   value: unknown,
@@ -133,10 +145,9 @@ function buildDiscoveryFields(
     if (!knownIds.has(id)) fail("Unknown discovery question");
   }
 
-  const inCallOrder = [
-    ...questions.filter((question) => question.group === "opening"),
-    ...questions.filter((question) => question.group === "closing"),
-  ];
+  const inCallOrder = DISCOVERY_GROUPS.flatMap((group) =>
+    getDiscoveryQuestions({ discovery: questions }, group),
+  );
   return Object.assign(
     {},
     ...inCallOrder.map((question) =>
