@@ -129,6 +129,9 @@ const testConfig: QuizConfig = {
 
 const mockFetch = jest.fn();
 
+// Past the quiz's auto-advance delay after an answer is picked
+const ADVANCE_MS = 450;
+
 function mockDeliveryResponse(status: number, body: unknown) {
   mockFetch.mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
@@ -166,7 +169,7 @@ function startSoloQuiz() {
 async function answerSoloQuestions() {
   fireEvent.click(screen.getByRole("radio", { name: /Q1 good answer/i }));
   act(() => {
-    jest.advanceTimersByTime(300);
+    jest.advanceTimersByTime(ADVANCE_MS);
   });
   await waitFor(() => {
     expect(
@@ -175,7 +178,7 @@ async function answerSoloQuestions() {
   });
   fireEvent.click(screen.getByRole("radio", { name: /Q2 bad answer/i }));
   act(() => {
-    jest.advanceTimersByTime(300);
+    jest.advanceTimersByTime(ADVANCE_MS);
   });
 }
 
@@ -226,7 +229,7 @@ describe("SecurityAssessmentQuiz", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /Q1 good answer/i }));
     act(() => {
-      jest.advanceTimersByTime(300);
+      jest.advanceTimersByTime(ADVANCE_MS);
     });
     await waitFor(() => {
       expect(
@@ -234,6 +237,115 @@ describe("SecurityAssessmentQuiz", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
+  });
+
+  it("asks the size question as the heading over a stacked list", () => {
+    render(<SecurityAssessmentQuiz config={testConfig} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start the assessment/i }),
+    );
+
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "How big is your business?",
+    });
+    expect(heading).toHaveFocus();
+    expect(
+      screen.getByRole("group", { name: "How big is your business?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Small team 5-20 employees" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names each question's answers by its heading, shown once", () => {
+    startSoloQuiz();
+
+    expect(
+      screen.getByRole("group", { name: "First question text" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("First question text")).toHaveLength(1);
+  });
+
+  it("moves focus to each new screen's heading", async () => {
+    goToDetails();
+    expect(
+      screen.getByRole("heading", { level: 1, name: /a little about you/i }),
+    ).toHaveFocus();
+
+    fillLeadDetails();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start the questions/i }),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "First question text" }),
+    ).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Q1 good answer/i }));
+    act(() => {
+      jest.advanceTimersByTime(ADVANCE_MS);
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Second question text" }),
+      ).toHaveFocus();
+    });
+  });
+
+  it("holds the picked answer before advancing", () => {
+    startSoloQuiz();
+    fireEvent.click(screen.getByRole("radio", { name: /Q1 good answer/i }));
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(
+      screen.getByRole("radio", { name: /Q1 good answer/i }),
+    ).toBeChecked();
+  });
+
+  it("shows which category each question covers", () => {
+    startSoloQuiz();
+
+    expect(screen.getByText("Passwords & MFA")).toBeInTheDocument();
+    expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
+  });
+
+  it("fills the section's progress segment as questions advance", () => {
+    goToDetails(/Growing business/i);
+    fillLeadDetails();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start the questions/i }),
+    );
+
+    // Essentials holds one question, so its segment is full on question 1
+    expect(screen.getByTestId("step-fill")).toHaveStyle({ width: "100%" });
+    fireEvent.click(screen.getByRole("radio", { name: /Q1 good answer/i }));
+    act(() => {
+      jest.advanceTimersByTime(ADVANCE_MS);
+    });
+    // Focus areas holds two: halfway on the first of them
+    expect(screen.getByTestId("step-fill")).toHaveStyle({ width: "50%" });
+  });
+
+  it("shows the score as a meter, with focus areas labelled by section", async () => {
+    mockDeliveryResponse(200, { success: true });
+    startSoloQuiz();
+    await answerSoloQuestions();
+
+    await waitFor(() => {
+      expect(screen.getByRole("meter", { name: "Score" })).toHaveAttribute(
+        "aria-valuetext",
+        "3 of 6, Reactive",
+      );
+    });
+    expect(screen.getByText("Focus areas")).toBeInTheDocument();
+  });
+
+  it("does not take focus on first load", () => {
+    render(<SecurityAssessmentQuiz config={testConfig} />);
+
+    expect(document.body).toHaveFocus();
   });
 
   it("includes the growing-only question for the growing segment", () => {
@@ -290,7 +402,7 @@ describe("SecurityAssessmentQuiz", () => {
     startSoloQuiz();
     fireEvent.click(screen.getByRole("radio", { name: /Q1 good answer/i }));
     act(() => {
-      jest.advanceTimersByTime(300);
+      jest.advanceTimersByTime(ADVANCE_MS);
     });
     await waitFor(() => {
       expect(
@@ -308,7 +420,7 @@ describe("SecurityAssessmentQuiz", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /Q1 bad answer/i }));
     act(() => {
-      jest.advanceTimersByTime(300);
+      jest.advanceTimersByTime(ADVANCE_MS);
     });
     await waitFor(() => {
       expect(
@@ -358,7 +470,7 @@ describe("SecurityAssessmentQuiz", () => {
     fireEvent.click(screen.getByRole("button", { name: /Review answers/i }));
     fireEvent.click(screen.getByRole("radio", { name: /Q2 good answer/i }));
     act(() => {
-      jest.advanceTimersByTime(300);
+      jest.advanceTimersByTime(ADVANCE_MS);
     });
 
     await waitFor(() => {

@@ -60,7 +60,10 @@ test.describe("Security assessment", () => {
       await page.locator('input[type="radio"]').first().click();
     }
 
-    await expect(page.getByText(/Score \d+ \/ \d+/)).toBeVisible();
+    await expect(page.getByRole("meter", { name: "Score" })).toHaveAttribute(
+      "aria-valuetext",
+      /^\d+ of 18, \w+$/,
+    );
     const tierHeadline = page.getByRole("heading", { level: 1 });
     await expect(tierHeadline).toBeVisible();
     await expect(tierHeadline).not.toHaveText(/How exposed is your business/i);
