@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_SDR_LINK_SECRET } from "./e2e/support/sdrTestSecret";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -28,5 +29,8 @@ export default defineConfig({
           command: "npm run dev",
           url: "http://localhost:3000",
           reuseExistingServer: !process.env.CI,
+          // Only reaches a server started here: a reused one keeps its own
+          // env, and the discovery-call spec skips if it lacks this secret.
+          env: { SDR_LINK_SIGNING_SECRET: E2E_SDR_LINK_SECRET },
         },
 });
