@@ -14,7 +14,8 @@ export type NotificationFormType =
   | "Onboarding"
   | "Paid signup"
   | "Lead magnet"
-  | "Security assessment";
+  | "Security assessment"
+  | "Discovery call assessment";
 
 function escapeHtml(value: string): string {
   return value

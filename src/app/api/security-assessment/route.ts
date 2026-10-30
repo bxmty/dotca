@@ -5,6 +5,7 @@ import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import {
+  getQuestionFieldLabels,
   getQuestionsForSegment,
   isQuizSegment,
   loadQuizConfig,
@@ -97,21 +98,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const questions = getQuestionsForSegment(config, segment);
-    const categoryOccurrence = new Map<string, number>();
+    const fieldLabels = getQuestionFieldLabels(config, segment);
     const questionFields: Record<string, string> = {};
-    for (const question of questions) {
-      const categoryLabel = config.categories[question.category].label;
-      const occurrence = (categoryOccurrence.get(categoryLabel) ?? 0) + 1;
-      categoryOccurrence.set(categoryLabel, occurrence);
-      const fieldLabel =
-        occurrence > 1 ? `${categoryLabel} (${occurrence})` : categoryLabel;
+    for (const question of getQuestionsForSegment(config, segment)) {
       const answerIndex = answers[question.id];
       const answer =
         typeof answerIndex === "number"
           ? question.answers[answerIndex]
           : undefined;
-      questionFields[fieldLabel] = answer?.text ?? "";
+      questionFields[fieldLabels.get(question.id) ?? ""] = answer?.text ?? "";
     }
 
     const weakAreaLabels = result.riskCategories.map(

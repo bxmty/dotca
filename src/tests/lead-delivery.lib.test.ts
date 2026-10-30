@@ -61,6 +61,30 @@ describe("lead delivery", () => {
     jest.restoreAllMocks();
   });
 
+  describe("a lead whose form offers no brief", () => {
+    it("reaches both sinks without a Monthly brief line", async () => {
+      await deliverLead({
+        lead: { ...contactLead, isBriefOffered: false },
+        failureSummary: "Discovery call delivery failure",
+      });
+
+      const noBriefFields = { Name: "Jane Doe", Email: EMAIL };
+      expect(mockCreateLead.mock.calls[0][0].fields).toEqual(noBriefFields);
+      expect(mockNotification.mock.calls[0][0].fields).toEqual(noBriefFields);
+    });
+
+    it("keeps the line when the option is left out", async () => {
+      await deliverLead({
+        lead: contactLead,
+        failureSummary: "Contact form delivery failure",
+      });
+
+      expect(mockCreateLead.mock.calls[0][0].fields["Monthly brief"]).toBe(
+        "No",
+      );
+    });
+  });
+
   describe("describeBriefOptIn", () => {
     it("says Yes only for an explicit true", () => {
       expect(describeBriefOptIn(true)).toBe("Yes");
