@@ -46,9 +46,7 @@ describe("StackedAnswerList", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(3);
-    expect(
-      screen.getByText(/enforcement is inconsistent/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/enforcement is inconsistent/)).toBeInTheDocument();
   });
 
   it("checks the current value", () => {
@@ -94,5 +92,46 @@ describe("StackedAnswerList", () => {
         name: /We have not formalized security practices/,
       }),
     ).toBeChecked();
+  });
+
+  it("takes its name from a heading when given labelledBy", () => {
+    render(
+      <>
+        <h1 id="posture-heading">How is security handled?</h1>
+        <StackedAnswerList
+          labelledBy="posture-heading"
+          name="posture"
+          options={OPTIONS}
+          value=""
+          onChange={() => {}}
+        />
+      </>,
+    );
+
+    expect(
+      screen.getByRole("group", { name: "How is security handled?" }),
+    ).toBeInTheDocument();
+    // The question shows once, as the heading, not again as a legend
+    expect(screen.getAllByText("How is security handled?")).toHaveLength(1);
+  });
+
+  it("shows an option's detail line under its label", () => {
+    render(
+      <StackedAnswerList
+        legend="How big is your business?"
+        name="size"
+        options={[
+          { value: "solo", label: "Solopreneur", detail: "Just me" },
+          { value: "team", label: "Small team" },
+        ]}
+        value="solo"
+        onChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("radio", { name: "Solopreneur Just me" }),
+    ).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Small team" })).not.toBeChecked();
   });
 });
