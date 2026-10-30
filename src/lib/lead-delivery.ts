@@ -25,9 +25,16 @@ import {
 /**
  * A lead as the routes describe it. `fields` is every submitted field,
  * label → value, shared by the Syncro ticket and the webmaster email; the
- * "Monthly brief" line is added here from `hasOptedInToBrief`.
+ * "Monthly brief" line is added here from `hasOptedInToBrief`, unless
+ * `isBriefOffered` is false.
  */
 export interface LeadDetails extends Omit<LeadSubmission, "name"> {
+  /**
+   * False when the form never asks for the brief (a discovery call: an SDR
+   * can't give the prospect's consent), so "No" would misdescribe the lead.
+   * Defaults to true.
+   */
+  isBriefOffered?: boolean;
   /**
    * Omitted when the form asks for none (the lead-magnet gate): the address
    * stands in for it in Syncro and the webmaster email, and the log line
@@ -62,14 +69,19 @@ export function describeBriefOptIn(
   return hasOptedInToBrief === true ? "Yes" : "No";
 }
 
-function toLeadSubmission(lead: LeadDetails): LeadSubmission {
+function toLeadSubmission({
+  isBriefOffered = true,
+  ...lead
+}: LeadDetails): LeadSubmission {
   return {
     ...lead,
     name: lead.name ?? lead.email,
-    fields: {
-      ...lead.fields,
-      "Monthly brief": describeBriefOptIn(lead.hasOptedInToBrief),
-    },
+    fields: isBriefOffered
+      ? {
+          ...lead.fields,
+          "Monthly brief": describeBriefOptIn(lead.hasOptedInToBrief),
+        }
+      : lead.fields,
   };
 }
 
