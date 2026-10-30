@@ -1,0 +1,11 @@
+# Read by both the pre-commit prettier hook and `npm run format:check` (CI)
+package-lock.json
+*.tsbuildinfo
+next-env.d.ts
+CLAUDE.md
+ansible/
+.github/actions/
+.claude/
+
+# Frozen design snapshots, kept as drafted (docs/design/README.md)
+docs/design/*.html

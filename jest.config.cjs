@@ -26,7 +26,8 @@ const customJestConfig = {
     "<rootDir>/\\.next(-[^/]+)?/",
     "<rootDir>/\\.claude/",
   ],
-  collectCoverage: true,
+  // Coverage and its thresholds apply under --coverage (`npm run
+  // test:coverage`, CI), so a single-file run reports only its tests.
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",

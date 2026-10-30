@@ -324,6 +324,10 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         run: npm run lint
 
+      - name: Check formatting
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: npm run format:check
+
       - name: Validate blog content
         if: needs.detect-environment.outputs.should_build == 'true'
         run: node scripts/validate-blog-posts.js

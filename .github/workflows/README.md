@@ -164,12 +164,12 @@ graph TD
 
 ## 🚦 Workflow States & Triggers
 
-| Workflow                 | Automatic | Manual | Branch-based                  | Scheduled  |
-| ------------------------ | --------- | ------ | ----------------------------- | ---------- |
-| deploy.yml               | ✅        | ✅     | ✅ (main/staging/renovations) | ❌         |
-| rollback.yml             | ❌        | ✅     | ❌                            | ❌         |
-| docker-build.yml         | ✅        | ✅     | ✅ (main/staging)             | ❌         |
-| dependency-check.yml     | ❌        | ✅     | ❌                            | ❌         |
+| Workflow             | Automatic | Manual | Branch-based                  | Scheduled |
+| -------------------- | --------- | ------ | ----------------------------- | --------- |
+| deploy.yml           | ✅        | ✅     | ✅ (main/staging/renovations) | ❌        |
+| rollback.yml         | ❌        | ✅     | ❌                            | ❌        |
+| docker-build.yml     | ✅        | ✅     | ✅ (main/staging)             | ❌        |
+| dependency-check.yml | ❌        | ✅     | ❌                            | ❌        |
 
 ## 🎯 Usage Guidelines
 

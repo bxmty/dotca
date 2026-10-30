@@ -288,49 +288,51 @@ ansible-syntax:
     @echo "{{GREEN}}✓ Syntax check passed{{NC}}"
 
 # Development Docker Compose recipes
+# --renew-anon-volumes: a fresh /app/node_modules on every start, so a
+# dependency change in the rebuilt image isn't hidden behind the old volume
 dev-up: _check-docker-compose-dev
     @echo "{{BLUE}}Starting local development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml up --build -d
+    @docker compose -f docker-compose.dev.yml up --build -d --renew-anon-volumes
     @echo "{{GREEN}}✓ Development environment started{{NC}}"
     @echo "{{BLUE}}Application available at: http://localhost:3000{{NC}}"
 
 dev-down: _check-docker-compose-dev
     @echo "{{BLUE}}Stopping local development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml down
+    @docker compose -f docker-compose.dev.yml down
     @echo "{{GREEN}}✓ Development environment stopped{{NC}}"
 
 dev-build: _check-docker-compose-dev
     @echo "{{BLUE}}Building development Docker images...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml build
+    @docker compose -f docker-compose.dev.yml build
     @echo "{{GREEN}}✓ Development images built{{NC}}"
 
 dev-logs:
     @echo "{{BLUE}}Showing development environment logs...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml logs -f
+    @docker compose -f docker-compose.dev.yml logs -f
 
 dev-restart:
     @echo "{{BLUE}}Restarting development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml restart
+    @docker compose -f docker-compose.dev.yml restart
     @echo "{{GREEN}}✓ Development environment restarted{{NC}}"
 
 dev-clean: _confirm-dev-clean
     @echo "{{RED}}WARNING: This will remove all development containers, volumes, and images{{NC}}"
     @echo "{{BLUE}}Cleaning up development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml down -v --rmi all
+    @docker compose -f docker-compose.dev.yml down -v --rmi all
     @docker system prune -f
     @echo "{{GREEN}}✓ Development environment cleaned{{NC}}"
 
 dev-test: _check-docker-compose-dev
     @echo "{{BLUE}}Running unit tests (Jest)...{{NC}}"
     @if command -v npm >/dev/null 2>&1; then \
-        npm test; \
+        npm run test:coverage; \
     else \
         echo "{{RED}}Error: npm not found{{NC}}" && exit 1; \
     fi
     @echo "{{GREEN}}✓ Unit tests completed{{NC}}"
     @echo
     @echo "{{BLUE}}Running E2E tests (Playwright)...{{NC}}"
-    @if docker-compose -f docker-compose.dev.yml ps | grep -q "web"; then \
+    @if docker compose -f docker-compose.dev.yml ps | grep -q "web"; then \
         if command -v npx >/dev/null 2>&1; then \
             npx playwright test; \
         else \
@@ -361,7 +363,7 @@ dev-lint:
 
 dev-status:
     @echo "{{BLUE}}Development environment status:{{NC}}"
-    @docker-compose -f docker-compose.dev.yml ps
+    @docker compose -f docker-compose.dev.yml ps
 
 # Private helper recipes
 _check-setup-script:

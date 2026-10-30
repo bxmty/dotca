@@ -9,8 +9,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "/security-assessment/checklist",
-    title:
-      "The 10-Point Small Business Security Checklist | Boximity MSP",
+    title: "The 10-Point Small Business Security Checklist | Boximity MSP",
     description:
       "The ten highest-impact security fixes for a small business, in priority order. Free, ungated, and most take under an hour.",
     type: "website",
