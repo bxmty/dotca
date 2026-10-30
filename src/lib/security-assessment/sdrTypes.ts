@@ -60,3 +60,39 @@ export interface SdrContent {
   /** In call order within each group */
   discovery: DiscoveryQuestion[];
 }
+
+/** Longest note on one posture or discovery question, in characters. */
+export const SDR_NOTE_MAX_LENGTH = 2000;
+/** Longest call summary, in characters. */
+export const SDR_CALL_SUMMARY_MAX_LENGTH = 5000;
+
+/**
+ * One discovery question's outcome. A question that is left out, marked
+ * `isNotAsked`, or sent with no choice and a blank note is recorded as "Not
+ * asked". `choice` must be one of the question's `choices` (so never on a
+ * `"text"` question).
+ */
+export type SdrDiscoveryAnswer =
+  { isNotAsked: true } | { choice?: string; note?: string };
+
+/**
+ * The body of POST /api/security-assessment/call. Authentication is the
+ * session cookie alone (SDR_SESSION_COOKIE), so no token goes here, and the
+ * SDR's name comes from that token.
+ */
+export interface SdrCallLeadRequest {
+  name: string;
+  email: string;
+  company: string;
+  segment: QuizSegment;
+  /** Posture question id to answer index; must be complete for the segment */
+  answers: Record<string, number>;
+  /** Posture question id to note; ids must belong to the segment */
+  notes?: Record<string, string>;
+  /** Discovery question id to outcome */
+  discovery?: Record<string, SdrDiscoveryAnswer>;
+  callSummary?: string;
+}
+
+/** 200 gives `success`; 400, 401, 503 and 500 give `error`. */
+export type SdrCallLeadResponse = { success: true } | { error: string };
