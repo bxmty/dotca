@@ -5,6 +5,9 @@
 
 export const SDR_CONSOLE_PATH = "/security-assessment/call";
 
+/** The tab an SDR shares. It takes no token. */
+export const SDR_PRESENTER_PATH = `${SDR_CONSOLE_PATH}/present`;
+
 /** The query parameter a link carries its token in. */
 export const SDR_TOKEN_PARAM = "t";
 
