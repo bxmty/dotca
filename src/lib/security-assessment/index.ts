@@ -13,9 +13,25 @@ export {
 } from "./quizTypes";
 export { getQuizConfigPath, getQuizContentDir } from "./quizContentPath";
 export {
+  getQuestionsWithFieldLabels,
   getQuestionsForSegment,
   getSectionKeysForSegment,
   validateQuizConfig,
 } from "./validateQuizConfig";
-export { clearQuizConfigCache, loadQuizConfig } from "./loadQuizConfig";
+export {
+  DISCOVERY_GROUPS,
+  getDiscoveryQuestions,
+  SDR_CALL_SUMMARY_MAX_LENGTH,
+  SDR_NOTE_MAX_LENGTH,
+  type DiscoveryChoiceQuestion,
+  type DiscoveryQuestion,
+  type DiscoveryTextQuestion,
+  type SdrCallLeadResponse,
+} from "./sdrTypes";
+export { validateSdrContent } from "./validateSdrContent";
+export {
+  clearQuizConfigCache,
+  loadQuizConfig,
+  loadSdrContent,
+} from "./loadQuizConfig";
 export { isQuizSegment, scoreQuizAnswers } from "./scoreQuizAnswers";

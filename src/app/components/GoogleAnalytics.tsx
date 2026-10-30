@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { initGA, pageview } from "../../lib/gtag";
+import { isSdrConsoleRoute } from "../../lib/sdr-console-route";
 
 export default function GoogleAnalytics() {
   const pathname = usePathname();
@@ -17,6 +18,9 @@ export default function GoogleAnalytics() {
   // Track exactly one page view per navigation (including the initial load).
   useEffect(() => {
     if (!pathname) return;
+    // The console's first render still has its signed link in the query, and
+    // staff calls aren't site traffic: send nothing for these routes (#711).
+    if (isSdrConsoleRoute(pathname)) return;
 
     const url = searchParams?.size
       ? `${pathname}?${searchParams.toString()}`

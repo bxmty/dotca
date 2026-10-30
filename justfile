@@ -45,6 +45,7 @@ help:
     @echo "  just deploy ENVIRONMENT=production # Deploy to production"
     @echo "  just destroy ENVIRONMENT=staging   # Destroy staging environment"
     @echo "  just status ENVIRONMENT=staging    # Check environment status"
+    @echo "  just sdr-link NAME=\"Alex Doe\" ENVIRONMENT=production  # Print an SDR call console link"
     @echo "  just terraform-plan ENVIRONMENT=staging  # Plan terraform changes"
     @echo "  just terraform-apply ENVIRONMENT=staging BACKEND=local  # Apply with local backend"
     @echo
@@ -93,6 +94,7 @@ validate: _check-env-file
             echo "{{RED}}Error: WEBMASTER_EMAIL not set in .env.local{{NC}}" && exit 1; \
         fi && \
         {{SCRIPTS_DIR}}/check-lead-magnet-secret.sh {{ENVIRONMENT}} && \
+        {{SCRIPTS_DIR}}/check-sdr-link-secret.sh {{ENVIRONMENT}} && \
         echo "{{GREEN}}✓ Environment variables configured{{NC}}"
     @# Test SSH agent
     @ssh-add -l >/dev/null 2>&1 || echo "{{YELLOW}}⚠ SSH agent not running or no keys loaded{{NC}}"
@@ -117,6 +119,41 @@ deploy: _check-deploy-script
         {{ if BACKEND != "" { "--backend " + BACKEND } else { "" } }} \
         {{ if DRY_RUN == "true" { "--dry-run" } else { "" } }} \
         {{ if VERBOSE == "true" { "--verbose" } else { "" } }}
+
+# Print a signed SDR call console link, using the secret from 1Password
+[no-exit-message]
+sdr-link ASSIGNMENT_ONE="" ASSIGNMENT_TWO="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SDR_NAME=""
+    SDR_ENVIRONMENT={{quote(ENVIRONMENT)}}
+    # Parameters, not just's own overrides: those only work before the recipe
+    # name, and this reads as `just sdr-link NAME="Alex Doe" ENVIRONMENT=staging`.
+    for argument in {{quote(ASSIGNMENT_ONE)}} {{quote(ASSIGNMENT_TWO)}}; do
+        case "$argument" in
+            NAME=*) SDR_NAME="${argument#NAME=}" ;;
+            ENVIRONMENT=*) SDR_ENVIRONMENT="${argument#ENVIRONMENT=}" ;;
+            "") ;;
+            *)
+                echo "Unexpected argument: $argument" >&2
+                exit 1
+                ;;
+        esac
+    done
+    if [[ -z "$SDR_NAME" ]]; then
+        echo 'Usage: just sdr-link NAME="Alex Doe" ENVIRONMENT=staging|production' >&2
+        exit 1
+    fi
+    case "$SDR_ENVIRONMENT" in
+        staging) item="DotCA-SDR-Link-Signing-Secret-Staging" ;;
+        production) item="DotCA-SDR-Link-Signing-Secret-Production" ;;
+        *)
+            echo "ENVIRONMENT must be staging or production, got: $SDR_ENVIRONMENT" >&2
+            exit 1
+            ;;
+    esac
+    SDR_LINK_SIGNING_SECRET="op://DevOps/$item/password" \
+        op run -- node {{SCRIPTS_DIR}}/sdr-link.ts "$SDR_NAME" "$SDR_ENVIRONMENT"
 
 # Destroy recipe - Environment cleanup
 destroy: _check-destroy-script _confirm-destroy

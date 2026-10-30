@@ -229,6 +229,37 @@ describe("scoreQuizAnswers", () => {
     ).toThrow(/Missing or invalid answer/);
   });
 
+  it.each([
+    ["solo", 12, 18, "managed"],
+    ["small_team", 22, 33, "managed"],
+    ["growing", 36, 54, "managed"],
+  ] as const)(
+    "keeps the second-best answers at a known score for %s",
+    (segment, score, maxScore, tier) => {
+      const result = scoreQuizAnswers({
+        config,
+        segment,
+        answers: buildAnswers(config, segment, () => 1),
+      });
+      expect(result).toEqual({ score, maxScore, tier, riskCategories: [] });
+    },
+  );
+
+  it("ignores discovery answers mixed into the answer map", () => {
+    const answers = {
+      ...buildAnswers(config, "solo", () => 1),
+      why_now: 0,
+      timeline: 3,
+    };
+    const result = scoreQuizAnswers({ config, segment: "solo", answers });
+    expect(result).toEqual({
+      score: 12,
+      maxScore: 18,
+      tier: "managed",
+      riskCategories: [],
+    });
+  });
+
   it("ignores answers to questions outside the segment", () => {
     const answers = buildAnswers(config, "solo", () => 0);
     answers.incident_response = 3; // growing-only question, worst answer

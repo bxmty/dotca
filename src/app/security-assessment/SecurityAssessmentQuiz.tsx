@@ -13,76 +13,48 @@ import { Button, ButtonLink } from "@/app/components/Button";
 import BriefOptInCheckbox from "@/app/components/BriefOptInCheckbox";
 import { TextField } from "@/app/components/Field";
 import PageHero from "@/app/components/PageHero";
-import RuledGrid from "@/app/components/RuledGrid";
 import StackedAnswerList from "@/app/components/StackedAnswerList";
 import StatusNote from "@/app/components/StatusNote";
 import StepProgress from "@/app/components/StepProgress";
-import {
-  INCOMPLETE_EMAIL_MESSAGE,
-  isEmailAddress,
-  omitFieldErrors,
-} from "@/lib/formValidation";
+import { omitFieldErrors } from "@/lib/formValidation";
 import { event as trackGaEvent } from "@/lib/gtag";
 import {
   QUIZ_SEGMENTS,
-  RISK_TIERS,
   type QuizConfig,
   type QuizResult,
   type QuizSegment,
-  type RiskTier,
 } from "@/lib/security-assessment/quizTypes";
 import {
   getQuestionsForSegment,
+  getSectionFraction,
   getSectionKeysForSegment,
 } from "@/lib/security-assessment/validateQuizConfig";
 import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
-import DotGridPanel from "./DotGridPanel";
+import {
+  LEAD_FIELD_NAMES,
+  validateLeadFields,
+  type LeadFieldErrors,
+  type LeadFieldName,
+  type LeadFields,
+} from "./leadFields";
 import PerimeterRings from "./PerimeterRings";
-import ScoreRuler from "./ScoreRuler";
+import QuestionHeader from "./QuestionHeader";
+import QuizResultSummary from "./QuizResultSummary";
+import { buildQuizResultView } from "./quizResultView";
 
 type QuizScreen = "landing" | "size" | "details" | "questions" | "results";
 
-type LeadFields = { name: string; email: string; company: string };
-type LeadFieldName = keyof LeadFields;
-type LeadFieldErrors = Partial<Record<LeadFieldName, string>>;
 type DeliveryStatus = "idle" | "sending" | "sent" | "error";
 
 // Long enough for the selected ring to draw in and be seen before moving on
 const AUTO_ADVANCE_MS = 400;
 const SCREEN_HEADING_ID = "security-assessment-heading";
 const SCREEN_HEADING_CLASS_NAME = "m-0 text-h2 font-semibold outline-none";
-// Questions run to two or three lines; a step down on phones keeps the
-// answers in the first screen
-const QUESTION_HEADING_CLASS_NAME =
-  "m-0 text-h3 leading-snug font-semibold outline-none md:text-h2 md:leading-tight";
-// Field order, for moving focus to the first invalid one
-const LEAD_FIELD_NAMES: readonly LeadFieldName[] = ["name", "email", "company"];
 const CAPTURE_BRIEF_FIELD_ID = "security-assessment-brief";
 const DELIVERY_ERROR_MESSAGE =
   "Something went wrong. Please try again in a moment.";
 
 const getLeadFieldId = (field: LeadFieldName) => `security-assessment-${field}`;
-
-/** Errors worded as the fix (Component Spec, forms). */
-function validateLeadFields({
-  name,
-  email,
-  company,
-}: LeadFields): LeadFieldErrors {
-  const errors: LeadFieldErrors = {};
-  if (!name.trim()) {
-    errors.name = "enter your name";
-  }
-  if (!email.trim()) {
-    errors.email = "enter your email address";
-  } else if (!isEmailAddress(email)) {
-    errors.email = INCOMPLETE_EMAIL_MESSAGE;
-  }
-  if (!company.trim()) {
-    errors.company = "enter your company name";
-  }
-  return errors;
-}
 
 /**
  * One centred column for every screen after the landing, the same width as
@@ -475,52 +447,16 @@ export default function SecurityAssessmentQuiz({
   }
 
   if (screen === "results" && result && segment) {
-    const tierCopy = config.tiers[result.tier];
     const cta = config.ctas[segment][result.tier];
-    const weakAreaItems = result.riskCategories.map((categoryKey) => {
-      const category = config.categories[categoryKey];
-      return {
-        kicker: config.sections[category.section]?.label,
-        title: category.label,
-        body: category.weakCopy,
-      };
-    });
-    const tierLabels = Object.fromEntries(
-      RISK_TIERS.map((tier) => [tier, config.tiers[tier].label]),
-    ) as Record<RiskTier, string>;
 
     return (
       <QuizColumn key={screen} columnRef={columnRef}>
-        <div className="grid gap-3">
-          <p className="m-0 font-mono text-label text-muted">
-            {tierCopy.label}
-          </p>
-          <h1
-            id={SCREEN_HEADING_ID}
-            ref={headingRef}
-            tabIndex={-1}
-            className={SCREEN_HEADING_CLASS_NAME}
-          >
-            {tierCopy.headline}
-          </h1>
-        </div>
-        <DotGridPanel className="px-5 pt-6 pb-5">
-          <ScoreRuler
-            score={result.score}
-            maxScore={result.maxScore}
-            thresholds={config.thresholds[segment]}
-            tier={result.tier}
-            tierLabels={tierLabels}
-          />
-        </DotGridPanel>
-        <p className="m-0 text-body text-muted">{tierCopy.body}</p>
-
-        {weakAreaItems.length > 0 && (
-          <div className="mt-4">
-            <h2 className="m-0 mb-4 text-h3 font-semibold">Where to focus</h2>
-            <RuledGrid items={weakAreaItems} />
-          </div>
-        )}
+        <QuizResultSummary
+          view={buildQuizResultView(config, segment, result)}
+          headingId={SCREEN_HEADING_ID}
+          headingRef={headingRef}
+          headingClassName={SCREEN_HEADING_CLASS_NAME}
+        />
 
         <div className="mt-4 grid gap-3 border-t border-rule pt-8">
           <h2 className="m-0 text-h3 font-semibold">{cta.heading}</h2>
@@ -588,42 +524,32 @@ export default function SecurityAssessmentQuiz({
     const selectedValue =
       typeof selectedIndex === "number" ? String(selectedIndex) : "";
 
-    const sectionQuestions = questions.filter(
-      (question) =>
-        config.categories[question.category].section === currentSectionKey,
-    );
-    const sectionFraction =
-      (sectionQuestions.indexOf(currentQuestion) + 1) / sectionQuestions.length;
-
     return (
       <QuizColumn key={screen} columnRef={columnRef}>
         <StepProgress
           steps={sectionStepTitles}
           currentStep={currentSectionStep}
           onStepSelect={goToSectionStep}
-          currentStepFraction={sectionFraction}
+          currentStepFraction={getSectionFraction(
+            config,
+            segment,
+            currentQuestion,
+          )}
         />
         {/* Keyed per question, so each one rises in */}
         <div
           key={currentQuestion.id}
           className="grid gap-6 motion-safe:animate-rise"
         >
-          <div className="grid gap-4">
-            <DotGridPanel className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-4 pt-3.5 pb-3 font-mono text-label tracking-[.06em] text-muted uppercase">
-              <span>{config.categories[currentQuestion.category].label}</span>
-              <span className="text-ink tabular-nums">
-                {`Question ${questionIndex + 1} of ${questions.length}`}
-              </span>
-            </DotGridPanel>
-            <h1
-              id={SCREEN_HEADING_ID}
-              ref={headingRef}
-              tabIndex={-1}
-              className={QUESTION_HEADING_CLASS_NAME}
-            >
-              {currentQuestion.text}
-            </h1>
-          </div>
+          <QuestionHeader
+            categoryLabel={config.categories[currentQuestion.category].label}
+            position={questionIndex + 1}
+            total={questions.length}
+            headingId={SCREEN_HEADING_ID}
+            headingRef={headingRef}
+          >
+            {currentQuestion.text}
+          </QuestionHeader>
           <StackedAnswerList
             labelledBy={SCREEN_HEADING_ID}
             name={currentQuestion.id}
