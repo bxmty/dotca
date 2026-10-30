@@ -215,4 +215,10 @@ describe("sitemap", () => {
       findEntry(sitemap(), `${BASE_URL}/blog/tag/empty`)?.lastModified,
     ).toBeUndefined();
   });
+
+  it("leaves out the SDR console and presenter", () => {
+    const urls = sitemap().map(({ url }) => url);
+
+    expect(urls.filter((url) => url.includes("/call"))).toEqual([]);
+  });
 });

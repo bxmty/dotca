@@ -66,7 +66,13 @@ describe("/install redirect route", () => {
     it("refuses a tampered token", () => {
       const url = new URL(buildInstallUrl("jane@example.com"));
       const token = url.searchParams.get("t")!;
-      url.searchParams.set("t", `${token.slice(0, -1)}A`);
+      // Flip, don't overwrite: a signature already ending in "A" (1 in 16)
+      // would be unchanged, and correctly redirect.
+      const lastChar = token.slice(-1);
+      url.searchParams.set(
+        "t",
+        `${token.slice(0, -1)}${lastChar === "A" ? "B" : "A"}`,
+      );
 
       const res = requestInstall(url.toString());
 

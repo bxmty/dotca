@@ -33,6 +33,20 @@ describe("install link", () => {
     );
   });
 
+  it("keeps the token format byte-for-byte (issued links still verify)", () => {
+    jest.useFakeTimers({ now: new Date("2026-10-01T12:00:00Z") });
+    try {
+      // Golden value from before the SDR token sibling was added (#711).
+      expect(
+        new URL(buildInstallUrl("jane@example.com")).searchParams.get("t"),
+      ).toBe(
+        "1791460800000.y0FG_-X8xnLewpKwriVL5A.FS9uySSdI0bPu5cNmJ0oOE9mwkR16U83iqA-4MWUS80",
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("does not carry the email address", () => {
     const url = buildInstallUrl("jane@example.com");
 
