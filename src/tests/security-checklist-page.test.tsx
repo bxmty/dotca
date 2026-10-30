@@ -21,7 +21,9 @@ describe("Security checklist page", () => {
           name: checklistItem.title,
         }),
       ).toBeInTheDocument();
-      expect(within(listItem).getByText(checklistItem.detail)).toBeInTheDocument();
+      expect(
+        within(listItem).getByText(checklistItem.detail),
+      ).toBeInTheDocument();
     });
   });
 

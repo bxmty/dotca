@@ -164,8 +164,7 @@ function readNetworkRequests(
   lighthouseResult: LighthouseResultSubset,
 ): NetworkRequestItem[] {
   const details = lighthouseResult.audits["network-requests"]?.details as
-    | { items?: NetworkRequestItem[] }
-    | undefined;
+    { items?: NetworkRequestItem[] } | undefined;
   return details?.items ?? [];
 }
 
