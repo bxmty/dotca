@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { readSdrName } from "@/lib/sdr-session";
+import { loadQuizConfig, loadSdrContent } from "@/lib/security-assessment";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
 import CallConsole from "./CallConsole";
 import { SdrCallSession } from "./SdrCallSession";
@@ -26,7 +27,7 @@ export default async function CallConsolePage() {
 
   return (
     <SdrCallSession sdrName={sdrName}>
-      <CallConsole />
+      <CallConsole config={loadQuizConfig()} sdr={loadSdrContent()} />
     </SdrCallSession>
   );
 }
