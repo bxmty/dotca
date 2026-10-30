@@ -32,6 +32,7 @@ import { getQuestionsForSegment } from "@/lib/security-assessment/validateQuizCo
 import DotGridPanel from "../DotGridPanel";
 import {
   LEAD_FIELD_NAMES,
+  PROSPECT_BLANK_FIELD_MESSAGES,
   validateLeadFields,
   type LeadFieldErrors,
   type LeadFieldName,
@@ -170,7 +171,10 @@ function DetailsScreen({ state, dispatch, headingRef }: ScreenProps) {
 
   const submit = (submitEvent: FormEvent<HTMLFormElement>) => {
     submitEvent.preventDefault();
-    const nextErrors = validateLeadFields(state.lead);
+    const nextErrors = validateLeadFields(
+      state.lead,
+      PROSPECT_BLANK_FIELD_MESSAGES,
+    );
     setErrors(nextErrors);
     const firstInvalidField = LEAD_FIELD_NAMES.find(
       (field) => nextErrors[field],

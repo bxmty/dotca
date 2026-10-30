@@ -227,9 +227,14 @@ describe("CallConsole", () => {
 
       click("Continue");
 
-      expect(screen.getByText("enter your name")).toBeInTheDocument();
-      expect(screen.getByText("enter your email address")).toBeInTheDocument();
-      expect(screen.getByText("enter your company name")).toBeInTheDocument();
+      expect(screen.getByText("enter the prospect's name")).toBeInTheDocument();
+      expect(
+        screen.getByText("enter the prospect's email address"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("enter the prospect's company name"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/enter your/)).toBeNull();
       expect(screen.getByLabelText(/^Name/)).toHaveFocus();
       expect(
         screen.getByRole("heading", { name: "Who are you speaking with?" }),
