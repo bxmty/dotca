@@ -3,6 +3,7 @@ import {
   verifySubjectLinkToken,
   type LinkTokenFailureReason,
 } from "./signed-link-token.ts";
+import { SDR_CONSOLE_PATH, SDR_TOKEN_PARAM } from "./sdr-console-route.ts";
 
 /**
  * Per-SDR links to the discovery-call console (/security-assessment/call,
@@ -19,10 +20,6 @@ export const SDR_TOKEN_SCOPE = "assessment:sdr";
 export const SDR_LINK_SECRET_ENV_NAME = "SDR_LINK_SIGNING_SECRET";
 const SDR_TOKEN_LIFETIME_MS = 90 * 24 * 60 * 60 * 1000;
 const MAX_SDR_NAME_LENGTH = 100;
-
-/** The query parameter the console reads the token from. */
-export const SDR_TOKEN_PARAM = "t";
-export const SDR_CONSOLE_PATH = "/security-assessment/call";
 
 const SITE_URL_BY_ENVIRONMENT = {
   production: "https://boximity.ca",
