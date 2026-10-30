@@ -15,6 +15,28 @@ export function getQuestionsForSegment(
   );
 }
 
+/**
+ * Question id to its label on a lead: the category's label, with " (2)" and
+ * so on when the category repeats within the segment.
+ */
+export function getQuestionFieldLabels(
+  config: QuizConfig,
+  segment: QuizSegment,
+): Map<string, string> {
+  const categoryOccurrence = new Map<string, number>();
+  const labels = new Map<string, string>();
+  for (const question of getQuestionsForSegment(config, segment)) {
+    const categoryLabel = config.categories[question.category].label;
+    const occurrence = (categoryOccurrence.get(categoryLabel) ?? 0) + 1;
+    categoryOccurrence.set(categoryLabel, occurrence);
+    labels.set(
+      question.id,
+      occurrence > 1 ? `${categoryLabel} (${occurrence})` : categoryLabel,
+    );
+  }
+  return labels;
+}
+
 /** Ordered section keys that have at least one question in this segment. */
 export function getSectionKeysForSegment(
   config: QuizConfig,
