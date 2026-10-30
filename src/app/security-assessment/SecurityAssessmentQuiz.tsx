@@ -39,6 +39,7 @@ import {
 } from "./leadFields";
 import PerimeterRings from "./PerimeterRings";
 import QuizResultSummary from "./QuizResultSummary";
+import { buildQuizResultView } from "./quizResultView";
 
 type QuizScreen = "landing" | "size" | "details" | "questions" | "results";
 
@@ -454,9 +455,7 @@ export default function SecurityAssessmentQuiz({
     return (
       <QuizColumn key={screen} columnRef={columnRef}>
         <QuizResultSummary
-          config={config}
-          segment={segment}
-          result={result}
+          view={buildQuizResultView(config, segment, result)}
           headingId={SCREEN_HEADING_ID}
           headingRef={headingRef}
           headingClassName={SCREEN_HEADING_CLASS_NAME}

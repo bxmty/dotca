@@ -35,6 +35,7 @@ import {
   type LeadFieldName,
 } from "../leadFields";
 import QuizResultSummary from "../QuizResultSummary";
+import { buildQuizResultView } from "../quizResultView";
 import {
   buildCallLeadRequest,
   getDiscoveryQuestions,
@@ -414,9 +415,7 @@ function ResultsScreen({ state, dispatch, content, headingRef }: ScreenProps) {
   return (
     <div className="grid max-w-[720px] gap-6">
       <QuizResultSummary
-        config={config}
-        segment={state.segment}
-        result={result}
+        view={buildQuizResultView(config, state.segment, result)}
         headingId={HEADING_ID}
         headingRef={headingRef}
         headingClassName={HEADING_CLASS_NAME}
