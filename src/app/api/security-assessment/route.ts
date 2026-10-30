@@ -5,8 +5,7 @@ import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import {
-  getQuestionFieldLabels,
-  getQuestionsForSegment,
+  getQuestionsWithFieldLabels,
   isQuizSegment,
   loadQuizConfig,
   scoreQuizAnswers,
@@ -98,15 +97,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const fieldLabels = getQuestionFieldLabels(config, segment);
     const questionFields: Record<string, string> = {};
-    for (const question of getQuestionsForSegment(config, segment)) {
+    for (const { question, fieldLabel } of getQuestionsWithFieldLabels(
+      config,
+      segment,
+    )) {
       const answerIndex = answers[question.id];
       const answer =
         typeof answerIndex === "number"
           ? question.answers[answerIndex]
           : undefined;
-      questionFields[fieldLabels.get(question.id) ?? ""] = answer?.text ?? "";
+      questionFields[fieldLabel] = answer?.text ?? "";
     }
 
     const weakAreaLabels = result.riskCategories.map(

@@ -13,7 +13,7 @@ export {
 } from "./quizTypes";
 export { getQuizConfigPath, getQuizContentDir } from "./quizContentPath";
 export {
-  getQuestionFieldLabels,
+  getQuestionsWithFieldLabels,
   getQuestionsForSegment,
   getSectionKeysForSegment,
   validateQuizConfig,

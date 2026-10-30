@@ -4,8 +4,7 @@ import { isEmailAddress } from "@/lib/formValidation";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
 import { checkSdrSession } from "@/lib/sdr-session";
 import {
-  getQuestionFieldLabels,
-  getQuestionsForSegment,
+  getQuestionsWithFieldLabels,
   isQuizSegment,
   loadQuizConfig,
   loadSdrContent,
@@ -69,26 +68,25 @@ function readOptionalRecord(
 
 function buildPostureFields({
   answers,
-  labels,
   notes,
-  questions,
+  labelledQuestions,
 }: {
   answers: Record<string, number>;
-  labels: Map<string, string>;
   notes: Record<string, unknown>;
-  questions: ReturnType<typeof getQuestionsForSegment>;
+  labelledQuestions: ReturnType<typeof getQuestionsWithFieldLabels>;
 }): Record<string, string> {
-  const questionIds = new Set(questions.map((question) => question.id));
+  const questionIds = new Set(
+    labelledQuestions.map(({ question }) => question.id),
+  );
   for (const id of Object.keys(notes)) {
     if (!questionIds.has(id)) fail("Unknown question in notes");
   }
 
   const fields: Record<string, string> = {};
-  for (const question of questions) {
-    const label = labels.get(question.id) as string;
-    fields[label] = question.answers[answers[question.id]].text;
+  for (const { question, fieldLabel } of labelledQuestions) {
+    fields[fieldLabel] = question.answers[answers[question.id]].text;
     const note = readNote(notes[question.id]);
-    if (note !== "") fields[`${label} note`] = note;
+    if (note !== "") fields[`${fieldLabel} note`] = note;
   }
   return fields;
 }
@@ -200,9 +198,8 @@ export async function POST(request: NextRequest) {
 
     const postureFields = buildPostureFields({
       answers,
-      labels: getQuestionFieldLabels(config, segment),
       notes: readOptionalRecord(submission.notes, "Notes"),
-      questions: getQuestionsForSegment(config, segment),
+      labelledQuestions: getQuestionsWithFieldLabels(config, segment),
     });
     const discoveryFields = buildDiscoveryFields(
       loadSdrContent().discovery,
