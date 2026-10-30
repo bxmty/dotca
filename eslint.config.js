@@ -56,6 +56,14 @@ export default [
     },
   },
   {
+    // tsc already reports undefined names, with the real DOM and Node types;
+    // typescript-eslint recommends no-undef off for TypeScript
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "no-undef": "off",
+    },
+  },
+  {
     files: ["**/*.test.ts", "**/*.test.tsx", "**/tests/**/*.tsx"],
     languageOptions: {
       globals: {
