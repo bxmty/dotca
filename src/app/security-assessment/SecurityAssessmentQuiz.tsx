@@ -26,10 +26,10 @@ import {
 } from "@/lib/security-assessment/quizTypes";
 import {
   getQuestionsForSegment,
+  getSectionFraction,
   getSectionKeysForSegment,
 } from "@/lib/security-assessment/validateQuizConfig";
 import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
-import DotGridPanel from "./DotGridPanel";
 import {
   LEAD_FIELD_NAMES,
   validateLeadFields,
@@ -38,6 +38,7 @@ import {
   type LeadFields,
 } from "./leadFields";
 import PerimeterRings from "./PerimeterRings";
+import QuestionHeader from "./QuestionHeader";
 import QuizResultSummary from "./QuizResultSummary";
 import { buildQuizResultView } from "./quizResultView";
 
@@ -49,10 +50,6 @@ type DeliveryStatus = "idle" | "sending" | "sent" | "error";
 const AUTO_ADVANCE_MS = 400;
 const SCREEN_HEADING_ID = "security-assessment-heading";
 const SCREEN_HEADING_CLASS_NAME = "m-0 text-h2 font-semibold outline-none";
-// Questions run to two or three lines; a step down on phones keeps the
-// answers in the first screen
-const QUESTION_HEADING_CLASS_NAME =
-  "m-0 text-h3 leading-snug font-semibold outline-none md:text-h2 md:leading-tight";
 const CAPTURE_BRIEF_FIELD_ID = "security-assessment-brief";
 const DELIVERY_ERROR_MESSAGE =
   "Something went wrong. Please try again in a moment.";
@@ -527,42 +524,32 @@ export default function SecurityAssessmentQuiz({
     const selectedValue =
       typeof selectedIndex === "number" ? String(selectedIndex) : "";
 
-    const sectionQuestions = questions.filter(
-      (question) =>
-        config.categories[question.category].section === currentSectionKey,
-    );
-    const sectionFraction =
-      (sectionQuestions.indexOf(currentQuestion) + 1) / sectionQuestions.length;
-
     return (
       <QuizColumn key={screen} columnRef={columnRef}>
         <StepProgress
           steps={sectionStepTitles}
           currentStep={currentSectionStep}
           onStepSelect={goToSectionStep}
-          currentStepFraction={sectionFraction}
+          currentStepFraction={getSectionFraction(
+            config,
+            segment,
+            currentQuestion,
+          )}
         />
         {/* Keyed per question, so each one rises in */}
         <div
           key={currentQuestion.id}
           className="grid gap-6 motion-safe:animate-rise"
         >
-          <div className="grid gap-4">
-            <DotGridPanel className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-4 pt-3.5 pb-3 font-mono text-label tracking-[.06em] text-muted uppercase">
-              <span>{config.categories[currentQuestion.category].label}</span>
-              <span className="text-ink tabular-nums">
-                {`Question ${questionIndex + 1} of ${questions.length}`}
-              </span>
-            </DotGridPanel>
-            <h1
-              id={SCREEN_HEADING_ID}
-              ref={headingRef}
-              tabIndex={-1}
-              className={QUESTION_HEADING_CLASS_NAME}
-            >
-              {currentQuestion.text}
-            </h1>
-          </div>
+          <QuestionHeader
+            categoryLabel={config.categories[currentQuestion.category].label}
+            position={questionIndex + 1}
+            total={questions.length}
+            headingId={SCREEN_HEADING_ID}
+            headingRef={headingRef}
+          >
+            {currentQuestion.text}
+          </QuestionHeader>
           <StackedAnswerList
             labelledBy={SCREEN_HEADING_ID}
             name={currentQuestion.id}

@@ -61,6 +61,14 @@ export interface SdrContent {
   discovery: DiscoveryQuestion[];
 }
 
+/** One group's questions, in call order. */
+export function getDiscoveryQuestions(
+  { discovery }: Pick<SdrContent, "discovery">,
+  group: DiscoveryGroup,
+): DiscoveryQuestion[] {
+  return discovery.filter((question) => question.group === group);
+}
+
 /** Longest note on one posture or discovery question, in characters. */
 export const SDR_NOTE_MAX_LENGTH = 2000;
 /** Longest call summary, in characters. */

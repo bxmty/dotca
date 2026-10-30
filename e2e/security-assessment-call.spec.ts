@@ -8,19 +8,25 @@ import { E2E_SDR_LINK_SECRET } from "./support/sdrTestSecret";
 /**
  * A whole discovery call across the SDR's console and the presenter tab they
  * share with the prospect. The save is stubbed, so the spec never reaches
- * Syncro or Resend. The token is signed with a fake secret, so this only runs
- * against a server started with that secret; see SKIP_REASON.
+ * Syncro or Resend. The token is signed with a fake secret, so it needs a server
+ * holding that secret: playwright.config.ts starts one on its own port.
  */
 
 const CONSOLE_PATH = "/security-assessment/call";
 const CALL_ROUTE = "**/api/security-assessment/call";
 const PRESENTER_CHANNEL = "sdr-call-presenter";
 const SEGMENT = "small_team";
+const FRAGMENT_WORD_COUNT = 5;
 
-const SKIP_REASON =
-  `The server at this baseURL doesn't accept links signed with the fake e2e secret. ` +
-  `Let Playwright start the dev server (nothing else on port 3000), or start one with ` +
-  `${SDR_LINK_SECRET_ENV_NAME} set to the value in e2e/support/sdrTestSecret.ts`;
+const SKIP_OPT_OUT_ENV_NAME = "E2E_ALLOW_SDR_CALL_SKIP";
+const LINK_REJECTED_MESSAGE =
+  `A valid link got a 404 from a server that should hold the fake e2e secret, so ` +
+  `the console is broken or that server has another secret. Set ` +
+  `${SKIP_OPT_OUT_ENV_NAME}=1 to skip instead, if you know why.`;
+const DEPLOYED_TARGET_SKIP_REASON =
+  `APP_URL targets a deployed environment, whose real ${SDR_LINK_SECRET_ENV_NAME} ` +
+  `can't verify a link signed with the fake e2e secret, so this spec can't run there.`;
+const OPT_OUT_SKIP_REASON = `Skipped by ${SKIP_OPT_OUT_ENV_NAME}: the server rejected a link signed with the fake e2e secret.`;
 
 const SDR_NAME = "Marisol Testcaller";
 const PROSPECT = {
@@ -76,7 +82,7 @@ const maxScore = postureQuestions.reduce(
   0,
 );
 
-/** Everything only the SDR may see, in full so generic words can't match. */
+/** Everything only the SDR may see, whole. */
 const PRIVATE_STRINGS = [
   SDR_NAME,
   PROSPECT.name,
@@ -93,9 +99,54 @@ const PRIVATE_STRINGS = [
   ),
   ...Object.values(content.sdr.nextSteps)
     .flatMap((tiers) => Object.values(tiers))
-    .map(({ propose }) => propose),
+    .flatMap(({ propose, service }) => [propose, service]),
   ...content.sdr.discovery.map(({ text }) => text),
 ];
+
+/**
+ * Runs of words from the SDR's long copy, so that part of a sentence leaking
+ * fails too. A run the public copy also uses says nothing, so it's left out.
+ */
+function buildPrivateFragments(): string[] {
+  const { sdr: _sdr, ...publicContent } = content;
+  const publicCopy = normalizeForSearch(
+    JSON.stringify(publicContent),
+  ).toLowerCase();
+  const longCopy = [
+    ...Object.values(content.sdr.talkTracks).flatMap(
+      ({ whyItMatters, probe }) => [whyItMatters, probe],
+    ),
+    ...Object.values(content.sdr.nextSteps)
+      .flatMap((tiers) => Object.values(tiers))
+      .map(({ propose }) => propose),
+    ...content.sdr.discovery.map(({ text }) => text),
+  ];
+  const fragments = longCopy.flatMap((copy) => {
+    const words = normalizeForSearch(copy).toLowerCase().split(" ");
+    return words
+      .slice(0, Math.max(words.length - FRAGMENT_WORD_COUNT + 1, 0))
+      .map((_, start) =>
+        words.slice(start, start + FRAGMENT_WORD_COUNT).join(" "),
+      );
+  });
+  return [...new Set(fragments)].filter(
+    (fragment) => !publicCopy.includes(fragment),
+  );
+}
+
+const PRIVATE_FRAGMENTS = buildPrivateFragments();
+
+/** Why a rejected link may skip, if it may; otherwise it fails the test. */
+function readLinkRejectedSkipReason(): string | undefined {
+  const { APP_URL: appUrl } = process.env;
+  if (
+    appUrl &&
+    !["localhost", "127.0.0.1"].includes(new URL(appUrl).hostname)
+  ) {
+    return DEPLOYED_TARGET_SKIP_REASON;
+  }
+  return process.env[SKIP_OPT_OUT_ENV_NAME] ? OPT_OUT_SKIP_REASON : undefined;
+}
 
 function mintTestToken(): string {
   const previousSecret = process.env[SDR_LINK_SECRET_ENV_NAME];
@@ -177,13 +228,32 @@ async function expectPresenterHasNoLeak(
 
   for (const [surface, raw] of Object.entries(surfaces)) {
     const searchable = normalizeForSearch(raw);
-    for (const forbidden of [...PRIVATE_STRINGS, token]) {
-      expect(
+    const lowercaseSearchable = searchable.toLowerCase();
+    const leaks = [
+      ...[...PRIVATE_STRINGS, token].filter((forbidden) =>
         searchable.includes(normalizeForSearch(forbidden)),
-        `${step}: presenter ${surface} contains "${forbidden}"`,
-      ).toBe(false);
-    }
+      ),
+      ...PRIVATE_FRAGMENTS.filter((fragment) =>
+        lowercaseSearchable.includes(fragment),
+      ),
+    ];
+    expect(leaks, `${step}: presenter ${surface} leaks`).toEqual([]);
   }
+  await expectPresenterHasNoChrome(presenter, step);
+}
+
+/** Across the whole page, not just main: the site's links and CTAs stay away. */
+async function expectPresenterHasNoChrome(presenter: Page, step: string) {
+  const chrome = await presenter.evaluate(() => ({
+    landmarks: document.querySelectorAll("header, footer").length,
+    links: [...document.querySelectorAll("a[href]")]
+      .map((link) => link.getAttribute("href"))
+      .filter((href) => href !== "#main-content"),
+  }));
+  expect(chrome, `${step}: presenter chrome`).toEqual({
+    landmarks: 0,
+    links: [],
+  });
 }
 
 test.describe("Discovery call console and presenter", () => {
@@ -199,7 +269,13 @@ test.describe("Discovery call console and presenter", () => {
     const token = mintTestToken();
     const link = `${CONSOLE_PATH}?t=${encodeURIComponent(token)}`;
     const probe = await request.get(link, { maxRedirects: 0 });
-    test.skip(probe.status() === 404, SKIP_REASON);
+    if (probe.status() === 404) {
+      const skipReason = readLinkRejectedSkipReason();
+      if (!skipReason) throw new Error(LINK_REJECTED_MESSAGE);
+      // The configured reporters don't print a skip's reason
+      console.warn(skipReason);
+      test.skip(true, skipReason);
+    }
     expect(probe.status()).toBe(200);
 
     const saveRequests: unknown[] = [];

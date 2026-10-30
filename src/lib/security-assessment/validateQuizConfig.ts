@@ -2,6 +2,7 @@ import {
   QUIZ_SEGMENTS,
   RISK_TIERS,
   type QuizConfig,
+  type QuizQuestion,
   type QuizSegment,
 } from "./quizTypes";
 import { getQuizConfigPath } from "./quizContentPath";
@@ -16,25 +17,24 @@ export function getQuestionsForSegment(
 }
 
 /**
- * Question id to its label on a lead: the category's label, with " (2)" and
- * so on when the category repeats within the segment.
+ * A segment's questions, each with its label on a lead: the category's label,
+ * with " (2)" and so on when the category repeats within the segment.
  */
-export function getQuestionFieldLabels(
+export function getQuestionsWithFieldLabels(
   config: QuizConfig,
   segment: QuizSegment,
-): Map<string, string> {
+): { question: QuizQuestion; fieldLabel: string }[] {
   const categoryOccurrence = new Map<string, number>();
-  const labels = new Map<string, string>();
-  for (const question of getQuestionsForSegment(config, segment)) {
+  return getQuestionsForSegment(config, segment).map((question) => {
     const categoryLabel = config.categories[question.category].label;
     const occurrence = (categoryOccurrence.get(categoryLabel) ?? 0) + 1;
     categoryOccurrence.set(categoryLabel, occurrence);
-    labels.set(
-      question.id,
-      occurrence > 1 ? `${categoryLabel} (${occurrence})` : categoryLabel,
-    );
-  }
-  return labels;
+    return {
+      question,
+      fieldLabel:
+        occurrence > 1 ? `${categoryLabel} (${occurrence})` : categoryLabel,
+    };
+  });
 }
 
 /** Ordered section keys that have at least one question in this segment. */
@@ -52,6 +52,19 @@ export function getSectionKeysForSegment(
     }
   }
   return ordered;
+}
+
+/** How far through its section a question is, counting itself: 0 to 1. */
+export function getSectionFraction(
+  config: QuizConfig,
+  segment: QuizSegment,
+  question: QuizQuestion,
+): number {
+  const { section } = config.categories[question.category];
+  const sectionQuestions = getQuestionsForSegment(config, segment).filter(
+    ({ category }) => config.categories[category].section === section,
+  );
+  return (sectionQuestions.indexOf(question) + 1) / sectionQuestions.length;
 }
 
 /** Throws with a list of problems when the config is structurally invalid. */

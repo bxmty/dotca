@@ -1,3 +1,4 @@
+import { isRecord } from "@/lib/isRecord";
 import {
   QUIZ_SEGMENTS,
   type QuizConfig,
@@ -5,13 +6,15 @@ import {
   type QuizResult,
   type QuizSegment,
 } from "@/lib/security-assessment/quizTypes";
-import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
-import type {
-  DiscoveryGroup,
-  DiscoveryQuestion,
-  SdrCallLeadRequest,
-  SdrContent,
-  SdrDiscoveryAnswer,
+import {
+  hasAnswerToEveryQuestion,
+  scoreQuizAnswers,
+} from "@/lib/security-assessment/scoreQuizAnswers";
+import {
+  getDiscoveryQuestions,
+  type SdrCallLeadRequest,
+  type SdrContent,
+  type SdrDiscoveryAnswer,
 } from "@/lib/security-assessment/sdrTypes";
 import { getQuestionsForSegment } from "@/lib/security-assessment/validateQuizConfig";
 import type { LeadFieldName, LeadFields } from "../leadFields";
@@ -31,8 +34,12 @@ export type CallScreenName = CallScreen["name"];
 
 export type DiscoveryEntry = { choice?: string; note?: string };
 
+/**
+ * "interrupted": the page reloaded while a save was sending, so nobody knows
+ * whether it reached Syncro. Retrying needs the SDR's explicit confirmation.
+ */
 export type CallSave =
-  | { status: "idle" | "sending" | "saved" }
+  | { status: "idle" | "sending" | "saved" | "interrupted" }
   | { status: "error"; message: string };
 
 export type CallState = {
@@ -81,19 +88,12 @@ export const INITIAL_CALL: CallState = {
   save: { status: "idle" },
 };
 
-export function getDiscoveryQuestions(
-  sdr: SdrContent,
-  group: DiscoveryGroup,
-): DiscoveryQuestion[] {
-  return sdr.discovery.filter((question) => question.group === group);
-}
-
 /** Every screen of a call for this segment, in order. */
 function listCallScreens(
   { config, sdr }: CallContent,
   segment: QuizSegment,
 ): CallScreen[] {
-  const indexed = (
+  const buildIndexedScreens = (
     name: "opening" | "posture" | "closing",
     count: number,
   ): CallScreen[] =>
@@ -102,18 +102,30 @@ function listCallScreens(
   return [
     { name: "details" },
     { name: "size" },
-    ...indexed("opening", getDiscoveryQuestions(sdr, "opening").length),
-    ...indexed("posture", getQuestionsForSegment(config, segment).length),
+    ...buildIndexedScreens(
+      "opening",
+      getDiscoveryQuestions(sdr, "opening").length,
+    ),
+    ...buildIndexedScreens(
+      "posture",
+      getQuestionsForSegment(config, segment).length,
+    ),
     { name: "results" },
-    ...indexed("closing", getDiscoveryQuestions(sdr, "closing").length),
+    ...buildIndexedScreens(
+      "closing",
+      getDiscoveryQuestions(sdr, "closing").length,
+    ),
     { name: "summary" },
   ];
 }
 
-function isSameScreen(a: CallScreen, b: CallScreen): boolean {
-  const indexOf = (screen: CallScreen) =>
-    "index" in screen ? screen.index : undefined;
-  return a.name === b.name && indexOf(a) === indexOf(b);
+function isSameScreen(screen: CallScreen, otherScreen: CallScreen): boolean {
+  const readIndex = (candidate: CallScreen) =>
+    "index" in candidate ? candidate.index : undefined;
+  return (
+    screen.name === otherScreen.name &&
+    readIndex(screen) === readIndex(otherScreen)
+  );
 }
 
 /** The posture question on screen, if any. */
@@ -126,22 +138,14 @@ export function selectPostureQuestion(
     : undefined;
 }
 
-/** The score of the answers so far, or null until every question has one. */
+/** The score of the answers so far, or undefined until every question has one. */
 export function selectCallResult(
   { config }: Pick<CallContent, "config">,
   { segment, answers }: Pick<CallState, "segment" | "answers">,
-): QuizResult | null {
-  try {
-    const segmentAnswers = Object.fromEntries(
-      getQuestionsForSegment(config, segment).map(({ id }) => [
-        id,
-        answers[id],
-      ]),
-    );
-    return scoreQuizAnswers({ config, segment, answers: segmentAnswers });
-  } catch {
-    return null;
-  }
+): QuizResult | undefined {
+  return hasAnswerToEveryQuestion({ config, segment, answers })
+    ? scoreQuizAnswers({ config, segment, answers })
+    : undefined;
 }
 
 /** The save has started or finished, so the call can't change underneath it. */
@@ -200,6 +204,22 @@ function reduceEdit(state: CallState, action: CallAction): CallState {
   }
 }
 
+/** It crossed tabs, so the console may have moved on since the click. */
+function reduceAnswerFromPresenter(
+  content: CallContent,
+  state: CallState,
+  { questionId, answerIndex }: { questionId: string; answerIndex: number },
+): CallState {
+  const question = selectPostureQuestion(content, state);
+  const isCurrent =
+    question?.id === questionId &&
+    Number.isInteger(answerIndex) &&
+    question.answers[answerIndex] !== undefined;
+  return isCurrent
+    ? reduceEdit(state, { type: "answerPosture", questionId, answerIndex })
+    : state;
+}
+
 export function reduceCall(
   content: CallContent,
   state: CallState,
@@ -222,21 +242,8 @@ export function reduceCall(
   switch (action.type) {
     case "saveStarted":
       return { ...state, save: { status: "sending" } };
-    case "answerFromPresenter": {
-      // It crossed tabs, so the console may have moved on since the click.
-      const question = selectPostureQuestion(content, state);
-      const isCurrent =
-        question?.id === action.questionId &&
-        Number.isInteger(action.answerIndex) &&
-        question.answers[action.answerIndex] !== undefined;
-      return isCurrent
-        ? reduceEdit(state, {
-            type: "answerPosture",
-            questionId: action.questionId,
-            answerIndex: action.answerIndex,
-          })
-        : state;
-    }
+    case "answerFromPresenter":
+      return reduceAnswerFromPresenter(content, state, action);
     case "goBack":
       return { ...state, screen: moveBy(content, state, -1) };
     case "goNext": {
@@ -297,10 +304,6 @@ export function buildCallLeadRequest(
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function isRecordOf<T>(
   value: unknown,
   isItem: (item: unknown) => item is T,
@@ -313,46 +316,59 @@ const isNumber = (value: unknown): value is number => typeof value === "number";
 const isDiscoveryEntry = (value: unknown): value is DiscoveryEntry =>
   isRecordOf(value, isString);
 
+type StoredCall = Pick<
+  CallState,
+  "lead" | "segment" | "answers" | "notes" | "discovery" | "callSummary"
+> & { screen?: unknown; save?: unknown };
+
+function isStoredCall(stored: unknown): stored is StoredCall {
+  if (!isRecord(stored)) return false;
+  const { lead, segment, answers, notes, discovery, callSummary } = stored;
+  return (
+    isRecordOf(lead, isString) &&
+    ["name", "email", "company"].every((field) => field in lead) &&
+    QUIZ_SEGMENTS.includes(segment as QuizSegment) &&
+    isRecordOf(answers, isNumber) &&
+    isRecordOf(notes, isString) &&
+    isRecordOf(discovery, isDiscoveryEntry) &&
+    isString(callSummary)
+  );
+}
+
 /**
- * A stored call to resume, or null if it isn't one: storage outlives a deploy,
- * so its contents may not match this page's questions. A screen that needs a
- * score falls back to the posture questions when the answers no longer give one.
+ * A stored call to resume, or undefined if it isn't one: storage outlives a
+ * deploy, so its contents may not match this page's questions. A screen that
+ * needs a score falls back to the posture questions when the answers no longer
+ * give one.
  */
 export function parseStoredCall(
   content: CallContent,
   stored: unknown,
-): CallState | null {
-  if (!isRecord(stored)) return null;
-  const { lead, segment, answers, notes, discovery, callSummary, screen } =
+): CallState | undefined {
+  if (!isStoredCall(stored)) return undefined;
+  const { lead, segment, answers, notes, discovery, callSummary, save } =
     stored;
 
-  if (
-    !isRecordOf(lead, isString) ||
-    !["name", "email", "company"].every((field) => field in lead) ||
-    !QUIZ_SEGMENTS.includes(segment as QuizSegment) ||
-    !isRecordOf(answers, isNumber) ||
-    !isRecordOf(notes, isString) ||
-    !isRecordOf(discovery, isDiscoveryEntry) ||
-    !isString(callSummary)
-  ) {
-    return null;
-  }
-
-  const screens = listCallScreens(content, segment as QuizSegment);
+  const screens = listCallScreens(content, segment);
   const storedScreen = screens.find((candidate) =>
-    isSameScreen(candidate, screen as CallScreen),
+    isSameScreen(candidate, stored.screen as CallScreen),
   );
-  if (!storedScreen) return null;
+  if (!storedScreen) return undefined;
 
   const call: CallState = {
     screen: storedScreen,
-    lead: lead as LeadFields,
-    segment: segment as QuizSegment,
+    lead,
+    segment,
     answers,
     notes,
     discovery,
     callSummary,
-    save: { status: "idle" },
+    save: {
+      status:
+        isRecord(save) && save.status === "interrupted"
+          ? "interrupted"
+          : "idle",
+    },
   };
 
   const isPastPosture =

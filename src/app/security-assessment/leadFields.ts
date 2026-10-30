@@ -11,23 +11,35 @@ export const LEAD_FIELD_NAMES: readonly LeadFieldName[] = [
   "company",
 ];
 
+const VISITOR_BLANK_FIELD_MESSAGES: Record<LeadFieldName, string> = {
+  name: "enter your name",
+  email: "enter your email address",
+  company: "enter your company name",
+};
+
+/** For an SDR's console: the details being typed are the prospect's, not theirs. */
+export const PROSPECT_BLANK_FIELD_MESSAGES: Record<LeadFieldName, string> = {
+  name: "enter the prospect's name",
+  email: "enter the prospect's email address",
+  company: "enter the prospect's company name",
+};
+
 /** Errors worded as the fix (Component Spec, forms). */
-export function validateLeadFields({
-  name,
-  email,
-  company,
-}: LeadFields): LeadFieldErrors {
+export function validateLeadFields(
+  { name, email, company }: LeadFields,
+  blankFieldMessages = VISITOR_BLANK_FIELD_MESSAGES,
+): LeadFieldErrors {
   const errors: LeadFieldErrors = {};
   if (!name.trim()) {
-    errors.name = "enter your name";
+    errors.name = blankFieldMessages.name;
   }
   if (!email.trim()) {
-    errors.email = "enter your email address";
+    errors.email = blankFieldMessages.email;
   } else if (!isEmailAddress(email)) {
     errors.email = INCOMPLETE_EMAIL_MESSAGE;
   }
   if (!company.trim()) {
-    errors.company = "enter your company name";
+    errors.company = blankFieldMessages.company;
   }
   return errors;
 }

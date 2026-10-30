@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SDR_SESSION_COOKIE, SDR_TOKEN_PARAM } from "@/lib/sdr-console-route";
+import {
+  SDR_CONSOLE_PATH,
+  SDR_SESSION_COOKIE,
+  SDR_TOKEN_PARAM,
+} from "@/lib/sdr-console-route";
 import { readSdrName } from "@/lib/sdr-session";
 
 const HTML_HEADERS = {
@@ -16,9 +20,9 @@ const HTML_HEADERS = {
 const HOP_PAGE = `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0;url=/security-assessment/call">
+<meta http-equiv="refresh" content="0;url=${SDR_CONSOLE_PATH}">
 <title>Discovery call console</title>
-<p><a href="/security-assessment/call">Open the call console</a></p>
+<p><a href="${SDR_CONSOLE_PATH}">Open the call console</a></p>
 </html>
 `;
 
@@ -42,11 +46,11 @@ const NOT_FOUND_PAGE = `<!doctype html>
  * by this same-origin document carries it.
  */
 export function proxy(request: NextRequest) {
-  const links = request.nextUrl.searchParams.getAll(SDR_TOKEN_PARAM);
-  if (links.length === 0) return NextResponse.next();
+  const linkTokens = request.nextUrl.searchParams.getAll(SDR_TOKEN_PARAM);
+  if (linkTokens.length === 0) return NextResponse.next();
 
-  const token = links.length === 1 ? links[0] : null;
-  if (token === null || readSdrName(token) === null) {
+  const [token] = linkTokens;
+  if (linkTokens.length > 1 || readSdrName(token) === undefined) {
     return new NextResponse(NOT_FOUND_PAGE, {
       status: 404,
       headers: HTML_HEADERS,

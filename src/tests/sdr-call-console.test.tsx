@@ -6,7 +6,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import CallConsole from "@/app/security-assessment/call/CallConsole";
-import { SdrCallSession } from "@/app/security-assessment/call/SdrCallSession";
 import { event as trackGaEvent } from "@/lib/gtag";
 import {
   QUIZ_SEGMENTS,
@@ -149,11 +148,7 @@ function respondWith(status: number, body: unknown) {
 }
 
 function renderConsole() {
-  return render(
-    <SdrCallSession sdrName="Alex Doe">
-      <CallConsole config={config} sdr={sdr} />
-    </SdrCallSession>,
-  );
+  return render(<CallConsole sdrName="Alex Doe" config={config} sdr={sdr} />);
 }
 
 const click = (name: string | RegExp) =>
@@ -227,9 +222,14 @@ describe("CallConsole", () => {
 
       click("Continue");
 
-      expect(screen.getByText("enter your name")).toBeInTheDocument();
-      expect(screen.getByText("enter your email address")).toBeInTheDocument();
-      expect(screen.getByText("enter your company name")).toBeInTheDocument();
+      expect(screen.getByText("enter the prospect's name")).toBeInTheDocument();
+      expect(
+        screen.getByText("enter the prospect's email address"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("enter the prospect's company name"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/enter your/)).toBeNull();
       expect(screen.getByLabelText(/^Name/)).toHaveFocus();
       expect(
         screen.getByRole("heading", { name: "Who are you speaking with?" }),
@@ -748,7 +748,7 @@ describe("CallConsole", () => {
       ).toHaveAttribute("aria-valuetext", "3 of 6, Reactive");
     });
 
-    it("stores nothing resembling a token, and no save progress", () => {
+    it("stores nothing resembling a token, and no idle save state", () => {
       renderConsole();
       fillDetails();
 
@@ -768,11 +768,96 @@ describe("CallConsole", () => {
       expect(localStorage.length).toBe(0);
     });
 
-    it("resumes an interrupted save as not yet saved", async () => {
-      mockFetch.mockReturnValueOnce(new Promise(() => {}));
+    describe("after a reload during a save", () => {
+      const MAY_HAVE_SAVED = /may already have reached Syncro/;
+
+      function reloadDuringSave() {
+        mockFetch.mockReturnValueOnce(new Promise(() => {}));
+        const first = renderConsole();
+        goToSummary();
+        click("Save to Syncro");
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        first.unmount();
+        mockFetch.mockClear();
+        return renderConsole();
+      }
+
+      it("warns that it may have saved, and sends nothing by itself", async () => {
+        reloadDuringSave();
+
+        expect(await screen.findByText(MAY_HAVE_SAVED)).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Save to Syncro" }),
+        ).toBeNull();
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      it("retries only on an explicit confirmation, once", async () => {
+        reloadDuringSave();
+        const confirm = await screen.findByRole("button", {
+          name: "Save again anyway",
+        });
+        respondWith(200, { success: true });
+
+        fireEvent.click(confirm);
+
+        expect(await screen.findByText("Saved")).toBeInTheDocument();
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText(MAY_HAVE_SAVED)).toBeNull();
+      });
+
+      it("still warns after another reload", async () => {
+        const second = reloadDuringSave();
+        await screen.findByText(MAY_HAVE_SAVED);
+        second.unmount();
+
+        renderConsole();
+
+        expect(await screen.findByText(MAY_HAVE_SAVED)).toBeInTheDocument();
+      });
+
+      it("keeps warning while the SDR moves around the call", async () => {
+        reloadDuringSave();
+        await screen.findByText(MAY_HAVE_SAVED);
+
+        click("Back");
+        click("Skip");
+
+        expect(screen.getByText(MAY_HAVE_SAVED)).toBeInTheDocument();
+      });
+
+      it("lets the SDR start a new call if the save did arrive", async () => {
+        reloadDuringSave();
+
+        fireEvent.click(
+          await screen.findByRole("button", { name: "Start a new call" }),
+        );
+
+        expect(
+          screen.getByRole("heading", { name: "Who are you speaking with?" }),
+        ).toBeInTheDocument();
+        expect(mockFetch).not.toHaveBeenCalled();
+        expect(sessionStorage.length).toBe(0);
+      });
+
+      it("doesn't warn once a failed retry shows the save didn't land", async () => {
+        reloadDuringSave();
+        const confirm = await screen.findByRole("button", {
+          name: "Save again anyway",
+        });
+        respondWith(503, { error: "Service down" });
+
+        fireEvent.click(confirm);
+
+        expect(await screen.findByText("Service down")).toBeInTheDocument();
+        expect(screen.queryByText(MAY_HAVE_SAVED)).toBeNull();
+        expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+      });
+    });
+
+    it("doesn't warn after a reload with no save under way", async () => {
       const first = renderConsole();
       goToSummary();
-      click("Save to Syncro");
       first.unmount();
 
       renderConsole();
@@ -780,6 +865,7 @@ describe("CallConsole", () => {
       expect(
         await screen.findByRole("button", { name: "Save to Syncro" }),
       ).toBeEnabled();
+      expect(screen.queryByText(/may already have reached/)).toBeNull();
     });
 
     it("works with storage unavailable", () => {

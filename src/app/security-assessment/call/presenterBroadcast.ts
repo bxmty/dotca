@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   getQuestionsForSegment,
+  getSectionFraction,
   getSectionKeysForSegment,
 } from "@/lib/security-assessment/validateQuizConfig";
 import { buildQuizResultView, type QuizResultView } from "../quizResultView";
@@ -104,9 +105,6 @@ export function projectPresenterScreen(
     const questions = getQuestionsForSegment(config, segment);
     const sectionKeys = getSectionKeysForSegment(config, segment);
     const section = config.categories[question.category].section;
-    const sectionQuestions = questions.filter(
-      ({ category }) => config.categories[category].section === section,
-    );
     return {
       view: "posture",
       questionId: question.id,
@@ -118,15 +116,16 @@ export function projectPresenterScreen(
       total: questions.length,
       sections: sectionKeys.map((key) => config.sections[key].label),
       currentSection: sectionKeys.indexOf(section) + 1,
-      sectionFraction:
-        (sectionQuestions.indexOf(question) + 1) / sectionQuestions.length,
+      sectionFraction: getSectionFraction(config, segment, question),
     };
   }
 
   const isShowingResults =
     screen.name === "results" ||
     (screen.name === "summary" && save.status === "saved");
-  const result = isShowingResults ? selectCallResult(content, state) : null;
+  const result = isShowingResults
+    ? selectCallResult(content, state)
+    : undefined;
   return result
     ? {
         view: "results",
@@ -135,16 +134,66 @@ export function projectPresenterScreen(
     : { view: "neutral" };
 }
 
-/** Null where there's no BroadcastChannel; the two tabs just stay unlinked. */
+/** Undefined where there's no BroadcastChannel; the tabs just stay unlinked. */
 export function openPresenterChannel<Incoming, Outgoing>(
   onMessage: (message: Incoming) => void,
-): { post: (message: Outgoing) => void; close: () => void } | null {
-  if (typeof BroadcastChannel === "undefined") return null;
+): { post: (message: Outgoing) => void; close: () => void } | undefined {
+  if (typeof BroadcastChannel === "undefined") return undefined;
   const channel = new window.BroadcastChannel(PRESENTER_CHANNEL_NAME);
   channel.onmessage = (event: { data: Incoming }) => onMessage(event.data);
   return {
     post: (message) => channel.postMessage(message),
     close: () => channel.close(),
+  };
+}
+
+// Base 36 for a short id; the first two characters of the string are "0."
+const CONSOLE_ID_RADIX = 36;
+const RANDOM_FRACTION_PREFIX_LENGTH = 2;
+
+function createConsoleId(): string {
+  return Math.random()
+    .toString(CONSOLE_ID_RADIX)
+    .slice(RANDOM_FRACTION_PREFIX_LENGTH);
+}
+
+/**
+ * Opens this console load's end of the channel. Answers any presenter's sync and
+ * says when the page goes away and comes back. Undefined with no channel.
+ */
+function linkConsoleToPresenters({
+  readScreen,
+  onAnswer,
+}: {
+  readScreen: () => PresenterScreen | null;
+  onAnswer: (questionId: string, answerIndex: number) => void;
+}): { sendScreen: () => void; unlink: () => void } | undefined {
+  const consoleId = createConsoleId();
+  const sendScreen = () => {
+    const screen = readScreen();
+    if (screen) channel?.post({ kind: "screen", consoleId, screen });
+  };
+  const channel = openPresenterChannel<PresenterRequest, ConsoleMessage>(
+    (request) => {
+      if (request.kind === "sync") sendScreen();
+      if (request.kind === "answer" && request.consoleId === consoleId) {
+        onAnswer(request.questionId, request.answerIndex);
+      }
+    },
+  );
+  if (!channel) return undefined;
+
+  const announceGone = () => channel.post({ kind: "gone", consoleId });
+  window.addEventListener("pagehide", announceGone);
+  window.addEventListener("pageshow", sendScreen);
+  return {
+    sendScreen,
+    unlink: () => {
+      window.removeEventListener("pagehide", announceGone);
+      window.removeEventListener("pageshow", sendScreen);
+      announceGone();
+      channel.close();
+    },
   };
 }
 
@@ -171,38 +220,16 @@ export function useBroadcastToPresenter(
 
   useEffect(() => {
     if (!isReady) return;
-    const consoleId = Math.random().toString(36).slice(2);
-    const channel = openPresenterChannel<PresenterRequest, ConsoleMessage>(
-      (request) => {
-        if (request.kind === "sync") sendScreen.current();
-        if (request.kind === "answer" && request.consoleId === consoleId) {
-          onAnswer(request.questionId, request.answerIndex);
-        }
-      },
-    );
-    if (!channel) return;
-
-    sendScreen.current = () => {
-      if (latestScreen.current) {
-        channel.post({
-          kind: "screen",
-          consoleId,
-          screen: latestScreen.current,
-        });
-      }
-    };
-    const announceGone = () => channel.post({ kind: "gone", consoleId });
-    const announceBack = () => sendScreen.current();
-
-    sendScreen.current();
-    window.addEventListener("pagehide", announceGone);
-    window.addEventListener("pageshow", announceBack);
+    const link = linkConsoleToPresenters({
+      readScreen: () => latestScreen.current,
+      onAnswer,
+    });
+    if (!link) return;
+    sendScreen.current = link.sendScreen;
+    link.sendScreen();
     return () => {
-      window.removeEventListener("pagehide", announceGone);
-      window.removeEventListener("pageshow", announceBack);
-      announceGone();
       sendScreen.current = () => {};
-      channel.close();
+      link.unlink();
     };
   }, [isReady, onAnswer]);
 }

@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { deliverLead } from "@/lib/lead-delivery";
+import { deliverLead, type LeadDetails } from "@/lib/lead-delivery";
 import { isEmailAddress } from "@/lib/formValidation";
+import { isRecord } from "@/lib/isRecord";
 import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
-import { verifySdrToken, type SdrTokenVerification } from "@/lib/sdr-link";
+import { checkSdrSession } from "@/lib/sdr-session";
 import {
-  getQuestionFieldLabels,
-  getQuestionsForSegment,
+  DISCOVERY_GROUPS,
+  getDiscoveryQuestions,
+  getQuestionsWithFieldLabels,
   isQuizSegment,
   loadQuizConfig,
   loadSdrContent,
@@ -31,32 +33,41 @@ function respond(body: SdrCallLeadResponse, status = 200) {
   return NextResponse.json(body, { status });
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function readRequiredText(value: unknown, label: string): string {
   const text = typeof value === "string" ? value.trim() : "";
   if (text === "") fail(`${label} is required`);
   return text;
 }
 
-/** The trimmed note, "" when blank or absent. */
-function readNote(value: unknown): string {
+/** Trimmed free text, "" when blank or absent. */
+function readCappedText(
+  value: unknown,
+  {
+    maxLength,
+    notTextMessage,
+    tooLongMessage,
+  }: { maxLength: number; notTextMessage: string; tooLongMessage: string },
+): string {
   if (value === undefined) return "";
-  if (typeof value !== "string") fail("Notes must be text");
-  const note = value.trim();
-  if (note.length > SDR_NOTE_MAX_LENGTH) fail(NOTE_TOO_LONG);
-  return note;
+  if (typeof value !== "string") fail(notTextMessage);
+  const text = value.trim();
+  if (text.length > maxLength) fail(tooLongMessage);
+  return text;
 }
 
-function readCallSummary(value: unknown): string {
-  if (value === undefined) return "";
-  if (typeof value !== "string") fail("The call summary must be text");
-  const summary = value.trim();
-  if (summary.length > SDR_CALL_SUMMARY_MAX_LENGTH) fail(SUMMARY_TOO_LONG);
-  return summary;
-}
+const readNote = (value: unknown) =>
+  readCappedText(value, {
+    maxLength: SDR_NOTE_MAX_LENGTH,
+    notTextMessage: "Notes must be text",
+    tooLongMessage: NOTE_TOO_LONG,
+  });
+
+const readCallSummary = (value: unknown) =>
+  readCappedText(value, {
+    maxLength: SDR_CALL_SUMMARY_MAX_LENGTH,
+    notTextMessage: "The call summary must be text",
+    tooLongMessage: SUMMARY_TOO_LONG,
+  });
 
 function readOptionalRecord(
   value: unknown,
@@ -69,26 +80,25 @@ function readOptionalRecord(
 
 function buildPostureFields({
   answers,
-  labels,
   notes,
-  questions,
+  labelledQuestions,
 }: {
   answers: Record<string, number>;
-  labels: Map<string, string>;
   notes: Record<string, unknown>;
-  questions: ReturnType<typeof getQuestionsForSegment>;
+  labelledQuestions: ReturnType<typeof getQuestionsWithFieldLabels>;
 }): Record<string, string> {
-  const questionIds = new Set(questions.map((question) => question.id));
+  const questionIds = new Set(
+    labelledQuestions.map(({ question }) => question.id),
+  );
   for (const id of Object.keys(notes)) {
     if (!questionIds.has(id)) fail("Unknown question in notes");
   }
 
   const fields: Record<string, string> = {};
-  for (const question of questions) {
-    const label = labels.get(question.id) as string;
-    fields[label] = question.answers[answers[question.id]].text;
+  for (const { question, fieldLabel } of labelledQuestions) {
+    fields[fieldLabel] = question.answers[answers[question.id]].text;
     const note = readNote(notes[question.id]);
-    if (note !== "") fields[`${label} note`] = note;
+    if (note !== "") fields[`${fieldLabel} note`] = note;
   }
   return fields;
 }
@@ -135,10 +145,9 @@ function buildDiscoveryFields(
     if (!knownIds.has(id)) fail("Unknown discovery question");
   }
 
-  const inCallOrder = [
-    ...questions.filter((question) => question.group === "opening"),
-    ...questions.filter((question) => question.group === "closing"),
-  ];
+  const inCallOrder = DISCOVERY_GROUPS.flatMap((group) =>
+    getDiscoveryQuestions({ discovery: questions }, group),
+  );
   return Object.assign(
     {},
     ...inCallOrder.map((question) =>
@@ -147,16 +156,68 @@ function buildDiscoveryFields(
   );
 }
 
-/** Null when the token can't be checked because the secret isn't configured. */
-function verifySessionToken(request: NextRequest): SdrTokenVerification | null {
+function scoreSubmittedAnswers(
+  args: Parameters<typeof scoreQuizAnswers>[0],
+): ReturnType<typeof scoreQuizAnswers> {
   try {
-    return verifySdrToken(request.cookies.get(SDR_SESSION_COOKIE)?.value);
+    return scoreQuizAnswers(args);
   } catch {
-    console.error(
-      "/api/security-assessment/call requested but SDR_LINK_SIGNING_SECRET is unset or too short, so SDR tokens cannot be checked",
-    );
-    return null;
+    fail("Please answer every question");
   }
+}
+
+/** A submission as a lead, or InvalidSubmissionError naming what's wrong. */
+function buildCallLead(body: unknown, sdrName: string): LeadDetails {
+  const submission = isRecord(body) ? body : {};
+
+  if (!isQuizSegment(submission.segment)) {
+    fail("Unknown business size segment");
+  }
+  const segment = submission.segment;
+  const name = readRequiredText(submission.name, "Name");
+  const email = readRequiredText(submission.email, "Email");
+  if (!isEmailAddress(email)) fail("Please enter a valid email address");
+  const company = readRequiredText(submission.company, "Company");
+
+  const config = loadQuizConfig();
+  const answers = (
+    isRecord(submission.answers) ? submission.answers : {}
+  ) as Record<string, number>;
+  const result = scoreSubmittedAnswers({ config, segment, answers });
+
+  const postureFields = buildPostureFields({
+    answers,
+    notes: readOptionalRecord(submission.notes, "Notes"),
+    labelledQuestions: getQuestionsWithFieldLabels(config, segment),
+  });
+  const discoveryFields = buildDiscoveryFields(
+    loadSdrContent().discovery,
+    readOptionalRecord(submission.discovery, "Discovery answers"),
+  );
+  const callSummary = readCallSummary(submission.callSummary);
+
+  return {
+    formType: "Discovery call assessment",
+    name,
+    email,
+    company,
+    fields: {
+      SDR: sdrName,
+      Channel: "Discovery call",
+      Name: name,
+      Email: email,
+      Company: company,
+      "Business size": config.segments[segment].label,
+      "Risk tier": config.tiers[result.tier].label,
+      Score: `${result.score}/${result.maxScore}`,
+      "Weak areas": result.riskCategories
+        .map((categoryKey) => config.categories[categoryKey].label)
+        .join(", "),
+      ...postureFields,
+      ...discoveryFields,
+      ...(callSummary === "" ? {} : { "Call summary": callSummary }),
+    },
+  };
 }
 
 /**
@@ -168,12 +229,17 @@ function verifySessionToken(request: NextRequest): SdrTokenVerification | null {
  * No GA4 event, brief opt-in or prospect email (#710 decisions 8, 11, 23).
  */
 export async function POST(request: NextRequest) {
-  const verification = verifySessionToken(request);
-  if (verification === null) {
+  const session = checkSdrSession(
+    request.cookies.get(SDR_SESSION_COOKIE)?.value,
+  );
+  if (!session.isValid) {
+    if (session.reason !== "secret-unset") {
+      return respond({ error: "Unauthorized" }, 401);
+    }
+    console.error(
+      "/api/security-assessment/call requested but SDR_LINK_SIGNING_SECRET is unset or too short, so SDR tokens cannot be checked",
+    );
     return respond({ error: SERVICE_UNAVAILABLE_MESSAGE }, 503);
-  }
-  if (!verification.isValid) {
-    return respond({ error: "Unauthorized" }, 401);
   }
 
   try {
@@ -183,65 +249,9 @@ export async function POST(request: NextRequest) {
     } catch {
       return respond({ error: "Request body must be valid JSON" }, 400);
     }
-    const data = isRecord(body) ? body : {};
-
-    if (!isQuizSegment(data.segment)) {
-      fail("Unknown business size segment");
-    }
-    const segment = data.segment;
-    const name = readRequiredText(data.name, "Name");
-    const email = readRequiredText(data.email, "Email");
-    if (!isEmailAddress(email)) fail("Please enter a valid email address");
-    const company = readRequiredText(data.company, "Company");
-
-    const config = loadQuizConfig();
-    const answers = (isRecord(data.answers) ? data.answers : {}) as Record<
-      string,
-      number
-    >;
-    let result;
-    try {
-      result = scoreQuizAnswers({ config, segment, answers });
-    } catch {
-      fail("Please answer every question");
-    }
-
-    const postureFields = buildPostureFields({
-      answers,
-      labels: getQuestionFieldLabels(config, segment),
-      notes: readOptionalRecord(data.notes, "Notes"),
-      questions: getQuestionsForSegment(config, segment),
-    });
-    const discoveryFields = buildDiscoveryFields(
-      loadSdrContent().discovery,
-      readOptionalRecord(data.discovery, "Discovery answers"),
-    );
-    const callSummary = readCallSummary(data.callSummary);
 
     const { isDelivered } = await deliverLead({
-      lead: {
-        formType: "Discovery call assessment",
-        name,
-        email,
-        company,
-        isBriefOffered: false,
-        fields: {
-          SDR: verification.sdrName,
-          Channel: "Discovery call",
-          Name: name,
-          Email: email,
-          Company: company,
-          "Business size": config.segments[segment].label,
-          "Risk tier": config.tiers[result.tier].label,
-          Score: `${result.score}/${result.maxScore}`,
-          "Weak areas": result.riskCategories
-            .map((categoryKey) => config.categories[categoryKey].label)
-            .join(", "),
-          ...postureFields,
-          ...discoveryFields,
-          ...(callSummary === "" ? {} : { "Call summary": callSummary }),
-        },
-      },
+      lead: buildCallLead(body, session.sdrName),
       failureSummary: "Discovery call delivery failure",
     });
 

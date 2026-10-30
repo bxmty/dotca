@@ -12,7 +12,7 @@ import { SDR_SESSION_COOKIE } from "@/lib/sdr-console-route";
 import { signSdrToken } from "@/lib/sdr-link";
 import { signSubjectLinkToken } from "@/lib/signed-link-token";
 import {
-  getQuestionFieldLabels,
+  getQuestionsWithFieldLabels,
   getQuestionsForSegment,
   loadQuizConfig,
   loadSdrContent,
@@ -49,9 +49,9 @@ const config = loadQuizConfig();
 const sdr = loadSdrContent();
 const originalEnv = process.env;
 const soloQuestions = getQuestionsForSegment(config, "solo");
-const soloLabels = getQuestionFieldLabels(config, "solo");
+const soloLabelledQuestions = getQuestionsWithFieldLabels(config, "solo");
 const firstQuestion = soloQuestions[0];
-const firstLabel = soloLabels.get(firstQuestion.id) as string;
+const firstLabel = soloLabelledQuestions[0].fieldLabel;
 const choiceQuestion = sdr.discovery.find(
   (question): question is DiscoveryChoiceQuestion => question.kind === "choice",
 ) as DiscoveryChoiceQuestion;
@@ -170,7 +170,6 @@ describe("POST /api/security-assessment/call", () => {
 
     it("rejects a token signed for another scope", async () => {
       const token = signSubjectLinkToken({
-        secretEnvName: "SDR_LINK_SIGNING_SECRET",
         scope: "install:link",
         subject: "Alex Doe",
         lifetimeMs: 60_000,
@@ -398,7 +397,7 @@ describe("POST /api/security-assessment/call", () => {
 
       const labels = Object.keys(deliveredFields());
       const lastPosture = labels.indexOf(
-        soloLabels.get(soloQuestions[soloQuestions.length - 1].id) as string,
+        soloLabelledQuestions[soloLabelledQuestions.length - 1].fieldLabel,
       );
       const discoveryPositions = sdr.discovery.map((question) =>
         labels.indexOf(question.text),

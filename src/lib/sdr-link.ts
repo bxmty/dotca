@@ -1,4 +1,5 @@
 import {
+  SUBJECT_TOKEN_SECRET_ENV_NAME,
   signSubjectLinkToken,
   verifySubjectLinkToken,
   type LinkTokenFailureReason,
@@ -17,7 +18,7 @@ import { SDR_CONSOLE_PATH, SDR_TOKEN_PARAM } from "./sdr-console-route.ts";
  */
 
 export const SDR_TOKEN_SCOPE = "assessment:sdr";
-export const SDR_LINK_SECRET_ENV_NAME = "SDR_LINK_SIGNING_SECRET";
+export const SDR_LINK_SECRET_ENV_NAME = SUBJECT_TOKEN_SECRET_ENV_NAME;
 const SDR_TOKEN_LIFETIME_MS = 90 * 24 * 60 * 60 * 1000;
 const MAX_SDR_NAME_LENGTH = 100;
 
@@ -49,7 +50,6 @@ function normalizeSdrName(name: string): string {
  */
 export function signSdrToken({ name }: { name: string }): string {
   return signSubjectLinkToken({
-    secretEnvName: SDR_LINK_SECRET_ENV_NAME,
     scope: SDR_TOKEN_SCOPE,
     subject: normalizeSdrName(name),
     lifetimeMs: SDR_TOKEN_LIFETIME_MS,
@@ -65,7 +65,6 @@ export function verifySdrToken(
 ): SdrTokenVerification {
   if (!token) return { isValid: false, reason: "missing" };
   const verification = verifySubjectLinkToken({
-    secretEnvName: SDR_LINK_SECRET_ENV_NAME,
     scope: SDR_TOKEN_SCOPE,
     token,
   });
