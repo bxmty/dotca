@@ -31,6 +31,8 @@ export default [
         HTMLTextAreaElement: "readonly",
         HTMLSelectElement: "readonly",
         HTMLDivElement: "readonly",
+        HTMLElement: "readonly",
+        HTMLHeadingElement: "readonly",
         MediaQueryListEvent: "readonly",
         MouseEvent: "readonly",
         Node: "readonly",
