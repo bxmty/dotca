@@ -14,20 +14,57 @@ import StepProgress from "@/app/components/StepProgress";
 import {
   INCOMPLETE_EMAIL_MESSAGE,
   isEmailAddress,
+  omitFieldErrors,
 } from "@/lib/formValidation";
 import { event as trackGaEvent } from "@/lib/gtag";
-import { QUIZ_SEGMENTS, type QuizConfig, type QuizResult, type QuizSegment } from "@/lib/security-assessment/quizTypes";
+import {
+  QUIZ_SEGMENTS,
+  type QuizConfig,
+  type QuizResult,
+  type QuizSegment,
+} from "@/lib/security-assessment/quizTypes";
 import {
   getQuestionsForSegment,
   getSectionKeysForSegment,
 } from "@/lib/security-assessment/validateQuizConfig";
 import { scoreQuizAnswers } from "@/lib/security-assessment/scoreQuizAnswers";
 
-type QuizScreen = "landing" | "size" | "questions" | "results";
+type QuizScreen = "landing" | "size" | "details" | "questions" | "results";
+
+type LeadFields = { name: string; email: string; company: string };
+type LeadFieldName = keyof LeadFields;
+type LeadFieldErrors = Partial<Record<LeadFieldName, string>>;
+type DeliveryStatus = "idle" | "sending" | "sent" | "error";
 
 const AUTO_ADVANCE_MS = 250;
-const CAPTURE_EMAIL_FIELD_ID = "security-assessment-email";
+// Field order, for moving focus to the first invalid one
+const LEAD_FIELD_NAMES: readonly LeadFieldName[] = ["name", "email", "company"];
 const CAPTURE_BRIEF_FIELD_ID = "security-assessment-brief";
+const DELIVERY_ERROR_MESSAGE =
+  "Something went wrong. Please try again in a moment.";
+
+const getLeadFieldId = (field: LeadFieldName) => `security-assessment-${field}`;
+
+/** Errors worded as the fix (Component Spec, forms). */
+function validateLeadFields({
+  name,
+  email,
+  company,
+}: LeadFields): LeadFieldErrors {
+  const errors: LeadFieldErrors = {};
+  if (!name.trim()) {
+    errors.name = "enter your name";
+  }
+  if (!email.trim()) {
+    errors.email = "enter your email address";
+  } else if (!isEmailAddress(email)) {
+    errors.email = INCOMPLETE_EMAIL_MESSAGE;
+  }
+  if (!company.trim()) {
+    errors.company = "enter your company name";
+  }
+  return errors;
+}
 
 export default function SecurityAssessmentQuiz({
   config,
@@ -39,16 +76,22 @@ export default function SecurityAssessmentQuiz({
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
-  const [captureEmail, setCaptureEmail] = useState("");
+  const [leadFields, setLeadFields] = useState<LeadFields>({
+    name: "",
+    email: "",
+    company: "",
+  });
+  const [leadFieldErrors, setLeadFieldErrors] = useState<LeadFieldErrors>({});
+  // Never pre-checked: brief consent must be express (CASL)
   const [wantsBrief, setWantsBrief] = useState(false);
+  // Honeypot: humans never see this field; bots that fill it are dropped
   const [website, setWebsite] = useState("");
-  const [captureEmailError, setCaptureEmailError] = useState<
-    string | undefined
-  >();
-  const [captureErrorMessage, setCaptureErrorMessage] = useState("");
-  const [isCaptureSubmitting, setIsCaptureSubmitting] = useState(false);
-  const [isCaptureSent, setIsCaptureSent] = useState(false);
+  const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>("idle");
+  const [deliveryErrorMessage, setDeliveryErrorMessage] = useState("");
   const hasTrackedAssessmentComplete = useRef(false);
+  // One lead per completed assessment: revisiting answers re-scores on
+  // screen but does not open a second Syncro ticket
+  const hasRequestedDelivery = useRef(false);
 
   const questions = useMemo(
     () => (segment ? getQuestionsForSegment(config, segment) : []),
@@ -68,8 +111,7 @@ export default function SecurityAssessmentQuiz({
   const currentSectionKey = currentQuestion
     ? config.categories[currentQuestion.category].section
     : sectionKeys[0];
-  const currentSectionStep =
-    sectionKeys.indexOf(currentSectionKey) + 1 || 1;
+  const currentSectionStep = sectionKeys.indexOf(currentSectionKey) + 1 || 1;
 
   const segmentOptions = QUIZ_SEGMENTS.map((segmentKey) => ({
     value: segmentKey,
@@ -99,6 +141,10 @@ export default function SecurityAssessmentQuiz({
       return;
     }
     if (screen === "questions") {
+      setScreen("details");
+      return;
+    }
+    if (screen === "details") {
       setScreen("size");
       return;
     }
@@ -137,16 +183,37 @@ export default function SecurityAssessmentQuiz({
     setQuestionIndex(0);
     setAnswers({});
     setResult(null);
-    setIsCaptureSent(false);
-    setCaptureEmail("");
-    setCaptureErrorMessage("");
-    setCaptureEmailError(undefined);
+    setDeliveryStatus("idle");
+    setDeliveryErrorMessage("");
     hasTrackedAssessmentComplete.current = false;
+    hasRequestedDelivery.current = false;
     setScreen("questions");
   };
 
+  const updateLeadField = (field: LeadFieldName, value: string) => {
+    setLeadFields((fields) => ({ ...fields, [field]: value }));
+    setLeadFieldErrors((errors) => omitFieldErrors(errors, [field]));
+  };
+
+  const submitLeadDetails = (submitEvent: FormEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault();
+
+    const errors = validateLeadFields(leadFields);
+    setLeadFieldErrors(errors);
+    const firstInvalidField = LEAD_FIELD_NAMES.find((field) => errors[field]);
+    if (firstInvalidField) {
+      document.getElementById(getLeadFieldId(firstInvalidField))?.focus();
+      return;
+    }
+    startQuestions();
+  };
+
   useEffect(() => {
-    if (screen !== "results" || !result || hasTrackedAssessmentComplete.current) {
+    if (
+      screen !== "results" ||
+      !result ||
+      hasTrackedAssessmentComplete.current
+    ) {
       return;
     }
     hasTrackedAssessmentComplete.current = true;
@@ -158,32 +225,18 @@ export default function SecurityAssessmentQuiz({
     });
   }, [screen, result, segment]);
 
-  const submitCapture = async (
-    submitEvent: FormEvent<HTMLFormElement>,
-  ): Promise<void> => {
-    submitEvent.preventDefault();
-
-    const fieldError = !captureEmail.trim()
-      ? "enter your email address"
-      : !isEmailAddress(captureEmail)
-        ? INCOMPLETE_EMAIL_MESSAGE
-        : undefined;
-    setCaptureEmailError(fieldError);
-    if (fieldError) {
-      setCaptureErrorMessage("");
-      document.getElementById(CAPTURE_EMAIL_FIELD_ID)?.focus();
-      return;
-    }
-
-    setIsCaptureSubmitting(true);
-    setCaptureErrorMessage("");
+  const deliverAssessmentLead = async (): Promise<void> => {
+    setDeliveryStatus("sending");
+    setDeliveryErrorMessage("");
 
     try {
       const response = await fetch("/api/security-assessment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: captureEmail.trim(),
+          name: leadFields.name.trim(),
+          email: leadFields.email.trim(),
+          company: leadFields.company.trim(),
           website,
           wantsBrief,
           segment,
@@ -193,24 +246,28 @@ export default function SecurityAssessmentQuiz({
       const responseData = await response.json().catch(() => null);
 
       if (!response.ok || !responseData?.success) {
-        throw new Error(
-          responseData?.error ??
-            "Something went wrong. Please try again in a moment.",
-        );
+        throw new Error(responseData?.error ?? DELIVERY_ERROR_MESSAGE);
       }
 
-      setIsCaptureSent(true);
+      setDeliveryStatus("sent");
     } catch (error) {
-      console.error("Security assessment capture error:", error);
-      setCaptureErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong. Please try again in a moment.",
+      console.error("Security assessment delivery error:", error);
+      setDeliveryErrorMessage(
+        error instanceof Error ? error.message : DELIVERY_ERROR_MESSAGE,
       );
-    } finally {
-      setIsCaptureSubmitting(false);
+      setDeliveryStatus("error");
     }
   };
+
+  useEffect(() => {
+    if (screen !== "results" || !result || hasRequestedDelivery.current) {
+      return;
+    }
+    hasRequestedDelivery.current = true;
+    void deliverAssessmentLead();
+    // deliverAssessmentLead reads the latest render's state; the ref keeps
+    // this to one request per completed assessment
+  }, [screen, result]);
 
   if (screen === "landing") {
     return (
@@ -250,10 +307,94 @@ export default function SecurityAssessmentQuiz({
           <Button type="button" variant="secondary" onClick={goBack}>
             Back
           </Button>
-          <Button type="button" variant="primary" onClick={startQuestions}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setScreen("details")}
+          >
             Continue
           </Button>
         </div>
+      </Section>
+    );
+  }
+
+  if (screen === "details") {
+    return (
+      <Section>
+        <h1 className="m-0 mb-3 text-h2 font-semibold">
+          First, a little about you
+        </h1>
+        <p className="m-0 mb-8 text-body text-muted">
+          Your score shows on screen as soon as you finish, and our team uses
+          these details to follow up on it.
+        </p>
+        <form
+          className="grid max-w-[560px] content-start gap-4.5"
+          onSubmit={submitLeadDetails}
+          noValidate
+          aria-label="Your details"
+        >
+          <div
+            aria-hidden="true"
+            style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+          >
+            <label htmlFor="security-assessment-website">Website</label>
+            <input
+              type="text"
+              id="security-assessment-website"
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+          <TextField
+            id={getLeadFieldId("name")}
+            label="Name"
+            name="name"
+            autoComplete="name"
+            value={leadFields.name}
+            onChange={(e) => updateLeadField("name", e.target.value)}
+            required
+            error={leadFieldErrors.name}
+          />
+          <TextField
+            id={getLeadFieldId("email")}
+            label="Email"
+            type="email"
+            name="email"
+            autoComplete="email"
+            value={leadFields.email}
+            onChange={(e) => updateLeadField("email", e.target.value)}
+            required
+            error={leadFieldErrors.email}
+          />
+          <TextField
+            id={getLeadFieldId("company")}
+            label="Company"
+            name="company"
+            autoComplete="organization"
+            value={leadFields.company}
+            onChange={(e) => updateLeadField("company", e.target.value)}
+            required
+            error={leadFieldErrors.company}
+          />
+          <BriefOptInCheckbox
+            id={CAPTURE_BRIEF_FIELD_ID}
+            isChecked={wantsBrief}
+            onChange={setWantsBrief}
+          />
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button type="button" variant="secondary" onClick={goBack}>
+              Back
+            </Button>
+            <Button type="submit" variant="primary">
+              Start the questions
+            </Button>
+          </div>
+        </form>
       </Section>
     );
   }
@@ -299,69 +440,36 @@ export default function SecurityAssessmentQuiz({
           </div>
         </div>
 
-        <div className="mb-10 grid max-w-[560px] content-start gap-4.5 border-t border-rule pt-8">
-          <h2 className="m-0 text-h3 font-semibold">Email me these results</h2>
-          <p className="m-0 text-body text-muted">
-            Optional — we&apos;ll send a copy of this summary to your inbox.
-          </p>
-          {isCaptureSent ? (
-            <StatusNote tone="ok" label="Sent">
-              <p className="m-0">Check your inbox for a copy of your results.</p>
+        <div
+          className="mb-10 grid max-w-[560px] content-start gap-4.5 border-t border-rule pt-8"
+          aria-live="polite"
+        >
+          {deliveryStatus === "sending" && (
+            <p className="m-0 text-body text-muted">Saving your results…</p>
+          )}
+          {deliveryStatus === "sent" && (
+            <StatusNote tone="ok" label="Saved">
+              <p className="m-0">
+                Your results are with our team. We&apos;ll follow up at{" "}
+                {leadFields.email.trim()}.
+              </p>
             </StatusNote>
-          ) : (
-            <form
-              className="grid content-start gap-4.5"
-              onSubmit={submitCapture}
-              noValidate
-              aria-label="Email assessment results"
-            >
-              {captureErrorMessage && (
-                <StatusNote tone="error" label="Error">
-                  {captureErrorMessage}
-                </StatusNote>
-              )}
-              <div
-                aria-hidden="true"
-                style={{ position: "absolute", left: "-9999px", opacity: 0 }}
-              >
-                <label htmlFor="security-assessment-website">Website</label>
-                <input
-                  type="text"
-                  id="security-assessment-website"
-                  name="website"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  tabIndex={-1}
-                  autoComplete="off"
-                />
+          )}
+          {deliveryStatus === "error" && (
+            <>
+              <StatusNote tone="error" label="Error">
+                {deliveryErrorMessage}
+              </StatusNote>
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void deliverAssessmentLead()}
+                >
+                  Try again
+                </Button>
               </div>
-              <TextField
-                id={CAPTURE_EMAIL_FIELD_ID}
-                label="Email"
-                type="email"
-                name="email"
-                autoComplete="email"
-                value={captureEmail}
-                onChange={(e) => {
-                  setCaptureEmail(e.target.value);
-                  setCaptureEmailError(undefined);
-                }}
-                required
-                error={captureEmailError}
-              />
-              <BriefOptInCheckbox
-                id={CAPTURE_BRIEF_FIELD_ID}
-                isChecked={wantsBrief}
-                onChange={setWantsBrief}
-              />
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={isCaptureSubmitting}
-              >
-                {isCaptureSubmitting ? "Sending…" : "Send my results"}
-              </Button>
-            </form>
+            </>
           )}
         </div>
 

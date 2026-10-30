@@ -14,9 +14,10 @@ import {
 import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
- * Soft capture after the security assessment: re-scores answers server-side
- * and delivers the lead through the shared path. Results are already on screen
- * client-side; this route only emails a copy and records the lead.
+ * Lead delivery for the security assessment: the name, email and company
+ * captured before the questions, plus the answers, re-scored server-side and
+ * delivered through the shared path. The client posts once, when results
+ * first render; the results are already on screen by then.
  */
 export async function POST(request: Request) {
   try {
@@ -53,6 +54,11 @@ export async function POST(request: Request) {
     }
     const segment: QuizSegment = data.segment;
 
+    const name = typeof data?.name === "string" ? data.name.trim() : "";
+    if (name === "") {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+
     const rawEmail = data?.email;
     const email =
       typeof rawEmail === "string" ? rawEmail.trim() : String(rawEmail ?? "");
@@ -62,6 +68,15 @@ export async function POST(request: Request) {
     if (!isEmailAddress(email)) {
       return NextResponse.json(
         { error: "Please enter a valid email address" },
+        { status: 400 },
+      );
+    }
+
+    const company =
+      typeof data?.company === "string" ? data.company.trim() : "";
+    if (company === "") {
+      return NextResponse.json(
+        { error: "Company is required" },
         { status: 400 },
       );
     }
@@ -116,9 +131,13 @@ export async function POST(request: Request) {
     const { isDelivered } = await deliverLead({
       lead: {
         formType: "Security assessment",
+        name,
         email,
+        company,
         fields: {
+          Name: name,
           Email: email,
+          Company: company,
           "Business size": config.segments[segment].label,
           "Risk tier": config.tiers[result.tier].label,
           Score: `${result.score}/${result.maxScore}`,
