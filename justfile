@@ -152,7 +152,7 @@ sdr-link ASSIGNMENT_ONE="" ASSIGNMENT_TWO="":
             exit 1
             ;;
     esac
-    SDR_LINK_SIGNING_SECRET="op://DevOps/$item/password" \
+    SDR_LINK_SIGNING_SECRET="op://Boximity/$item/password" \
         op run -- node {{SCRIPTS_DIR}}/sdr-link.ts "$SDR_NAME" "$SDR_ENVIRONMENT"
 
 # Destroy recipe - Environment cleanup

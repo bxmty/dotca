@@ -351,7 +351,7 @@ A weekly review of new assets on the Free-tier customer is the standing check wh
 
 Rotate when an SDR leaves or a link leaks. Each environment has its own value. Do staging first, then production:
 
-1. Generate a value with `openssl rand -hex 32` and save it in 1Password → DevOps → `DotCA-SDR-Link-Signing-Secret-Staging` (`-Production` for production), field `password`.
+1. Generate a value with `openssl rand -hex 32` and save it in 1Password → Boximity → `DotCA-SDR-Link-Signing-Secret-Staging` (`-Production` for production), field `password`.
 2. Set it in the GitHub environment:
 
    ```bash
