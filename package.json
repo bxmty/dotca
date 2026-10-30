@@ -11,6 +11,7 @@
     "build": "NEXT_PUBLIC_COMMIT_HASH=${NEXT_PUBLIC_COMMIT_HASH:-$(node get-commit-hash.js)} next build",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint src scripts/perf-gate.ts",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
