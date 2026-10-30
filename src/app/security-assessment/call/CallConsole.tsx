@@ -166,7 +166,7 @@ function NoteField({
 function DetailsScreen({ state, dispatch, headingRef }: ScreenProps) {
   const [errors, setErrors] = useState<LeadFieldErrors>({});
 
-  const submit = (submitEvent: FormEvent<HTMLFormElement>) => {
+  const handleDetailsSubmit = (submitEvent: FormEvent<HTMLFormElement>) => {
     submitEvent.preventDefault();
     const nextErrors = validateLeadFields(
       state.lead,
@@ -214,7 +214,7 @@ function DetailsScreen({ state, dispatch, headingRef }: ScreenProps) {
       <Heading headingRef={headingRef}>Who are you speaking with?</Heading>
       <form
         className="grid max-w-[720px] content-start gap-4.5"
-        onSubmit={submit}
+        onSubmit={handleDetailsSubmit}
         noValidate
         aria-label="Prospect details"
       >
@@ -623,13 +623,13 @@ export default function CallConsole({
     INITIAL_CALL,
   );
   const headingRef = useFocusHeadingOnNewScreen(JSON.stringify(state.screen));
-  const hasRestored = useRef(false);
+  const hasAttemptedRestore = useRef(false);
   const [isRestored, setIsRestored] = useState(false);
 
   // After mount, so the server's and the first client render agree
   useEffect(() => {
-    if (hasRestored.current) return;
-    hasRestored.current = true;
+    if (hasAttemptedRestore.current) return;
+    hasAttemptedRestore.current = true;
     const call = parseStoredCall(content, readStoredCall());
     if (call) dispatch({ type: "restore", call });
     setIsRestored(true);
@@ -653,7 +653,7 @@ export default function CallConsole({
     }
   }, [state]);
 
-  const save = async () => {
+  const handleSave = async () => {
     if (isCallLocked(state)) return;
     dispatch({ type: "saveStarted" });
     const outcome = await postCall(buildCallLeadRequest(content, state));
@@ -704,7 +704,7 @@ export default function CallConsole({
         dispatch={dispatch}
         content={content}
         headingRef={headingRef}
-        onSave={() => void save()}
+        onSave={() => void handleSave()}
         onStartNewCall={() => dispatch({ type: "startNewCall" })}
       />
     </section>

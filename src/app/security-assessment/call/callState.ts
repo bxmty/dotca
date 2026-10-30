@@ -93,7 +93,7 @@ function listCallScreens(
   { config, sdr }: CallContent,
   segment: QuizSegment,
 ): CallScreen[] {
-  const indexed = (
+  const buildIndexedScreens = (
     name: "opening" | "posture" | "closing",
     count: number,
   ): CallScreen[] =>
@@ -102,18 +102,30 @@ function listCallScreens(
   return [
     { name: "details" },
     { name: "size" },
-    ...indexed("opening", getDiscoveryQuestions(sdr, "opening").length),
-    ...indexed("posture", getQuestionsForSegment(config, segment).length),
+    ...buildIndexedScreens(
+      "opening",
+      getDiscoveryQuestions(sdr, "opening").length,
+    ),
+    ...buildIndexedScreens(
+      "posture",
+      getQuestionsForSegment(config, segment).length,
+    ),
     { name: "results" },
-    ...indexed("closing", getDiscoveryQuestions(sdr, "closing").length),
+    ...buildIndexedScreens(
+      "closing",
+      getDiscoveryQuestions(sdr, "closing").length,
+    ),
     { name: "summary" },
   ];
 }
 
-function isSameScreen(a: CallScreen, b: CallScreen): boolean {
-  const indexOf = (screen: CallScreen) =>
-    "index" in screen ? screen.index : undefined;
-  return a.name === b.name && indexOf(a) === indexOf(b);
+function isSameScreen(screen: CallScreen, otherScreen: CallScreen): boolean {
+  const readIndex = (candidate: CallScreen) =>
+    "index" in candidate ? candidate.index : undefined;
+  return (
+    screen.name === otherScreen.name &&
+    readIndex(screen) === readIndex(otherScreen)
+  );
 }
 
 /** The posture question on screen, if any. */

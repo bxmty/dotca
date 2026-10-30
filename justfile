@@ -122,14 +122,14 @@ deploy: _check-deploy-script
 
 # Print a signed SDR call console link, using the secret from 1Password
 [no-exit-message]
-sdr-link FIRST="" SECOND="":
+sdr-link ASSIGNMENT_ONE="" ASSIGNMENT_TWO="":
     #!/usr/bin/env bash
     set -euo pipefail
     SDR_NAME=""
     SDR_ENVIRONMENT={{quote(ENVIRONMENT)}}
     # Parameters, not just's own overrides: those only work before the recipe
     # name, and this reads as `just sdr-link NAME="Alex Doe" ENVIRONMENT=staging`.
-    for argument in {{quote(FIRST)}} {{quote(SECOND)}}; do
+    for argument in {{quote(ASSIGNMENT_ONE)}} {{quote(ASSIGNMENT_TWO)}}; do
         case "$argument" in
             NAME=*) SDR_NAME="${argument#NAME=}" ;;
             ENVIRONMENT=*) SDR_ENVIRONMENT="${argument#ENVIRONMENT=}" ;;

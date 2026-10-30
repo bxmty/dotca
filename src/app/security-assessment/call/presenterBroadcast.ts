@@ -147,6 +147,16 @@ export function openPresenterChannel<Incoming, Outgoing>(
   };
 }
 
+// Base 36 for a short id; the first two characters of the string are "0."
+const CONSOLE_ID_RADIX = 36;
+const RANDOM_FRACTION_PREFIX_LENGTH = 2;
+
+function createConsoleId(): string {
+  return Math.random()
+    .toString(CONSOLE_ID_RADIX)
+    .slice(RANDOM_FRACTION_PREFIX_LENGTH);
+}
+
 /**
  * Keeps any open presenter on `screen`. Null holds off (the console hasn't
  * restored its call yet), so a reload doesn't flash the first screen.
@@ -170,7 +180,7 @@ export function useBroadcastToPresenter(
 
   useEffect(() => {
     if (!isReady) return;
-    const consoleId = Math.random().toString(36).slice(2);
+    const consoleId = createConsoleId();
     const channel = openPresenterChannel<PresenterRequest, ConsoleMessage>(
       (request) => {
         if (request.kind === "sync") sendScreen.current();

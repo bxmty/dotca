@@ -51,15 +51,15 @@ function computeHmac(secret: string, value: string): Buffer {
 function signPayload({
   secret,
   scope,
-  tag,
+  signedValue,
   expiresAt,
 }: {
   secret: string;
   scope: string;
-  tag: string;
+  signedValue: string;
   expiresAt: number;
 }): string {
-  return computeHmac(secret, `${scope}:${tag}:${expiresAt}`).toString(
+  return computeHmac(secret, `${scope}:${signedValue}:${expiresAt}`).toString(
     "base64url",
   );
 }
@@ -67,21 +67,21 @@ function signPayload({
 function assembleToken({
   secret,
   scope,
-  tag,
+  signedValue,
   lifetimeMs,
 }: {
   secret: string;
   scope: string;
-  tag: string;
+  signedValue: string;
   lifetimeMs: number;
 }): string {
   const expiresAt = Date.now() + lifetimeMs;
-  const signature = signPayload({ secret, scope, tag, expiresAt });
-  return `${expiresAt}.${tag}.${signature}`;
+  const signature = signPayload({ secret, scope, signedValue, expiresAt });
+  return `${expiresAt}.${signedValue}.${signature}`;
 }
 
 /** Checks shape, signature and expiry; returns the signed middle part. */
-function verifyToken({
+function verifyTokenParts({
   secret,
   scope,
   token,
@@ -90,17 +90,17 @@ function verifyToken({
   scope: string;
   token: string;
 }):
-  | { isValid: true; tag: string }
+  | { isValid: true; signedValue: string }
   | { isValid: false; reason: LinkTokenFailureReason } {
   const parts = token.split(".");
   if (parts.length !== 3 || !/^\d+$/.test(parts[0])) {
     return { isValid: false, reason: "malformed" };
   }
-  const [expiresAtText, tag, signature] = parts;
+  const [expiresAtText, signedValue, signature] = parts;
   const expiresAt = Number(expiresAtText);
 
   const expectedSignature = Buffer.from(
-    signPayload({ secret, scope, tag, expiresAt }),
+    signPayload({ secret, scope, signedValue, expiresAt }),
   );
   const providedSignature = Buffer.from(signature);
   // Compare the encoded strings, not decoded bytes: base64url has spare bits
@@ -116,7 +116,7 @@ function verifyToken({
     return { isValid: false, reason: "expired" };
   }
 
-  return { isValid: true, tag };
+  return { isValid: true, signedValue };
 }
 
 /** Throws only when LEAD_MAGNET_SIGNING_SECRET is unset or too short. */
@@ -133,7 +133,7 @@ export function signLinkToken({
   const emailTag = computeHmac(secret, `email:${email.trim().toLowerCase()}`)
     .subarray(0, EMAIL_TAG_BYTES)
     .toString("base64url");
-  return assembleToken({ secret, scope, tag: emailTag, lifetimeMs });
+  return assembleToken({ secret, scope, signedValue: emailTag, lifetimeMs });
 }
 
 /** Throws only when LEAD_MAGNET_SIGNING_SECRET is unset or too short. */
@@ -145,7 +145,7 @@ export function verifyLinkToken({
   token: string;
 }): LinkTokenVerification {
   const secret = readSigningSecret(DEFAULT_SECRET_ENV_NAME);
-  const verification = verifyToken({ secret, scope, token });
+  const verification = verifyTokenParts({ secret, scope, token });
   return verification.isValid ? { isValid: true } : verification;
 }
 
@@ -173,8 +173,8 @@ export function signSubjectLinkToken({
   if (subject.length === 0) {
     throw new Error("A signed link subject must not be empty");
   }
-  const tag = Buffer.from(subject, "utf8").toString("base64url");
-  return assembleToken({ secret, scope, tag, lifetimeMs });
+  const signedValue = Buffer.from(subject, "utf8").toString("base64url");
+  return assembleToken({ secret, scope, signedValue, lifetimeMs });
 }
 
 /** Throws only when the secret is unset or too short. */
@@ -186,9 +186,11 @@ export function verifySubjectLinkToken({
   token: string;
 }): SubjectLinkTokenVerification {
   const secret = readSigningSecret(SUBJECT_TOKEN_SECRET_ENV_NAME);
-  const verification = verifyToken({ secret, scope, token });
+  const verification = verifyTokenParts({ secret, scope, token });
   if (!verification.isValid) return verification;
-  const subject = Buffer.from(verification.tag, "base64url").toString("utf8");
+  const subject = Buffer.from(verification.signedValue, "base64url").toString(
+    "utf8",
+  );
   if (subject.length === 0) {
     return { isValid: false, reason: "malformed" };
   }
