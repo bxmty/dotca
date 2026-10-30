@@ -6,6 +6,7 @@ import { createLead } from "@/lib/syncro";
 import { sendWebmasterNotification } from "@/lib/notify";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { sendConversionEvent } from "@/lib/ga4";
+import { checkInstallToken } from "@/lib/install-link";
 
 // Mock next/server
 jest.mock("next/server", () => ({
@@ -105,6 +106,7 @@ describe("Onboarding API Route", () => {
       RESEND_OPTIN_EVENT: "lead.opted_in.test",
       RESEND_FROM_EMAIL: "noreply@example.test",
       RESEND_TEMPLATE_ONBOARDING_CONFIRMATION: "tmpl_onboarding",
+      LEAD_MAGNET_SIGNING_SECRET: "s".repeat(64),
     };
     mockSendResendEmail.mockResolvedValue({
       data: { id: "email_1" },
@@ -422,13 +424,47 @@ describe("Onboarding API Route", () => {
         replyTo: "hi@boximity.ca",
         template: {
           id: "tmpl_onboarding",
-          variables: { USER_FIRST_NAME: "Jane" },
+          variables: {
+            USER_FIRST_NAME: "Jane",
+            INSTALL_URL: expect.stringMatching(
+              /^https:\/\/boximity\.ca\/install\?t=[A-Za-z0-9._-]+$/,
+            ),
+          },
         },
       });
       expect(options.idempotencyKey).toMatch(
         /^followup-onboarding\/[0-9a-f]{64}\/\d{4}-\d{2}-\d{2}$/,
       );
       expect(options.idempotencyKey).not.toContain("test@example.com");
+    });
+
+    it("signs an INSTALL_URL token that the /install route accepts", async () => {
+      await POST(buildRequest(validOnboardingData));
+
+      const { INSTALL_URL } =
+        mockSendResendEmail.mock.calls[0][0].template.variables;
+      const token = new URL(INSTALL_URL).searchParams.get("t");
+      expect(checkInstallToken(token)).toBe("valid");
+      expect(INSTALL_URL).not.toContain("test@example.com");
+    });
+
+    it("still sends the confirmation, without INSTALL_URL and with a Sentry warning, when the signing secret is missing", async () => {
+      delete process.env.LEAD_MAGNET_SIGNING_SECRET;
+
+      await POST(buildRequest(validOnboardingData));
+
+      expect(mockSendResendEmail).toHaveBeenCalledTimes(1);
+      expect(
+        mockSendResendEmail.mock.calls[0][0].template.variables,
+      ).not.toHaveProperty("INSTALL_URL");
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining("LEAD_MAGNET_SIGNING_SECRET"),
+        "warning",
+      );
+      expect(NextResponse.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Onboarding data received successfully",
+      });
     });
 
     it("is sent whether or not the brief box was ticked", async () => {

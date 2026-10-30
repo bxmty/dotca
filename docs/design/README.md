@@ -26,6 +26,11 @@ of the cutover plan, 2026-10-03): **a key figure's source line is optional, not 
 The component renders the line when a source exists and lays out cleanly without one. All four
 home-page stats stay.
 
+**A second amendment** (#688, 2026-10-29) added the **Assessment + motion** section to the
+Component Spec: the stacked answer list, the section bar's partial fill, the dot-grid plate, the
+perimeter and score-ruler figures, and the assessment's motion rules (play once, never loop, end
+state under reduced motion).
+
 ## Logo
 
 Both SVGs come from the White artwork's knockout geometry with classes stripped and

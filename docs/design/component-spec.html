@@ -661,6 +661,22 @@ pre.code i{font-style:normal;color:var(--muted)}
     </div>
   </section>
 
+  <!-- ASSESSMENT + MOTION (amendment, #688) -->
+  <section class="row" id="assessment">
+    <p class="lbl"><b>Assessment + motion</b><span>/security-assessment</span></p>
+    <div class="body">
+      <ul class="rules">
+        <li><b>Column</b><span>Every screen after the landing sits in one centred 720 px column, the same as onboarding, so the quiz doesn't change shape as it advances.</span></li>
+        <li><b>Stacked answers</b><span>Long prose answers stack one ruled row each on the <code>--field</code> edge. The selected row gets the 2 px accent ring, drawn in over 200 ms. The question is the page's H1, and the group is named by it with <code>aria-labelledby</code>, so it isn't repeated as a legend. The business-size step uses the same list, with the team size as a mono detail line.</span></li>
+        <li><b>Progress</b><span>The section bar's current segment fills in the accent as the visitor moves through that section's questions (350 ms width transition). Done segments stay ink.</span></li>
+        <li><b>Dot-grid plate</b><span>The assessment's figures sit on a <code>--rule</code> dot grid (14 px pitch) with ink crop marks at the corners, like a figure plate in a manual. Used for the landing perimeter, the question readout (category and "Question n of m", mono caps) and the results ruler. No fill or shadow.</span></li>
+        <li><b>Perimeter</b><span>The landing aside: four rings for devices, accounts, network and people, with checkpoints on each. Covered points are accent squares and open ones are hollow. A scan wedge turns once on load and lights covered points as it passes. Decorative and <code>aria-hidden</code>. Hidden below lg, like every hero aside.</span></li>
+        <li><b>Score ruler</b><span>One tick per point, lit in the accent up to the score, over the four tier bands with the hit band in <code>--hl</code>. The figure is Chivo Mono in the accent at the section size and counts up over 1.1 s while the ticks light in order. Exposed as a single <code>role="meter"</code> with "24 of 33, Managed" as its value text. On phones only the hit tier is labelled.</span></li>
+        <li><b>Motion</b><span>Each animation plays once and never loops: a new screen or question rises 8 px and fades in over 220 ms, auto-advance waits 400 ms so the ring is seen first, and focus moves to the new H1. Everything is applied through <code>motion-safe:</code>, so under <code>prefers-reduced-motion</code> each element shows its end state at once and the scan wedge isn't drawn. Keyframes live in <code>globals.css</code> as <code>--animate-rise</code>, <code>--animate-sweep</code> and <code>--animate-light-up</code>.</span></li>
+      </ul>
+    </div>
+  </section>
+
   <!-- BLOG -->
   <section class="row" id="blog">
     <p class="lbl"><b>Blog index<br>+ long-form</b><span>/blog · /blog/[slug] · /blog/tag/[tag] · legal pages</span></p>

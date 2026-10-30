@@ -31,6 +31,7 @@
     resend_from_email: "{{ RESEND_FROM_EMAIL | default('') }}"
     webmaster_email: "{{ WEBMASTER_EMAIL | default('') }}"
     lead_magnet_signing_secret: "{{ LEAD_MAGNET_SIGNING_SECRET | default('') }}"
+    sdr_link_signing_secret: "{{ SDR_LINK_SIGNING_SECRET | default('') }}"
     syncro_free_installer_url: "{{ SYNCRO_FREE_INSTALLER_URL | default('') }}"
     syncro_subdomain: "{{ SYNCRO_SUBDOMAIN | default('') }}"
     syncro_api_key: "{{ SYNCRO_API_KEY | default('') }}"
@@ -488,6 +489,7 @@
           - GA_ID: {{ '✅ SET' if ga_id else '❌ MISSING' }} ({{ next_public_environment }})
           - GA4_MP_API_SECRET: {{ '✅ SET' if ga4_mp_api_secret else '❌ MISSING' }}
           - LEAD_MAGNET_SIGNING_SECRET: {{ '✅ SET' if lead_magnet_signing_secret else '❌ MISSING' }}
+          - SDR_LINK_SIGNING_SECRET: {{ '✅ SET' if sdr_link_signing_secret else '❌ MISSING' }}
           - SYNCRO_FREE_INSTALLER_URL: {{ '✅ SET' if syncro_free_installer_url else '⚠️ MISSING (optional; /install responds 503)' }}
           - SYNCRO_SUBDOMAIN: {{ '✅ SET' if syncro_subdomain else '❌ MISSING' }}
           - SYNCRO_API_KEY: {{ '✅ SET' if syncro_api_key else '❌ MISSING' }}

@@ -11,21 +11,15 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
-  # Prettier for code formatting
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+  # Prettier for code formatting: the repo's own pinned version, so the hook
+  # and CI's `npm run format:check` agree. Exclusions live in .prettierignore.
+  - repo: local
     hooks:
       - id: prettier
-        files: \.(js|jsx|ts|tsx|json|yaml|yml|md)$
-        exclude: |
-          (?x)(
-            package-lock\.json$
-            | \.tsbuildinfo$
-            | next-env\.d\.ts$
-            | CLAUDE\.md$
-            | ansible/
-            | \.github/actions/
-          )
+        name: Prettier
+        entry: npx prettier --write --ignore-unknown
+        language: system
+        files: \.(js|jsx|ts|tsx|json|yaml|yml|md|css)$
 
   # ESLint
   - repo: local
