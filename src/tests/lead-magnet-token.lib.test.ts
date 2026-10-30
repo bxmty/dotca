@@ -32,6 +32,15 @@ describe("lead magnet download token", () => {
     });
   });
 
+  it("keeps the token format byte-for-byte (issued links still verify)", () => {
+    // Golden value from before the SDR token sibling was added (#711).
+    expect(
+      signLeadMagnetToken({ slug: "test-guide", email: "jane@example.com" }),
+    ).toBe(
+      "1790942400000.y0FG_-X8xnLewpKwriVL5A.7IfjQk5e1_xGvGF361Wl19st4BEg1R90si2t7YyGGwg",
+    );
+  });
+
   it("is URL-safe and does not carry the email address", () => {
     const token = signLeadMagnetToken({
       slug: "test-guide",
