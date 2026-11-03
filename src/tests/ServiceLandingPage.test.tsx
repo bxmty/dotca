@@ -104,7 +104,7 @@ describe("ServiceLandingPage", () => {
     ).toBeInTheDocument();
     expect(
       within(hero).getByRole("link", { name: "Get Free IT Assessment" }),
-    ).toHaveAttribute("href", "/#contact");
+    ).toHaveAttribute("href", "/security-assessment");
     expect(
       within(hero).getByRole("link", { name: "View Cloud 5 Pack Pricing" }),
     ).toHaveAttribute("href", "/pricing");
@@ -203,7 +203,7 @@ describe("ServiceLandingPage", () => {
     expect(within(pack).getAllByText("$1,250")).toHaveLength(1);
     expect(
       within(pack).getByRole("link", { name: "Start Your Free Assessment" }),
-    ).toHaveAttribute("href", "/#contact");
+    ).toHaveAttribute("href", "/security-assessment");
     expect(
       within(pack).getByText(/No contracts · 30-day money-back guarantee/),
     ).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe("ServiceLandingPage", () => {
     ).toBeInTheDocument();
     expect(
       within(areas).getByRole("link", { name: "Check Service Availability" }),
-    ).toHaveAttribute("href", "/#contact");
+    ).toHaveAttribute("href", "/security-assessment");
   });
 
   it("leaves out the service areas and trust signal when absent", () => {
@@ -281,7 +281,7 @@ describe("ServiceLandingPage", () => {
     ).toBeInTheDocument();
     expect(
       within(cta).getByRole("link", { name: "Get Free IT Assessment" }),
-    ).toHaveAttribute("href", "/#contact");
+    ).toHaveAttribute("href", "/security-assessment");
     expect(
       within(cta).getByRole("link", { name: "View All Pricing Options" }),
     ).toHaveAttribute("href", "/pricing");
@@ -322,6 +322,18 @@ describe.each([
     pageContent: ontarioContent,
   },
 ])("$name", ({ Page, pageContent }) => {
+  it("links free assessment calls to action to the security assessment", () => {
+    render(<Page />);
+
+    const assessmentLinks = screen.getAllByRole("link", {
+      name: /free (it )?assessment|start your free assessment|check service availability/i,
+    });
+    expect(assessmentLinks.length).toBeGreaterThan(0);
+    assessmentLinks.forEach((link) => {
+      expect(link).toHaveAttribute("href", "/security-assessment");
+    });
+  });
+
   it("renders from its content object", () => {
     render(<Page />);
 

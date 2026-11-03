@@ -93,6 +93,19 @@ describe("createLead", () => {
     });
   });
 
+  it("names a discovery-call lead in the ticket subject", async () => {
+    const fetchMock = mockFetchResponse({ status: 200, body: { lead: {} } });
+
+    await createLead({
+      ...contactLead,
+      formType: "Discovery call assessment",
+    });
+
+    expect(sentBody(fetchMock).ticket_subject).toBe(
+      "Discovery call assessment — Analytical Engines",
+    );
+  });
+
   it("titles the lead with the name when no company was given", async () => {
     const fetchMock = mockFetchResponse({ status: 200, body: { lead: {} } });
 

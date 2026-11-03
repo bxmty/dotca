@@ -40,6 +40,9 @@ describe("Footer band", () => {
       within(nav).getByRole("link", { name: "Architecture firms" }),
     ).toHaveAttribute("href", "/services/it-services-for-architecture-firms");
     expect(
+      within(nav).getByRole("link", { name: "Security assessment" }),
+    ).toHaveAttribute("href", "/security-assessment");
+    expect(
       within(nav).getByRole("link", { name: "Privacy policy" }),
     ).toHaveAttribute("href", "/privacy-policy");
     expect(

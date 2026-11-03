@@ -256,11 +256,11 @@ sequenceDiagram
 
 ### GitHub Actions Workflows
 
-| Workflow                     | Responsibility                          | Triggers                              | Outputs                       |
-| ---------------------------- | --------------------------------------- | ------------------------------------- | ----------------------------- |
-| **deploy.yml**               | Unified deployment for all environments | Push to staging/main, manual dispatch | Deployment status, image tags |
-| **image-cleanup.yml**        | Image retention management              | Scheduled                             | Cleanup reports               |
-| **dependency-check.yml**     | Dependency vulnerability scanning       | Push events, scheduled                | Security reports              |
+| Workflow                 | Responsibility                          | Triggers                              | Outputs                       |
+| ------------------------ | --------------------------------------- | ------------------------------------- | ----------------------------- |
+| **deploy.yml**           | Unified deployment for all environments | Push to staging/main, manual dispatch | Deployment status, image tags |
+| **image-cleanup.yml**    | Image retention management              | Scheduled                             | Cleanup reports               |
+| **dependency-check.yml** | Dependency vulnerability scanning       | Push events, scheduled                | Security reports              |
 
 ### Reusable Actions
 

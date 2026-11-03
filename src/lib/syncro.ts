@@ -56,6 +56,8 @@ const SUBJECT_PREFIX: Record<NotificationFormType, string> = {
   Onboarding: "Website onboarding form",
   "Paid signup": "PAID SIGNUP",
   "Lead magnet": "Website lead magnet",
+  "Security assessment": "Website security assessment",
+  "Discovery call assessment": "Discovery call assessment",
 };
 
 const STAGING_NOTE =

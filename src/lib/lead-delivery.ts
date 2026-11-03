@@ -29,6 +29,12 @@ import {
  */
 export interface LeadDetails extends Omit<LeadSubmission, "name"> {
   /**
+   * The answer to the brief opt-in. Left out when the form never asks (a
+   * discovery call: an SDR can't give the prospect's consent), so there's no
+   * "Monthly brief" line: "No" would misdescribe the lead.
+   */
+  hasOptedInToBrief?: boolean;
+  /**
    * Omitted when the form asks for none (the lead-magnet gate): the address
    * stands in for it in Syncro and the webmaster email, and the log line
    * leaves it blank.
@@ -66,10 +72,13 @@ function toLeadSubmission(lead: LeadDetails): LeadSubmission {
   return {
     ...lead,
     name: lead.name ?? lead.email,
-    fields: {
-      ...lead.fields,
-      "Monthly brief": describeBriefOptIn(lead.hasOptedInToBrief),
-    },
+    fields:
+      lead.hasOptedInToBrief === undefined
+        ? lead.fields
+        : {
+            ...lead.fields,
+            "Monthly brief": describeBriefOptIn(lead.hasOptedInToBrief),
+          },
   };
 }
 

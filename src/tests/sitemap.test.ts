@@ -82,6 +82,18 @@ describe("sitemap", () => {
       changeFrequency: "weekly",
       priority: 0.8,
     });
+    expect(findEntry(urls, `${BASE_URL}/security-assessment`)).toEqual({
+      url: `${BASE_URL}/security-assessment`,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    });
+    expect(
+      findEntry(urls, `${BASE_URL}/security-assessment/checklist`),
+    ).toEqual({
+      url: `${BASE_URL}/security-assessment/checklist`,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    });
     expect(findEntry(urls, `${BASE_URL}/privacy-policy`)).toEqual({
       url: `${BASE_URL}/privacy-policy`,
       changeFrequency: "yearly",
@@ -202,5 +214,11 @@ describe("sitemap", () => {
     expect(
       findEntry(sitemap(), `${BASE_URL}/blog/tag/empty`)?.lastModified,
     ).toBeUndefined();
+  });
+
+  it("leaves out the SDR console and presenter", () => {
+    const urls = sitemap().map(({ url }) => url);
+
+    expect(urls.filter((url) => url.includes("/call"))).toEqual([]);
   });
 });

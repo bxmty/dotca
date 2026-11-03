@@ -32,10 +32,10 @@ export type NurtureSource = "contact" | "onboarding" | "checkout";
  * no lead.opted_in event: #642 defines no lead-magnet cadence, so the event
  * contract stays the three nurture sources until it does (#606).
  */
-export type OptInSource = NurtureSource | "lead-magnet";
+export type OptInSource = NurtureSource | "lead-magnet" | "security-assessment";
 
 function isNurtureSource(source: OptInSource): source is NurtureSource {
-  return source !== "lead-magnet";
+  return source !== "lead-magnet" && source !== "security-assessment";
 }
 
 export interface MonthlyBriefSubscriber {

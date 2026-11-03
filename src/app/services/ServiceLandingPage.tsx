@@ -101,7 +101,7 @@ export interface ServiceLandingContent {
 const PACK_PRICE = "$1,250";
 const PACK_TERMS =
   "No contracts · 30-day money-back guarantee · Cancel anytime";
-const ASSESSMENT_HREF = "/#contact";
+const ASSESSMENT_HREF = "/security-assessment";
 
 export default function ServiceLandingPage({
   content,

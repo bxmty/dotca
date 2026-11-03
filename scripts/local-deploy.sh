@@ -171,6 +171,9 @@ load_env_vars() {
     # Fails for production, warns for staging (#604)
     "$SCRIPT_DIR/check-lead-magnet-secret.sh" "$ENVIRONMENT"
 
+    # Fails for staging and production (#711)
+    "$SCRIPT_DIR/check-sdr-link-secret.sh" "$ENVIRONMENT"
+
     # Set GIT_REPO_URL if not already set
     if [[ -z "${GIT_REPO_URL:-}" ]]; then
         GIT_REPO_URL=$(git remote get-url origin 2>/dev/null || echo "https://github.com/bxmty/dotca.git")
@@ -460,6 +463,7 @@ RESEND_API_KEY=${RESEND_API_KEY:-}
 RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-}
 WEBMASTER_EMAIL=${WEBMASTER_EMAIL:-}
 LEAD_MAGNET_SIGNING_SECRET=${LEAD_MAGNET_SIGNING_SECRET:-}
+SDR_LINK_SIGNING_SECRET=${SDR_LINK_SIGNING_SECRET:-}
 SYNCRO_FREE_INSTALLER_URL=${SYNCRO_FREE_INSTALLER_URL:-}
 SYNCRO_SUBDOMAIN=${SYNCRO_SUBDOMAIN:-}
 SYNCRO_API_KEY=${SYNCRO_API_KEY:-}

@@ -46,6 +46,31 @@ describe("StepProgress", () => {
     expect(third).not.toHaveTextContent("(done)");
   });
 
+  it("fills the current segment partway when given a fraction", () => {
+    render(
+      <StepProgress steps={STEPS} currentStep={2} currentStepFraction={0.5} />,
+    );
+
+    const fills = screen.getAllByTestId("step-fill");
+    expect(fills).toHaveLength(1);
+    expect(getItems()[1]).toContainElement(fills[0]);
+    expect(fills[0]).toHaveStyle({ width: "50%" });
+  });
+
+  it("clamps the fill to the segment", () => {
+    render(
+      <StepProgress steps={STEPS} currentStep={1} currentStepFraction={1.4} />,
+    );
+
+    expect(screen.getByTestId("step-fill")).toHaveStyle({ width: "100%" });
+  });
+
+  it("draws no partial fill without a fraction", () => {
+    render(<StepProgress steps={STEPS} currentStep={2} />);
+
+    expect(screen.queryByTestId("step-fill")).not.toBeInTheDocument();
+  });
+
   it("names the progress for the current step", () => {
     render(<StepProgress steps={STEPS} currentStep={2} />);
 

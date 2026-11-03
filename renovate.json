@@ -5,6 +5,9 @@
   "baseBranchPatterns": ["staging"],
   "schedule": ["at any time"],
   "timezone": "America/New_York",
+  "constraints": {
+    "npm": "11.21.1"
+  },
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 6am on Friday"]

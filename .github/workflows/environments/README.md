@@ -140,6 +140,7 @@ For each environment configuration file, you need to create a corresponding GitH
 - `RESEND_API_KEY`: Resend API key for webmaster notification emails
 - `WEBMASTER_EMAIL`: Email address for webmaster form submission notifications
 - `LEAD_MAGNET_SIGNING_SECRET`: HMAC key for 24-hour lead magnet download links (`openssl rand -hex 32`, at least 32 characters). Required for production; staging deploys only warn when it is missing
+- `SDR_LINK_SIGNING_SECRET`: HMAC key for the 90-day SDR call console links (`openssl rand -hex 32`, at least 32 characters, different per environment and from `LEAD_MAGNET_SIGNING_SECRET`). Required; the deploy fails at the gate without it. Rotating it revokes every SDR link
 - `SYNCRO_FREE_INSTALLER_URL`: Free-tier Syncro agent installer link behind `/install` (optional; `/install` responds 503 without it)
 - `SYNCRO_SUBDOMAIN` / `SYNCRO_API_KEY`: Syncro account subdomain and API token that website leads are written to. Required; the deploy fails at the gate without them
 - `RESEND_MONTHLY_BRIEF_SEGMENT_ID` / `RESEND_MONTHLY_BRIEF_TOPIC_ID`: Resend "Monthly security brief" segment and topic IDs for the form opt-in (optional; opt-ins skip Resend with a Sentry warning without them)

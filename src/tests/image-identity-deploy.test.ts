@@ -204,7 +204,19 @@ function copyRegistryTag(sourceTag: string, destinationTag: string): void {
   ]);
 }
 
-describe("deploying a rebuild of the same commit", () => {
+// Needs a Docker daemon. Locally, skip with a warning when none is running so
+// unrelated work isn't blocked; on CI always run, so a missing daemon fails.
+const isDockerRunning =
+  spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
+const shouldRunDockerSuite = isDockerRunning || Boolean(process.env.CI);
+if (!shouldRunDockerSuite) {
+  console.warn(
+    "Skipping image-identity-deploy: Docker isn't running. Start Docker to run it.",
+  );
+}
+const describeWithDocker = shouldRunDockerSuite ? describe : describe.skip;
+
+describeWithDocker("deploying a rebuild of the same commit", () => {
   const firstBuildTag = buildImageTagForRun("100");
   const secondBuildTag = buildImageTagForRun("200");
 

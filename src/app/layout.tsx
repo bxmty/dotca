@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import HideOnPresenter from "./components/HideOnPresenter";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import JsonLd from "./components/JsonLd";
@@ -136,11 +137,15 @@ export default function RootLayout({
           Skip to main content
         </a>
         <div className="flex min-h-screen flex-col">
-          <Navbar />
+          <HideOnPresenter>
+            <Navbar />
+          </HideOnPresenter>
           <main id="main-content" className="grow">
             {children}
           </main>
-          <Footer />
+          <HideOnPresenter>
+            <Footer />
+          </HideOnPresenter>
         </div>
       </body>
     </html>

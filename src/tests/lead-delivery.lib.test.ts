@@ -30,6 +30,7 @@ const contactLead: LeadDetails = {
   phone: "+14165550123",
   company: "Doe Ltd",
   fields: { Name: "Jane Doe", Email: EMAIL },
+  hasOptedInToBrief: false,
 };
 
 function readLeadLogLines(log: jest.SpyInstance): unknown[] {
@@ -59,6 +60,30 @@ describe("lead delivery", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe("a lead whose form offers no brief", () => {
+    it("reaches both sinks without a Monthly brief line", async () => {
+      await deliverLead({
+        lead: { ...contactLead, hasOptedInToBrief: undefined },
+        failureSummary: "Discovery call delivery failure",
+      });
+
+      const noBriefFields = { Name: "Jane Doe", Email: EMAIL };
+      expect(mockCreateLead.mock.calls[0][0].fields).toEqual(noBriefFields);
+      expect(mockNotification.mock.calls[0][0].fields).toEqual(noBriefFields);
+    });
+
+    it("keeps the line, as No, when it was offered and declined", async () => {
+      await deliverLead({
+        lead: contactLead,
+        failureSummary: "Contact form delivery failure",
+      });
+
+      expect(mockCreateLead.mock.calls[0][0].fields["Monthly brief"]).toBe(
+        "No",
+      );
+    });
   });
 
   describe("describeBriefOptIn", () => {
@@ -203,6 +228,7 @@ describe("lead delivery", () => {
           formType: "Lead magnet",
           email: EMAIL,
           fields: { Email: EMAIL },
+          hasOptedInToBrief: false,
         },
         failureSummary: "Lead magnet delivery failure (guide)",
       });

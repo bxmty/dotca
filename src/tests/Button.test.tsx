@@ -3,6 +3,7 @@ import "@testing-library/jest-dom";
 import {
   Button,
   ButtonLink,
+  UnboxLink,
   getButtonClassName,
 } from "@/app/components/Button";
 
@@ -112,5 +113,52 @@ describe("ButtonLink", () => {
       "mt-6",
       "bg-cta",
     );
+  });
+});
+
+describe("UnboxLink", () => {
+  it("links with the label as its accessible name", () => {
+    render(
+      <UnboxLink href="/book" peek="opens Bookings">
+        Get a Business-First IT Assessment
+      </UnboxLink>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Get a Business-First IT Assessment" }),
+    ).toHaveAttribute("href", "/book");
+  });
+
+  it("keeps the interior text out of the accessible name", () => {
+    render(
+      <UnboxLink href="/book" peek="opens Bookings">
+        Get a Business-First IT Assessment
+      </UnboxLink>,
+    );
+
+    const interior = screen.getByText("opens Bookings");
+    expect(interior.closest("[aria-hidden='true']")).not.toBeNull();
+    expect(screen.getByRole("link").textContent).toContain("opens Bookings");
+    expect(
+      screen.queryByRole("link", { name: /opens Bookings/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("flips on hover and focus, and gives way without motion", () => {
+    render(
+      <UnboxLink href="/book" peek="opens Bookings">
+        Book
+      </UnboxLink>,
+    );
+
+    const lid = screen.getByText("Book").parentElement;
+    expect(lid?.className).toContain(
+      "group-hover:[transform:rotateX(-118deg)]",
+    );
+    expect(lid?.className).toContain(
+      "group-focus-visible:[transform:rotateX(-118deg)]",
+    );
+    expect(lid?.className).toContain("motion-reduce:transition-none");
+    expect(lid).toHaveClass("bg-cta", "text-cta-ink", "rounded-ctl");
   });
 });
