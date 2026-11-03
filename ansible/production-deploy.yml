@@ -40,17 +40,13 @@
     resend_optin_event: "{{ RESEND_OPTIN_EVENT | default('') }}"
     resend_template_contact_confirmation: "{{ RESEND_TEMPLATE_CONTACT_CONFIRMATION | default('') }}"
     resend_template_onboarding_confirmation: "{{ RESEND_TEMPLATE_ONBOARDING_CONFIRMATION | default('') }}"
-    ga_production_id: "{{ GA_PRODUCTION_ID | default('') }}"
-    ga_staging_id: "{{ GA_STAGING_ID | default('') }}"
     next_public_environment: production
     ga_id: "{{ GA_PRODUCTION_ID | default('') }}"
-    docker_compose_file: "{{ app_dir }}/repo/docker-compose.yml"
     # GitHub Container Registry settings for built images
     github_token: "{{ GITHUB_TOKEN | default('') }}"
     github_username: "{{ GITHUB_USERNAME | default('bxmty') }}"
     # Production image configuration - uses directly built images from GHCR
     docker_image_override: "{{ DEPLOY_DOCKER_IMAGE | default('ghcr.io/bxmty/dotca:main') }}"
-    github_repo_from_url: "{{ GITHUB_REPO | default('bxmty/dotca') }}"
     # Use the image tag passed from the deployment workflow
     docker_image: "{{ docker_image_override }}"
 
@@ -514,21 +510,6 @@
         not github_token or
         not github_username or
         not git_repo_url
-
-    - name: Create production environment file
-      ansible.builtin.copy:
-        dest: "{{ app_dir }}/.env.production"
-        mode: '0600'
-        content: |
-          NODE_ENV=production
-          NEXT_PUBLIC_ENVIRONMENT=production
-          NEXT_PUBLIC_API_URL=http://{{ public_ip }}/api
-          STRIPE_SECRET_KEY={{ stripe_secret_key }}
-          STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
-          NEXT_PUBLIC_GA_ID={{ ga_id }}
-          GITHUB_TOKEN={{ github_token }}
-          GITHUB_USERNAME={{ github_username }}
-          DOCKER_IMAGE={{ docker_image }}
 
     # Docker services startup section
     - name: Start Docker Compose services
