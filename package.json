@@ -47,7 +47,7 @@
     "@stryker-mutator/core": "10.1.1",
     "@stryker-mutator/jest-runner": "10.1.1",
     "@stryker-mutator/typescript-checker": "10.1.1",
-    "@tailwindcss/postcss": "4.3.3",
+    "@tailwindcss/postcss": "4.3.4",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",
@@ -65,7 +65,7 @@
     "lighthouse": "13.6.0",
     "prettier": "3.9.10",
     "puppeteer-core": "25.16.0",
-    "tailwindcss": "4.3.3",
+    "tailwindcss": "4.3.4",
     "typescript": "6.0.3"
   },
   "overrides": {
