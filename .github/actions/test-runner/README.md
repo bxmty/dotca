@@ -15,18 +15,6 @@ A reusable GitHub Action for running various types of tests across different env
     collect_coverage: true
 ```
 
-### Integration Tests
-
-```yaml
-- name: Run integration tests
-  uses: ./.github/actions/test-runner
-  with:
-    test_type: integration
-    environment: staging
-    app_url: https://staging.example.com
-    fail_fast: false
-```
-
 ### E2E Tests
 
 ```yaml
@@ -54,9 +42,9 @@ A reusable GitHub Action for running various types of tests across different env
 
 | Input               | Description                                          | Required | Default     |
 | ------------------- | ---------------------------------------------------- | -------- | ----------- |
-| `test_type`         | Type of tests to run (unit, integration, e2e, smoke) | Yes      | -           |
+| `test_type`         | Type of tests to run (unit, e2e, smoke)              | Yes      | -           |
 | `environment`       | Target environment                                   | No       | development |
-| `app_url`           | Application URL for integration/E2E tests            | No       | -           |
+| `app_url`           | Application URL for E2E tests                        | No       | -           |
 | `fail_fast`         | Stop on first test failure (ignored for unit tests)  | No       | false       |
 | `collect_coverage`  | Collect test coverage reports                        | No       | true        |
 | `timeout_minutes`   | Test execution timeout                               | No       | 10          |
@@ -79,15 +67,10 @@ A reusable GitHub Action for running various types of tests across different env
 - Includes coverage collection
 - Fast feedback for development
 
-### Integration Tests
-
-- Runs `npm run test:integration`
-- Requires `app_url` for API testing
-- Tests component interactions
-
 ### E2E Tests
 
-- Runs `npm run test:e2e`
+- Runs `npm run test:e2e -- --project=chromium` (add `e2e_grep` to filter, e.g. `@read-only`)
+- Fails the step when Playwright fails; stderr is not discarded
 - Requires Playwright setup
 - Tests full user journeys
 
@@ -121,7 +104,6 @@ The action automatically collects and organizes test artifacts:
 The action expects the following npm scripts in `package.json`:
 
 - `test:unit` - Unit tests
-- `test:integration` - Integration tests
 - `test:e2e` - E2E tests
 
 For E2E tests, Playwright must be configured and browsers will be installed automatically.
