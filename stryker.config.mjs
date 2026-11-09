@@ -40,8 +40,9 @@ const config = {
     "backups",
   ],
   reporters: ["html", "clear-text", "json", "progress"],
-  // No `break`: report-only until a baseline sets the policy.
-  thresholds: { high: 80, low: 60, break: null },
+  // Report-only: no `break`, and no `high`/`low` either. Spec #735 defers the
+  // colour-band and break policy until a baseline run sets them.
+  thresholds: { break: null },
 };
 
 export default config;
