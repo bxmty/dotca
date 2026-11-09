@@ -1,0 +1,102 @@
+name: Mutation Testing
+
+# Manual, report-only Stryker run (#738). It never fails on the mutation
+# score: stryker.config.mjs sets no `break` threshold. Standalone from the
+# deploy pipeline: no environments, no secrets.
+#
+# GitHub only offers "Run workflow" once this file exists on `main`.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time; a second dispatch queues instead of overlapping.
+concurrency:
+  group: mutation-testing
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    name: Stryker mutation testing
+    runs-on: ubuntu-latest
+    # Local baseline: ~31 min at concurrency 4.
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # progress-append-only: the default progress bar doesn't render in CI
+      # logs. Concurrency 4 matches ubuntu-latest's 4 vCPU; Stryker's default
+      # ran out of memory on a 15 GiB machine.
+      - name: Run mutation tests
+        run: >-
+          npm run test:mutation --
+          --reporters html,clear-text,json,progress-append-only
+          --concurrency 4
+
+      - name: Write job summary
+        if: always()
+        run: |
+          report=reports/mutation/mutation.json
+          if [ ! -f "$report" ]; then
+            echo "## Mutation testing" >> "$GITHUB_STEP_SUMMARY"
+            echo "No report: the run ended before Stryker wrote $report." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          jq -r '
+            def pct(n; d): if d == 0 then "n/a"
+              else ((n * 10000 / d | round) / 100 | tostring) + "%" end;
+            def tally: reduce .[] as $s (
+              {Killed: 0, Timeout: 0, Survived: 0, NoCoverage: 0, CompileError: 0, RuntimeError: 0, Ignored: 0};
+              .[$s] += 1);
+            ([.files[].mutants[].status] | tally) as $t
+            | ($t.Killed + $t.Timeout) as $detected
+            | ($detected + $t.Survived + $t.NoCoverage) as $valid
+            | ($detected + $t.Survived) as $covered
+            | [ .files | to_entries[]
+                | {file: .key, t: ([.value.mutants[].status] | tally)}
+                | .missed = (.t.Survived + .t.NoCoverage)
+                | select(.missed > 0) ]
+            | sort_by(-.missed, .file) as $rows
+            | "## Mutation testing (report-only)",
+              "",
+              "| Metric | Value |",
+              "| --- | ---: |",
+              "| Mutation score | \(pct($detected; $valid)) |",
+              "| Score on covered code | \(pct($detected; $covered)) |",
+              "| Killed | \($t.Killed) |",
+              "| Timeout | \($t.Timeout) |",
+              "| Survived | \($t.Survived) |",
+              "| No coverage | \($t.NoCoverage) |",
+              "| Compile / runtime errors | \($t.CompileError + $t.RuntimeError) |",
+              "| Ignored | \($t.Ignored) |",
+              "",
+              "### Files with the most undetected mutants (top 15)",
+              "",
+              "| File | Survived | No coverage | Score |",
+              "| --- | ---: | ---: | ---: |",
+              ($rows[:15][]
+                | "| `\(.file)` | \(.t.Survived) | \(.t.NoCoverage) | \(pct(.t.Killed + .t.Timeout; .t.Killed + .t.Timeout + .missed)) |"),
+              "",
+              "Full report: the `mutation-report` artifact (`mutation.html`)."
+          ' "$report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          if-no-files-found: warn
+          retention-days: 30

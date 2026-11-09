@@ -151,6 +151,15 @@ npm run test:watch
 npm run test:coverage
 ```
 
+### Mutation Tests (Stryker)
+
+```bash
+# Mutate src/lib and API routes, judged by the jest suite (stryker.config.mjs)
+npm run test:mutation
+```
+
+The HTML report is written to `reports/mutation/`. Mutation testing is report-only (no `break` threshold). Suppress an equivalent mutant inline with `// Stryker disable next-line <Mutator>: <reason>`. Never add whole-file exclusions to `mutate` to raise the score.
+
 ### End-to-End Tests (Playwright)
 
 ```bash

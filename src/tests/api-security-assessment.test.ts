@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @jest-environment @stryker-mutator/jest-runner/jest-env/node
  */
 import { POST } from "@/app/api/security-assessment/route";
 import * as Sentry from "@sentry/nextjs";

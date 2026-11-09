@@ -21,10 +21,14 @@ const customJestConfig = {
   // (.next-local/, .next-verify/) without swallowing a real .nextra/-style dir.
   // Agent worktrees under .claude/worktrees/ are full checkouts of other
   // branches; collecting their tests runs another branch's suite.
+  // Stryker's sandbox (.stryker-tmp/) is another copy of src/, tests included;
+  // reports/ is its output directory.
   testPathIgnorePatterns: [
     "<rootDir>/e2e/",
     "<rootDir>/\\.next(-[^/]+)?/",
     "<rootDir>/\\.claude/",
+    "<rootDir>/\\.stryker-tmp/",
+    "<rootDir>/reports/",
   ],
   // Coverage and its thresholds apply under --coverage (`npm run
   // test:coverage`, CI), so a single-file run reports only its tests.
