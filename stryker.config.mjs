@@ -25,6 +25,12 @@ const config = {
     // Type module: interfaces plus the literal tuples they derive from.
     // sdrTypes.ts stays in: it holds getDiscoveryQuestions and length limits.
     "!src/lib/security-assessment/quizTypes.ts",
+    // UI/copy modules, out of scope per spec #735 story 3 (not excluded to
+    // raise the score): Stripe Elements colour tokens, hero SVG contour
+    // geometry, and a lead-magnet label string.
+    "!src/lib/stripeAppearance.ts",
+    "!src/lib/contours.ts",
+    "!src/lib/lead-magnet-labels.ts",
     "!**/*.d.ts",
     "!**/*.{test,spec}.{ts,tsx}",
   ],
