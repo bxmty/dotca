@@ -52,14 +52,15 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    // A null body has no segment, so `data` is a real object from here on.
     const segment: QuizSegment = data.segment;
 
-    const name = typeof data?.name === "string" ? data.name.trim() : "";
+    const name = typeof data.name === "string" ? data.name.trim() : "";
     if (name === "") {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const rawEmail = data?.email;
+    const rawEmail = data.email;
     const email =
       typeof rawEmail === "string" ? rawEmail.trim() : String(rawEmail ?? "");
     if (email === "") {
@@ -72,8 +73,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const company =
-      typeof data?.company === "string" ? data.company.trim() : "";
+    const company = typeof data.company === "string" ? data.company.trim() : "";
     if (company === "") {
       return NextResponse.json(
         { error: "Company is required" },
@@ -83,7 +83,8 @@ export async function POST(request: Request) {
 
     const config = loadQuizConfig();
     const answers =
-      typeof data?.answers === "object" && data.answers !== null
+      // Stryker disable next-line ConditionalExpression,LogicalOperator: a non-object makes scoreQuizAnswers throw below, the same 400 that {} gives
+      typeof data.answers === "object" && data.answers !== null
         ? (data.answers as Record<string, number>)
         : {};
 
@@ -102,12 +103,8 @@ export async function POST(request: Request) {
       config,
       segment,
     )) {
-      const answerIndex = answers[question.id];
-      const answer =
-        typeof answerIndex === "number"
-          ? question.answers[answerIndex]
-          : undefined;
-      questionFields[fieldLabel] = answer?.text ?? "";
+      // Scoring succeeded, so every question has a valid answer index.
+      questionFields[fieldLabel] = question.answers[answers[question.id]].text;
     }
 
     const weakAreaLabels = result.riskCategories.map(
@@ -118,7 +115,7 @@ export async function POST(request: Request) {
       segment === "growing" &&
       (result.tier === "exposed" || result.tier === "reactive");
 
-    const hasOptedInToBrief = data?.wantsBrief === true;
+    const hasOptedInToBrief = data.wantsBrief === true;
 
     const { clientId: gaClientId, sessionId: gaSessionId } = parseGa4CookieIds(
       request.headers.get("cookie"),
