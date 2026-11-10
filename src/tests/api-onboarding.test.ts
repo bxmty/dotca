@@ -234,6 +234,122 @@ describe("Onboarding API Route", () => {
     expect(mockNotify).not.toHaveBeenCalled();
   });
 
+  it("lists every missing required field in the 400 message", async () => {
+    await POST(
+      buildRequest({
+        ...validOnboardingData,
+        industry: "",
+        city: undefined,
+        zipCode: "",
+      }),
+    );
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      {
+        success: false,
+        error: "Missing required fields: industry, city, zipCode",
+      },
+      { status: 400 },
+    );
+  });
+
+  it.each([null, "a string", ["an", "array"]])(
+    "returns 400 for the non-object JSON body %p",
+    async (body) => {
+      await POST(buildRequest(body));
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { success: false, error: "Request body must be a JSON object" },
+        { status: 400 },
+      );
+      expect(mockCreateLead).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["", "   "])(
+    "delivers a real submission whose honeypot field is %p",
+    async (website) => {
+      await POST(buildRequest({ ...validOnboardingData, website }));
+
+      expect(mockCreateLead).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["x a@b.ca", "a@b.ca x", "a@b.c@", 12345])(
+    "returns 400 for the invalid email %p",
+    async (contactEmail) => {
+      await POST(buildRequest({ ...validOnboardingData, contactEmail }));
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { success: false, error: "Please enter a valid email address" },
+        { status: 400 },
+      );
+      expect(mockCreateLead).not.toHaveBeenCalled();
+    },
+  );
+
+  it("counts only digits toward the phone number's length", async () => {
+    await POST(
+      buildRequest({ ...validOnboardingData, contactPhone: "(12) 3-4" }),
+    );
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      {
+        success: false,
+        error: "Please enter a valid phone number with at least 10 digits",
+      },
+      { status: 400 },
+    );
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
+  it("carries the optional discovery answers on the lead", async () => {
+    await POST(buildRequest(validOnboardingData));
+
+    expect(mockCreateLead.mock.calls[0][0].fields).toMatchObject({
+      "Current IT providers": "Current provider",
+      "Software used": "Software 1, Software 2",
+      "Pain points": "Some pain points",
+      Goals: "Some goals",
+    });
+  });
+
+  it("leaves the optional discovery answers blank when they are omitted", async () => {
+    await POST(
+      buildRequest({
+        ...validOnboardingData,
+        currentITProviders: undefined,
+        softwareUsed: undefined,
+        painPoints: undefined,
+        goals: undefined,
+      }),
+    );
+
+    expect(mockCreateLead.mock.calls[0][0].fields).toMatchObject({
+      "Current IT providers": "",
+      "Software used": "",
+      "Pain points": "",
+      Goals: "",
+    });
+  });
+
+  it("returns 500 when delivery throws unexpectedly", async () => {
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockCreateLead.mockImplementation(() => {
+      throw new Error("boom");
+    });
+
+    await POST(buildRequest(validOnboardingData));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { success: false, message: "Failed to process onboarding data" },
+      { status: 500 },
+    );
+    consoleError.mockRestore();
+  });
+
   it("returns 400 for an invalid email", async () => {
     await POST(
       buildRequest({ ...validOnboardingData, contactEmail: "not-an-email" }),

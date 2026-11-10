@@ -10,6 +10,7 @@ import { verifyLeadMagnetToken } from "@/lib/lead-magnet-token";
 import { formatUnavailableMessage } from "@/lib/service-unavailable";
 
 // Every request checks a time-limited token, so never cache or prerender.
+// Stryker disable next-line StringLiteral: Next.js route-segment config, not read under jest
 export const dynamic = "force-dynamic";
 
 const NO_STORE = "private, no-store";
@@ -52,7 +53,9 @@ function logDownload(slug: string): void {
 
 export function GET(request: Request): Response {
   const { searchParams } = new URL(request.url);
+  // Stryker disable next-line StringLiteral: any fallback that fails the slug pattern gives the same 404
   const slug = searchParams.get("slug") ?? "";
+  // Stryker disable next-line StringLiteral: any malformed fallback gives the same expired-link page
   const token = searchParams.get("token") ?? "";
 
   const magnet = getLeadMagnetBySlug(slug);

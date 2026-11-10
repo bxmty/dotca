@@ -101,8 +101,10 @@ export function getAllLeadMagnets(): LeadMagnet[] {
     return [];
   }
 
-  return files
-    .filter((file) => file.endsWith(".md"))
+  // Stryker disable next-line MethodExpression,StringLiteral: a non-.md name keeps its dot through basename and fails the slug pattern, and a bare name (assets/) has no .md file to read
+  const markdownFiles = files.filter((file) => file.endsWith(".md"));
+
+  return markdownFiles
     .map((file) => getLeadMagnetBySlug(path.basename(file, ".md")))
     .filter((magnet): magnet is LeadMagnet => magnet !== null)
     .sort(

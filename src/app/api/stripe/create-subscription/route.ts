@@ -5,17 +5,18 @@ import {
   resolvePriceId,
   MissingStripePriceError,
 } from "@/lib/stripe";
+import { isEmailAddress } from "@/lib/formValidation";
 import { validateOrder } from "@/lib/pricing";
 
+// Stryker disable next-line StringLiteral: Next.js route-segment config, not read under jest
 export const runtime = "nodejs";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // GA cookies are absent for ad-blocked or consent-declined visitors; treat
 // them as optional and never let a non-string or empty value reach Stripe
 // metadata, which only accepts strings.
 function parseOptionalMetadataString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || undefined;
 }
 
 interface CustomerInput {
@@ -55,7 +56,7 @@ function parseCustomer(value: unknown): CustomerInput | { error: string } {
   if (!customer.name) {
     return { error: "Name is required" };
   }
-  if (!EMAIL_REGEX.test(customer.email)) {
+  if (!isEmailAddress(customer.email)) {
     return { error: "Please enter a valid email address" };
   }
   return customer;
@@ -84,23 +85,24 @@ export async function POST(request: Request) {
   }
   const { order } = result;
 
-  const customer = parseCustomer(body?.customer);
+  // A null body has no valid order, so `body` is a real object from here on.
+  const customer = parseCustomer(body.customer);
   if ("error" in customer) {
     return NextResponse.json({ error: customer.error }, { status: 400 });
   }
 
+  // An empty key is dropped where it is used: the Stripe calls below only
+  // send a truthy key.
   const idempotencyKey =
-    typeof body?.idempotencyKey === "string" &&
-    body.idempotencyKey.length > 0 &&
-    body.idempotencyKey.length <= 200
+    typeof body.idempotencyKey === "string" && body.idempotencyKey.length <= 200
       ? body.idempotencyKey
       : undefined;
 
-  const gaClientId = parseOptionalMetadataString(body?.ga_client_id);
-  const gaSessionId = parseOptionalMetadataString(body?.ga_session_id);
+  const gaClientId = parseOptionalMetadataString(body.ga_client_id);
+  const gaSessionId = parseOptionalMetadataString(body.ga_session_id);
   // Only an explicit true is consent (never inferred); the webhook reads
   // wants_brief back off the paid invoice to subscribe them to the brief.
-  const wantsBrief = body?.wantsBrief === true;
+  const wantsBrief = body.wantsBrief === true;
 
   try {
     const priceId = await resolvePriceId({

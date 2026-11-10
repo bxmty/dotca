@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     }
 
     // No download for an asset that doesn't exist or isn't live yet.
+    // Stryker disable next-line StringLiteral: any fallback that fails the slug pattern gives the same 404
     const magnet = getLeadMagnetBySlug(typeof slug === "string" ? slug : "");
     if (!magnet) {
       return NextResponse.json(

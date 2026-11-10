@@ -213,6 +213,102 @@ describe("POST /api/stripe/create-subscription", () => {
     expect(params.metadata).not.toHaveProperty("ga_session_id");
   });
 
+  it("trims GA identifiers before they reach Stripe metadata", async () => {
+    await POST(
+      buildRequest({
+        ...validBody,
+        ga_client_id: " GA1.2 ",
+        ga_session_id: "\t1700000000 ",
+      }),
+    );
+
+    const [params] = mockSubscriptionsCreate.mock.calls[0];
+    expect(params.metadata).toMatchObject({
+      ga_client_id: "GA1.2",
+      ga_session_id: "1700000000",
+    });
+  });
+
+  it("sends omitted optional customer fields to Stripe as empty strings", async () => {
+    await POST(
+      buildRequest({
+        ...validBody,
+        customer: { name: "Test User", email: "test@example.com" },
+      }),
+    );
+
+    const [params] = mockCustomersCreate.mock.calls[0];
+    expect(params).toMatchObject({
+      phone: undefined,
+      address: { line1: "", city: "", state: "", postal_code: "" },
+      metadata: { company: "" },
+    });
+  });
+
+  describe("idempotency key", () => {
+    async function createWithKey(idempotencyKey: unknown) {
+      await POST(buildRequest({ ...validBody, idempotencyKey }));
+      return [
+        mockCustomersCreate.mock.calls[0][1],
+        mockSubscriptionsCreate.mock.calls[0][1],
+      ];
+    }
+
+    it("accepts a key of exactly 200 characters", async () => {
+      const key = "k".repeat(200);
+
+      expect(await createWithKey(key)).toEqual([
+        { idempotencyKey: `${key}-customer` },
+        { idempotencyKey: `${key}-subscription` },
+      ]);
+    });
+
+    it.each([
+      ["a key of 201 characters", "k".repeat(201)],
+      ["a non-string key", 12345],
+      ["an array key", ["key-1"]],
+      ["an empty key", ""],
+      ["a missing key", undefined],
+    ])("sends no idempotency key for %s", async (_label, key) => {
+      expect(await createWithKey(key)).toEqual([{}, {}]);
+    });
+  });
+
+  it("rejects a JSON null body", async () => {
+    await POST(buildRequest(null));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: expect.any(String) },
+      { status: 400 },
+    );
+    expect(mockCustomersCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a null customer", async () => {
+    await POST(buildRequest({ ...validBody, customer: null }));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Customer information is required" },
+      { status: 400 },
+    );
+    expect(mockCustomersCreate).not.toHaveBeenCalled();
+  });
+
+  it.each(["x a@b.ca", "a@b.ca x", "a@b.c@"])(
+    "rejects the customer email %p",
+    async (email) => {
+      await POST(
+        buildRequest({ ...validBody, customer: { ...validCustomer, email } }),
+      );
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { error: "Please enter a valid email address" },
+        { status: 400 },
+      );
+      expect(mockCustomersCreate).not.toHaveBeenCalled();
+    },
+  );
+
   it("never accepts a client-supplied amount or price", async () => {
     await POST(
       buildRequest({

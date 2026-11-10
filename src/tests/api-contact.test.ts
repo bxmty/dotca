@@ -120,6 +120,146 @@ describe("Contact API Route", () => {
     expect(mockNotify).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["no name at all", { email: "test@example.com", phone: "123-456-7890" }],
+    [
+      "only a last name",
+      { lastName: "Tester", email: "test@example.com", phone: "123-456-7890" },
+    ],
+  ])("returns 400 with %s", async (_label, body) => {
+    await POST(buildRequest(body));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Name is required" },
+      { status: 400 },
+    );
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ firstName: "Dana", lastName: "Tester" }, "Dana Tester"],
+    [{ firstName: "Dana" }, "Dana"],
+    [
+      { name: "Dr. Dana Tester", firstName: "D", lastName: "T" },
+      "Dr. Dana Tester",
+    ],
+  ])("names the lead from %p as %p", async (nameFields, expectedName) => {
+    await POST(
+      buildRequest({
+        ...nameFields,
+        email: "test@example.com",
+        phone: "123-456-7890",
+      }),
+    );
+
+    const [lead] = mockCreateLead.mock.calls[0];
+    expect(lead.name).toBe(expectedName);
+    expect(lead.fields.Name).toBe(expectedName);
+  });
+
+  it("returns 400 if phone is missing", async () => {
+    await POST(buildRequest({ name: "Test User", email: "test@example.com" }));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Phone number is required" },
+      { status: 400 },
+    );
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
+  it.each(["not-an-email", "x a@b.ca", "a@b.ca x"])(
+    "returns 400 for the invalid email %p",
+    async (email) => {
+      await POST(buildRequest({ ...validBody, email }));
+
+      expect(NextResponse.json).toHaveBeenCalledWith(
+        { error: "Please enter a valid email address" },
+        { status: 400 },
+      );
+      expect(mockCreateLead).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns 500 when delivery throws unexpectedly", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockCreateLead.mockImplementation(() => {
+      throw new Error("boom");
+    });
+
+    await POST(buildRequest(validBody));
+
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: "Failed to process contact form" },
+      { status: 500 },
+    );
+    jest.restoreAllMocks();
+  });
+
+  it("carries every submitted field on the lead", async () => {
+    await POST(
+      buildRequest({
+        ...validBody,
+        company: "Acme",
+        address: "1 Main St",
+        city: "Hamilton",
+        state: "ON",
+        zip: "L8P 1A1",
+        plan: "Core",
+        billingCycle: "annual",
+        employeeCount: 12,
+      }),
+    );
+
+    const [lead] = mockCreateLead.mock.calls[0];
+    expect(lead.fields).toEqual({
+      Name: "Test User",
+      Email: "test@example.com",
+      Phone: "+11234567890",
+      Company: "Acme",
+      Address: "1 Main St",
+      City: "Hamilton",
+      "Province/State": "ON",
+      "Postal code": "L8P 1A1",
+      Plan: "Core",
+      "Billing cycle": "annual",
+      "Employee count": "12",
+      "Monthly brief": "No",
+    });
+  });
+
+  it("leaves optional fields blank when they are missing or null", async () => {
+    await POST(
+      buildRequest({ ...validBody, company: null, address: null, plan: null }),
+    );
+
+    const [lead] = mockCreateLead.mock.calls[0];
+    expect(lead.company).toBe("");
+    expect(lead.fields).toEqual({
+      Name: "Test User",
+      Email: "test@example.com",
+      Phone: "+11234567890",
+      Company: "",
+      Address: "",
+      City: "",
+      "Province/State": "",
+      "Postal code": "",
+      Plan: "",
+      "Billing cycle": "",
+      "Employee count": "",
+      "Monthly brief": "No",
+    });
+  });
+
+  it.each(["", "   "])(
+    "delivers a real submission whose honeypot field is %p",
+    async (website) => {
+      await POST(buildRequest({ ...validBody, website }));
+
+      expect(mockCreateLead).toHaveBeenCalledTimes(1);
+      expect(NextResponse.json).toHaveBeenCalledWith({ success: true });
+    },
+  );
+
   it("returns 400 if phone is not a string", async () => {
     await POST(
       buildRequest({
