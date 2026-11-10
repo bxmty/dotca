@@ -277,6 +277,77 @@ describe("POST /api/stripe/webhook", () => {
     expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
   });
 
+  it("keeps a non-CAD invoice's currency on the lead and the purchase event", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "invoice.payment_succeeded",
+      data: { object: { ...paidInvoice, currency: "usd" } },
+    });
+
+    await POST(buildRequest());
+
+    expect(mockCreateLead.mock.calls[0][0].fields["Amount paid"]).toBe(
+      "$495.00 USD",
+    );
+    expect(mockSendConversionEvent.mock.calls[0][0].params.currency).toBe(
+      "USD",
+    );
+  });
+
+  it("defaults an invoice with no currency to CAD", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "invoice.payment_succeeded",
+      data: { object: { ...paidInvoice, currency: undefined } },
+    });
+
+    await POST(buildRequest());
+
+    expect(mockCreateLead.mock.calls[0][0].fields["Amount paid"]).toBe(
+      "$495.00 CAD",
+    );
+    expect(mockSendConversionEvent.mock.calls[0][0].params.currency).toBe(
+      "CAD",
+    );
+  });
+
+  it("fills blanks for an invoice with no customer details, metadata or id", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "invoice.payment_succeeded",
+      data: {
+        object: { billing_reason: "subscription_create", amount_paid: 0 },
+      },
+    });
+
+    await POST(buildRequest());
+
+    expect(mockCreateLead.mock.calls[0][0]).toEqual({
+      formType: "Paid signup",
+      name: "",
+      email: "",
+      phone: "",
+      company: "",
+      opportunityAmountDollars: 0,
+      hasOptedInToBrief: false,
+      fields: {
+        Name: "",
+        Email: "",
+        Phone: "",
+        Company: "",
+        Plan: "",
+        "Billing cycle": "",
+        "Employee count": "",
+        "Amount paid": "$0.00 CAD",
+        Invoice: "",
+        "Monthly brief": "No",
+      },
+    });
+    expect(mockSendConversionEvent.mock.calls[0][0].params).toEqual({
+      transaction_id: "",
+      value: 0,
+      currency: "CAD",
+    });
+    expect(NextResponse.json).toHaveBeenCalledWith({ received: true });
+  });
+
   it("ignores renewal invoices", async () => {
     mockConstructEvent.mockReturnValueOnce({
       type: "invoice.payment_succeeded",

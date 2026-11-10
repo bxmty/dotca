@@ -10,9 +10,12 @@ import { verifyLeadMagnetToken } from "@/lib/lead-magnet-token";
 import { formatUnavailableMessage } from "@/lib/service-unavailable";
 
 // Every request checks a time-limited token, so never cache or prerender.
+// Stryker disable next-line StringLiteral: Next.js route-segment config, not read under jest
 export const dynamic = "force-dynamic";
 
 const NO_STORE = "private, no-store";
+// Stryker disable next-line StringLiteral: any value that fails the slug pattern or the token shape answers like an absent one
+const ABSENT = "";
 
 function buildLinkExpiredResponse(slug: string): Response {
   // Reached by clicking a link in an email, so answer with a page a person can
@@ -52,8 +55,8 @@ function logDownload(slug: string): void {
 
 export function GET(request: Request): Response {
   const { searchParams } = new URL(request.url);
-  const slug = searchParams.get("slug") ?? "";
-  const token = searchParams.get("token") ?? "";
+  const slug = searchParams.get("slug") ?? ABSENT;
+  const token = searchParams.get("token") ?? ABSENT;
 
   const magnet = getLeadMagnetBySlug(slug);
   if (!magnet) {

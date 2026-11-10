@@ -49,6 +49,21 @@ describe("Geocode API Route", () => {
     expect(mockNextResponseJson).toHaveBeenCalledWith({ results: [] });
   });
 
+  it("looks up a query of exactly 3 characters", async () => {
+    await GET(buildRequest("/api/geocode?q=tor"));
+
+    expect(mockSearchAddresses).toHaveBeenCalledWith("tor", {
+      countryCodes: undefined,
+    });
+  });
+
+  it("ignores surrounding whitespace when measuring the query", async () => {
+    await GET(buildRequest("/api/geocode?q=++to++"));
+
+    expect(mockSearchAddresses).not.toHaveBeenCalled();
+    expect(mockNextResponseJson).toHaveBeenCalledWith({ results: [] });
+  });
+
   it("calls searchAddresses with the query and passes through results", async () => {
     const results = [{ id: "1", displayName: "123 Main St" }];
     mockSearchAddresses.mockResolvedValue(results);
@@ -83,6 +98,53 @@ describe("Geocode API Route", () => {
       { error: "Too many address lookups. Please slow down." },
       { status: 429 },
     );
+  });
+
+  describe("rate limit window", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    async function exhaustLimit(ip: string) {
+      for (let i = 0; i < 30; i++) {
+        await GET(buildRequest(`/api/geocode?q=query${i}`, ip));
+      }
+      mockSearchAddresses.mockClear();
+    }
+
+    it("still limits request 31 just before a minute has passed", async () => {
+      await exhaustLimit("198.51.100.10");
+
+      jest.advanceTimersByTime(60 * 1000 - 1);
+      await GET(buildRequest("/api/geocode?q=one+more", "198.51.100.10"));
+
+      expect(mockSearchAddresses).not.toHaveBeenCalled();
+    });
+
+    it("allows request 31 one minute later", async () => {
+      await exhaustLimit("198.51.100.11");
+
+      jest.advanceTimersByTime(60 * 1000);
+      await GET(buildRequest("/api/geocode?q=one+more", "198.51.100.11"));
+
+      expect(mockSearchAddresses).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("forgets tracked IPs when the limiter is reset", async () => {
+    for (let i = 0; i < 30; i++) {
+      await GET(buildRequest(`/api/geocode?q=query${i}`, "198.51.100.12"));
+    }
+    mockSearchAddresses.mockClear();
+
+    resetGeocodeRateLimits();
+    await GET(buildRequest("/api/geocode?q=one+more", "198.51.100.12"));
+
+    expect(mockSearchAddresses).toHaveBeenCalledTimes(1);
   });
 
   it("tracks IPs independently for rate limiting", async () => {

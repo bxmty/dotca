@@ -5,12 +5,17 @@ describe("isEmailAddress", () => {
     expect(isEmailAddress(value)).toBe(true);
   });
 
-  it.each(["", "dana@", "dana@company", "dana company@x.ca"])(
-    "rejects %p",
-    (value) => {
-      expect(isEmailAddress(value)).toBe(false);
-    },
-  );
+  it.each([
+    "",
+    "dana@",
+    "dana@company",
+    "dana company@x.ca",
+    "x a@b.ca",
+    "a@b.ca x",
+    "a@b.c@",
+  ])("rejects %p", (value) => {
+    expect(isEmailAddress(value)).toBe(false);
+  });
 });
 
 describe("omitFieldErrors", () => {

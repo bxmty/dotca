@@ -43,6 +43,15 @@ describe("SDR link token", () => {
     });
   });
 
+  it("accepts a name of exactly 100 characters", () => {
+    const name = "x".repeat(100);
+
+    expect(verifySdrToken(signSdrToken({ name }))).toEqual({
+      isValid: true,
+      sdrName: name,
+    });
+  });
+
   it("normalizes whitespace in the name", () => {
     const token = signSdrToken({ name: "  Alex   Doe " });
 

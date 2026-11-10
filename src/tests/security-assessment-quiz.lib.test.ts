@@ -229,6 +229,35 @@ describe("scoreQuizAnswers", () => {
     ).toThrow(/Missing or invalid answer/);
   });
 
+  it("throws when an answer index is a numeric string", () => {
+    const answers = {
+      ...buildAnswers(config, "solo", () => 0),
+      password_mfa: "1" as unknown as number,
+    };
+    expect(() =>
+      scoreQuizAnswers({ config, segment: "solo", answers }),
+    ).toThrow(/Missing or invalid answer for question "password_mfa"/);
+  });
+
+  it.each([
+    [7, "reactive"],
+    [6, "exposed"],
+  ] as const)(
+    "puts a solo score of %i in the %s tier (reactive starts at 7)",
+    (score, tier) => {
+      // One best answer (3) plus second-best answers (2 each) up to the score.
+      const answers = {
+        ...buildAnswers(config, "solo", (count) => count - 1),
+        password_mfa: 0,
+        phishing: 1,
+        backups: score === 7 ? 1 : 2,
+      };
+      const result = scoreQuizAnswers({ config, segment: "solo", answers });
+      expect(result.score).toBe(score);
+      expect(result.tier).toBe(tier);
+    },
+  );
+
   it.each([
     ["solo", 12, 18, "managed"],
     ["small_team", 22, 33, "managed"],

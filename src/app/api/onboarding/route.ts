@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isEmailAddress } from "@/lib/formValidation";
 import { formatE164Phone } from "@/lib/phone";
 import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
@@ -39,9 +40,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Not isRecord: its type guard would turn every field below into unknown.
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      return NextResponse.json(
+        { success: false, error: "Request body must be a JSON object" },
+        { status: 400 },
+      );
+    }
+
     // Honeypot: the "website" field is hidden from humans. A filled value
     // means a bot — return success and send nothing.
-    if (typeof data?.website === "string" && data.website.trim() !== "") {
+    if (typeof data.website === "string" && data.website.trim() !== "") {
       return NextResponse.json({ success: true });
     }
 
@@ -81,9 +90,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.contactEmail)) {
+    if (
+      typeof data.contactEmail !== "string" ||
+      !isEmailAddress(data.contactEmail)
+    ) {
       return NextResponse.json(
         { success: false, error: "Please enter a valid email address" },
         { status: 400 },

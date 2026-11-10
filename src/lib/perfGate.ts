@@ -50,8 +50,9 @@ function parseOpaqueColor(cssColor: string): OpaqueColor | undefined {
   if (!match) {
     return undefined;
   }
-  const alphaText = match[4];
-  if (alphaText !== undefined && parseFloat(alphaText) === 0) {
+  // rgb() has no alpha channel, so it is opaque.
+  const alpha = match[4] === undefined ? 1 : parseFloat(match[4]);
+  if (alpha === 0) {
     return undefined;
   }
   return {
@@ -64,6 +65,7 @@ function parseOpaqueColor(cssColor: string): OpaqueColor | undefined {
 function calculateRelativeLuminance({ red, green, blue }: OpaqueColor): number {
   const toLinear = (channel: number) => {
     const scaled = channel / 255;
+    // Stryker disable next-line ConditionalExpression,EqualityOperator: the two halves of the sRGB curve meet here, so which one handles a near-black channel cannot move a colour across the 0.2 ceiling
     return scaled <= 0.03928
       ? scaled / 12.92
       : Math.pow((scaled + 0.055) / 1.055, 2.4);
@@ -86,6 +88,7 @@ export function isDarkRender(probe: RenderProbe): boolean {
   if (!paintedColor) {
     return false;
   }
+  // Stryker disable next-line EqualityOperator: `<=` is equivalent because no colour with integer channels has a luminance of exactly 0.2 (the `>=` variant is killed by the boundary tests)
   return calculateRelativeLuminance(paintedColor) < DARK_LUMINANCE_CEILING;
 }
 
@@ -526,7 +529,6 @@ function buildThresholdCheck({
     direction === "atMost"
       ? afterValue <= limitValue
       : afterValue >= limitValue;
-  const hasValues = Number.isFinite(afterValue) && Number.isFinite(limitValue);
   const limitSymbol = direction === "atMost" ? "≤" : "≥";
   return {
     configurationKey,
@@ -536,7 +538,8 @@ function buildThresholdCheck({
     limit: Number.isFinite(limitValue)
       ? `${limitSymbol} ${formatValue(limitValue, valueFormat)}`
       : "missing before",
-    status: hasValues && isWithinLimit ? "pass" : "fail",
+    // A NaN after or limit value fails: every comparison with NaN is false.
+    status: isWithinLimit ? "pass" : "fail",
   };
 }
 
@@ -881,6 +884,7 @@ function findPassCountWarnings(
     const underSampledKeys = perfReport.results
       .filter(
         (result) =>
+          // Stryker disable next-line ArrayDeclaration: any fallback shorter than five passes reads as under-sampled
           (result.runs ?? []).length < EXPECTED_PASSES_PER_CONFIGURATION,
       )
       .map((result) => result.key);

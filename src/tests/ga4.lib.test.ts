@@ -50,6 +50,45 @@ describe("parseGa4CookieIds", () => {
     });
   });
 
+  it("ignores a pair with no '=' even when it looks like the _ga cookie", () => {
+    expect(parseGa4CookieIds("_ga.", measurementId)).toEqual({});
+  });
+
+  it.each([
+    ["two segments", "_ga=111.222", "111.222"],
+    ["three segments", "_ga=GA1.111.222", "111.222"],
+    ["five segments", "_ga=GA1.1.9.111.222", "111.222"],
+    ["padding around the value", "_ga= GA1.1.111.222 ; other=1", "111.222"],
+  ])(
+    "reads client_id from a _ga cookie with %s",
+    (_label, cookie, clientId) => {
+      expect(parseGa4CookieIds(cookie, measurementId)).toEqual({ clientId });
+    },
+  );
+
+  it.each([
+    ["three segments", "_ga_ABC123XYZ=GS1.1.333", "333"],
+    ["padding around the value", "_ga_ABC123XYZ= GS1.1.333 ", "333"],
+  ])(
+    "reads session_id from a session cookie with %s",
+    (_label, cookie, sessionId) => {
+      expect(parseGa4CookieIds(cookie, measurementId)).toEqual({ sessionId });
+    },
+  );
+
+  it.each([
+    ["two segments", "_ga_ABC123XYZ=GS1.1"],
+    ["an empty third segment", "_ga_ABC123XYZ=GS1.1..4"],
+  ])("finds no session_id in a session cookie with %s", (_label, cookie) => {
+    expect(parseGa4CookieIds(cookie, measurementId)).toEqual({});
+  });
+
+  it("strips only a leading G- from the measurement ID", () => {
+    expect(
+      parseGa4CookieIds("_ga_AG-TEST=GS1.1.333.1", "AG-TEST").sessionId,
+    ).toBe("333");
+  });
+
   it("skips session_id resolution when no measurement ID is available", () => {
     const cookieHeader = "_ga_ABC123XYZ=GS1.1.333333333.4.1.444444444.0.0.0";
 
@@ -84,6 +123,14 @@ describe("deriveGa4FallbackClientId", () => {
     );
   });
 
+  it("keeps the client ID issued for a known seed", () => {
+    // Golden value: changing the hash would re-key every retried webhook.
+    expect(deriveGa4FallbackClientId("in_1PqR5tExample")).toBe(
+      "fallback.3523969905",
+    );
+    expect(deriveGa4FallbackClientId("")).toBe("fallback.0");
+  });
+
   it("differs across seeds", () => {
     expect(deriveGa4FallbackClientId("invoice_123")).not.toBe(
       deriveGa4FallbackClientId("invoice_456"),
@@ -116,6 +163,7 @@ describe("sendConversionEvent", () => {
 
   it("is a no-op that does not throw or call fetch when the API secret is unset in development", async () => {
     process.env.NEXT_PUBLIC_ENVIRONMENT = "development";
+    process.env.NEXT_PUBLIC_DEV_GA_ID = "G-DEVID";
     delete process.env.GA4_MP_API_SECRET;
 
     await expect(
@@ -159,6 +207,98 @@ describe("sendConversionEvent", () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining("client_id missing"),
     );
+  });
+
+  it("posts the event as JSON", async () => {
+    await sendConversionEvent({
+      name: "purchase",
+      clientId: "111.222",
+      params: { value: 495 },
+    });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(init.body)).toEqual({
+      client_id: "111.222",
+      events: [{ name: "purchase", params: { value: 495 } }],
+    });
+  });
+
+  it("raises nothing when the debug endpoint returns no validation messages", async () => {
+    await sendConversionEvent({ name: "purchase", clientId: "111.222" });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not read the response body in production", async () => {
+    process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
+    process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "G-PRODID";
+    const readJson = jest.fn(() =>
+      Promise.resolve({ validationMessages: [{ description: "bad param" }] }),
+    );
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: readJson });
+
+    await sendConversionEvent({ name: "purchase", clientId: "111.222" });
+
+    expect(readJson).not.toHaveBeenCalled();
+    expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
+
+  describe("request timeout", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    /** A fetch that never answers, and rejects only when its signal aborts. */
+    function mockHungFetch() {
+      (global.fetch as jest.Mock).mockImplementation(
+        (_url: string, { signal }: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener("abort", () =>
+              reject(new Error("This operation was aborted")),
+            );
+          }),
+      );
+    }
+
+    it("aborts a hung request after 5 seconds and reports it", async () => {
+      mockHungFetch();
+
+      const sending = sendConversionEvent({
+        name: "purchase",
+        clientId: "111.222",
+      });
+      await jest.advanceTimersByTimeAsync(4999);
+      expect(mockCaptureMessage).not.toHaveBeenCalled();
+
+      await jest.advanceTimersByTimeAsync(1);
+      await sending;
+
+      expect(mockCaptureMessage).toHaveBeenCalledWith(
+        'GA4 MP request threw (event "purchase"): This operation was aborted',
+        "error",
+      );
+    });
+
+    it("leaves no timer pending after a response", async () => {
+      await sendConversionEvent({ name: "purchase", clientId: "111.222" });
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it("leaves no timer pending after a network failure", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("offline"));
+
+      await sendConversionEvent({ name: "purchase", clientId: "111.222" });
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
   });
 
   it("targets the MP debug endpoint on staging", async () => {

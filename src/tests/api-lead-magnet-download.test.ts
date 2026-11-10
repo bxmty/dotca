@@ -61,6 +61,7 @@ describe("GET /api/lead-magnet/download", () => {
       'attachment; filename="test-fixture-guide.pdf"',
     );
     expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex");
     const body = Buffer.from(await response.arrayBuffer());
     expect(body.equals(FIXTURE_PDF)).toBe(true);
     expect(body.subarray(0, 5).toString()).toBe("%PDF-");
@@ -130,6 +131,7 @@ describe("GET /api/lead-magnet/download", () => {
     const response = await download({ slug, token });
 
     expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Not found" });
     expect(logSpy).not.toHaveBeenCalled();
   });
 
@@ -151,6 +153,9 @@ describe("GET /api/lead-magnet/download", () => {
       const response = await download({ slug: SLUG, token });
 
       expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: "Failed to load the download",
+      });
       expect(Sentry.captureException).toHaveBeenCalled();
       expect(logSpy).not.toHaveBeenCalled();
     } finally {

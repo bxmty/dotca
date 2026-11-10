@@ -101,13 +101,19 @@ export function getAllLeadMagnets(): LeadMagnet[] {
     return [];
   }
 
-  return files
-    .filter((file) => file.endsWith(".md"))
-    .map((file) => getLeadMagnetBySlug(path.basename(file, ".md")))
-    .filter((magnet): magnet is LeadMagnet => magnet !== null)
-    .sort(
-      (a, b) =>
-        new Date(b.frontmatter.date).getTime() -
-        new Date(a.frontmatter.date).getTime(),
-    );
+  // Stryker disable next-line StringLiteral: with no suffix every name passes, and a non-.md name keeps its dot through basename and fails the slug pattern (a bare name, assets/, has no .md file to read)
+  const isMarkdownFile = (file: string) => file.endsWith(".md");
+
+  return (
+    files
+      // Stryker disable next-line MethodExpression: without the filter, non-.md names fail the slug pattern as above
+      .filter(isMarkdownFile)
+      .map((file) => getLeadMagnetBySlug(path.basename(file, ".md")))
+      .filter((magnet): magnet is LeadMagnet => magnet !== null)
+      .sort(
+        (a, b) =>
+          new Date(b.frontmatter.date).getTime() -
+          new Date(a.frontmatter.date).getTime(),
+      )
+  );
 }
