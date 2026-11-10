@@ -76,6 +76,76 @@ describe("createLead", () => {
     );
   });
 
+  it("asks Syncro for JSON", async () => {
+    const fetchMock = mockFetchResponse({ status: 200, body: {} });
+
+    await createLead(contactLead);
+
+    expect(fetchMock.mock.calls[0][1].headers).toEqual({
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: "Bearer test-syncro-key",
+    });
+  });
+
+  it("trims whitespace around the subdomain and API key", async () => {
+    process.env.SYNCRO_SUBDOMAIN = " boximity\n";
+    process.env.SYNCRO_API_KEY = "\ttest-syncro-key ";
+    const fetchMock = mockFetchResponse({ status: 200, body: {} });
+
+    await createLead(contactLead);
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://boximity.syncromsp.com/api/v1/leads",
+    );
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer test-syncro-key",
+    );
+  });
+
+  it("reports success without a lead id when Syncro returns none", async () => {
+    mockFetchResponse({ status: 200, body: {} });
+
+    expect(await createLead(contactLead)).toStrictEqual({ ok: true });
+  });
+
+  it.each([
+    ["Onboarding", "Website onboarding form — Analytical Engines"],
+    ["Lead magnet", "Website lead magnet — Analytical Engines"],
+    ["Security assessment", "Website security assessment — Analytical Engines"],
+  ] as const)(
+    "titles a %s lead with its own subject prefix",
+    async (formType, subject) => {
+      const fetchMock = mockFetchResponse({ status: 200, body: {} });
+
+      await createLead({ ...contactLead, formType });
+
+      expect(sentBody(fetchMock).ticket_subject).toBe(subject);
+    },
+  );
+
+  it.each([
+    ["a single-word name", "Ada", { first_name: "Ada", last_name: "" }],
+    ["a blank name", "   ", { first_name: "", last_name: "" }],
+  ])("sends both name fields for %s", async (_label, name, nameFields) => {
+    const fetchMock = mockFetchResponse({ status: 200, body: {} });
+
+    const result = await createLead({ ...contactLead, name });
+
+    expect(result.ok).toBe(true);
+    expect(sentBody(fetchMock)).toMatchObject(nameFields);
+  });
+
+  it("sends no amount for a lead that isn't a paid signup", async () => {
+    const fetchMock = mockFetchResponse({ status: 200, body: {} });
+
+    await createLead(contactLead);
+
+    expect(sentBody(fetchMock)).not.toHaveProperty(
+      "opportunity_amount_dollars",
+    );
+  });
+
   it("maps the contact onto Syncro's lead fields", async () => {
     const fetchMock = mockFetchResponse({ status: 200, body: { lead: {} } });
 
@@ -211,6 +281,68 @@ describe("createLead", () => {
       reason: "rejected",
       status: 422,
       message: "Email is invalid",
+    });
+  });
+
+  it("reports a 4xx with an HTML body as a rejection, without throwing", async () => {
+    // json() rejects, as it does for an HTML error page
+    mockFetchResponse({ status: 404 });
+
+    expect(await createLead(contactLead)).toStrictEqual({
+      ok: false,
+      reason: "rejected",
+      status: 404,
+    });
+  });
+
+  it.each([
+    ["a JSON null body", null],
+    ["a JSON string body", "Not allowed"],
+    ["a body with no message", { detail: "nope" }],
+  ])(
+    "reports a 4xx with %s as a rejection without a message",
+    async (_label, body) => {
+      mockFetchResponse({ status: 400, body });
+
+      expect(await createLead(contactLead)).toStrictEqual({
+        ok: false,
+        reason: "rejected",
+        status: 400,
+      });
+    },
+  );
+
+  it.each([
+    [
+      "a list of messages",
+      { message: ["Email is invalid", "Name is blank"] },
+      "Email is invalid; Name is blank",
+    ],
+    ["an error string", { error: "Unauthorized" }, "Unauthorized"],
+    [
+      "an errors object",
+      { errors: { email: ["is invalid"] } },
+      '{"email":["is invalid"]}',
+    ],
+  ])("reads %s from a rejection body", async (_label, body, message) => {
+    mockFetchResponse({ status: 422, body });
+
+    expect(await createLead(contactLead)).toStrictEqual({
+      ok: false,
+      reason: "rejected",
+      status: 422,
+      message,
+    });
+  });
+
+  it("reports exactly HTTP 500 as unreachable, not a rejection", async () => {
+    mockFetchResponse({ status: 500 });
+
+    expect(await createLead(contactLead)).toEqual({
+      ok: false,
+      reason: "unreachable",
+      code: "server_error",
+      status: 500,
     });
   });
 

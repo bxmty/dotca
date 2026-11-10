@@ -49,6 +49,40 @@ describe("sendWebmasterNotification", () => {
     expect(text).toContain("Email: test@example.com");
   });
 
+  it("lays the fields out as text lines and an HTML table", async () => {
+    await sendWebmasterNotification({
+      formType: "Contact",
+      submitterName: "Test User",
+      fields: { Name: "Test User", Email: "test@example.com", Company: "" },
+    });
+
+    const { html, text } = mockSend.mock.calls[0][0];
+    expect(text).toBe("Name: Test User\nEmail: test@example.com");
+    expect(html).toBe(
+      [
+        "<h2>New Contact submission</h2>",
+        '<table cellpadding="6" style="border-collapse:collapse">',
+        '<tr><td style="border:1px solid #ddd"><strong>Name</strong></td><td style="border:1px solid #ddd">Test User</td></tr>',
+        '<tr><td style="border:1px solid #ddd"><strong>Email</strong></td><td style="border:1px solid #ddd">test@example.com</td></tr>',
+        "</table>",
+      ].join("\n"),
+    );
+  });
+
+  it("escapes quotes and ampersands in labels and values", async () => {
+    await sendWebmasterNotification({
+      formType: "Contact",
+      submitterName: "Test User",
+      fields: { 'Q&A "notes"': 'said "hi" & left' },
+    });
+
+    const { html } = mockSend.mock.calls[0][0];
+    expect(html).toContain(
+      "<strong>Q&amp;A &quot;notes&quot;</strong></td>" +
+        '<td style="border:1px solid #ddd">said &quot;hi&quot; &amp; left</td>',
+    );
+  });
+
   it("skips empty fields", async () => {
     await sendWebmasterNotification({
       formType: "Onboarding",
@@ -151,6 +185,44 @@ describe("sendLeadMagnetDeliveryEmail", () => {
       'href="https://boximity.ca/api/lead-magnet/download?slug=test-guide&amp;token=abc"',
     );
     expect(text).toMatch(/24 hours/);
+  });
+
+  it("writes the download link into the text and HTML bodies", async () => {
+    await sendLeadMagnetDeliveryEmail(delivery);
+
+    const { html, text } = mockSend.mock.calls[0][0];
+    expect(text).toBe(
+      [
+        "Here's your copy of The Test Guide:",
+        "",
+        "https://boximity.ca/api/lead-magnet/download?slug=test-guide&token=abc",
+        "",
+        "The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.",
+        "",
+        "— Boximity",
+      ].join("\n"),
+    );
+    expect(html).toBe(
+      [
+        "<p>Here's your copy of <strong>The Test Guide</strong>:</p>",
+        '<p><a href="https://boximity.ca/api/lead-magnet/download?slug=test-guide&amp;token=abc">Download The Test Guide</a></p>',
+        "<p>The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.</p>",
+        "<p>— Boximity</p>",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps a quote in the title or URL from breaking out of the href", async () => {
+    await sendLeadMagnetDeliveryEmail({
+      ...delivery,
+      title: 'The "Test" Guide',
+      downloadUrl: 'https://boximity.ca/x?a="onclick="alert(1)',
+    });
+
+    const { html } = mockSend.mock.calls[0][0];
+    expect(html).toContain(
+      '<a href="https://boximity.ca/x?a=&quot;onclick=&quot;alert(1)">Download The &quot;Test&quot; Guide</a>',
+    );
   });
 
   it("escapes HTML in the title", async () => {

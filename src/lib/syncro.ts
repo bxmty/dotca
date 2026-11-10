@@ -1,3 +1,4 @@
+import { isRecord } from "@/lib/isRecord";
 import type { NotificationFormType } from "@/lib/notify";
 import { formatTorontoDate } from "@/lib/toronto-date";
 import { splitFullName } from "@/lib/person-name";
@@ -118,22 +119,22 @@ function buildLeadPayload(lead: LeadSubmission): Record<string, unknown> {
       .map(([label, value]) => `${label}: ${value}`)
       .join("\n"),
     ...(hiddenNotes ? { hidden_notes: hiddenNotes } : {}),
-    ...(lead.opportunityAmountDollars !== undefined
-      ? { opportunity_amount_dollars: lead.opportunityAmountDollars }
-      : {}),
+    // JSON.stringify drops the key when there is no amount
+    opportunity_amount_dollars: lead.opportunityAmountDollars,
   };
 }
 
 async function readJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
+    // Stryker disable next-line BlockStatement: both readers treat a null body and an undefined one alike
   } catch {
     return null;
   }
 }
 
 function readErrorMessage(body: unknown): string | undefined {
-  if (!body || typeof body !== "object") return undefined;
+  if (!isRecord(body)) return undefined;
   const { message, error, errors } = body as Record<string, unknown>;
   const raw = message ?? error ?? errors;
   if (typeof raw === "string") return raw;
