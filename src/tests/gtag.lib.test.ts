@@ -108,11 +108,93 @@ describe("gtag.ts Google Analytics utilities", () => {
   });
 
   describe("initGA", () => {
-    it("does not initialize when GA_MEASUREMENT_ID is not available", () => {
-      // Since GA_MEASUREMENT_ID is evaluated at module load time and is set in test environment,
-      // this test cannot actually test the no-GA scenario. The module already has GA configured.
-      // In a real scenario, if GA_MEASUREMENT_ID was undefined, initGA would not set up GA.
-      expect(true).toBe(true); // Placeholder test
+    describe("without a measurement ID", () => {
+      function loadWithoutMeasurementId() {
+        process.env = { ...originalEnv, NEXT_PUBLIC_ENVIRONMENT: "production" };
+        delete process.env.NEXT_PUBLIC_PRODUCTION_GA_ID;
+        jest.resetModules();
+        return require("@/lib/gtag");
+      }
+
+      it("sets up nothing on init", () => {
+        window.gtag = undefined;
+        const { initGA: newInitGA } = loadWithoutMeasurementId();
+
+        newInitGA();
+
+        expect(window.gtag).toBeUndefined();
+        expect(window.dataLayer).toHaveLength(0);
+      });
+
+      it("sends no config when gtag is already loaded", () => {
+        const { initGA: newInitGA } = loadWithoutMeasurementId();
+
+        newInitGA();
+
+        expect(mockGtag).not.toHaveBeenCalled();
+      });
+
+      it("tracks no page view", () => {
+        const { pageview: newPageview } = loadWithoutMeasurementId();
+
+        newPageview("/pricing");
+
+        expect(mockGtag).not.toHaveBeenCalled();
+      });
+
+      it("tracks no event", () => {
+        const { event: newEvent } = loadWithoutMeasurementId();
+
+        newEvent({ action: "click", category: "interaction", label: "cta" });
+
+        expect(mockGtag).not.toHaveBeenCalled();
+      });
+    });
+
+    it("sends the config only once however often it is initialised", () => {
+      process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
+      process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
+      jest.resetModules();
+      const { initGA: newInitGA } = require("@/lib/gtag");
+
+      newInitGA();
+      newInitGA();
+      newInitGA();
+
+      expect(
+        mockGtag.mock.calls.filter(([command]) => command === "config"),
+      ).toHaveLength(1);
+      expect(
+        mockGtag.mock.calls.filter(([command]) => command === "js"),
+      ).toHaveLength(1);
+    });
+
+    it("keeps commands already queued in the dataLayer", () => {
+      process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
+      process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
+      window.gtag = undefined;
+      const queuedCommand = ["consent", "default"];
+      window.dataLayer = [queuedCommand];
+      jest.resetModules();
+      const { initGA: newInitGA } = require("@/lib/gtag");
+
+      newInitGA();
+
+      expect(window.dataLayer[0]).toBe(queuedCommand);
+      expect(window.dataLayer).toHaveLength(3);
+    });
+
+    it("creates the dataLayer when the page has none yet", () => {
+      process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
+      process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
+      window.gtag = undefined;
+      (window as unknown as { dataLayer: undefined }).dataLayer = undefined;
+      jest.resetModules();
+      const { initGA: newInitGA } = require("@/lib/gtag");
+
+      newInitGA();
+
+      expect(window.dataLayer).toHaveLength(2);
     });
 
     it("configures GA immediately if gtag is already available", () => {
@@ -221,11 +303,6 @@ describe("gtag.ts Google Analytics utilities", () => {
       window.gtag = mockGtag;
     });
 
-    // Skipping this test as GA_MEASUREMENT_ID is set in test environment
-    it.skip("does not track pageview when GA_MEASUREMENT_ID is missing", () => {
-      // This test would require GA_MEASUREMENT_ID to be undefined at module load time
-    });
-
     it("warns when gtag is not available", () => {
       // Temporarily set window.gtag to undefined
       const originalGtag = window.gtag;
@@ -299,11 +376,6 @@ describe("gtag.ts Google Analytics utilities", () => {
       process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
       process.env.NEXT_PUBLIC_PRODUCTION_GA_ID = "GA-PRODUCTION-ID";
       window.gtag = mockGtag;
-    });
-
-    // Skipping this test as GA_MEASUREMENT_ID is set in test environment
-    it.skip("does not track event when GA_MEASUREMENT_ID is missing", () => {
-      // This test would require GA_MEASUREMENT_ID to be undefined at module load time
     });
 
     it("warns when gtag is not available", () => {
