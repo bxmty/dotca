@@ -63,7 +63,6 @@ export function createRateLimiter({
       return true;
     }
 
-    // Stryker disable next-line ConditionalExpression: making room below the cap only prunes stale IPs early; verdicts are unchanged
     if (!hitTimesByIp.has(ip) && hitTimesByIp.size >= maxTrackedIps) {
       makeRoomForNewIp(now);
     }

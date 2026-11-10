@@ -173,6 +173,21 @@ describe("createRateLimiter", () => {
     expect(limiter.isRateLimited("oldest-but-active")).toBe(true);
   });
 
+  it("leaves stale IPs tracked while under the cap", () => {
+    const limiter = createRateLimiter({
+      windowMs: 1000,
+      maxPerWindow: 1,
+      maxTrackedIps: 10,
+    });
+    limiter.isRateLimited("stale");
+    jest.advanceTimersByTime(1000);
+
+    limiter.isRateLimited("fresh");
+
+    // Pruning only runs at the cap; below it, nothing is scanned.
+    expect(limiter.trackedIpCount()).toBe(2);
+  });
+
   it("keeps a full map intact when an already-tracked IP returns", () => {
     const limiter = createRateLimiter({
       windowMs: 1000,

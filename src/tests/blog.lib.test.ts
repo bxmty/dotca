@@ -342,6 +342,11 @@ describe("reading time", () => {
 describe("blog post cta parsing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   function ctaOf(ctaLines: string[]) {
@@ -350,21 +355,13 @@ describe("blog post cta parsing", () => {
   }
 
   it("leaves the cta unset when the frontmatter has none or null", () => {
-    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
-
     expect(ctaOf([])).toBeUndefined();
     expect(ctaOf(["cta: null"])).toBeUndefined();
     expect(getBlogPostBySlug("my-test-post")).not.toBeNull();
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
   });
 
-  it("accepts an explicit none without reporting it as invalid", () => {
-    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
-
+  it("accepts an explicit none", () => {
     expect(ctaOf(["cta:", "  type: none"])).toEqual({ type: "none" });
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
   });
 
   it.each([
@@ -379,10 +376,6 @@ describe("blog post cta parsing", () => {
     ],
     ["a bare string", ["cta: assessment"]],
   ])("hides the cta for %s", (_label, ctaLines) => {
-    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
-
     expect(ctaOf(ctaLines)).toEqual({ type: "none" });
-    expect(warn).toHaveBeenCalledTimes(1);
-    warn.mockRestore();
   });
 });

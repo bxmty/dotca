@@ -11,8 +11,9 @@ export function getQuestionsForSegment(
   config: QuizConfig,
   segment: QuizSegment,
 ): QuizConfig["questions"] {
-  return config.questions.filter((question) =>
-    question.segments.includes(segment),
+  // Tolerates missing lists: validateQuizConfig reads unvalidated YAML.
+  return (config.questions ?? []).filter((question) =>
+    (question.segments ?? []).includes(segment),
   );
 }
 
@@ -102,9 +103,7 @@ export function validateQuizConfig(config: QuizConfig): void {
       }
     }
 
-    const segmentQuestions = questions.filter((question) =>
-      (question.segments ?? []).includes(segment),
-    );
+    const segmentQuestions = getQuestionsForSegment(config, segment);
     if (segmentQuestions.length === 0) {
       problems.push(`segment "${segment}" resolves to no questions`);
     } else if (

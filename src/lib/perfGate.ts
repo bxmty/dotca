@@ -50,8 +50,9 @@ function parseOpaqueColor(cssColor: string): OpaqueColor | undefined {
   if (!match) {
     return undefined;
   }
-  // An absent alpha parses as NaN, never 0, so rgb() is opaque.
-  if (parseFloat(String(match[4])) === 0) {
+  // rgb() has no alpha channel, so it is opaque.
+  const alpha = match[4] === undefined ? 1 : parseFloat(match[4]);
+  if (alpha === 0) {
     return undefined;
   }
   return {
@@ -87,7 +88,7 @@ export function isDarkRender(probe: RenderProbe): boolean {
   if (!paintedColor) {
     return false;
   }
-  // Stryker disable next-line EqualityOperator: no colour with integer channels has a luminance of exactly 0.2
+  // Stryker disable next-line EqualityOperator: `<=` is equivalent because no colour with integer channels has a luminance of exactly 0.2 (the `>=` variant is killed by the boundary tests)
   return calculateRelativeLuminance(paintedColor) < DARK_LUMINANCE_CEILING;
 }
 

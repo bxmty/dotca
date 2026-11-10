@@ -15,6 +15,9 @@ import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
  * download link. Deliberately the same shape as /api/contact (JSON parse,
  * honeypot, rate limit, email regex, 503 copy) with a lighter payload.
  */
+// Stryker disable next-line StringLiteral: any value that fails the slug pattern gives the same 404
+const NOT_A_SLUG = "";
+
 export async function POST(request: Request) {
   try {
     let body;
@@ -43,8 +46,9 @@ export async function POST(request: Request) {
     }
 
     // No download for an asset that doesn't exist or isn't live yet.
-    // Stryker disable next-line StringLiteral: any fallback that fails the slug pattern gives the same 404
-    const magnet = getLeadMagnetBySlug(typeof slug === "string" ? slug : "");
+    const magnet = getLeadMagnetBySlug(
+      typeof slug === "string" ? slug : NOT_A_SLUG,
+    );
     if (!magnet) {
       return NextResponse.json(
         { error: "Resource not found" },
