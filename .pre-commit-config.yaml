@@ -46,7 +46,9 @@ repos:
     hooks:
       - id: audit
         name: Security Audit
-        entry: npm audit --audit-level moderate
+        # high, not moderate: the tree carries known moderate findings, so
+        # moderate failed every lockfile change (#742). CI reports the rest.
+        entry: npm audit --audit-level high
         language: system
         pass_filenames: false
         files: package-lock\.json$
@@ -56,9 +58,12 @@ repos:
     hooks:
       - id: test
         name: Jest Tests
-        entry: npm test -- --watchAll=false --passWithNoTests --coverage=false
+        # Only the tests related to the staged files; the PR Checks workflow
+        # runs the whole suite. Scoping to staged files also keeps a commit
+        # from failing on untracked test files that belong to a later one.
+        entry: npm test -- --watchAll=false --passWithNoTests --coverage=false --findRelatedTests
         language: system
-        pass_filenames: false
+        pass_filenames: true
         files: \.(js|jsx|ts|tsx)$
 
   # Terraform linting and validation
