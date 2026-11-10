@@ -37,13 +37,11 @@ jobs:
         run: npm ci
 
       # progress-append-only: the default progress bar doesn't render in CI
-      # logs. Concurrency 4 matches ubuntu-latest's 4 vCPU; Stryker's default
-      # ran out of memory on a 15 GiB machine.
+      # logs. Concurrency comes from stryker.config.mjs.
       - name: Run mutation tests
         run: >-
           npm run test:mutation --
           --reporters html,clear-text,json,progress-append-only
-          --concurrency 4
 
       - name: Write job summary
         if: always()

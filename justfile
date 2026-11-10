@@ -418,3 +418,21 @@ _confirm-dev-clean:
             echo "{{YELLOW}}Cleanup cancelled{{NC}}" && exit 0; \
         fi \
     fi
+
+# Run Stryker mutation testing in a detached tmux session, archiving the report per commit
+mutation *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v tmux >/dev/null 2>&1 || { echo "Error: tmux not found"; exit 1; }
+    if tmux has-session -t stryker 2>/dev/null; then
+        echo "A Stryker run is already going: tmux attach -t stryker"
+        exit 1
+    fi
+    archive="reports/mutation-runs/$(git rev-parse --short HEAD)"
+    mkdir -p "${archive}"
+    tmux new-session -d -s stryker bash -c \
+        "npm run test:mutation -- {{ARGS}} 2>&1 | tee '${archive}/stryker.log'; echo \"exit=\${PIPESTATUS[0]}\" >> '${archive}/stryker.log'; cp reports/mutation/mutation.json '${archive}/'"
+    echo "Stryker started in tmux session 'stryker'"
+    echo "  Watch:   tmux attach -t stryker"
+    echo "  Log:     ${archive}/stryker.log (ends with exit=<code>)"
+    echo "  Report:  ${archive}/mutation.json (copied when the run ends)"
