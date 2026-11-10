@@ -1,6 +1,7 @@
 import { load } from "js-yaml";
 
-const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
+// No trailing `$`: the greedy last group already runs to the end of the file.
+const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)/;
 
 export interface ParsedFrontmatter<T extends object> {
   data: T;

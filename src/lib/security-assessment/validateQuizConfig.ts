@@ -71,6 +71,10 @@ export function getSectionFraction(
 export function validateQuizConfig(config: QuizConfig): void {
   const problems: string[] = [];
   const configPath = getQuizConfigPath();
+  // The file is unvalidated YAML, so any map or list may be missing despite
+  // the type. Read them through these so a gap is a problem, not a TypeError.
+  const questions = config.questions ?? [];
+  const categories = config.categories ?? {};
 
   if (!config.sections || Object.keys(config.sections).length === 0) {
     problems.push("missing sections map");
@@ -93,30 +97,31 @@ export function validateQuizConfig(config: QuizConfig): void {
     }
     for (const tier of RISK_TIERS) {
       const cta = config.ctas?.[segment]?.[tier];
-      if (!cta?.heading || !cta?.buttonLabel || !cta?.buttonHref) {
+      if (!cta || !cta.heading || !cta.buttonLabel || !cta.buttonHref) {
         problems.push(`incomplete ctas.${segment}.${tier}`);
       }
     }
 
-    const segmentQuestions = getQuestionsForSegment(config, segment);
+    const segmentQuestions = questions.filter((question) =>
+      (question.segments ?? []).includes(segment),
+    );
     if (segmentQuestions.length === 0) {
       problems.push(`segment "${segment}" resolves to no questions`);
-    }
-    const segmentSections = getSectionKeysForSegment(config, segment);
-    if (segmentSections.length === 0 && segmentQuestions.length > 0) {
+    } else if (
+      !segmentQuestions.some(({ category }) => categories[category]?.section)
+    ) {
       problems.push(`segment "${segment}" resolves to no sections`);
     }
   }
 
   for (const tier of RISK_TIERS) {
-    if (!config.tiers?.[tier]?.headline || !config.tiers?.[tier]?.body) {
+    const tierCopy = config.tiers?.[tier];
+    if (!tierCopy || !tierCopy.headline || !tierCopy.body) {
       problems.push(`incomplete tiers.${tier}`);
     }
   }
 
-  for (const [categoryKey, category] of Object.entries(
-    config.categories ?? {},
-  )) {
+  for (const [categoryKey, category] of Object.entries(categories)) {
     if (!category?.weakCopy) {
       problems.push(`category "${categoryKey}" has no weakCopy`);
     }
@@ -128,12 +133,12 @@ export function validateQuizConfig(config: QuizConfig): void {
   }
 
   const seenIds = new Set<string>();
-  for (const question of config.questions ?? []) {
+  for (const question of questions) {
     if (seenIds.has(question.id)) {
       problems.push(`duplicate question id "${question.id}"`);
     }
     seenIds.add(question.id);
-    const category = config.categories?.[question.category];
+    const category = categories[question.category];
     if (!category?.weakCopy) {
       problems.push(
         `question "${question.id}" references unknown category "${question.category}"`,
@@ -158,7 +163,7 @@ export function validateQuizConfig(config: QuizConfig): void {
     }
   }
 
-  if ((config.questions ?? []).length === 0) {
+  if (questions.length === 0) {
     problems.push("no questions defined");
   }
 
