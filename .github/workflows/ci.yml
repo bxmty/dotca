@@ -1,0 +1,53 @@
+name: PR Checks
+
+# The gate a pull request must pass before it merges. deploy.yml runs the same
+# checks, but only on a push to `staging` or `main`, where its build job is
+# bound to a GitHub Environment that feature branches cannot use. Without this
+# workflow a PR's first lint/typecheck/test run happens after the merge, on the
+# branch that deploys. No environment, no secrets.
+
+on:
+  pull_request:
+    branches: [staging, main]
+
+permissions:
+  contents: read
+
+# A new push to the PR replaces the run in flight.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Validate blog content
+        run: node scripts/validate-blog-posts.js
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      # Full suite plus the coverage thresholds in jest.config.cjs.
+      - name: Run unit tests
+        run: npm run test:coverage

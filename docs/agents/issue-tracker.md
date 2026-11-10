@@ -43,3 +43,19 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me` — the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+
+## Mutation survivor issues
+
+A survivor issue names files and counts and points at the report; it does not paste the mutant table. A table costs every reader thousands of tokens and goes stale on the next run.
+
+- **Body**: one row per file (score, survived, no coverage), the commit the run was made at, and the decisions that need a human (suspected real bugs, code to delete instead of test).
+- **Mutants**: read them from the archived report of that run (`just mutation` writes `reports/mutation-runs/<commit>/mutation.json`; a CI run uploads the same file as an artifact):
+
+  ```bash
+  jq -r --arg f src/lib/rate-limit.ts '.files[$f].mutants[]
+    | select(.status == "Survived" or .status == "NoCoverage")
+    | "\(.location.start.line)\t\(.status)\t\(.mutatorName)\t\(.replacement // "")"' \
+    reports/mutation-runs/<commit>/mutation.json
+  ```
+
+- **Done when**: a scoped run (`npm run test:mutation -- --mutate <files>`) shows every remaining survivor in those files is either killed or suppressed under the rules in the `stryker.config.mjs` header.
