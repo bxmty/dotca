@@ -63,6 +63,7 @@ let lastRequestAt = 0;
 function waitForTurn(): Promise<void> {
   const turn = requestQueue.then(async () => {
     const wait = MIN_REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt);
+    // Stryker disable next-line EqualityOperator: a zero wait becomes setTimeout(0), which is not observable
     if (wait > 0) {
       await new Promise((resolve) => setTimeout(resolve, wait));
     }
@@ -114,6 +115,7 @@ export async function searchAddresses(
     return [];
   }
 
+  // Stryker disable next-line MethodExpression,StringLiteral: the key is only compared with itself; any case folding and any "no country filter" suffix give the same hits
   const cacheKey = `${trimmed.toLowerCase()}|${options.countryCodes ?? ""}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
