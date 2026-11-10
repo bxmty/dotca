@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @jest-environment @stryker-mutator/jest-runner/jest-env/node
  */
 import { POST } from "@/app/api/security-assessment/route";
 import * as Sentry from "@sentry/nextjs";
@@ -159,6 +159,105 @@ describe("POST /api/security-assessment", () => {
     });
   });
 
+  it("does not subscribe anyone to the brief without an explicit opt-in", async () => {
+    await POST(buildRequest(buildSubmission({ wantsBrief: false })));
+    await POST(buildRequest(buildSubmission({ wantsBrief: undefined })));
+    await POST(buildRequest(buildSubmission({ wantsBrief: "true" })));
+
+    expect(mockCreateLead).toHaveBeenCalledTimes(3);
+    expect(mockCreateResendContact).not.toHaveBeenCalled();
+    for (const [lead] of mockCreateLead.mock.calls) {
+      expect(lead.fields["Monthly brief"]).toBe("No");
+    }
+  });
+
+  it("subscribes the trimmed email to the brief on an explicit opt-in", async () => {
+    await POST(
+      buildRequest(
+        buildSubmission({ email: "  test@example.com ", wantsBrief: true }),
+      ),
+    );
+
+    expect(mockCreateResendContact).toHaveBeenCalledTimes(1);
+    expect(mockCreateResendContact.mock.calls[0][0]).toMatchObject({
+      email: "test@example.com",
+    });
+    expect(mockCreateLead.mock.calls[0][0].email).toBe("test@example.com");
+    expect(mockCreateLead.mock.calls[0][0].fields).toMatchObject({
+      Email: "test@example.com",
+      "Monthly brief": "Yes",
+    });
+  });
+
+  it("records each answer and the weak areas on the lead", async () => {
+    const questions = getQuestionsForSegment(config, "solo");
+    const answers = {
+      ...buildAnswers("solo", () => 0),
+      password_mfa: 3,
+      backups: 2,
+    };
+
+    await POST(buildRequest(buildSubmission({ answers })));
+
+    const { fields } = mockCreateLead.mock.calls[0][0];
+    expect(fields["Weak areas"]).toBe("Passwords & MFA, Backups");
+    expect(fields["Passwords & MFA"]).toBe(questions[0].answers[3].text);
+    expect(fields["Backups"]).toBe(questions[2].answers[2].text);
+    expect(fields["Phishing awareness"]).toBe(questions[1].answers[0].text);
+    expect(fields.Score).toBe("13/18");
+  });
+
+  it("flags a growing business in the reactive tier as high intent", async () => {
+    // Ten second-best answers (2 points each) land exactly on the reactive
+    // threshold of 20; the rest score 0.
+    const growingQuestions = getQuestionsForSegment(config, "growing");
+    const answers = Object.fromEntries(
+      growingQuestions.map((question, index) => [
+        question.id,
+        index < 10 ? 1 : 3,
+      ]),
+    );
+
+    await POST(buildRequest(buildSubmission({ segment: "growing", answers })));
+
+    expect(mockCreateLead.mock.calls[0][0].fields).toMatchObject({
+      "Risk tier": "Reactive",
+      Score: "20/54",
+      "High intent": "Yes",
+    });
+  });
+
+  it("does not flag a growing business in the managed tier", async () => {
+    await POST(
+      buildRequest(
+        buildSubmission({
+          segment: "growing",
+          answers: buildAnswers("growing", () => 1),
+        }),
+      ),
+    );
+
+    expect(mockCreateLead.mock.calls[0][0].fields).toMatchObject({
+      "Risk tier": "Managed",
+      "High intent": "",
+    });
+  });
+
+  it("does not flag an exposed solopreneur as high intent", async () => {
+    await POST(
+      buildRequest(
+        buildSubmission({
+          answers: buildAnswers("solo", (count) => count - 1),
+        }),
+      ),
+    );
+
+    expect(mockCreateLead.mock.calls[0][0].fields).toMatchObject({
+      "Risk tier": "Exposed",
+      "High intent": "",
+    });
+  });
+
   it("flags growing businesses with weak posture as high intent", async () => {
     await POST(
       buildRequest(
@@ -219,6 +318,52 @@ describe("POST /api/security-assessment", () => {
     );
 
     await expectJson(response, 400, { error: "Name is required" });
+  });
+
+  it.each([
+    ["blank", "   "],
+    ["missing", undefined],
+    ["null", null],
+  ])("returns 400 when the email is %s", async (_label, email) => {
+    const response = await POST(buildRequest(buildSubmission({ email })));
+
+    await expectJson(response, 400, { error: "Email is required" });
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when company is not a string", async () => {
+    const response = await POST(buildRequest(buildSubmission({ company: 7 })));
+
+    await expectJson(response, 400, { error: "Company is required" });
+  });
+
+  it("returns 400 for a JSON null body", async () => {
+    const response = await POST(buildRequest(null));
+
+    await expectJson(response, 400, {
+      error: "Unknown business size segment",
+    });
+  });
+
+  it("returns 500 when delivery throws unexpectedly", async () => {
+    mockCreateLead.mockImplementation(() => {
+      throw new Error("boom");
+    });
+
+    const response = await POST(buildRequest(buildSubmission()));
+
+    await expectJson(response, 500, {
+      error: "Failed to process your request",
+    });
+  });
+
+  it("delivers a real submission whose honeypot field is only whitespace", async () => {
+    const response = await POST(
+      buildRequest(buildSubmission({ website: "   " })),
+    );
+
+    await expectJson(response, 200, { success: true });
+    expect(mockCreateLead).toHaveBeenCalledTimes(1);
   });
 
   it("returns 400 for an invalid email", async () => {

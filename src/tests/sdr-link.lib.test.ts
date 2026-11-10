@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @jest-environment @stryker-mutator/jest-runner/jest-env/node
  */
 import {
   buildSdrConsoleUrl,
@@ -40,6 +40,15 @@ describe("SDR link token", () => {
     expect(verifySdrToken(token)).toEqual({
       isValid: true,
       sdrName: "Alex Doe",
+    });
+  });
+
+  it("accepts a name of exactly 100 characters", () => {
+    const name = "x".repeat(100);
+
+    expect(verifySdrToken(signSdrToken({ name }))).toEqual({
+      isValid: true,
+      sdrName: name,
     });
   });
 

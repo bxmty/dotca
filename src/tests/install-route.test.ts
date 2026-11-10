@@ -1,4 +1,4 @@
-/** @jest-environment node */
+/** @jest-environment @stryker-mutator/jest-runner/jest-env/node */
 import * as Sentry from "@sentry/nextjs";
 import { GET } from "@/app/install/route";
 import { buildInstallUrl } from "@/lib/install-link";

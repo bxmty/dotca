@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isEmailAddress } from "@/lib/formValidation";
 import { formatE164Phone } from "@/lib/phone";
 import { deliverLead } from "@/lib/lead-delivery";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
@@ -99,9 +100,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isEmailAddress(email)) {
       return NextResponse.json(
         { error: "Please enter a valid email address" },
         { status: 400 },

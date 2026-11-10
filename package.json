@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "engines": {
-    "node": "24.22.2"
+    "node": "26.12.1"
   },
   "scripts": {
     "dev": "NEXT_PUBLIC_COMMIT_HASH=${NEXT_PUBLIC_COMMIT_HASH:-$(node get-commit-hash.js)} next dev -H 0.0.0.0",
@@ -16,6 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:mutation": "stryker run",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
@@ -26,16 +27,16 @@
   "dependencies": {
     "@sentry/nextjs": "11.10.0",
     "@stripe/react-stripe-js": "7.0.1",
-    "@stripe/stripe-js": "10.2.0",
+    "@stripe/stripe-js": "10.2.1",
     "js-yaml": "5.5.0",
     "libphonenumber-js": "1.13.15",
-    "next": "16.4.3",
+    "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-markdown": "10.1.0",
     "react-phone-input-2": "2.15.1",
     "remark-gfm": "4.0.1",
-    "resend": "6.36.0",
+    "resend": "6.37.0",
     "stripe": "23.1.0",
     "web-vitals": "6.2.3"
   },
@@ -43,7 +44,10 @@
     "@eslint/eslintrc": "3.3.7",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
-    "@tailwindcss/postcss": "4.3.3",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/jest-runner": "10.1.1",
+    "@stryker-mutator/typescript-checker": "10.1.1",
+    "@tailwindcss/postcss": "4.3.4",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",
@@ -61,11 +65,11 @@
     "lighthouse": "13.6.0",
     "prettier": "3.9.10",
     "puppeteer-core": "25.16.0",
-    "tailwindcss": "4.3.3",
+    "tailwindcss": "4.3.4",
     "typescript": "6.0.3"
   },
   "overrides": {
-    "postcss": "8.5.28",
+    "postcss": "8.5.32",
     "js-yaml": "5.5.0"
   }
 }

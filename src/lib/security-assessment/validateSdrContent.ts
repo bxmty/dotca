@@ -16,7 +16,7 @@ function findTalkTrackProblems(
   const questionIds = new Set(config.questions.map((question) => question.id));
   for (const questionId of questionIds) {
     const track = talkTracks?.[questionId];
-    if (!track?.whyItMatters || !track?.probe) {
+    if (!track || !track.whyItMatters || !track.probe) {
       problems.push(`incomplete sdr.talkTracks.${questionId}`);
     }
   }
@@ -35,7 +35,7 @@ function findNextStepProblems(
   for (const segment of QUIZ_SEGMENTS) {
     for (const tier of RISK_TIERS) {
       const step = nextSteps?.[segment]?.[tier];
-      if (!step?.propose || !step?.service) {
+      if (!step || !step.propose || !step.service) {
         problems.push(`incomplete sdr.nextSteps.${segment}.${tier}`);
       }
     }

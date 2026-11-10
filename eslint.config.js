@@ -3,6 +3,10 @@ import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 
 export default [
+  {
+    // Stryker's sandbox (a copy of the project) and its report output
+    ignores: [".stryker-tmp/", "reports/"],
+  },
   js.configs.recommended,
   {
     files: ["**/*.js", "**/*.ts", "**/*.tsx"],

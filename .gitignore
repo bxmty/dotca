@@ -14,6 +14,9 @@
 /coverage
 playwright-report/
 test-results/
+# Stryker mutation testing: sandbox and report output
+/.stryker-tmp/
+/reports/
 
 # next.js
 /.next/
@@ -49,9 +52,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# claude
-CLAUDE.md
 
 # Terraform
 **/.terraform/*

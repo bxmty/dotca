@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @jest-environment @stryker-mutator/jest-runner/jest-env/node
  */
 import fs from "fs";
 import path from "path";
@@ -143,6 +143,34 @@ describe("POST /api/lead-magnet", () => {
     expect(mockDeliveryEmail).not.toHaveBeenCalled();
   });
 
+  it.each(["", "   "])(
+    "records a real capture whose honeypot field is %p",
+    async (website) => {
+      const response = await post({ slug: SLUG, email: EMAIL, website });
+
+      expect(response.status).toBe(200);
+      expect(mockCreateLead).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("returns 404 for a slug sent as an array", async () => {
+    await expectResponse(await post({ slug: [SLUG], email: EMAIL }), 404, {
+      error: "Resource not found",
+    });
+    expect(mockCreateLead).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when delivery throws unexpectedly", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockCreateLead.mockImplementation(() => {
+      throw new Error("boom");
+    });
+
+    await expectResponse(await post({ slug: SLUG, email: EMAIL }), 500, {
+      error: "Failed to process your request",
+    });
+  });
+
   it("rate limits the sixth submission from one IP", async () => {
     for (let i = 0; i < 5; i++) {
       await post({ slug: SLUG, email: EMAIL });
@@ -171,6 +199,16 @@ describe("POST /api/lead-magnet", () => {
       error: "Email is required",
     });
   });
+
+  it.each([null, "", "   "])(
+    "returns 400 asking for an email when it is %p",
+    async (email) => {
+      await expectResponse(await post({ slug: SLUG, email }), 400, {
+        error: "Email is required",
+      });
+      expect(mockCreateLead).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["not-an-email", "jane@example", 42])(
     "returns 400 for the invalid email %p",

@@ -51,12 +51,6 @@ describe("analytics.ts unified analytics interface", () => {
       expect(mockInitGA).toHaveBeenCalledTimes(1);
     });
 
-    it("logs configuration in debug mode", () => {
-      process.env.NODE_ENV = "development";
-
-      initializeAnalytics();
-    });
-
     it("handles Google Analytics initialization errors gracefully", () => {
       mockInitGA.mockImplementation(() => {
         throw new Error("GA init failed");
@@ -68,15 +62,9 @@ describe("analytics.ts unified analytics interface", () => {
 
   describe("trackPageView", () => {
     it("tracks page view with Google Analytics", async () => {
-      await trackPageView("/test-page", "Test Page");
+      await trackPageView("/test-page");
 
       expect(mockGaPageview).toHaveBeenCalledWith("/test-page");
-    });
-
-    it("logs debug information in development mode", async () => {
-      process.env.NODE_ENV = "development";
-
-      await trackPageView("/test-page", "Test Page");
     });
 
     it("handles Google Analytics errors gracefully", async () => {
@@ -119,12 +107,6 @@ describe("analytics.ts unified analytics interface", () => {
       });
     });
 
-    it("logs debug information in development mode", async () => {
-      process.env.NODE_ENV = "development";
-
-      await trackEvent(testEventData);
-    });
-
     it("handles Google Analytics errors gracefully", async () => {
       mockGaEvent.mockImplementation(() => {
         throw new Error("GA error");
@@ -145,17 +127,11 @@ describe("analytics.ts unified analytics interface", () => {
         value: undefined,
       });
     });
-
-    it("logs debug information in development mode", async () => {
-      process.env.NODE_ENV = "development";
-
-      await trackFormSubmit("contact_form");
-    });
   });
 
   describe("trackButtonClick", () => {
     it("tracks button click as a GA event", async () => {
-      await trackButtonClick("submit_button", "contact_form");
+      await trackButtonClick("submit_button");
 
       expect(mockGaEvent).toHaveBeenCalledWith({
         action: "button_click",
@@ -164,17 +140,11 @@ describe("analytics.ts unified analytics interface", () => {
         value: undefined,
       });
     });
-
-    it("logs debug information in development mode", async () => {
-      process.env.NODE_ENV = "development";
-
-      await trackButtonClick("submit_button", "contact_form");
-    });
   });
 
   describe("trackEngagement", () => {
     it("tracks engagement as a GA event", async () => {
-      await trackEngagement("time_on_page", { seconds: 30 });
+      await trackEngagement("time_on_page");
 
       expect(mockGaEvent).toHaveBeenCalledWith({
         action: "engagement_time_on_page",
@@ -182,12 +152,6 @@ describe("analytics.ts unified analytics interface", () => {
         label: "time_on_page",
         value: undefined,
       });
-    });
-
-    it("logs debug information in development mode", async () => {
-      process.env.NODE_ENV = "development";
-
-      await trackEngagement("scroll");
     });
   });
 
@@ -219,9 +183,79 @@ describe("analytics.ts unified analytics interface", () => {
 
       expect(status).toEqual({
         enableGoogleAnalytics: true,
-        debug: process.env.NODE_ENV === "development", // matches actual environment
         initialized: false, // not initialized yet
       });
+
+      initializeAnalytics();
+
+      expect(getAnalyticsStatus()).toEqual({
+        enableGoogleAnalytics: true,
+        initialized: true,
+      });
+    });
+  });
+
+  describe("lazy initialisation", () => {
+    it("initialises Google Analytics once, on the first page view", async () => {
+      await trackPageView("/first");
+      await trackPageView("/second");
+      await trackEvent({ action: "later" });
+
+      expect(mockInitGA).toHaveBeenCalledTimes(1);
+      expect(mockGaPageview).toHaveBeenCalledTimes(2);
+    });
+
+    it("initialises Google Analytics once, on the first event", async () => {
+      await trackEvent({ action: "first" });
+      await trackEvent({ action: "second" });
+      await trackPageView("/later");
+
+      expect(mockInitGA).toHaveBeenCalledTimes(1);
+      expect(mockGaEvent).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not initialise again after an explicit init", async () => {
+      initializeAnalytics();
+      await trackPageView("/page");
+      await trackEvent({ action: "click" });
+
+      expect(mockInitGA).toHaveBeenCalledTimes(1);
+    });
+
+    it("counts a failed init as done instead of retrying on every call", async () => {
+      mockInitGA.mockImplementationOnce(() => {
+        throw new Error("GA init failed");
+      });
+
+      await trackPageView("/first");
+      await trackPageView("/second");
+
+      expect(mockInitGA).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("without a measurement ID", () => {
+    const gtagModule = jest.requireMock("@/lib/gtag");
+
+    beforeEach(() => {
+      gtagModule.GA_MEASUREMENT_ID = undefined;
+    });
+
+    afterEach(() => {
+      gtagModule.GA_MEASUREMENT_ID = "GA-TEST-ID";
+    });
+
+    it("sends nothing to Google Analytics", async () => {
+      initializeAnalytics();
+      await trackPageView("/page");
+      await trackEvent({ action: "click" });
+      await trackFormSubmit("contact_form");
+      await trackButtonClick("submit_button");
+      await trackEngagement("scroll");
+
+      expect(mockInitGA).not.toHaveBeenCalled();
+      expect(mockGaPageview).not.toHaveBeenCalled();
+      expect(mockGaEvent).not.toHaveBeenCalled();
     });
   });
 

@@ -48,6 +48,39 @@ describe("markContactAsPaid", () => {
     expect(Sentry.captureMessage).not.toHaveBeenCalled();
   });
 
+  it("treats a not_found lookup as no contact, even without a 404 status", async () => {
+    mockGetContact.mockResolvedValue(resendError("not_found", 400));
+
+    await markContactAsPaid({ email: "jane@example.com" });
+
+    expect(mockUpdateContact).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("reports any other lookup error by its name", async () => {
+    mockGetContact.mockResolvedValue(resendError("rate_limit_exceeded", 429));
+
+    await markContactAsPaid({ email: "jane@example.com" });
+
+    expect(mockUpdateContact).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Paid-customer flag not set in Resend: lookup rate_limit_exceeded",
+      "warning",
+    );
+  });
+
+  it("reports a lookup that throws as an exception, without the error text", async () => {
+    mockGetContact.mockRejectedValue(new Error("jane@example.com timed out"));
+
+    await markContactAsPaid({ email: "jane@example.com" });
+
+    expect(mockUpdateContact).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Paid-customer flag not set in Resend: lookup exception",
+      "warning",
+    );
+  });
+
   it("looks up and flags the trimmed, lower-cased address", async () => {
     mockGetContact.mockResolvedValue(existingContact);
 

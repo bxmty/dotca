@@ -9,6 +9,7 @@ import { markContactAsPaid } from "@/lib/paid-customer-flag";
 import { splitFullName } from "@/lib/person-name";
 
 // The Stripe SDK will not run on Edge
+// Stryker disable next-line StringLiteral: Next.js route-segment config, not read under jest
 export const runtime = "nodejs";
 
 const CENTS_PER_DOLLAR = 100;
@@ -200,6 +201,7 @@ export async function POST(request: Request) {
       break;
     }
 
+    // Stryker disable next-line ConditionalExpression: the case body is only `break`, so dropping it falls out of the switch the same way
     default:
       // Unhandled event types must still 200, or Stripe marks the
       // endpoint as failing and eventually disables it

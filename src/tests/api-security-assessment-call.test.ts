@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @jest-environment @stryker-mutator/jest-runner/jest-env/node
  */
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/security-assessment/call/route";
@@ -107,9 +107,13 @@ function deliveredFields(): Record<string, string> {
   return mockCreateLead.mock.calls[0][0].fields;
 }
 
-async function expectBadRequest(overrides: Record<string, unknown>) {
+async function expectBadRequest(
+  overrides: Record<string, unknown>,
+  message: string,
+) {
   const response = await postWithValidToken(overrides);
   expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: message });
   expect(mockCreateLead).not.toHaveBeenCalled();
   expect(mockNotify).not.toHaveBeenCalled();
 }
@@ -148,6 +152,12 @@ describe("POST /api/security-assessment/call", () => {
 
     it("rejects a request with no session cookie", async () => {
       await expectUnauthorized(buildRequest({}));
+    });
+
+    it("says only Unauthorized", async () => {
+      const response = await POST(buildRequest({}));
+
+      expect(await response.json()).toEqual({ error: "Unauthorized" });
     });
 
     it("rejects a tampered token", async () => {
@@ -314,6 +324,14 @@ describe("POST /api/security-assessment/call", () => {
       expect(deliveredFields()["Weak areas"]).toEqual(expect.any(String));
     });
 
+    it("lists the weak areas by category label, in question order", async () => {
+      await postWithValidToken({
+        answers: { ...buildSubmission().answers, password_mfa: 3, backups: 2 },
+      });
+
+      expect(deliveredFields()["Weak areas"]).toBe("Passwords & MFA, Backups");
+    });
+
     it("scores the answers itself, ignoring a submitted score", async () => {
       const bestAnswers = Object.fromEntries(
         soloQuestions.map((question) => {
@@ -383,6 +401,21 @@ describe("POST /api/security-assessment/call", () => {
       );
     });
 
+    it("adds no note line for a discovery choice without a note", async () => {
+      await postWithValidToken({
+        discovery: {
+          [choiceQuestion.id]: { choice: choiceQuestion.choices[0] },
+        },
+      });
+
+      expect(deliveredFields()[choiceQuestion.text]).toBe(
+        choiceQuestion.choices[0],
+      );
+      expect(deliveredFields()).not.toHaveProperty(
+        `${choiceQuestion.text} note`,
+      );
+    });
+
     it("records a note-only answer without Not asked", async () => {
       await postWithValidToken({
         discovery: { [textQuestion.id]: { note: "Audit next quarter" } },
@@ -447,27 +480,49 @@ describe("POST /api/security-assessment/call", () => {
       );
 
       expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "Request body must be valid JSON",
+      });
+      expect(mockCreateLead).not.toHaveBeenCalled();
     });
 
     it.each([
-      ["an unknown segment", { segment: "enterprise" }],
-      ["a blank name", { name: "  " }],
-      ["a missing email", { email: undefined }],
-      ["an invalid email", { email: "nope" }],
-      ["a blank company", { company: "" }],
-      ["incomplete answers", { answers: {} }],
-      ["an out-of-range answer", { answers: { [firstQuestion.id]: 99 } }],
-    ])("rejects %s", async (_label, overrides) => {
-      await expectBadRequest(overrides);
+      [
+        "an unknown segment",
+        { segment: "enterprise" },
+        "Unknown business size segment",
+      ],
+      ["a blank name", { name: "  " }, "Name is required"],
+      ["a non-string name", { name: 42 }, "Name is required"],
+      ["a missing email", { email: undefined }, "Email is required"],
+      ["a non-string email", { email: 42 }, "Email is required"],
+      [
+        "an invalid email",
+        { email: "nope" },
+        "Please enter a valid email address",
+      ],
+      ["a blank company", { company: "" }, "Company is required"],
+      ["a non-string company", { company: 42 }, "Company is required"],
+      ["incomplete answers", { answers: {} }, "Please answer every question"],
+      [
+        "an out-of-range answer",
+        { answers: { [firstQuestion.id]: 99 } },
+        "Please answer every question",
+      ],
+    ])("rejects %s", async (_label, overrides, message) => {
+      await expectBadRequest(overrides, message);
     });
 
     it("rejects one out-of-range answer among complete answers", async () => {
-      await expectBadRequest({
-        answers: {
-          ...buildSubmission().answers,
-          [firstQuestion.id]: 99,
+      await expectBadRequest(
+        {
+          answers: {
+            ...buildSubmission().answers,
+            [firstQuestion.id]: 99,
+          },
         },
-      });
+        "Please answer every question",
+      );
     });
 
     it("accepts a note of exactly 2,000 characters", async () => {
@@ -490,21 +545,40 @@ describe("POST /api/security-assessment/call", () => {
       [
         "a posture note over 2,000 characters",
         () => ({ notes: { [firstQuestion.id]: "n".repeat(2001) } }),
+        "Notes must be 2,000 characters or fewer",
       ],
       [
         "a discovery note over 2,000 characters",
         () => ({
           discovery: { [textQuestion.id]: { note: "n".repeat(2001) } },
         }),
+        "Notes must be 2,000 characters or fewer",
       ],
       [
         "a summary over 5,000 characters",
         () => ({ callSummary: "s".repeat(5001) }),
+        "The call summary must be 5,000 characters or fewer",
       ],
-      ["a non-string summary", () => ({ callSummary: 5 })],
-      ["a non-object notes value", () => ({ notes: "note" })],
-      ["a non-string note", () => ({ notes: { [firstQuestion.id]: 5 } })],
-      ["a note on an unknown question", () => ({ notes: { nope: "note" } })],
+      [
+        "a non-string summary",
+        () => ({ callSummary: 5 }),
+        "The call summary must be text",
+      ],
+      [
+        "a non-object notes value",
+        () => ({ notes: "note" }),
+        "Notes must be an object",
+      ],
+      [
+        "a non-string note",
+        () => ({ notes: { [firstQuestion.id]: 5 } }),
+        "Notes must be text",
+      ],
+      [
+        "a note on an unknown question",
+        () => ({ notes: { nope: "note" } }),
+        "Unknown question in notes",
+      ],
       [
         "a note on a question outside the segment",
         () => {
@@ -513,35 +587,76 @@ describe("POST /api/security-assessment/call", () => {
           );
           return { notes: { [outside?.id ?? "missing"]: "note" } };
         },
+        "Unknown question in notes",
       ],
-      ["a non-object discovery value", () => ({ discovery: [] })],
-      ["an unknown discovery id", () => ({ discovery: { nope: {} } })],
+      [
+        "a non-object discovery value",
+        () => ({ discovery: [] }),
+        "Discovery answers must be an object",
+      ],
+      [
+        "an unknown discovery id",
+        () => ({ discovery: { nope: {} } }),
+        "Unknown discovery question",
+      ],
       [
         "an unknown discovery choice",
         () => ({ discovery: { [choiceQuestion.id]: { choice: "Nope" } } }),
+        "Unknown discovery choice",
       ],
       [
         "a choice on a text question",
         () => ({ discovery: { [textQuestion.id]: { choice: "Nope" } } }),
+        "Unknown discovery choice",
       ],
       [
         "a non-object discovery answer",
         () => ({ discovery: { [textQuestion.id]: "answer" } }),
+        "Discovery answers must be objects",
       ],
       [
         "a non-string discovery note",
         () => ({ discovery: { [textQuestion.id]: { note: 5 } } }),
+        "Notes must be text",
       ],
       [
-        "an answer both marked not asked and answered",
+        "an answer both marked not asked and given a note",
         () => ({
           discovery: {
             [textQuestion.id]: { isNotAsked: true, note: "Answered" },
           },
         }),
+        "A question marked not asked can't have an answer",
       ],
-    ])("rejects %s", async (_label, buildOverrides) => {
-      await expectBadRequest(buildOverrides());
+      [
+        "an answer both marked not asked and given a choice",
+        () => ({
+          discovery: {
+            [choiceQuestion.id]: {
+              isNotAsked: true,
+              choice: choiceQuestion.choices[0],
+            },
+          },
+        }),
+        "A question marked not asked can't have an answer",
+      ],
+    ])("rejects %s", async (_label, buildOverrides, message) => {
+      await expectBadRequest(buildOverrides(), message);
+    });
+  });
+
+  describe("unexpected failures", () => {
+    it("answers 500 when delivery throws", async () => {
+      mockCreateLead.mockImplementation(() => {
+        throw new Error("boom");
+      });
+
+      const response = await postWithValidToken();
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: "Failed to process your request",
+      });
     });
   });
 

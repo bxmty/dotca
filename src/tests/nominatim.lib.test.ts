@@ -44,6 +44,105 @@ describe("searchAddresses", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it("searches a query of exactly 3 characters, ignoring padding", async () => {
+    (global.fetch as jest.Mock).mockReturnValueOnce(mockResponse([]));
+
+    const promise = searchAddresses("  tor  ");
+    await jest.advanceTimersByTimeAsync(1200);
+    await promise;
+
+    const [url] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(new URL(url).searchParams.get("q")).toBe("tor");
+  });
+
+  it("sends the documented Nominatim search request", async () => {
+    (global.fetch as jest.Mock).mockReturnValueOnce(mockResponse([]));
+
+    const promise = searchAddresses("123 Main Street");
+    await jest.advanceTimersByTimeAsync(1200);
+    await promise;
+
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    const requestUrl = new URL(url);
+    expect(requestUrl.origin + requestUrl.pathname).toBe(
+      "https://nominatim.openstreetmap.org/search",
+    );
+    expect(Object.fromEntries(requestUrl.searchParams)).toEqual({
+      format: "jsonv2",
+      addressdetails: "1",
+      limit: "5",
+      q: "123 Main Street",
+    });
+    // Nominatim's usage policy requires an identifying User-Agent.
+    expect(init).toEqual({
+      headers: {
+        "User-Agent":
+          "boximity-msp-website/1.0 (https://boximity.ca; hi@boximity.ca)",
+        "Accept-Language": "en",
+      },
+    });
+  });
+
+  it("passes an explicit limit and country filter to Nominatim", async () => {
+    (global.fetch as jest.Mock).mockReturnValueOnce(mockResponse([]));
+
+    const promise = searchAddresses("123 Main Street", {
+      limit: 3,
+      countryCodes: "ca",
+    });
+    await jest.advanceTimersByTimeAsync(1200);
+    await promise;
+
+    const [url] = (global.fetch as jest.Mock).mock.calls[0];
+    const params = new URL(url).searchParams;
+    expect(params.get("limit")).toBe("3");
+    expect(params.get("countrycodes")).toBe("ca");
+  });
+
+  it("normalizes a full result into an address suggestion", async () => {
+    (global.fetch as jest.Mock).mockReturnValueOnce(
+      mockResponse([rawResult()]),
+    );
+
+    const promise = searchAddresses("123 Main Street");
+    await jest.advanceTimersByTimeAsync(1200);
+
+    expect(await promise).toEqual([
+      {
+        id: "1",
+        displayName: "123 Main St, Toronto, Ontario, Canada",
+        addressLine: "123 Main St",
+        city: "Toronto",
+        state: "Ontario",
+        postalCode: "M5V 2T6",
+        country: "Canada",
+        countryCode: "CA",
+        lat: 43.6532,
+        lon: -79.3832,
+      },
+    ]);
+  });
+
+  it("falls back to empty strings when the result has no address", async () => {
+    (global.fetch as jest.Mock).mockReturnValueOnce(
+      mockResponse([
+        rawResult({ display_name: "Somewhere, Earth", address: undefined }),
+      ]),
+    );
+
+    const promise = searchAddresses("somewhere");
+    await jest.advanceTimersByTimeAsync(1200);
+
+    expect((await promise)[0]).toMatchObject({
+      addressLine: "Somewhere",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "",
+      countryCode: "",
+    });
+  });
+
   it.each([
     ["city", { city: "Toronto" }],
     ["town", { town: "Whitby" }],
@@ -121,6 +220,32 @@ describe("searchAddresses", () => {
     const results = await promise;
 
     expect(results[0].addressLine).toBe("Toronto");
+  });
+
+  it("builds the address line from house number and road, not the display name", async () => {
+    (global.fetch as jest.Mock).mockReturnValueOnce(
+      mockResponse([
+        rawResult({
+          display_name: "CN Tower, 290 Bremner Blvd, Toronto, Ontario, Canada",
+          address: { house_number: "290", road: "Bremner Blvd" },
+        }),
+      ]),
+    );
+
+    const promise = searchAddresses("CN Tower");
+    await jest.advanceTimersByTimeAsync(1200);
+
+    expect((await promise)[0].addressLine).toBe("290 Bremner Blvd");
+  });
+
+  it("treats a cache entry as expired at exactly its TTL", async () => {
+    (global.fetch as jest.Mock).mockReturnValue(mockResponse([rawResult()]));
+
+    await searchAddresses("123 main street");
+    await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await searchAddresses("123 main street");
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it("caches repeat queries and skips a second fetch", async () => {

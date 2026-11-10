@@ -44,20 +44,19 @@ function parseBlogPostCta(value: unknown): BlogPostCta | undefined {
     return undefined;
   }
 
-  if (typeof value === "object") {
-    const candidate = value as { type?: unknown; slug?: unknown };
+  // Reading a property off a primitive is safe: it just has no type or slug.
+  const candidate = value as { type?: unknown; slug?: unknown };
 
-    if (candidate.type === "assessment" || candidate.type === "none") {
-      return { type: candidate.type };
-    }
+  if (candidate.type === "assessment" || candidate.type === "none") {
+    return { type: candidate.type };
+  }
 
-    if (
-      candidate.type === "lead-magnet" &&
-      typeof candidate.slug === "string" &&
-      candidate.slug.length > 0
-    ) {
-      return { type: "lead-magnet", slug: candidate.slug };
-    }
+  if (
+    candidate.type === "lead-magnet" &&
+    typeof candidate.slug === "string" &&
+    candidate.slug.length > 0
+  ) {
+    return { type: "lead-magnet", slug: candidate.slug };
   }
 
   // A present but unusable cta must not fall through to the assessment
@@ -154,21 +153,9 @@ export function getBlogPostBySlug(slug: string): BlogPost | null {
  * Get featured blog posts
  */
 export function getFeaturedBlogPosts(): BlogPostSummary[] {
-  const posts = getAllBlogPosts();
-  return posts
-    .filter((post) => post.frontmatter.featured)
-    .slice(0, BLOG_CONFIG.featuredPostsCount)
-    .map((post) => ({
-      title: post.frontmatter.title,
-      description: post.frontmatter.description,
-      date: post.frontmatter.date,
-      author: post.frontmatter.author,
-      tags: post.frontmatter.tags || [],
-      slug: post.slug,
-      readingTime: post.readingTime,
-      coverImage: post.frontmatter.coverImage,
-      featured: !!post.frontmatter.featured,
-    }));
+  return getBlogPostSummaries()
+    .filter((post) => post.featured)
+    .slice(0, BLOG_CONFIG.featuredPostsCount);
 }
 
 /**
@@ -181,6 +168,7 @@ export function getBlogPostSummaries(): BlogPostSummary[] {
     description: post.frontmatter.description,
     date: post.frontmatter.date,
     author: post.frontmatter.author,
+    // Stryker disable next-line ArrayDeclaration: unreachable fallback, parseBlogPost already defaults tags to []
     tags: post.frontmatter.tags || [],
     slug: post.slug,
     readingTime: post.readingTime,

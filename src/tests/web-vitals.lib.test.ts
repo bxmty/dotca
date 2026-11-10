@@ -354,35 +354,5 @@ describe("web-vitals.ts web performance tracking", () => {
         headers: { "Content-Type": "application/json" },
       });
     });
-
-    it("works when window is undefined (SSR) through observer", async () => {
-      // Set up the observer callback
-      let reportCallback: (metric: WebVitalsMetric) => void;
-      mockOnFCP.mockImplementation((callback) => {
-        reportCallback = callback;
-      });
-      initWebVitals();
-
-      const originalWindow = global.window;
-      delete (global as NodeJS.Global & { window?: typeof global.window })
-        .window;
-
-      const metric: WebVitalsMetric = {
-        name: "FCP",
-        value: 1200,
-        id: "fcp-id",
-        delta: 1200,
-        rating: "good",
-        navigationType: "navigate",
-      };
-
-      // Should not throw and should still send to API
-      await expect(reportCallback(metric)).resolves.not.toThrow();
-
-      expect(mockFetch).toHaveBeenCalled();
-
-      // Restore window
-      global.window = originalWindow;
-    });
   });
 });

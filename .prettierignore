@@ -6,6 +6,9 @@ CLAUDE.md
 ansible/
 .github/actions/
 .claude/
+# Stryker mutation testing: sandbox and report output
+/.stryker-tmp/
+/reports/
 
 # Frozen design snapshots, kept as drafted (docs/design/README.md)
 docs/design/*.html

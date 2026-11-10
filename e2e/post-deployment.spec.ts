@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Post-Deployment Navigation Tests", () => {
+test.describe("Post-Deployment Navigation Tests @read-only", () => {
   test("Homepage loads and renders correctly", async ({ page }) => {
     await page.goto("/");
 

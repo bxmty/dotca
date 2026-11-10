@@ -313,7 +313,7 @@ jobs:
         if: needs.detect-environment.outputs.should_build == 'true'
         uses: actions/setup-node@v7.1.0
         with:
-          node-version: "24.22.2"
+          node-version: "26.12.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -524,7 +524,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "v1.16.6"
+          terraform_version: "v1.17.1"
 
       - name: Set deployment image tag
         id: image_tag
@@ -626,9 +626,9 @@ jobs:
             echo "**🌐 Application URL:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
           fi
 
-  # Integration testing
+  # Post-deploy E2E testing
   integration-tests:
-    name: Integration Tests
+    name: Post-deploy E2E Tests
     runs-on: ubuntu-latest
     needs: [detect-environment, deploy]
     if: needs.detect-environment.outputs.should_test == 'true' && github.event.inputs.skip_tests != 'true'
@@ -637,19 +637,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
 
-      - name: Run integration tests
-        uses: ./.github/actions/test-runner
-        with:
-          test_type: integration
-          environment: ${{ needs.detect-environment.outputs.environment }}
-          app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
-          fail_fast: false
-          timeout_minutes: 15
-
+      # Production runs only specs tagged @read-only (explicit allowlist: a new
+      # spec stays off prod until tagged). Staging runs the whole project.
       - name: Run E2E tests
+        id: e2e
         uses: ./.github/actions/test-runner
         with:
           test_type: e2e
+          e2e_grep: ${{ needs.detect-environment.outputs.environment == 'production' && '@read-only' || '' }}
           environment: ${{ needs.detect-environment.outputs.environment }}
           app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
           fail_fast: false
@@ -668,7 +663,7 @@ jobs:
       - name: Update testing summary
         if: always()
         run: |
-          TEST_STATUS="${{ job.status == 'success' && '✅ Passed' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+          E2E_STATUS="${{ steps.e2e.outcome == 'success' && '✅ Passed' || steps.e2e.outcome == 'failure' && '❌ Failed' || steps.e2e.outcome == 'skipped' && '⏭️ Skipped' || '⏳ Running' }}"
           DETECTED_ENV="${{ needs.detect-environment.outputs.environment }}"
 
           # Determine test URL based on detected environment
@@ -683,8 +678,7 @@ jobs:
           ### 🧪 Integration Testing Status
           | Test Type | Status |
           |-----------|--------|
-          | Integration Tests | \$TEST_STATUS |
-          | E2E Tests | \$TEST_STATUS |
+          | E2E Tests | \$E2E_STATUS |
           | Test Environment | \`$DETECTED_ENV\` |
           | Test URL | \$TEST_URL |
 
@@ -716,7 +710,7 @@ jobs:
               "environment": "${{ needs.detect-environment.outputs.environment }}",
               "branch": "${{ github.ref_name }}",
               "build_success": "${{ needs.quality-and-build.outputs.build_success }}",
-              "integration_tests": "${{ needs.integration-tests.result || 'skipped' }}",
+              "e2e_tests": "${{ needs.integration-tests.result || 'skipped' }}",
               "timestamp": "${{ github.event.head_commit.timestamp }}"
             }
 
@@ -739,7 +733,7 @@ jobs:
           | Environment Detection | ✅ Completed |
           | Quality Checks & Build | ${{ needs.quality-and-build.result == 'success' && '✅ Success' || needs.quality-and-build.result == 'failure' && '❌ Failed' || needs.quality-and-build.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Deployment | ${{ needs.deploy.result == 'success' && '✅ Success' || needs.deploy.result == 'failure' && '❌ Failed' || needs.deploy.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
-          | Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Post-deploy E2E Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Notifications | ${{ job.status == 'success' && '✅ Sent' || '❌ Failed' }} |
 
           ### 📊 Key Information

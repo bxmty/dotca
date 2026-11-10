@@ -15,7 +15,7 @@ type AssessmentYaml = Record<string, unknown> & {
   sdr: {
     status: unknown;
     talkTracks: Record<string, unknown>;
-    nextSteps: Record<string, Record<string, unknown>>;
+    nextSteps: Partial<Record<string, Record<string, unknown>>>;
     discovery: Record<string, unknown>[];
   };
 };
@@ -139,6 +139,14 @@ describe("loadSdrContent (malformed fixtures)", () => {
     ).toThrow(/incomplete sdr\.nextSteps\.growing\.managed/);
   });
 
+  it("lists every tier of a missing segment instead of crashing", () => {
+    expect(
+      loadBroken((content) => {
+        delete content.sdr.nextSteps.growing;
+      }),
+    ).toThrow(/incomplete sdr\.nextSteps\.growing\.exposed/);
+  });
+
   it("rejects a next step without a service", () => {
     expect(
       loadBroken((content) => {
@@ -196,6 +204,33 @@ describe("loadSdrContent (malformed fixtures)", () => {
         content.sdr.discovery[1].choices = ["Only one"];
       }),
     ).toThrow(/discovery question "current_it" needs at least 2 choices/);
+  });
+
+  it("accepts a choice question with exactly two choices", () => {
+    expect(
+      loadBroken((content) => {
+        content.sdr.discovery[1].choices = ["In-house", "Outsourced"];
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects a choice question with a non-text choice", () => {
+    expect(
+      loadBroken((content) => {
+        content.sdr.discovery[1].choices = ["In-house", 7];
+      }),
+    ).toThrow(/discovery question "current_it" needs at least 2 choices/);
+  });
+
+  it("lists each problem on its own line", () => {
+    expect(
+      loadBroken((content) => {
+        content.sdr.status = "published";
+        delete content.sdr.nextSteps.growing.managed;
+      }),
+    ).toThrow(
+      "\n- sdr.status must be draft or approved\n- incomplete sdr.nextSteps.growing.managed",
+    );
   });
 
   it("rejects a choice question with a blank choice", () => {

@@ -151,6 +151,23 @@ npm run test:watch
 npm run test:coverage
 ```
 
+### Mutation Tests (Stryker)
+
+```bash
+# Full run in a detached tmux session (about 30 minutes)
+just mutation
+tmux attach -t stryker                     # watch it
+
+# Scoped run, a few minutes: the safer way to verify a change
+npm run test:mutation -- --mutate src/lib/rate-limit.ts,src/lib/nominatim.ts
+```
+
+Stryker mutates `src/lib` and the API routes and judges them with the jest suite (`stryker.config.mjs`). Mutation testing is report-only (no `break` threshold).
+
+- **Memory:** a full run needs most of a 15 GiB machine even at the configured `concurrency: 4`. Close other heavy processes first, and run it in tmux so it outlives the terminal that started it.
+- **Reports:** the latest run is in `reports/mutation/` (`mutation.html`, `mutation.json`). `just mutation` also copies the JSON report and log to `reports/mutation-runs/<commit>/`, so two runs can be compared. Compare runs made with the same `mutate` list, or the totals cover different files.
+- **Suppressions:** the rules are in the `stryker.config.mjs` header.
+
 ### End-to-End Tests (Playwright)
 
 ```bash

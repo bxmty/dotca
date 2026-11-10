@@ -67,6 +67,18 @@ describe("getLeadMagnetBySlug", () => {
     );
   });
 
+  it("leaves the optional keys off a magnet that doesn't set them", () => {
+    mockReadFileSync.mockReturnValue(leadMagnetFile({ published: true }));
+
+    expect(getLeadMagnetBySlug("test-guide")?.frontmatter).toStrictEqual({
+      title: "Test Guide",
+      description: "A test guide",
+      date: "2026-01-01",
+      published: true,
+      assetFile: "test-guide.pdf",
+    });
+  });
+
   it("treats a magnet without a published flag as published, like blog posts", () => {
     mockReadFileSync.mockReturnValue(leadMagnetFile({}));
 
@@ -118,7 +130,14 @@ describe("getLeadMagnetBySlug", () => {
     expect(mockReadFileSync).not.toHaveBeenCalled();
   });
 
-  it.each(["../../.env", "/etc/passwd", "sub/guide.pdf", "guide.exe"])(
+  it.each([
+    "../../.env",
+    "/etc/passwd",
+    "sub/guide.pdf",
+    "guide.exe",
+    "guide.pdf/../../../.env",
+    "guide.pdf.exe",
+  ])(
     "rejects an assetFile of %p that is not a bare PDF filename",
     (assetFile) => {
       jest.spyOn(console, "warn").mockImplementation(() => {});

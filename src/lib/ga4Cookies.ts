@@ -50,6 +50,7 @@ export function parseGa4CookieIds(
     if (separatorIndex === -1) continue;
     const name = pair.slice(0, separatorIndex).trim();
     const value = pair.slice(separatorIndex + 1).trim();
+    // Stryker disable next-line ConditionalExpression: a nameless pair would be stored under "", a key nothing reads
     if (name) cookies.set(name, value);
   }
 
@@ -70,12 +71,8 @@ export function parseGa4CookieIds(
   if (measurementId) {
     const containerId = measurementId.replace(/^G-/, "");
     const sessionCookie = cookies.get(`_ga_${containerId}`);
-    if (sessionCookie) {
-      const segments = sessionCookie.split(".");
-      if (segments.length >= 3 && segments[2]) {
-        sessionId = segments[2];
-      }
-    }
+    // An empty or absent third segment leaves session_id undefined.
+    sessionId = sessionCookie?.split(".")[2] || undefined;
   }
 
   return { clientId, sessionId };

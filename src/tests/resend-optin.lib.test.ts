@@ -194,6 +194,24 @@ describe("subscribeToMonthlyBrief", () => {
     expect(Sentry.captureMessage).not.toHaveBeenCalled();
   });
 
+  it("fails when the existing contact's segment add fails", async () => {
+    mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
+    mockGetContact.mockResolvedValue(existingContact);
+    mockAddContactSegment.mockResolvedValue(
+      resendError("rate_limit_exceeded", 429),
+    );
+
+    const result = await subscribeToMonthlyBrief(subscriber);
+
+    expect(result).toEqual({ isSubscribed: false });
+    expect(mockUpdateContactTopics).not.toHaveBeenCalled();
+    expect(mockSendEvent).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Monthly brief opt-in failed (contact): create validation_error, existing-contact update segment rate_limit_exceeded",
+      "warning",
+    );
+  });
+
   it("fails when the existing contact's topic update fails", async () => {
     mockCreateContact.mockResolvedValue(resendError("validation_error", 409));
     mockGetContact.mockResolvedValue(existingContact);
@@ -327,6 +345,19 @@ describe("subscribeToMonthlyBrief", () => {
           topics: [{ id: "topic_brief", subscription: "opt_in" }],
         }),
       );
+      expect(mockSendEvent).not.toHaveBeenCalled();
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
+
+    // The assessment has no nurture cadence either (#606, #642).
+    it("subscribes a security-assessment opt-in to the brief but sends no event", async () => {
+      const result = await subscribeToMonthlyBrief({
+        email: "jane@example.com",
+        source: "security-assessment",
+      });
+
+      expect(result).toEqual({ isSubscribed: true });
+      expect(mockCreateContact).toHaveBeenCalledTimes(1);
       expect(mockSendEvent).not.toHaveBeenCalled();
       expect(Sentry.captureMessage).not.toHaveBeenCalled();
     });
