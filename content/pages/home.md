@@ -73,7 +73,7 @@ We'll email installation instructions for our management tool to your team, ensu
 
 ## How it works for a client
 
-A logistics firm with 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
+A logistics firm with around 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
 
 Reference call available.
 

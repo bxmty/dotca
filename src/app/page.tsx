@@ -230,10 +230,10 @@ export default function Home() {
         <SectionHead title="How it works for a client" />
         <div className="grid max-w-[780px] gap-5.5">
           <p className="m-0 text-prose leading-snug">
-            A logistics firm with 100 staff. Before: the TMS, the accounting
-            suite and GPS tracking each kept their own copy of the job, and
-            someone retyped it. Now: the job is entered once, and the invoice
-            goes out the day it delivers.
+            A logistics firm with around 100 staff. Before: the TMS, the
+            accounting suite and GPS tracking each kept their own copy of the
+            job, and someone retyped it. Now: the job is entered once, and the
+            invoice goes out the day it delivers.
           </p>
           <p className="m-0 font-semibold">Reference call available.</p>
           <div>

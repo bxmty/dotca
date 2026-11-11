@@ -90,7 +90,7 @@ describe("Home page", () => {
     render(<Home />);
 
     const proof = document.getElementById("proof")!;
-    expect(proof).toHaveTextContent("A logistics firm with 100 staff");
+    expect(proof).toHaveTextContent("A logistics firm with around 100 staff");
     expect(proof).toHaveTextContent("Reference call available.");
     expect(
       within(proof).getByRole("link", { name: "Book a reference call" }),
