@@ -36,6 +36,6 @@ Source of truth for site copy. Read before changing any page, meta, og-image, JS
 
 ## Done when a copy change ships
 
-1. `rg -i "cloud 5 pack|\b5[-–](10|15)\b|away from the desk" src content` returns only the exceptions above and the retired-copy assertion in `src/tests/page.test.tsx`. The `\b` matters: a bare `5-10` also matches "25-100".
+1. `rg -i "cloud 5 pack|\b5[-–](10|15)\b|away from the desk" src content e2e` returns only the exceptions above and the retired-copy assertion in `src/tests/page.test.tsx`. The `\b` matters: a bare `5-10` also matches "25-100".
 2. `npm run check` passes, with tests updated where they assert the old copy.
 3. The `.md` mirror matches the rendered text.
