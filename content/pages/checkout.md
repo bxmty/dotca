@@ -39,7 +39,7 @@ _{unit_price} per user per month_
 
 #### Free Plan
 
-Ideal for startups and small teams looking to understand their security posture
+Understand your device security posture at no cost
 
 - Syncro security agent (Windows only — Mac and Linux planned)
 - Periodic malware scans, plus a deeper scan when your security posture is poor
@@ -49,7 +49,7 @@ The Free plan is information only: it includes no antivirus, no automated alerts
 
 #### Basic Plan
 
-Perfect for small teams needing essential IT security and communication tools
+Essential IT security and communication tools: password manager, business email and support
 
 - Password Manager
 - Business Email Solution
