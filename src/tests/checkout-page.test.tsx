@@ -400,6 +400,43 @@ describe("CheckoutPage Component", () => {
     expect(annualRadio).not.toBeChecked();
   });
 
+  it("itemises the annual discount in the order summary", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    await waitFor(() => {
+      expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("Basic Plan ($99.00 × 5 employees)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Annual Discount/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/^Annual/));
+
+    expect(screen.getByLabelText(/^Annual/)).toHaveAccessibleName(/save 10%/);
+    expect(
+      screen.getByText("Basic Plan ($99.00 × 5 employees × 12 months)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$5,940.00")).toBeInTheDocument();
+    expect(screen.getByText("Annual Discount (10%)")).toBeInTheDocument();
+    expect(screen.getByText("-$594.00")).toBeInTheDocument();
+  });
+
+  it("limits the employee count input to the bounds the server accepts", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    const employeeInput = await screen.findByLabelText(
+      "Number of Employees (minimum 5)",
+    );
+    expect(employeeInput).toHaveValue(5);
+    expect(employeeInput).toHaveAttribute("min", "5");
+    expect(employeeInput).toHaveAttribute("max", "20");
+  });
+
   it("shows purchase terms instead of waitlist terms", async () => {
     render(<CheckoutPage />);
 

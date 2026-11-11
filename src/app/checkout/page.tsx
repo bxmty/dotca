@@ -29,8 +29,18 @@ import {
   omitFieldErrors,
 } from "@/lib/formValidation";
 import type { AddressSuggestion } from "@/lib/nominatim";
-import { isFreePlan, type Plan } from "@/lib/plan-catalog";
-import type { BillingCycle } from "@/lib/pricing";
+import {
+  ANNUAL_DISCOUNT_PERCENT,
+  estimatePrice,
+  formatPrice,
+  isFreePlan,
+  type Plan,
+} from "@/lib/plan-catalog";
+import {
+  MAX_EMPLOYEE_COUNT,
+  MIN_EMPLOYEE_COUNT,
+  type BillingCycle,
+} from "@/lib/pricing";
 
 type CustomerFields = {
   firstName: string;
@@ -83,7 +93,11 @@ function validateCustomerFields(fields: CustomerFields): FieldErrors {
 
 const BILLING_CYCLE_OPTIONS: readonly SegmentedOption<BillingCycle>[] = [
   { value: "monthly", label: "Monthly" },
-  { value: "annual", label: "Annual", detail: "save 10%" },
+  {
+    value: "annual",
+    label: "Annual",
+    detail: `save ${ANNUAL_DISCOUNT_PERCENT}%`,
+  },
 ];
 
 const SUMMARY_ROW_CLASS_NAME = "flex justify-between gap-4";
@@ -113,7 +127,7 @@ export default function Checkout() {
   // Never pre-checked: brief consent must be express (CASL), and paid
   // signups get the box rather than relying on implied consent
   const [wantsBrief, setWantsBrief] = useState(false);
-  const [employeeCount, setEmployeeCount] = useState(5);
+  const [employeeCount, setEmployeeCount] = useState(MIN_EMPLOYEE_COUNT);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
   const handlePlanSelected = (plan: Plan | null) => {
@@ -168,28 +182,9 @@ export default function Checkout() {
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const value = parseInt(e.target.value);
-    if (value >= 5 && value <= 20) {
+    if (value >= MIN_EMPLOYEE_COUNT && value <= MAX_EMPLOYEE_COUNT) {
       setEmployeeCount(value);
     }
-  };
-
-  const calculateTotal = (unitPrice: string, count: number) => {
-    const price = parseFloat(unitPrice.replace(/[^\d.]/g, ""));
-    const baseTotal = price * count;
-
-    // Apply 10% discount for annual billing
-    if (billingCycle === "annual") {
-      const annualTotal = baseTotal * 12;
-      const discountedTotal = annualTotal * 0.9;
-      return formatCurrency(discountedTotal);
-    }
-
-    return formatCurrency(baseTotal);
-  };
-
-  // Helper function to format currency with commas and 2 decimal places
-  const formatCurrency = (amount: number): string => {
-    return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   };
 
   const handleSubmit = (e: React.FormEvent): void => {
@@ -260,10 +255,14 @@ export default function Checkout() {
     );
   }
 
-  const unitPrice = parseFloat(selectedPlan.price.replace(/[^\d.]/g, ""));
-  const subtotal =
-    unitPrice * employeeCount * (billingCycle === "annual" ? 12 : 1);
-  const estimatedTotal = calculateTotal(selectedPlan.price, employeeCount);
+  // An on-screen estimate only: Stripe computes the amount actually charged
+  const estimate = estimatePrice({
+    plan: selectedPlan,
+    employeeCount,
+    billingCycle,
+  });
+  const unitPrice = formatPrice(selectedPlan.monthlyUnitPrice);
+  const estimatedTotal = formatPrice(estimate.total);
 
   return (
     <>
@@ -285,7 +284,7 @@ export default function Checkout() {
                 {selectedPlan.name} Plan
               </p>
               <p className={`m-0 text-body ${PRICE_CLASS_NAME}`}>
-                {selectedPlan.price} per user per month
+                {unitPrice} per user per month
               </p>
               <p className="m-0 max-w-[62ch] text-small text-muted">
                 {selectedPlan.description}
@@ -299,10 +298,10 @@ export default function Checkout() {
           <div className="grid items-start gap-6 border-t border-rule pt-6 md:grid-cols-2">
             <TextField
               id="employeeCount"
-              label="Number of Employees (minimum 5)"
+              label={`Number of Employees (minimum ${MIN_EMPLOYEE_COUNT})`}
               type="number"
-              min="5"
-              max="20"
+              min={MIN_EMPLOYEE_COUNT}
+              max={MAX_EMPLOYEE_COUNT}
               value={employeeCount}
               onChange={handleEmployeeCountChange}
               required
@@ -493,20 +492,20 @@ export default function Checkout() {
             <div className="grid gap-2 border-t border-rule pt-4 text-small">
               <div className={SUMMARY_ROW_CLASS_NAME}>
                 <span>
-                  {selectedPlan.name} Plan ({selectedPlan.price} ×{" "}
-                  {employeeCount} employees
+                  {selectedPlan.name} Plan ({unitPrice} × {employeeCount}{" "}
+                  employees
                   {billingCycle === "annual" ? " × 12 months" : ""})
                 </span>
                 <span className={PRICE_CLASS_NAME}>
-                  {formatCurrency(subtotal)}
+                  {formatPrice(estimate.subtotal)}
                 </span>
               </div>
 
               {billingCycle === "annual" && (
                 <div className={SUMMARY_ROW_CLASS_NAME}>
-                  <span>Annual Discount (10%)</span>
+                  <span>Annual Discount ({ANNUAL_DISCOUNT_PERCENT}%)</span>
                   <span className={PRICE_CLASS_NAME}>
-                    -{formatCurrency(subtotal * 0.1)}
+                    -{formatPrice(estimate.discount)}
                   </span>
                 </div>
               )}

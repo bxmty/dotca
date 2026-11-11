@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import PricingPage from "@/app/pricing/page";
-import { planCatalog } from "@/lib/plan-catalog";
+import { formatPrice, planCatalog } from "@/lib/plan-catalog";
 import { expectContoursWithoutWaypoints } from "./heroExpectations";
 
 // The pricing sheet renders twice from one plan catalog: a ruled table
@@ -151,7 +151,9 @@ describe("PricingPage", () => {
 
     const sheet = getSheet();
     for (const plan of planCatalog) {
-      expect(within(sheet).getByText(plan.price)).toHaveClass("text-h2");
+      expect(
+        within(sheet).getByText(formatPrice(plan.monthlyUnitPrice)),
+      ).toHaveClass("text-h2");
       expect(within(sheet).getByText(plan.description)).toBeInTheDocument();
       for (const feature of plan.features) {
         expect(within(sheet).getAllByText(feature).length).toBeGreaterThan(0);

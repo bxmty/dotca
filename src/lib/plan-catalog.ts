@@ -2,12 +2,18 @@
  * The plan catalog: the one list of plans the site sells. The pricing sheet
  * and checkout both render from it, so a visitor reads the same names,
  * descriptions, features and prices on both pages.
+ *
+ * Prices here are display prices. They feed the pricing sheet and the
+ * checkout estimate only; the amount actually charged comes from the Stripe
+ * Price resolved server-side (see lib/pricing.ts), never from this file.
  */
+
+import type { BillingCycle } from "./pricing";
 
 export interface Plan {
   name: string;
-  /** Display price per user per month. */
-  price: string;
+  /** Display price per user per month, in dollars. */
+  monthlyUnitPrice: number;
   description: string;
   features: readonly string[];
   cta: string;
@@ -18,7 +24,7 @@ export interface Plan {
 export const planCatalog: readonly Plan[] = [
   {
     name: "Free",
-    price: "$0.00",
+    monthlyUnitPrice: 0,
     description:
       "Ideal for startups and freelancers looking to secure their digital assets",
     features: [
@@ -30,7 +36,7 @@ export const planCatalog: readonly Plan[] = [
   },
   {
     name: "Basic",
-    price: "$99.00",
+    monthlyUnitPrice: 99,
     description:
       "Perfect for small teams needing essential IT security and communication tools",
     features: [
@@ -45,7 +51,7 @@ export const planCatalog: readonly Plan[] = [
   },
   {
     name: "Standard",
-    price: "$249.00",
+    monthlyUnitPrice: 249,
     description:
       "Our recommended option for growing businesses needing comprehensive IT support",
     features: [
@@ -62,7 +68,7 @@ export const planCatalog: readonly Plan[] = [
   },
   {
     name: "Premium",
-    price: "$449.00",
+    monthlyUnitPrice: 449,
     description:
       "Complete IT management solution for businesses requiring enterprise-grade technology",
     features: [
@@ -93,4 +99,43 @@ export function getPlanHref(plan: Plan): string {
 export function findPlanByName(name: string): Plan | null {
   const wanted = name.toLowerCase();
   return planCatalog.find((plan) => plan.name.toLowerCase() === wanted) ?? null;
+}
+
+/** Whole-percent discount shown for paying a year up front. */
+export const ANNUAL_DISCOUNT_PERCENT = 10;
+
+const MONTHS_PER_YEAR = 12;
+
+/** Formats a dollar amount for display, e.g. `$12,830.40`. */
+export function formatPrice(amount: number): string {
+  return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+}
+
+/** Dollar amounts for one billing period, before tax. */
+export interface PriceEstimate {
+  subtotal: number;
+  discount: number;
+  total: number;
+}
+
+/**
+ * Estimates what checkout displays for a plan, employee count and billing
+ * cycle. Display only: Stripe computes the amount actually charged.
+ */
+export function estimatePrice({
+  plan,
+  employeeCount,
+  billingCycle,
+}: {
+  plan: Plan;
+  employeeCount: number;
+  billingCycle: BillingCycle;
+}): PriceEstimate {
+  const monthlyTotal = plan.monthlyUnitPrice * employeeCount;
+  if (billingCycle === "monthly") {
+    return { subtotal: monthlyTotal, discount: 0, total: monthlyTotal };
+  }
+  const subtotal = monthlyTotal * MONTHS_PER_YEAR;
+  const discount = subtotal * (ANNUAL_DISCOUNT_PERCENT / 100);
+  return { subtotal, discount, total: subtotal - discount };
 }

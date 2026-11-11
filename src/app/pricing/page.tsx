@@ -3,7 +3,12 @@ import FaqList from "../components/FaqList";
 import PageHero from "../components/PageHero";
 import Section from "../components/Section";
 import SectionHead from "../components/SectionHead";
-import { getPlanHref, planCatalog, type Plan } from "@/lib/plan-catalog";
+import {
+  formatPrice,
+  getPlanHref,
+  planCatalog,
+  type Plan,
+} from "@/lib/plan-catalog";
 
 const FAQ_ITEMS = [
   {
@@ -56,7 +61,7 @@ function PlanPrice({ plan }: { plan: Plan }) {
     <span
       className={`${PRICE_CLASS_NAME} ${plan.highlighted ? "text-fig" : ""}`}
     >
-      {plan.price}
+      {formatPrice(plan.monthlyUnitPrice)}
     </span>
   );
 }

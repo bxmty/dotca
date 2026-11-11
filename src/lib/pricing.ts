@@ -1,10 +1,15 @@
 /**
  * Server-side order validation for checkout.
  *
- * Stripe owns the prices: each paid plan+cycle maps to a lookup key that
- * resolves to a mode-correct recurring Price at runtime (see resolvePriceId
- * in lib/stripe.ts). No amounts and no Price IDs live in this codebase, so
- * the mode of STRIPE_SECRET_KEY alone decides test vs live pricing.
+ * Stripe owns the charged prices: each paid plan+cycle maps to a lookup key
+ * that resolves to a mode-correct recurring Price at runtime (see
+ * resolvePriceId in lib/stripe.ts). No charged amounts and no Price IDs live
+ * in this codebase, so the mode of STRIPE_SECRET_KEY alone decides test vs
+ * live pricing.
+ *
+ * Display prices do live here, in lib/plan-catalog.ts. They render the
+ * pricing sheet and the checkout estimate and are never sent to Stripe;
+ * nothing checks them against the Stripe Prices, so change both together.
  */
 
 export const BILLING_CYCLES = ["monthly", "annual"] as const;
