@@ -10,6 +10,7 @@ Next.js (App Router) marketing site + blog + checkout for Boximity MSP ("dotca")
 
 Scripts live in `package.json`; recipes in the `justfile` (`just --list`). What those files do not say:
 
+- `npm run check` runs every gate in order (lint, typecheck, format, tests with coverage) and stops at the first failure. Run it once before committing; the pre-commit hooks re-run them on the staged files.
 - `npm run test:coverage` is the gate CI runs. The thresholds in `jest.config.cjs` are a ratchet floor set to measured coverage: raise them as coverage improves, and fix the tests when a run falls below them.
 - `npm run test:e2e` needs the dev environment up first (`just dev-up`).
 - `npm run lint` is type-aware for `src` (boolean naming rule in `eslint.config.js`), so it takes a few seconds longer than a plain eslint run.
@@ -22,6 +23,7 @@ Scripts live in `package.json`; recipes in the `justfile` (`just --list`). What 
 
 Routes are folders under `src/app`; API routes are `src/app/api/*/route.ts`; shared modules are in `src/lib`. Conventions the layout does not show:
 
+- **Copy and positioning**: read `docs/content/positioning.md` before editing any page, meta, og-image, plan blurb or blog post. It holds the buyer, the retired terms, the claims rules and the `content/pages/*.md` mirror rule.
 - **Blog**: posts are GitHub-flavored markdown in `content/blog/*.md` with YAML frontmatter; MDX component syntax is unsupported. Every page and route reads posts through `src/lib/blog.ts`. `scripts/validate-blog-posts.js` checks frontmatter in CI.
 - **Plans and pricing**: `src/lib/plan-catalog.ts` is the one plan catalog and holds display prices only. Charged amounts come from Stripe Prices resolved by lookup key (`src/lib/pricing.ts`, `src/lib/stripe.ts`); change the two together.
 - **Structured data**: pages compose the JSON-LD builders in `src/lib/schema.ts`.

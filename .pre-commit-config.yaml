@@ -11,6 +11,12 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
+  # Secret scan on staged changes (global rule: gitleaks before every commit).
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
   # Prettier for code formatting: the repo's own pinned version, so the hook
   # and CI's `npm run format:check` agree. Exclusions live in .prettierignore.
   - repo: local
