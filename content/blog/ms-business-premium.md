@@ -49,7 +49,7 @@ There's a difference between having Microsoft 365 and using Microsoft 365.
 
 Most small firms that have an M365 subscription are using about 30% of what they're paying for. Email, maybe Teams. The security features—the ones that would actually protect client data—are sitting unconfigured. Default settings. Factory-fresh vulnerabilities.
 
-This is where Boximity's Cloud 5 Pack changes the equation. We don't just provision your Microsoft 365 licenses and hand you a username and password. We configure the security baseline (MFA, Safe Links, Safe Attachments, Intune policies), set up your email and domain correctly, migrate your existing data, and monitor your environment on an ongoing basis.
+This is where Boximity's Comprehensive Cloud Stack changes the equation. We don't just provision your Microsoft 365 licenses and hand you a username and password. We configure the security baseline (MFA, Safe Links, Safe Attachments, Intune policies), set up your email and domain correctly, migrate your existing data, and monitor your environment on an ongoing basis.
 
 When Microsoft releases a security update, it gets applied. When a device goes missing, it gets remotely wiped. When a threat is detected, it gets flagged before your team notices anything.
 
@@ -59,6 +59,6 @@ That's IT that works the way it should—quietly, in the background, while you f
 
 ## The Bottom Line
 
-Microsoft 365 Business Premium gives Ontario professional services firms enterprise-grade security and collaboration in a single, integrated platform. The Cloud 5 Pack ensures you're actually getting the value you're paying for—configured correctly, monitored continuously, and managed proactively so technology stops being a distraction and starts being a foundation.
+Microsoft 365 Business Premium gives Ontario professional services firms enterprise-grade security and collaboration in a single, integrated platform. The Comprehensive Cloud Stack ensures you're actually getting the value you're paying for—configured correctly, monitored continuously, and managed proactively so technology stops being a distraction and starts being a foundation.
 
 **Ready to see what a properly configured Microsoft 365 environment looks like for your firm?** Book a free 30-minute Technology Alignment Session. We'll focus on your business goals first—and show you exactly what technology can do to support them.

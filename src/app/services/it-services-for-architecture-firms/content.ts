@@ -3,11 +3,11 @@ import type { ServiceLandingContent } from "../ServiceLandingPage";
 export const architectureFirmsContent: ServiceLandingContent = {
   hero: {
     heading: "IT Services for Architecture Firms",
-    lead: "Specialized managed IT services designed specifically for architecture firms with 5-15 employees. Keep your design workflow running smoothly while you focus on creating exceptional buildings with our Cloud 5 Pack solution.",
+    lead: "Specialized managed IT services designed specifically for architecture firms. Keep your design workflow running smoothly while you focus on creating exceptional buildings with our Comprehensive Cloud Stack solution.",
     trustLine: "Serving architecture firms across Canada",
     imageAlt: "Architecture firm office with design technology",
     card: {
-      intro: "Everything your 5-10 person architecture firm needs:",
+      intro: "Everything your architecture firm needs:",
       items: [
         "24/7 Proactive Monitoring",
         "Advanced Cybersecurity",
@@ -67,7 +67,8 @@ export const architectureFirmsContent: ServiceLandingContent = {
     },
   },
   pack: {
-    heading: "Cloud 5 Pack: Complete IT Services for Architecture Firms",
+    heading:
+      "Comprehensive Cloud Stack: Complete IT Services for Architecture Firms",
     groups: [
       {
         title: "🔒 Architecture Firm Cybersecurity",
@@ -120,7 +121,7 @@ export const architectureFirmsContent: ServiceLandingContent = {
         question:
           "How quickly can you implement IT services for our architecture firm?",
         answer:
-          "Most architecture firms can be up and running with our IT services within 1-2 weeks. We begin with a comprehensive design technology assessment to understand your current CAD and BIM setup, then implement our Cloud 5 Pack solution. For urgent construction or design concerns, we can often provide immediate emergency support while the full implementation is underway.",
+          "Most architecture firms can be up and running with our IT services within 1-2 weeks. We begin with a comprehensive design technology assessment to understand your current CAD and BIM setup, then implement our Comprehensive Cloud Stack solution. For urgent construction or design concerns, we can often provide immediate emergency support while the full implementation is underway.",
       },
       {
         question:

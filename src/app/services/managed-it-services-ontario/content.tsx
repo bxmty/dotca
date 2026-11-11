@@ -4,11 +4,11 @@ import type { ServiceLandingContent } from "../ServiceLandingPage";
 export const ontarioContent: ServiceLandingContent = {
   hero: {
     heading: "Managed IT Services Ontario",
-    lead: "Professional managed IT services designed specifically for Ontario businesses. Keep your technology running smoothly while you focus on growing your business with our Cloud 5 Pack solution.",
+    lead: "Professional managed IT services designed specifically for Ontario businesses. Keep your technology running smoothly while you focus on growing your business with our Comprehensive Cloud Stack solution.",
     trustLine: "Serving Toronto, Ottawa, Hamilton, London & surrounding areas",
     imageAlt: "Office setting with technology",
     card: {
-      intro: "Everything your 5-user team needs:",
+      intro: "Everything your team needs:",
       items: [
         "24/7 Proactive Monitoring",
         "Advanced Cybersecurity",
@@ -67,7 +67,7 @@ export const ontarioContent: ServiceLandingContent = {
     },
   },
   pack: {
-    heading: "Cloud 5 Pack: Complete Managed IT Services Ontario",
+    heading: "Comprehensive Cloud Stack: Complete Managed IT Services Ontario",
     groups: [
       {
         title: "🔒 Advanced Cybersecurity",
@@ -156,7 +156,7 @@ export const ontarioContent: ServiceLandingContent = {
         question:
           "How quickly can you start providing managed IT services Ontario?",
         answer:
-          "Most Ontario businesses can be up and running with our managed IT services within 1-2 weeks. We begin with a comprehensive IT assessment to understand your current setup, then implement our Cloud 5 Pack solution. For urgent security concerns or critical issues, we can often provide immediate emergency support while the full implementation is underway.",
+          "Most Ontario businesses can be up and running with our managed IT services within 1-2 weeks. We begin with a comprehensive IT assessment to understand your current setup, then implement our Comprehensive Cloud Stack solution. For urgent security concerns or critical issues, we can often provide immediate emergency support while the full implementation is underway.",
       },
       {
         question:

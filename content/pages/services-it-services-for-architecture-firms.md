@@ -1,21 +1,21 @@
 ---
 route: /services/it-services-for-architecture-firms
 title: "IT Services for Architecture Firms | CAD Software Support | Boximity"
-description: "Professional IT services for architecture firms. Specialized managed IT support for architectural practices with 5-15 employees. CAD software management, BIM tools, and Cloud 5 Pack solutions. Starting at $1,250/month. Free IT assessment available."
+description: "Professional IT services for architecture firms. Specialized managed IT support for architectural practices. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions. Starting at $1,250/month. Free IT assessment available."
 ---
 
 # IT Services for Architecture Firms
 
-Specialized managed IT services designed specifically for architecture firms with 5-15 employees. Keep your design workflow running smoothly while you focus on creating exceptional buildings with our Cloud 5 Pack solution.
+Specialized managed IT services designed specifically for architecture firms. Keep your design workflow running smoothly while you focus on creating exceptional buildings with our Comprehensive Cloud Stack solution.
 
 [Get Free IT Assessment]
-[View Cloud 5 Pack Pricing]
+[View Comprehensive Cloud Stack Pricing]
 
 _Serving architecture firms across Canada_
 
-### Cloud 5 Pack - $1,250/month
+### Comprehensive Cloud Stack - $1,250/month
 
-Everything your 5-10 person architecture firm needs:
+Everything your architecture firm needs:
 
 _See pricing page for full details and firm sizes_
 
@@ -66,7 +66,7 @@ Unlike traditional IT companies that focus solely on technology, our IT services
 - ☁️ Cloud
 - 🏗️ Design
 
-## Cloud 5 Pack: Complete IT Services for Architecture Firms
+## Comprehensive Cloud Stack: Complete IT Services for Architecture Firms
 
 ### $1,250/month
 
@@ -112,7 +112,7 @@ Our IT services for architecture firms are specifically designed for architectur
 
 ### How quickly can you implement IT services for our architecture firm?
 
-Most architecture firms can be up and running with our IT services within 1-2 weeks. We begin with a comprehensive design technology assessment to understand your current CAD and BIM setup, then implement our Cloud 5 Pack solution. For urgent construction or design concerns, we can often provide immediate emergency support while the full implementation is underway.
+Most architecture firms can be up and running with our IT services within 1-2 weeks. We begin with a comprehensive design technology assessment to understand your current CAD and BIM setup, then implement our Comprehensive Cloud Stack solution. For urgent construction or design concerns, we can often provide immediate emergency support while the full implementation is underway.
 
 ### Do you understand building design intellectual property protection?
 

@@ -6,7 +6,7 @@ export function getLocalBusinessSchema() {
     "@type": "LocalBusiness",
     name: "Boximity MSP",
     description:
-      "Managed IT for Ontario professional services firms (5–10 users). Enterprise-grade security, Law Society & PIPEDA compliance.",
+      "Managed IT for Ontario firms with 25–100 staff. Enterprise-grade security, Law Society & PIPEDA compliance.",
     url: SITE_URL,
     telephone: "(289) 539-0098",
     email: "hi@boximity.ca",

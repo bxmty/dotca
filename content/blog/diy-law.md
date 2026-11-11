@@ -62,7 +62,7 @@ Good legal assistants and junior lawyers expect reliable technology. When system
 
 ## The Fix: Right-Sized IT for Small Law Firms
 
-You don't need enterprise IT solutions. You need something designed specifically for 5-10 person professional services firms like yours—what we call the Cloud 5 Pack.
+You don't need enterprise IT solutions. You need something designed specifically for 5-10 person professional services firms like yours—what we call the Comprehensive Cloud Stack.
 
 **What you actually need:**
 
@@ -74,7 +74,7 @@ You don't need enterprise IT solutions. You need something designed specifically
 
 **The Economics That Actually Make Sense**
 
-Cloud 5 Pack for Law Firms: $1,225/month ($14,700/year). You get a fractional CTO who understands legal practice requirements, 24/7 proactive monitoring that fixes problems before you notice them, Law Society-compliant security and encryption, professional backup that meets retention requirements, unlimited support when you need it, and strategic technology planning for growth.
+Comprehensive Cloud Stack for Law Firms: $1,225/month ($14,700/year). You get a fractional CTO who understands legal practice requirements, 24/7 proactive monitoring that fixes problems before you notice them, Law Society-compliant security and encryption, professional backup that meets retention requirements, unlimited support when you need it, and strategic technology planning for growth.
 
 Compare this to your current DIY approach costing $146,400/year. You're spending 10x more and getting worse results. The net benefit? $131,700 annually. Every month you continue DIY IT, you're losing $10,975—55 billable hours you could spend on actual legal work instead of troubleshooting technology.
 
@@ -101,7 +101,7 @@ Every day you continue DIY IT is another day of losing billable hours, carrying 
 
 - Calculate your specific DIY IT costs (your actual numbers)
 - Identify Law Society compliance gaps in your current approach
-- Show exactly what Cloud 5 Pack services include for law firms
+- Show exactly what Comprehensive Cloud Stack services include for law firms
 - Provide a clear roadmap—no obligation
 
 Most law firm partners discover they're losing 2-3x more than they estimated. Five minutes to schedule could save you $131,700 this year and eliminate the technology stress that keeps you up at night.
