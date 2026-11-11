@@ -4,7 +4,8 @@ Source of truth for site copy. Read before changing any page, meta, og-image, JS
 
 ## Buyer and category
 
-- **Buyer:** firms with 25-100 staff whose work runs on several business systems that do not talk (dispatch, ERP, accounting, CRM, CAD): trucking, warehousing, construction, engineering and architecture, manufacturing, wholesale.
+- **Buyer:** firms whose work runs on several business systems that do not talk (dispatch, ERP, accounting, CRM, CAD): trucking, warehousing, construction, engineering and architecture, manufacturing, wholesale.
+- **Size is a targeting filter, never public copy.** The 25-100 staff range lives in the playbook and the prospect-list filters. No headcount range, and no "around N staff", in any page, meta, JSON-LD, og-image or post. Describe the audience by situation ("firms that run on several business systems") and by the systems it runs.
 - **Category:** managed IT that connects your business.
 - **One-liner:** "Enter it once. Get it right. Bill it on time. Managed IT that connects your business." It is the meta description (home, layout, manifest). The home H1 is the outcome line, the lead says who and what.
 - **Lead with** integration outcomes. Compliance and cyber-fear statistics stay secondary.
@@ -23,7 +24,7 @@ Source of truth for site copy. Read before changing any page, meta, og-image, JS
 
 ## Claims
 
-- **Proof case:** one anonymised client (logistics, around 100 staff; TMS, accounting suite, GPS tracking; invoice the day it delivers), shared with their permission, reference calls allowed. It carries no invented metric.
+- **Proof case:** one anonymised client (logistics; TMS, accounting suite, GPS tracking; invoice the day it delivers), shared with their permission, reference calls allowed. It carries no invented metric.
 - **Platforms named:** Microsoft 365, Salesforce, Sage Intacct. Name a platform only after it has been connected for a client.
 - **Assessment:** free, 30 minutes to an hour, covers IT and security. It does not cover integration; connections are scoped and quoted separately, after it.
 - **Responsibility:** "we monitor the connections we build, fix our side, and coordinate with the vendor when the cause is theirs." Promise no more than that.
@@ -37,5 +38,6 @@ Source of truth for site copy. Read before changing any page, meta, og-image, JS
 ## Done when a copy change ships
 
 1. `rg -i "cloud 5 pack|\b5[-–](10|15)\b|away from the desk" src content` returns only the exceptions above and the retired-copy assertion in `src/tests/page.test.tsx`. The `\b` matters: a bare `5-10` also matches "25-100".
-2. `npm run check` passes, with tests updated where they assert the old copy.
-3. The `.md` mirror matches the rendered text.
+2. `rg -i "25[–-]100|around 100 staff" src content` returns nothing.
+3. `npm run check` passes, with tests updated where they assert the old copy.
+4. The `.md` mirror matches the rendered text.
