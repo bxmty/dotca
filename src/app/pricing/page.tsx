@@ -61,7 +61,7 @@ function PlanPrice({ plan }: { plan: Plan }) {
     <span
       className={`${PRICE_CLASS_NAME} ${plan.isRecommended ? "text-fig" : ""}`}
     >
-      {formatPrice(plan.monthlyUnitPrice)}
+      {formatPrice(plan.monthlyUnitPriceInDollars)}
     </span>
   );
 }

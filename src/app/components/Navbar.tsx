@@ -55,7 +55,7 @@ export default function Navbar() {
           type="button"
           aria-controls="navbarNav"
           aria-expanded={isOpen}
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={() => setIsOpen((isOpenNow) => !isOpenNow)}
         >
           {isOpen ? "Close" : "Menu"}
         </button>

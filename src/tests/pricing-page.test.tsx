@@ -154,7 +154,7 @@ describe("PricingPage", () => {
     const sheet = getSheet();
     for (const plan of planCatalog) {
       expect(
-        within(sheet).getByText(formatPrice(plan.monthlyUnitPrice)),
+        within(sheet).getByText(formatPrice(plan.monthlyUnitPriceInDollars)),
       ).toHaveClass("text-h2");
       expect(within(sheet).getByText(plan.description)).toBeInTheDocument();
       for (const feature of plan.features) {

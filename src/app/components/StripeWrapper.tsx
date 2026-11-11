@@ -38,7 +38,7 @@ export default function StripeWrapper({
   wantsBrief,
 }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const colorScheme = useColorScheme();
 
@@ -53,7 +53,7 @@ export default function StripeWrapper({
     // Create the subscription as soon as the order details are confirmed
     const createSubscription = async () => {
       try {
-        setLoading(true);
+        setIsLoading(true);
         setError(null);
 
         // Read synchronously from document.cookie rather than the async
@@ -99,7 +99,7 @@ export default function StripeWrapper({
             : "Failed to initialize payment. Please try again.",
         );
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -114,7 +114,7 @@ export default function StripeWrapper({
     fonts: STRIPE_FONTS,
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <p role="status" className="m-0 py-3 font-mono text-label text-muted">
         Loading payment form...

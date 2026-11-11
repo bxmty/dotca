@@ -52,7 +52,7 @@ const total = calculateTotal(orderItems);
 - Use `camelCase`
 - Start with lowercase letter
 - Descriptive enough to understand without context
-- Include units when relevant: `timeoutInSeconds`, `maxRetryCount`, `priceInCents`
+- Money and durations carry their unit: `priceInCents`, `totalInDollars`, `timeoutInMs`; other numbers need none
 
 ### Constants
 ```
@@ -77,7 +77,7 @@ const url = 'https://api.example.com';
 **Rules:**
 - `SCREAMING_SNAKE_CASE` for primitive constants
 - `camelCase` for constant objects/arrays
-- Always include units in numeric constants
+- Money and duration constants carry their unit: `SESSION_TIMEOUT_IN_MS`
 - Never use magic numbers - extract to named constants
 
 ### Boolean Variables
@@ -95,7 +95,7 @@ const notAllowed = !hasPermission;  // Avoid negatives
 ```
 
 **Rules:**
-- Start with: `is`, `has`, `can`, `should`, `will`, `did`
+- Start with: `is`, `has`, `can`, `should`, `will`, `did`, `wants`. `npm run lint` enforces this on variables, parameters and type properties; wire-format and HTML attribute names are allowlisted in `eslint.config.js`
 - Never use negative names: `isNotValid` → `isValid`
 - Make the true case the positive case
 
@@ -191,7 +191,7 @@ function process(a, b, c, d, e, f) { }  // Too many, unclear
 
 **Rules:**
 - Use full descriptive names
-- Include units: `timeoutInMs`, `priceInDollars`
+- Money and durations carry their unit: `timeoutInMs`, `priceInDollars`
 - Max 3-4 individual parameters
 - Use object parameter for more than 4
 - Order: required params first, optional last
@@ -392,9 +392,9 @@ function done() { }
 ```
 // Good - Describes what's being tested
 describe('UserAccount', () => {
-  it('should create account with valid email', () => { });
-  it('should throw error when email is invalid', () => { });
-  it('should hash password before saving', () => { });
+  it('creates an account with a valid email', () => { });
+  it('throws when the email is invalid', () => { });
+  it('hashes the password before saving', () => { });
 });
 
 // Bad - Vague or redundant
@@ -406,7 +406,7 @@ describe('tests', () => {
 
 **Rules:**
 - Use full sentences for test descriptions
-- Start with "should" for behavior tests
+- State the behaviour in the present tense: `selects the catalog plan named in the URL`
 - Be specific about scenario and expected outcome
 
 ---
@@ -533,12 +533,12 @@ FEATURE
 Before committing code, verify:
 
 - [ ] Names are self-explanatory without comments
-- [ ] Boolean variables/functions start with is/has/can/should
+- [ ] Boolean names pass `npm run lint` (the naming-convention rule enforces the prefix)
 - [ ] Functions start with verbs
 - [ ] Classes are nouns
 - [ ] No abbreviations except standard ones (HTTP, URL, API)
 - [ ] Consistent terminology across codebase
-- [ ] Names include units where relevant
+- [ ] Money and duration names carry their unit
 - [ ] No magic numbers - all extracted to named constants
 - [ ] Collections are plural
 - [ ] Names are searchable (>2 characters)

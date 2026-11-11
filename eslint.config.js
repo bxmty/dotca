@@ -2,6 +2,21 @@ import js from "@eslint/js";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 
+const BOOLEAN_NAME_PREFIXES = [
+  "is",
+  "has",
+  "can",
+  "should",
+  "will",
+  "did",
+  "wants",
+];
+
+// API response fields (ok, success), content keys in frontmatter and quiz YAML
+// (published, featured, risk) and HTML attributes (required, aria-invalid)
+const EXTERNALLY_NAMED_BOOLEANS =
+  "^(ok|success|published|featured|risk|required|aria-invalid)$";
+
 export default [
   {
     // Stryker's sandbox (a copy of the project) and its report output
@@ -57,6 +72,38 @@ export default [
     },
     settings: {
       reportUnusedDisableDirectives: false,
+    },
+  },
+  {
+    // Boolean names read as a yes/no question (naming-conventions.mdc). The
+    // rule needs type information, which is why this block alone turns on
+    // typed linting. Names fixed by a wire format or by HTML are exempt.
+    // Tests are skipped: tsconfig excludes them, so they have no type info.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: ["src/tests/**", "**/*.test.ts", "**/*.test.tsx"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: [
+            "variable",
+            "parameter",
+            "typeProperty",
+            "classProperty",
+            "parameterProperty",
+          ],
+          types: ["boolean"],
+          format: ["PascalCase"],
+          prefix: BOOLEAN_NAME_PREFIXES,
+          filter: { regex: EXTERNALLY_NAMED_BOOLEANS, match: false },
+        },
+      ],
     },
   },
   {

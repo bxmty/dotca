@@ -13,7 +13,7 @@ import type { BillingCycle } from "./pricing";
 export interface Plan {
   name: string;
   /** Display price per user per month, in dollars. */
-  monthlyUnitPrice: number;
+  monthlyUnitPriceInDollars: number;
   description: string;
   features: readonly string[];
   cta: string;
@@ -24,7 +24,7 @@ export interface Plan {
 export const planCatalog: readonly Plan[] = [
   {
     name: "Free",
-    monthlyUnitPrice: 0,
+    monthlyUnitPriceInDollars: 0,
     description:
       "Ideal for startups and freelancers looking to secure their digital assets",
     features: [
@@ -36,7 +36,7 @@ export const planCatalog: readonly Plan[] = [
   },
   {
     name: "Basic",
-    monthlyUnitPrice: 99,
+    monthlyUnitPriceInDollars: 99,
     description:
       "Perfect for small teams needing essential IT security and communication tools",
     features: [
@@ -51,7 +51,7 @@ export const planCatalog: readonly Plan[] = [
   },
   {
     name: "Standard",
-    monthlyUnitPrice: 249,
+    monthlyUnitPriceInDollars: 249,
     description:
       "Our recommended option for growing businesses needing comprehensive IT support",
     features: [
@@ -68,7 +68,7 @@ export const planCatalog: readonly Plan[] = [
   },
   {
     name: "Premium",
-    monthlyUnitPrice: 449,
+    monthlyUnitPriceInDollars: 449,
     description:
       "Complete IT management solution for businesses requiring enterprise-grade technology",
     features: [
@@ -107,15 +107,15 @@ export const ANNUAL_DISCOUNT_PERCENT = 10;
 const MONTHS_PER_YEAR = 12;
 
 /** Formats a dollar amount for display, e.g. `$12,830.40`. */
-export function formatPrice(amount: number): string {
-  return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+export function formatPrice(amountInDollars: number): string {
+  return `$${amountInDollars.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 }
 
-/** Dollar amounts for one billing period, before tax. */
+/** Amounts for one billing period, before tax. */
 export interface PriceEstimate {
-  subtotal: number;
-  discount: number;
-  total: number;
+  subtotalInDollars: number;
+  discountInDollars: number;
+  totalInDollars: number;
 }
 
 /**
@@ -131,11 +131,19 @@ export function estimatePrice({
   employeeCount: number;
   billingCycle: BillingCycle;
 }): PriceEstimate {
-  const monthlyTotal = plan.monthlyUnitPrice * employeeCount;
+  const monthlyTotalInDollars = plan.monthlyUnitPriceInDollars * employeeCount;
   if (billingCycle === "monthly") {
-    return { subtotal: monthlyTotal, discount: 0, total: monthlyTotal };
+    return {
+      subtotalInDollars: monthlyTotalInDollars,
+      discountInDollars: 0,
+      totalInDollars: monthlyTotalInDollars,
+    };
   }
-  const subtotal = monthlyTotal * MONTHS_PER_YEAR;
-  const discount = subtotal * (ANNUAL_DISCOUNT_PERCENT / 100);
-  return { subtotal, discount, total: subtotal - discount };
+  const subtotalInDollars = monthlyTotalInDollars * MONTHS_PER_YEAR;
+  const discountInDollars = subtotalInDollars * (ANNUAL_DISCOUNT_PERCENT / 100);
+  return {
+    subtotalInDollars,
+    discountInDollars,
+    totalInDollars: subtotalInDollars - discountInDollars,
+  };
 }

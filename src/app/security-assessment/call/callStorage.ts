@@ -20,14 +20,14 @@ export function readStoredCall(): unknown {
  * a save still sending has been cut off, and may have reached Syncro anyway.
  */
 export function storeCall(call: CallState): void {
-  const mayHaveSaved =
+  const hasUnconfirmedSave =
     call.save.status === "sending" || call.save.status === "interrupted";
   try {
     window.sessionStorage.setItem(
       CALL_STORAGE_KEY,
       JSON.stringify({
         ...call,
-        save: mayHaveSaved ? { status: "interrupted" } : undefined,
+        save: hasUnconfirmedSave ? { status: "interrupted" } : undefined,
       }),
     );
   } catch {

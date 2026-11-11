@@ -37,7 +37,7 @@ describe("PlanSelector Component", () => {
     renderWithPlanParam("Basic");
 
     expect(mockOnPlanSelected).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Basic", monthlyUnitPrice: 99 }),
+      expect.objectContaining({ name: "Basic", monthlyUnitPriceInDollars: 99 }),
     );
   });
 

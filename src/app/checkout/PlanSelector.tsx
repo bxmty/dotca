@@ -11,13 +11,13 @@ interface PlanSelectorProps {
 /** Reads the `?plan=` deep link and reports the catalog plan it names. */
 export default function PlanSelector({ onPlanSelected }: PlanSelectorProps) {
   const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const planName = searchParams?.get("plan");
     onPlanSelected(planName ? findPlanByName(planName) : null);
-    setLoading(false);
+    setIsLoading(false);
   }, [searchParams, onPlanSelected]);
 
-  return loading ? <p>Loading plan details...</p> : null;
+  return isLoading ? <p>Loading plan details...</p> : null;
 }
