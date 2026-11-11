@@ -62,7 +62,7 @@ Good legal assistants and junior lawyers expect reliable technology. When system
 
 ## The Fix: Right-Sized IT for Small Law Firms
 
-You don't need enterprise IT solutions. You need something designed specifically for 5-10 person professional services firms like yours—what we call the Comprehensive Cloud Stack.
+You don't need enterprise IT solutions. You need something designed specifically for professional services firms with 25-100 staff like yours—what we call the Comprehensive Cloud Stack.
 
 **What you actually need:**
 

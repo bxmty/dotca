@@ -51,6 +51,8 @@ Most small firms that have an M365 subscription are using about 30% of what they
 
 This is where Boximity's Comprehensive Cloud Stack changes the equation. We don't just provision your Microsoft 365 licenses and hand you a username and password. We configure the security baseline (MFA, Safe Links, Safe Attachments, Intune policies), set up your email and domain correctly, migrate your existing data, and monitor your environment on an ongoing basis.
 
+We also connect Microsoft 365 to the other systems your firm runs on, such as practice management and accounting, so information is entered once instead of retyped between them.
+
 When Microsoft releases a security update, it gets applied. When a device goes missing, it gets remotely wiped. When a threat is detected, it gets flagged before your team notices anything.
 
 That's IT that works the way it should—quietly, in the background, while you focus on billable work.
