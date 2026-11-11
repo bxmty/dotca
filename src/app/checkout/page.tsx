@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import PlanSelector from "./PlanSelector";
 import StripeWrapper, {
@@ -29,14 +29,8 @@ import {
   omitFieldErrors,
 } from "@/lib/formValidation";
 import type { AddressSuggestion } from "@/lib/nominatim";
+import { isFreePlan, type Plan } from "@/lib/plan-catalog";
 import type { BillingCycle } from "@/lib/pricing";
-
-interface PricingPlan {
-  name: string;
-  unit_price: string;
-  description: string;
-  features: string[];
-}
 
 type CustomerFields = {
   firstName: string;
@@ -97,7 +91,7 @@ const PRICE_CLASS_NAME = "font-mono font-medium tabular-nums";
 
 export default function Checkout() {
   const router = useRouter();
-  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<CustomerFields>({
     firstName: "",
@@ -122,71 +116,9 @@ export default function Checkout() {
   const [employeeCount, setEmployeeCount] = useState(5);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
-  // Pricing plans data
-  const pricingPlans = useMemo(
-    () => [
-      {
-        name: "Free",
-        unit_price: "$0.00", // Changed from price to unit_price
-        description:
-          "Ideal for startups and small teams looking to explore our services",
-        features: [
-          "Automatic Windows Updates",
-          "Basic Antivirus Protection",
-          "24/7 Device Monitoring",
-        ],
-      },
-      {
-        name: "Basic",
-        unit_price: "$99.00", // Changed from price to unit_price
-        description:
-          "Perfect for small teams needing essential IT security and communication tools",
-        features: [
-          "Password Manager",
-          "Business Email Solution",
-          "Email Support (Business Hours)",
-          "Basic Security Monitoring",
-          "Setup & Onboarding Assistance",
-        ],
-      },
-      {
-        name: "Standard",
-        unit_price: "$249.00", // Changed from price to unit_price
-        description:
-          "Our most popular option for growing businesses needing comprehensive IT support",
-        features: [
-          "Everything in Basic",
-          "Professional Web Hosting",
-          "Microsoft Collaboration Tools",
-          "Quarterly IT Assessment",
-          "Extended Technical Support",
-          "Cloud Backup Solutions",
-          "30-day email & phone support",
-        ],
-      },
-      {
-        name: "Premium",
-        unit_price: "$449.00", // Changed from price to unit_price
-        description:
-          "Complete IT management solution for businesses requiring enterprise-grade technology",
-        features: [
-          "Everything in Standard",
-          "24/7 Priority Support",
-          "Server Monitoring & Management",
-          "Reduced Web Design Rates",
-          "Advanced Security Suite",
-          "Dedicated Account Manager",
-          "On-site Consultations",
-          "Unlimited Device Support",
-        ],
-      },
-    ],
-    [],
-  );
-
-  const handlePlanSelected = (plan: PricingPlan | null) => {
+  const handlePlanSelected = (plan: Plan | null) => {
     // The Free plan has no payment to take; onboarding is its signup path
-    if (plan && plan.name.toLowerCase() === "free") {
+    if (plan && isFreePlan(plan)) {
       router.replace("/onboarding");
       return;
     }
@@ -290,10 +222,7 @@ export default function Checkout() {
   const planSelector = (
     // Invisible component to handle URL params with suspense
     <Suspense fallback={null}>
-      <PlanSelector
-        pricingPlans={pricingPlans}
-        onPlanSelected={handlePlanSelected}
-      />
+      <PlanSelector onPlanSelected={handlePlanSelected} />
     </Suspense>
   );
 
@@ -301,10 +230,7 @@ export default function Checkout() {
     return (
       <div className="mx-auto max-w-[1120px] px-4 py-16 md:px-7">
         <Suspense fallback={<p>Loading plans...</p>}>
-          <PlanSelector
-            pricingPlans={pricingPlans}
-            onPlanSelected={handlePlanSelected}
-          />
+          <PlanSelector onPlanSelected={handlePlanSelected} />
         </Suspense>
         <p role="status" className="m-0 font-mono text-label text-muted">
           Loading...
@@ -334,10 +260,10 @@ export default function Checkout() {
     );
   }
 
-  const unitPrice = parseFloat(selectedPlan.unit_price.replace(/[^\d.]/g, ""));
+  const unitPrice = parseFloat(selectedPlan.price.replace(/[^\d.]/g, ""));
   const subtotal =
     unitPrice * employeeCount * (billingCycle === "annual" ? 12 : 1);
-  const estimatedTotal = calculateTotal(selectedPlan.unit_price, employeeCount);
+  const estimatedTotal = calculateTotal(selectedPlan.price, employeeCount);
 
   return (
     <>
@@ -359,7 +285,7 @@ export default function Checkout() {
                 {selectedPlan.name} Plan
               </p>
               <p className={`m-0 text-body ${PRICE_CLASS_NAME}`}>
-                {selectedPlan.unit_price} per user per month
+                {selectedPlan.price} per user per month
               </p>
               <p className="m-0 max-w-[62ch] text-small text-muted">
                 {selectedPlan.description}
@@ -567,7 +493,7 @@ export default function Checkout() {
             <div className="grid gap-2 border-t border-rule pt-4 text-small">
               <div className={SUMMARY_ROW_CLASS_NAME}>
                 <span>
-                  {selectedPlan.name} Plan ({selectedPlan.unit_price} ×{" "}
+                  {selectedPlan.name} Plan ({selectedPlan.price} ×{" "}
                   {employeeCount} employees
                   {billingCycle === "annual" ? " × 12 months" : ""})
                 </span>

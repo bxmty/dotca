@@ -3,7 +3,7 @@ import FaqList from "../components/FaqList";
 import PageHero from "../components/PageHero";
 import Section from "../components/Section";
 import SectionHead from "../components/SectionHead";
-import { getPlanHref, pricingPlans, type PricingPlan } from "./plans";
+import { getPlanHref, planCatalog, type Plan } from "@/lib/plan-catalog";
 
 const FAQ_ITEMS = [
   {
@@ -29,7 +29,7 @@ const FAQ_ITEMS = [
 ];
 
 // Pricing sheet from the Component Spec: a ruled table from 900 px, and one
-// stacked block per plan below it, both drawn from pricingPlans. The
+// stacked block per plan below it, both drawn from the plan catalog. The
 // Recommended plan is a pale-purple .hl island in both modes, topped by a
 // 3 px CTA rule; it stops above the button, so each mode keeps one CTA
 // colour. Prices are mono 500 at 28 px (text-h2), never smaller: queen on
@@ -51,7 +51,7 @@ function RecommendedTag({ className }: { className: string }) {
   );
 }
 
-function PlanPrice({ plan }: { plan: PricingPlan }) {
+function PlanPrice({ plan }: { plan: Plan }) {
   return (
     <span
       className={`${PRICE_CLASS_NAME} ${plan.highlighted ? "text-fig" : ""}`}
@@ -75,7 +75,7 @@ function PlanAction({
   plan,
   isCompact = false,
 }: {
-  plan: PricingPlan;
+  plan: Plan;
   isCompact?: boolean;
 }) {
   return (
@@ -91,12 +91,12 @@ function PlanAction({
 }
 
 /** The Recommended plan's island head: pale purple under a 3 px CTA rule. */
-function getIslandHeadClassName(plan: PricingPlan): string {
+function getIslandHeadClassName(plan: Plan): string {
   return plan.highlighted ? `hl ${RECOMMENDED_RULE_CLASS_NAME}` : "";
 }
 
 /** Cells of the Recommended column carry the island, except the action row. */
-function getPlanCellClassName(plan: PricingPlan): string {
+function getPlanCellClassName(plan: Plan): string {
   return plan.highlighted ? `${CELL_CLASS_NAME} hl` : CELL_CLASS_NAME;
 }
 
@@ -111,7 +111,7 @@ function PricingTable() {
           <th scope="col" className={`${ROW_LABEL_CLASS_NAME} pt-4.5`}>
             Plan
           </th>
-          {pricingPlans.map((plan) => (
+          {planCatalog.map((plan) => (
             <th
               key={plan.name}
               scope="col"
@@ -130,7 +130,7 @@ function PricingTable() {
           <th scope="row" className={ROW_HEADER_CLASS_NAME}>
             Per user / month
           </th>
-          {pricingPlans.map((plan) => (
+          {planCatalog.map((plan) => (
             <td key={plan.name} className={getPlanCellClassName(plan)}>
               <PlanPrice plan={plan} />
             </td>
@@ -140,7 +140,7 @@ function PricingTable() {
           <th scope="row" className={ROW_HEADER_CLASS_NAME}>
             For
           </th>
-          {pricingPlans.map((plan) => (
+          {planCatalog.map((plan) => (
             <td
               key={plan.name}
               className={`${getPlanCellClassName(plan)} text-muted`}
@@ -153,7 +153,7 @@ function PricingTable() {
           <th scope="row" className={ROW_HEADER_CLASS_NAME}>
             Includes
           </th>
-          {pricingPlans.map((plan) => (
+          {planCatalog.map((plan) => (
             <td key={plan.name} className={getPlanCellClassName(plan)}>
               <FeatureList features={plan.features} />
             </td>
@@ -161,7 +161,7 @@ function PricingTable() {
         </tr>
         <tr>
           <td className={CELL_CLASS_NAME} />
-          {pricingPlans.map((plan) => (
+          {planCatalog.map((plan) => (
             <td key={plan.name} className={CELL_CLASS_NAME}>
               <PlanAction plan={plan} isCompact />
             </td>
@@ -175,7 +175,7 @@ function PricingTable() {
 function StackedPlans() {
   return (
     <div className="grid border border-rule bg-cell min-[900px]:hidden">
-      {pricingPlans.map((plan) => (
+      {planCatalog.map((plan) => (
         <section
           key={plan.name}
           data-testid="plan-block"

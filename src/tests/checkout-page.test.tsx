@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { BRIEF_OPT_IN_LABEL } from "@/app/components/BriefOptInCheckbox";
 import CheckoutPage from "@/app/checkout/page";
+import { findPlanByName } from "@/lib/plan-catalog";
 
 // Mock next/navigation
 const mockReplace = jest.fn();
@@ -14,18 +15,14 @@ jest.mock("next/navigation", () => ({
 
 // Mock the PlanSelector component
 let mockOnPlanSelected: ((plan: unknown) => void) | null = null;
-let mockPricingPlans: { name: string }[] = [];
 
 jest.mock("@/app/checkout/PlanSelector", () => {
   return function MockPlanSelector({
     onPlanSelected,
-    pricingPlans,
   }: {
     onPlanSelected: (plan: unknown) => void;
-    pricingPlans: { name: string }[];
   }) {
     mockOnPlanSelected = onPlanSelected;
-    mockPricingPlans = pricingPlans;
 
     return null;
   };
@@ -87,8 +84,7 @@ jest.mock("next/link", () => {
 });
 
 function selectBasicPlan() {
-  const basic = mockPricingPlans.find((plan) => plan.name === "Basic");
-  mockOnPlanSelected!(basic);
+  mockOnPlanSelected!(findPlanByName("Basic"));
 }
 
 async function fillCustomerInformation() {
@@ -139,8 +135,7 @@ describe("CheckoutPage Component", () => {
   it("redirects the Free plan to onboarding", async () => {
     render(<CheckoutPage />);
 
-    const free = mockPricingPlans.find((plan) => plan.name === "Free");
-    mockOnPlanSelected!(free);
+    mockOnPlanSelected!(findPlanByName("Free"));
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith("/onboarding");

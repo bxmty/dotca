@@ -1,6 +1,21 @@
-// Shared pricing plans data. The pricing sheet's table and stacked layouts
-// both render from this one array; `highlighted` marks the Recommended plan.
-export const pricingPlans = [
+/**
+ * The plan catalog: the one list of plans the site sells. The pricing sheet
+ * and checkout both render from it, so a visitor reads the same names,
+ * descriptions, features and prices on both pages.
+ */
+
+export interface Plan {
+  name: string;
+  /** Display price per user per month. */
+  price: string;
+  description: string;
+  features: readonly string[];
+  cta: string;
+  /** Marks the Recommended plan on the pricing sheet. */
+  highlighted?: boolean;
+}
+
+export const planCatalog: readonly Plan[] = [
   {
     name: "Free",
     price: "$0.00",
@@ -64,9 +79,18 @@ export const pricingPlans = [
   },
 ];
 
-export type PricingPlan = (typeof pricingPlans)[number];
+/** The Free plan takes no payment, so it never goes through checkout. */
+export function isFreePlan(plan: Plan): boolean {
+  return plan.name === "Free";
+}
 
 /** The free plan onboards directly; paid plans go through checkout. */
-export function getPlanHref(plan: PricingPlan): string {
-  return plan.name === "Free" ? "/onboarding" : `/checkout?plan=${plan.name}`;
+export function getPlanHref(plan: Plan): string {
+  return isFreePlan(plan) ? "/onboarding" : `/checkout?plan=${plan.name}`;
+}
+
+/** Resolves a plan deep link's `plan` value, ignoring case. */
+export function findPlanByName(name: string): Plan | null {
+  const wanted = name.toLowerCase();
+  return planCatalog.find((plan) => plan.name.toLowerCase() === wanted) ?? null;
 }

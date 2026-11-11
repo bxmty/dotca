@@ -2,42 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-
-interface PricingPlan {
-  name: string;
-  unit_price: string;
-  description: string;
-  features: string[];
-}
+import { findPlanByName, type Plan } from "@/lib/plan-catalog";
 
 interface PlanSelectorProps {
-  pricingPlans: PricingPlan[];
-  onPlanSelected: (plan: PricingPlan | null) => void;
+  onPlanSelected: (plan: Plan | null) => void;
 }
 
-export default function PlanSelector({
-  pricingPlans,
-  onPlanSelected,
-}: PlanSelectorProps) {
+/** Reads the `?plan=` deep link and reports the catalog plan it names. */
+export default function PlanSelector({ onPlanSelected }: PlanSelectorProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const planName = searchParams?.get("plan");
-    if (planName) {
-      const plan = pricingPlans.find(
-        (p) => p.name.toLowerCase() === planName.toLowerCase(),
-      );
-      if (plan) {
-        onPlanSelected(plan);
-      } else {
-        onPlanSelected(null);
-      }
-    } else {
-      onPlanSelected(null);
-    }
+    onPlanSelected(planName ? findPlanByName(planName) : null);
     setLoading(false);
-  }, [searchParams, pricingPlans, onPlanSelected]);
+  }, [searchParams, onPlanSelected]);
 
   return loading ? <p>Loading plan details...</p> : null;
 }
