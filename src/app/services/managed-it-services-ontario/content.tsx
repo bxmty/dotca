@@ -4,7 +4,7 @@ import type { ServiceLandingContent } from "../ServiceLandingPage";
 export const ontarioContent: ServiceLandingContent = {
   hero: {
     heading: "Managed IT Services Ontario",
-    lead: "Managed IT for Ontario firms with 25-100 staff, built to connect the systems you already run, with our Comprehensive Cloud Stack.",
+    lead: "Managed IT for Ontario firms, built to connect the systems you already run, with our Comprehensive Cloud Stack.",
     trustLine: "Serving Toronto, Ottawa, Hamilton, London & surrounding areas",
     imageAlt: "Office setting with technology",
     card: {
@@ -48,7 +48,7 @@ export const ontarioContent: ServiceLandingContent = {
     heading: "What Are Managed IT Services Ontario?",
     paragraphs: [
       "Managed IT services Ontario refer to the practice of outsourcing your business technology management to a trusted partner. Instead of handling IT issues internally or hiring full-time IT staff, you subscribe to a comprehensive service that monitors, maintains, and supports all your technology infrastructure.",
-      "Our managed IT services Ontario are specifically designed for Ontario firms with 25-100 staff, connecting the business systems you already run and keeping them supported. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.",
+      "Our managed IT services Ontario are specifically designed for Ontario firms that run on several business systems, connecting the business systems you already run and keeping them supported. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.",
     ],
     highlight: {
       title: "The Business-First Difference",
@@ -151,7 +151,7 @@ export const ontarioContent: ServiceLandingContent = {
         question:
           "What makes your managed IT services Ontario different from others?",
         answer:
-          "Our managed IT services Ontario are designed specifically for firms with 25-100 staff, with a business-first approach that prioritizes your outcomes over technical complexity. We speak your language, understand Ontario-specific challenges, and provide personalized support that grows with your business. Unlike large MSPs, we maintain the personal touch and accessibility that growing firms need.",
+          "Our managed IT services Ontario are designed specifically for firms that run on several business systems, with a business-first approach that prioritizes your outcomes over technical complexity. We speak your language, understand Ontario-specific challenges, and provide personalized support that grows with your business. Unlike large MSPs, we maintain the personal touch and accessibility that growing firms need.",
       },
       {
         question:
