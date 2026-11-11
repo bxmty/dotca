@@ -1,47 +1,58 @@
 ---
 route: /
-title: "IT That Just Works — Away From the Desk"
-description: "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises."
+title: "Managed IT That Connects Your Business"
+description: "Enter it once. Get it right. Bill it on time. Managed IT that connects your business."
 ---
 
-# IT that just works — for businesses whose work happens away from the desk.
+# Enter it once. Get it right. Bill it on time.
 
-For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.
+Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM.
 
-[Get a Business-First IT Assessment] [See Pricing Options]
+[Get a Business-First IT Assessment] [See the Managed Package]
+
+_25-100 staff firms · Toronto, Ontario, Canada_
 
 ## The Reactive IT Trap
 
-Too often, technology only gets attention after it breaks — leaving you stuck reacting to security threats, wasted time, and frustrated employees instead of running the business.
+Too often your business systems each hold their own copy of the work — leaving you retyping, correcting and chasing instead of running the business.
 
-### Security Threats
+### The same information, retyped
 
-Bad actors are constantly targeting your valuable business and customer data.
+Every system keeps its own copy of the job, and someone keys it in again, system by system.
+
+### Mistakes found by the customer
+
+A retyped number is a wrong number, and it surfaces after the customer finds it.
+
+### Invoices that run late
+
+Billing waits while paperwork is retyped before it can go out.
+
+### Nothing you can automate
+
+The systems don't talk, so there is nothing for automation to connect.
 
 ### Wasted Time
 
-Hours spent troubleshooting technology issues instead of serving your customers and growing your business.
+Hours every week lost to rework and chasing status instead of serving your customers.
 
-### Employee Frustration
+## Managed IT for firms with 25-100 staff
 
-Staff turnover increases when technology consistently fails and prevents efficient work.
+Your dispatch, ERP, accounting and CRM each hold their own copy of the job. We connect them and keep them running, so work is entered once and flows everywhere.
 
-## Our Small Business Cloud Bundle
+Connections are scoped and quoted separately from the package, before you spend anything. We work with what you already run: nothing gets replaced unless it should. Platforms we have connected include Microsoft 365, Salesforce and Sage Intacct.
 
-Technology is advancing at an unprecedented pace, and it's completely understandable why keeping up can feel overwhelming, especially when you have a business to run.
+Our founder has spent 19 years running application development and support for other businesses — that background is why we build solutions that actually fit how you work, not the other way around.
 
-You're not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best, without really understanding the business impact — or being forced into decisions that don't fit how you actually work.
+### What the managed package covers:
 
-Our founder has spent 19 years running application development and support for other businesses — that background is why we understand how fast technology moves, and why we build solutions that actually fit how you work, not the other way around.
+- **Your business systems, connected** — Dispatch, ERP, accounting, CRM and CAD, entered once and kept in step
+- **24/7 monitoring and help desk** — Problems caught early, and someone to call who answers
+- **Microsoft 365 and security** — Managed accounts, protection and backup, without the overhead
 
-### Everything your 5-10 person team needs:
+[Start Your Free Assessment] [See Pricing]
 
-- **Secure Password Management** — Protect critical business accounts with enterprise-grade security
-- **Professional Web Hosting** — Keep your online presence reliable and fast
-- **Business Email Solutions** — Communicate professionally with customers and partners
-- **Microsoft Collaboration Tools** — Enable your team to work together seamlessly
-
-All managed by experts, so you don't have to become one.
+The free assessment takes 30 minutes to an hour and covers your IT and security. We scope connections after it, as a separate step.
 
 ## Our Simple Process Gets You Up and Running Fast
 
@@ -57,21 +68,27 @@ Submit your past year's IT spend and information about your most recent technolo
 
 We'll email installation instructions for our management tool to your team, ensuring all systems are properly configured.
 
-## What You'll Experience With Our Solution
+## What changes when your systems connect
 
-- **Greater Confidence in Decision-Making**
-- **Peace of Mind from Proactive Protection**
-- **Enhanced Security**
+- **Data entered once.** It reaches dispatch, accounting and the CRM without retyping.
+- **Invoices go out the day the job closes**, not when someone finds time to key it in.
+- **Mistakes get caught by your systems** before the customer sees them.
+- **Nothing stalls when someone is away:** the process lives in the systems, not in one person's head.
+- **One team owns the connections we build:** we monitor them, fix our side, and coordinate with the vendor when the cause is theirs.
 
-## The Real Cost of Inadequate Technology
+## What disconnected systems cost you
 
-**Up to 2 weeks** of downtime after a cyber incident
+1. Hours every week spent retyping the same information.
+2. Billing that lags the work by days.
+3. Errors that surface only after the customer finds them.
 
-Employee productivity losses of **up to 22%** due to technology issues
+## How it works for a client
 
-Average data breach costs of **$108,000** for small businesses
+A real client, shared with their permission: a logistics firm with around 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
 
-**60% higher** employee turnover when technology consistently fails
+Reference call available.
+
+[Book a reference call]
 
 ## Our Guarantees
 
@@ -79,23 +96,9 @@ Average data breach costs of **$108,000** for small businesses
 2. No line item you weren't told about in advance — or that line item is free.
 3. A free written second opinion on any vendor quote or existing IT contract.
 
-## Limited Time Offer for Small Businesses
-
-### Basic Bundle: $99/month per user
-
-- Password Manager
-- Business Email
-- Email Support (Business Hours)
-- Setup & Onboarding Assistance
-- Periodic security posture reviews
-
-First month free when you sign up for annual service
-
-[Choose A Plan Today]
-
 ## Take the First Step Today
 
-We're ready to help your small business leverage the power of enterprise-grade technology without the enterprise-level complexity or cost.
+We're ready to help your firm connect its systems and run on technology that works, without the enterprise-level complexity or cost.
 
 ### Contact Us
 

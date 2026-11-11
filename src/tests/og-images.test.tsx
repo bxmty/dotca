@@ -229,7 +229,7 @@ describe("service landing page social cards", () => {
     const { markup } = readRenderedCard();
     expect(markup).toContain("SERVICES");
     expect(markup).toContain("IT Services for Architecture Firms");
-    expect(markup).toContain("Cloud 5 Pack from $1,250/month");
+    expect(markup).toContain("Comprehensive Cloud Stack from $1,250/month");
   });
 
   it("renders the Ontario vertical with its entry price", () => {
@@ -238,6 +238,6 @@ describe("service landing page social cards", () => {
     const { markup } = readRenderedCard();
     expect(markup).toContain("SERVICES");
     expect(markup).toContain("Managed IT Services Ontario");
-    expect(markup).toContain("Cloud 5 Pack from $1,250/month");
+    expect(markup).toContain("Comprehensive Cloud Stack from $1,250/month");
   });
 });

@@ -1,90 +1,105 @@
 ---
 title: "The Hidden Cost of DIY IT for Ontario Law Firms"
-description: "Ontario law firms waste $146,400/year on DIY IT—$12,200 monthly in lost billable hours, downtime, and compliance risks. Switch to professional IT for $15,000/year. Schedule free assessment now."
+description: "A 40-person Ontario law firm running IT in-house loses about $181,000 a year on our stated assumptions: staff time, lost productivity and downtime. See the maths and rerun it with your own numbers."
 date: "2026-01-07"
 author: "Boximity Team"
-tags: ["Cybersecurity", "Small Business", "Legal Tech"]
+tags: ["Cybersecurity", "Professional Services", "Legal Tech"]
 published: true
 featured: false
 coverImage: "/images/blog/diy-law.webp"
 ---
 
-You're a lawyer, not an IT person. Yet somehow you're spending 6 hours a week troubleshooting email, resetting passwords, dealing with printer issues, and worrying about whether your client data is actually secure.
+You're a law firm, not an IT department. Yet somewhere in your 40 people, a partner, your office manager, or the junior lawyer who's "good with computers" is spending hours every week resetting passwords, chasing printer problems, patching software and wondering whether client data is actually secure.
 
-That's $18,720 per year of your $200/hour billable time going to work that should cost $75-100/hour elsewhere. And that doesn't count the opportunity cost, the stress, or what happens when something actually breaks.
+That time doesn't show up on an IT invoice, which is why it's easy to miss. This post puts a number on it, shows every assumption behind that number, and lets you swap in your own.
 
-You're leaving money on the table every month you continue handling this yourself. Here's exactly how much.
+## The Assumptions (Change Them to Fit Your Firm)
+
+Every figure below comes from these assumptions. They are illustrative, not measured, so rerun the maths with your own.
+
+- **Firm size:** 40 staff, lawyers and support combined.
+- **Informal IT handler:** one person (a partner, office manager or senior assistant) spends **10 hours a week** on IT, and their time is worth **$150/hour**.
+- **Everyone else:** loses **30 minutes a week** each to IT problems, at **$75/hour**.
+- **Downtime:** **8 hours a year** of significant downtime, at **$3,000/hour** (40 people × $75/hour, the same blended rate we use in our security post).
+- **Emergency help:** four call-outs a year at $250 each.
+- **What managed IT removes:** it doesn't remove all of this. We assume it removes **70%** of the time and downtime costs below; your people still have problems, and someone still owns the relationship.
+- **Managed IT price (a placeholder):** our published starting rate is $1,250/month for a 5-user package. That is a minimum, not a per-user rate, and volume pricing at 40 users will differ. For illustration only, we scale it to $250 per user, so $10,000/month for 40 users. Use your own quote.
 
 ## The Real Cost of "Just Handling It Ourselves"
 
-Most small law firms think they're saving money by managing IT in-house. You see the $1,200-$1,500/month quote for managed IT and think "we can't afford that." But here's the uncomfortable truth: you're already spending way more than that—you just don't see it as IT spending because it's hidden in your billable hours, your team's productivity, and your compliance risk.
+Most firms think they're saving money by managing IT in-house. You see a per-user quote for managed IT and think "we can't afford that." But you're already paying: it's hidden in salaries, billable hours and productivity.
 
-Your 6 hours per week on IT issues costs $62,400 annually when you bill at $200/hour. Staff productivity loss from IT problems? Another $16,200/year. Emergency IT calls at $250 each, four times yearly? $1,000. System downtime costing your firm $1,400/hour? $16,800 annually. And don't forget the $50,000+ annual exposure from PIPEDA compliance and Law Society requirements you might be violating right now.
+- **The informal IT handler:** 10 hours × 52 weeks × $150 = **$78,000**
+- **Everyone else's lost time:** 40 people × 0.5 hours × 52 weeks × $75 = **$78,000**
+- **Downtime:** 8 hours × $3,000 = **$24,000**
+- **Emergency call-outs:** 4 × $250 = **$1,000**
 
-That's $146,400 minimum per year—over $12,000 monthly. You're spending 10x more than professional IT management at $1,225/month would cost, and getting worse results, higher risk, and constant stress.
+That's **$181,000 a year**, about $15,000 a month, before counting compliance exposure, which we can't responsibly put a number on here.
 
-## Why Law Firms Keep Doing This
+## Why Firms Keep Doing This
 
-Those 6 hours per week feel manageable. "I'll just reset this password quickly." "I'll figure out why the scanner isn't working." "I'll update the software this weekend." Each task seems small, so you handle it.
+Those 10 hours a week feel manageable. "I'll just reset this password." "I'll figure out why the scanner isn't working." "I'll update the software this weekend." Each task seems small, so someone handles it.
 
-But those "quick fixes" add up to 312 hours per year—nearly 8 full weeks you're not billing clients. And here's what makes it worse for law firms: every hour you spend on IT is an hour you're not billing clients at $200-300/hour, not building relationships that drive referrals, not developing your practice expertise, not focusing on complex legal strategy.
-
-Your time is worth more than an IT professional's—yet you're spending it on work that should cost $75-100/hour, not $200+/hour. This is costing you more than you realize.
+But those quick fixes add up to 520 hours a year, the equivalent of 13 full 40-hour weeks of one person's time. And in a firm your size it isn't one person's time: it's a partner's attention, a manager's focus, and an assistant's afternoon, taken from work only they can do.
 
 ## The Hidden Costs You're Missing
 
-Beyond the direct time costs, DIY IT creates risks that most law firms don't calculate until it's too late:
+Beyond the direct time costs, DIY IT creates risks that most firms don't calculate until it's too late:
 
 **Compliance Exposure**
 
-The Law Society of Ontario requires reasonable security measures for client data. When you're managing IT yourself:
+The Law Society of Ontario requires reasonable security measures for client data. When IT is managed informally:
 
 - Are you certain your encryption meets standards?
 - Is your backup strategy compliant with file retention rules?
 - Can you prove your security measures in case of a complaint?
 
-A single Law Society complaint about inadequate data security can cost $25,000-$50,000 in legal fees and remediation—plus reputational damage that's impossible to quantify.
+A complaint about inadequate data security can mean legal fees, remediation and reputational damage that is hard to quantify. We haven't put a number on it here.
 
 **Competitive Disadvantage**
 
-Law firms with professional IT are:
+Firms with professional IT can be:
 
 - Responding to client requests faster
 - Working remotely with secure, reliable access
 - Using automated systems for document management
 - Presenting a more professional technology experience to clients
 
-When a potential client chooses between you and a competitor, and your firm's technology feels dated or unreliable, that influences their decision. How much is one lost client worth? For most small law firms, losing even one $20,000 annual client to a technology impression costs more than two years of professional IT services.
+When a potential client chooses between you and a competitor, and your technology feels dated or unreliable, that influences their decision. How much is one lost client worth? If technology costs you even one client, that is a meaningful share of a year's managed IT cost.
 
 **Staff Retention and Recruitment**
 
-Good legal assistants and junior lawyers expect reliable technology. When systems constantly fail, good staff get frustrated and leave. Replacing a legal assistant costs $15,000-$25,000 in recruiting and training. If unreliable IT contributes to even one staff departure every few years, that's another hidden cost of DIY.
+Good legal assistants and junior lawyers expect reliable technology. When systems constantly fail, good staff get frustrated and leave. Replacing a legal assistant means recruiting and training costs, which we haven't counted here. If unreliable IT contributes to even one departure every few years, that's another hidden cost of DIY.
 
-## The Fix: Right-Sized IT for Small Law Firms
+**Systems That Don't Talk**
 
-You don't need enterprise IT solutions. You need something designed specifically for 5-10 person professional services firms like yours—what we call the Cloud 5 Pack.
+At 40 people you run several systems: practice management, billing, document management, email. When they aren't connected, the same information gets retyped between them, and mistakes surface after the client finds them. Connecting them is part of the job, and it isn't something an informal IT handler has time for.
+
+## The Fix: Managed IT Sized for a Growing Firm
+
+You don't need enterprise IT. You need something designed specifically for professional services firms with 25-100 staff like yours, which is what we call the Comprehensive Cloud Stack.
 
 **What you actually need:**
 
 - Strategic technology guidance from someone who understands law firm operations
 - Proactive monitoring that catches problems before they disrupt client work
 - Law Society-compliant security and backup systems
-- Reliable, professional-grade tools without enterprise complexity
-- Someone to call when things break—who actually answers
+- Your business systems connected, so information is entered once
+- Someone to call when things break, who actually answers
 
-**The Economics That Actually Make Sense**
+**The Economics, on the Assumptions Above**
 
-Cloud 5 Pack for Law Firms: $1,225/month ($14,700/year). You get a fractional CTO who understands legal practice requirements, 24/7 proactive monitoring that fixes problems before you notice them, Law Society-compliant security and encryption, professional backup that meets retention requirements, unlimited support when you need it, and strategic technology planning for growth.
+At the assumed $10,000/month ($120,000/year) for 40 users, you get a team that understands legal practice requirements, 24/7 proactive monitoring, security and encryption aligned with Law Society expectations, backup that meets retention requirements, unlimited support, and technology planning for growth.
 
-Compare this to your current DIY approach costing $146,400/year. You're spending 10x more and getting worse results. The net benefit? $131,700 annually. Every month you continue DIY IT, you're losing $10,975—55 billable hours you could spend on actual legal work instead of troubleshooting technology.
+If managed IT removes 70% of the $181,000 DIY cost, that is **$126,700 a year** of cost removed, against $120,000 for the service: roughly break-even, about $6,700 ahead. That is the honest figure on these assumptions, and the price is a placeholder. Every $1,000 a month lower in your own quote adds $12,000 a year. It also leaves out compliance exposure and the cost of an incident, which is what you are really insuring against.
 
 ## What This Looks Like in Practice
 
 Month 1: We assess your current systems, document everything (you probably don't have this), identify security gaps, and create a technology roadmap specific to your practice areas.
 
-Months 2-3: Systems optimized, monitoring active, backups tested and compliant. You stop spending weekends worried about whether your technology is secure.
+Months 2-3: Systems optimized, monitoring active, backups tested and compliant. You stop worrying about whether your technology is secure.
 
-Month 4+: You've recovered 6 hours per week—24 billable hours monthly at $200/hour = $4,800 in recovered revenue. Your investment pays for itself 4x over just from recovered billable time, before we even count reduced downtime, eliminated security risk, and peace of mind.
+Month 4+: Your informal IT handler gets about 7 of their 10 hours a week back (70%), roughly 30 hours a month, worth about $4,550 a month at the assumed $150/hour. That alone covers about 45% of the monthly cost at the placeholder price, before counting everyone else's recovered time and reduced downtime.
 
 For Ontario law firms specifically, we understand:
 
@@ -93,19 +108,17 @@ For Ontario law firms specifically, we understand:
 - Court filing system integrations and e-discovery requirements
 - The critical importance of confidentiality and privilege protection
 
-## Stop Leaving Money on the Table
+## Check Your Own Numbers
 
-Every day you continue DIY IT is another day of losing billable hours, carrying unnecessary risk, and leaving money on the table.
+Every day of informal IT is a day of lost time, carried risk and disconnected systems.
 
 **Schedule a 30-minute IT assessment where we'll:**
 
-- Calculate your specific DIY IT costs (your actual numbers)
+- Calculate your firm's actual DIY IT costs, with your numbers instead of our assumptions
 - Identify Law Society compliance gaps in your current approach
-- Show exactly what Cloud 5 Pack services include for law firms
-- Provide a clear roadmap—no obligation
+- Show exactly what Comprehensive Cloud Stack services include for law firms
+- Provide a clear roadmap, no obligation
 
-Most law firm partners discover they're losing 2-3x more than they estimated. Five minutes to schedule could save you $131,700 this year and eliminate the technology stress that keeps you up at night.
-
-Let's put your time back where it belongs: practicing law, not troubleshooting IT.
+Let's put your people's time back where it belongs: practicing law, not troubleshooting IT.
 
 Get in touch with us at hi@boximity.ca

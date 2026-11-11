@@ -7,7 +7,7 @@ import { ontarioContent } from "./content";
 export const metadata: Metadata = {
   title: "Managed IT Services Ontario | Professional IT Support | Boximity",
   description:
-    "Expert managed IT services for Ontario businesses. Cloud 5 Pack includes 24/7 monitoring, cybersecurity, cloud backup, and Microsoft 365 management. Starting at $1,250/month. Free IT assessment available.",
+    "Managed IT for Ontario firms with 25-100 staff that connects the systems you already run. Comprehensive Cloud Stack includes 24/7 monitoring, cybersecurity, cloud backup, and Microsoft 365 management. Starting at $1,250/month. Free IT assessment available.",
   keywords: [
     "managed IT services Ontario",
     "IT support Ontario",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     url: "/services/managed-it-services-ontario",
     title: "Managed IT Services Ontario | Professional IT Support | Boximity",
     description:
-      "Expert managed IT services for Ontario businesses. Cloud 5 Pack includes 24/7 monitoring, cybersecurity, cloud backup, and Microsoft 365 management.",
+      "Managed IT for Ontario firms with 25-100 staff that connects the systems you already run. Comprehensive Cloud Stack includes 24/7 monitoring, cybersecurity, cloud backup, and Microsoft 365 management.",
   },
 };
 

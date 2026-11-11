@@ -59,7 +59,7 @@ The tradeoff worth being honest about is capability. Open source models are gene
 
 ## What This Actually Looks Like for a Firm Your Size
 
-A 5–10 person law firm can realistically deploy this. It's not a months-long infrastructure project, and it doesn't require your lawyers to learn anything new. From their perspective, they log into a tool that looks and behaves like the AI interfaces they're already using. The difference is what's happening underneath — and that's your IT provider's domain, not yours.
+A law firm of 25–100 people can realistically deploy this. It's not a months-long infrastructure project, and it doesn't require your lawyers to learn anything new. From their perspective, they log into a tool that looks and behaves like the AI interfaces they're already using. The difference is what's happening underneath — and that's your IT provider's domain, not yours.
 
 Your IT partner handles the deployment, the security configuration, and the ongoing maintenance. Your lawyers get a private, governed AI environment that they can use without you lying awake wondering what's happening to your clients' data. The implementation timeline, with the right provider, is measured in weeks, not months.
 

@@ -1,8 +1,6 @@
 import { ButtonLink } from "./components/Button";
 import ContactForm from "./components/ContactForm";
-import { KeyFigureGrid, type KeyFigureProps } from "./components/KeyFigure";
 import HeroWaypoints from "./components/HeroWaypoints";
-import Offer from "./components/Offer";
 import PageHero from "./components/PageHero";
 import RuledGrid from "./components/RuledGrid";
 import RuledList from "./components/RuledList";
@@ -14,55 +12,59 @@ import { TEXT_LINK_CLASS_NAME } from "./components/TextLink";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "IT That Just Works — Away From the Desk",
+  title: "Managed IT That Connects Your Business",
   description:
-    "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+    "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     url: "/",
-    title: "IT That Just Works — Away From the Desk | Boximity MSP",
+    title: "Managed IT That Connects Your Business | Boximity MSP",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   },
 };
 
 // Content is kept as data so each section renders through the shared
-// Technical Manual primitives (#618). Copy is unchanged from the Bootstrap
-// page except where the spec's structure splits it (figures, offer).
+// Technical Manual primitives (#618).
 
 const trapItems = [
   {
-    title: "Security Threats",
-    body: "Bad actors are constantly targeting your valuable business and customer data.",
+    title: "The same information, retyped",
+    body: "Every system keeps its own copy of the job, and someone keys it in again, system by system.",
+  },
+  {
+    title: "Mistakes found by the customer",
+    body: "A retyped number is a wrong number, and it surfaces after the customer finds it.",
+  },
+  {
+    title: "Invoices that run late",
+    body: "Billing waits while paperwork is retyped before it can go out.",
+  },
+  {
+    title: "Nothing you can automate",
+    body: "The systems don't talk, so there is nothing for automation to connect.",
   },
   {
     title: "Wasted Time",
-    body: "Hours spent troubleshooting technology issues instead of serving your customers and growing your business.",
-  },
-  {
-    title: "Employee Frustration",
-    body: "Staff turnover increases when technology consistently fails and prevents efficient work.",
+    body: "Hours every week lost to rework and chasing status instead of serving your customers.",
   },
 ];
 
-const bundleItems = [
+const packageItems = [
   {
-    label: "Secure Password Management",
-    detail: "Protect critical business accounts with enterprise-grade security",
+    label: "Your business systems, connected",
+    detail:
+      "Dispatch, ERP, accounting, CRM and CAD, entered once and kept in step",
   },
   {
-    label: "Professional Web Hosting",
-    detail: "Keep your online presence reliable and fast",
+    label: "24/7 monitoring and help desk",
+    detail: "Problems caught early, and someone to call who answers",
   },
   {
-    label: "Business Email Solutions",
-    detail: "Communicate professionally with customers and partners",
-  },
-  {
-    label: "Microsoft Collaboration Tools",
-    detail: "Enable your team to work together seamlessly",
+    label: "Microsoft 365 and security",
+    detail: "Managed accounts, protection and backup, without the overhead",
   },
 ];
 
@@ -82,34 +84,31 @@ const processSteps = [
 ];
 
 const experienceItems = [
-  { label: "Greater Confidence in Decision-Making" },
-  { label: "Peace of Mind from Proactive Protection" },
-  { label: "Enhanced Security" },
+  {
+    label:
+      "Data entered once. It reaches dispatch, accounting and the CRM without retyping.",
+  },
+  {
+    label:
+      "Invoices go out the day the job closes, not when someone finds time to key it in.",
+  },
+  {
+    label: "Mistakes get caught by your systems before the customer sees them.",
+  },
+  {
+    label:
+      "Nothing stalls when someone is away: the process lives in the systems, not in one person's head.",
+  },
+  {
+    label:
+      "One team owns the connections we build: we monitor them, fix our side, and coordinate with the vendor when the cause is theirs.",
+  },
 ];
 
-// None of the four is sourced yet; add `source` to a figure once it is
-// (decision 5, msp-playbook#165).
-const costFigures: readonly KeyFigureProps[] = [
-  {
-    prefix: "Up to",
-    value: "2",
-    unit: "weeks",
-    label: "of downtime after a cyber incident",
-  },
-  {
-    prefix: "up to",
-    value: "22%",
-    label: "employee productivity losses due to technology issues",
-  },
-  {
-    value: "$108,000",
-    label: "average data breach costs for small businesses",
-  },
-  {
-    value: "60%",
-    unit: "higher",
-    label: "employee turnover when technology consistently fails",
-  },
+const disconnectedCosts = [
+  "Hours every week spent retyping the same information.",
+  "Billing that lags the work by days.",
+  "Errors that surface only after the customer finds them.",
 ];
 
 const guarantees = [
@@ -118,58 +117,27 @@ const guarantees = [
   "A free written second opinion on any vendor quote or existing IT contract.",
 ];
 
-const bundleOffer = {
-  title: "Complete Bundle",
-  price: "$99",
-  priceUnit: "per month per user",
-  action: { href: "/pricing", label: "Choose A Plan Today" },
-  terms: "First month free when you sign up for annual service",
-  includes: [
-    "Password Manager",
-    "Web Hosting",
-    "Business Email",
-    "Microsoft Collaboration Tools",
-    "Email Support",
-    "Quarterly IT Assessment",
-    "Reduced Web Design Rates",
-    "Server Monitoring",
-  ],
-};
-
 export default function Home() {
   return (
     <>
       <PageHero
-        heading={
-          <>
-            IT that just works&#8288;&nbsp;— for businesses whose work happens
-            away from the desk.
-          </>
-        }
-        lead={
-          <>
-            For businesses that live outside the office, we replace break-fix
-            firefighting with technology that just works&#8288;&nbsp;— one flat
-            price, no surprises.
-          </>
-        }
+        heading="Enter it once. Get it right. Bill it on time."
+        lead="Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM."
         actions={
           <>
             <ButtonLink variant="primary" href="#contact">
               Get a Business-First IT Assessment
             </ButtonLink>
-            <ButtonLink variant="secondary" href="/pricing">
-              See Pricing Options
+            <ButtonLink variant="secondary" href="#solutions">
+              See the Managed Package
             </ButtonLink>
           </>
         }
-        // Published figures only. The price is the accent; words like
-        // "Toronto" stay ink.
+        // The audience, not a price: the home page shows no prices.
         facts={
           <>
             <span>
-              <b className="font-medium text-fig">$99</b> per month per user,
-              complete bundle
+              <b className="font-medium text-ink">25-100</b> staff firms
             </span>
             <span>
               <b className="font-medium text-ink">Toronto</b> Ontario, Canada
@@ -182,41 +150,49 @@ export default function Home() {
       <Section>
         <SectionHead
           title="The Reactive IT Trap"
-          lede="Too often, technology only gets attention after it breaks — leaving you stuck reacting to security threats, wasted time, and frustrated employees instead of running the business."
+          lede="Too often your business systems each hold their own copy of the work — leaving you retyping, correcting and chasing instead of running the business."
         />
-        <RuledGrid items={trapItems} />
+        <RuledGrid items={trapItems} hasTwoColumns />
       </Section>
 
       <Section id="solutions">
-        <SectionHead title="Our Small Business Cloud Bundle" />
+        <SectionHead title="Managed IT for firms with 25-100 staff" />
         <div className="grid gap-10 md:grid-cols-2">
           <div className="grid max-w-[66ch] content-start gap-4">
             <p className="m-0">
-              Technology is advancing at an unprecedented pace, and it&apos;s
-              completely understandable why keeping up can feel overwhelming,
-              especially when you have a business to run.
+              Your dispatch, ERP, accounting and CRM each hold their own copy of
+              the job. We connect them and keep them running, so work is entered
+              once and flows everywhere.
             </p>
             <p className="m-0">
-              You&apos;re not alone in this—many smart, capable business owners
-              seek help to manage these complexities so they can focus on what
-              they do best, without really understanding the business impact —
-              or being forced into decisions that don&apos;t fit how you
-              actually work.
+              Connections are scoped and quoted separately from the package,
+              before you spend anything. We work with what you already run:
+              nothing gets replaced unless it should. Platforms we have
+              connected include Microsoft 365, Salesforce and Sage Intacct.
             </p>
             <p className="m-0">
               Our founder has spent 19 years running application development and
-              support for other businesses — that background is why we
-              understand how fast technology moves, and why we build solutions
-              that actually fit how you work, not the other way around.
+              support for other businesses — that background is why we build
+              solutions that actually fit how you work, not the other way
+              around.
             </p>
           </div>
           <div className="grid content-start gap-4">
             <h3 className="m-0 text-h3 leading-tight font-semibold">
-              Everything your 5-10 person team needs:
+              What the managed package covers:
             </h3>
-            <TickList items={bundleItems} />
-            <p className="m-0 border-t border-rule pt-3 font-semibold">
-              All managed by experts, so you don&apos;t have to become one.
+            <TickList items={packageItems} />
+            <div className="flex flex-wrap gap-3 border-t border-rule pt-3">
+              <ButtonLink variant="primary" href="/security-assessment">
+                Start Your Free Assessment
+              </ButtonLink>
+              <ButtonLink variant="secondary" href="/pricing">
+                See Pricing
+              </ButtonLink>
+            </div>
+            <p className="m-0 text-small text-muted">
+              The free assessment takes 30 minutes to an hour and covers your IT
+              and security. We scope connections after it, as a separate step.
             </p>
           </div>
         </div>
@@ -228,11 +204,30 @@ export default function Home() {
       </Section>
 
       <Section id="benefits">
-        <SectionHead title="What You'll Experience With Our Solution" />
+        <SectionHead title="What changes when your systems connect" />
         <TickList items={experienceItems} />
         <div className="mt-6 grid gap-5.5">
-          <SectionHead title="The Real Cost of Inadequate Technology" />
-          <KeyFigureGrid figures={costFigures} />
+          <SectionHead title="What disconnected systems cost you" />
+          <RuledList items={disconnectedCosts} />
+        </div>
+      </Section>
+
+      <Section id="proof">
+        <SectionHead title="How it works for a client" />
+        <div className="grid max-w-[780px] gap-5.5">
+          <p className="m-0 text-prose leading-snug">
+            A real client, shared with their permission: a logistics firm with
+            around 100 staff. Before: the TMS, the accounting suite and GPS
+            tracking each kept their own copy of the job, and someone retyped
+            it. Now: the job is entered once, and the invoice goes out the day
+            it delivers.
+          </p>
+          <p className="m-0 font-semibold">Reference call available.</p>
+          <div>
+            <ButtonLink variant="secondary" href="#contact">
+              Book a reference call
+            </ButtonLink>
+          </div>
         </div>
       </Section>
 
@@ -241,17 +236,12 @@ export default function Home() {
         <RuledList items={guarantees} />
       </Section>
 
-      <Section>
-        <SectionHead title="Limited Time Offer for Small Businesses" />
-        <Offer {...bundleOffer} />
-      </Section>
-
       <Section id="contact">
         <div className="grid gap-12 md:grid-cols-2">
           <div className="grid content-start gap-6">
             <SectionHead
               title="Take the First Step Today"
-              lede="We're ready to help your small business leverage the power of enterprise-grade technology without the enterprise-level complexity or cost."
+              lede="We're ready to help your firm connect its systems and run on technology that works, without the enterprise-level complexity or cost."
             />
             <div className="grid gap-1">
               <h3 className="m-0 text-h3 leading-tight font-semibold">

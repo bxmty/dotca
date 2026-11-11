@@ -53,7 +53,7 @@ const content: ServiceLandingContent = {
     },
   },
   pack: {
-    heading: "Cloud 5 Pack for Test Firms",
+    heading: "Comprehensive Cloud Stack for Test Firms",
     groups: [
       { title: "Cybersecurity", items: ["Endpoint protection"] },
       { title: "Backup", items: ["Daily backups", "Restore testing"] },
@@ -106,7 +106,9 @@ describe("ServiceLandingPage", () => {
       within(hero).getByRole("link", { name: "Get Free IT Assessment" }),
     ).toHaveAttribute("href", "/security-assessment");
     expect(
-      within(hero).getByRole("link", { name: "View Cloud 5 Pack Pricing" }),
+      within(hero).getByRole("link", {
+        name: "View Comprehensive Cloud Stack Pricing",
+      }),
     ).toHaveAttribute("href", "/pricing");
 
     // The price is the accent in the fact line; the trust lines ride along
@@ -191,14 +193,19 @@ describe("ServiceLandingPage", () => {
   it("renders one offer with the pack groups beside it", () => {
     render(<ServiceLandingPage content={content} />);
 
-    const pack = getSectionByHeading("Cloud 5 Pack for Test Firms");
+    const pack = getSectionByHeading(
+      "Comprehensive Cloud Stack for Test Firms",
+    );
     expect(
       within(pack).getByText("Everything your test team needs:"),
     ).toBeInTheDocument();
 
     // A single offer: one price, one action
     expect(
-      within(pack).getByRole("heading", { level: 3, name: "Cloud 5 Pack" }),
+      within(pack).getByRole("heading", {
+        level: 3,
+        name: "Comprehensive Cloud Stack",
+      }),
     ).toBeInTheDocument();
     expect(within(pack).getAllByText("$1,250")).toHaveLength(1);
     expect(

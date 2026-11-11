@@ -3,11 +3,11 @@ import type { ServiceLandingContent } from "../ServiceLandingPage";
 export const architectureFirmsContent: ServiceLandingContent = {
   hero: {
     heading: "IT Services for Architecture Firms",
-    lead: "Specialized managed IT services designed specifically for architecture firms with 5-15 employees. Keep your design workflow running smoothly while you focus on creating exceptional buildings with our Cloud 5 Pack solution.",
+    lead: "Managed IT for architecture firms that connects CAD/BIM to project accounting. Enter the project once, and it reaches time tracking, billing and invoicing, with our Comprehensive Cloud Stack.",
     trustLine: "Serving architecture firms across Canada",
     imageAlt: "Architecture firm office with design technology",
     card: {
-      intro: "Everything your 5-10 person architecture firm needs:",
+      intro: "Everything your architecture firm needs:",
       items: [
         "24/7 Proactive Monitoring",
         "Advanced Cybersecurity",
@@ -22,6 +22,11 @@ export const architectureFirmsContent: ServiceLandingContent = {
   why: {
     heading: "Why Architecture Firms Need Specialized IT Services",
     cards: [
+      {
+        icon: "building",
+        title: "Connect Design to Billing",
+        body: "Project data lives in CAD/BIM and again in project accounting. We connect the two, so hours, milestones and invoices follow the model instead of being retyped.",
+      },
       {
         icon: "building",
         title: "Protect Building Designs & Blueprints",
@@ -48,7 +53,7 @@ export const architectureFirmsContent: ServiceLandingContent = {
     heading: "What Are IT Services for Architecture Firms?",
     paragraphs: [
       "IT services for architecture firms refer to specialized technology management tailored to the unique needs of architectural practices. Unlike generic IT support, our solutions understand the critical importance of CAD file security, BIM collaboration requirements, and building design workflow reliability.",
-      "Our architecture firm IT support services are specifically designed for small to medium-sized architectural practices, providing enterprise-grade technology solutions without the complexity or cost. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.",
+      "Our architecture firm IT support services are specifically designed for architecture firms with 25-100 staff, connecting your design and project-accounting systems and keeping them supported. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.",
     ],
     highlight: {
       title: "Design-First Technology Approach",
@@ -67,7 +72,8 @@ export const architectureFirmsContent: ServiceLandingContent = {
     },
   },
   pack: {
-    heading: "Cloud 5 Pack: Complete IT Services for Architecture Firms",
+    heading:
+      "Comprehensive Cloud Stack: Complete IT Services for Architecture Firms",
     groups: [
       {
         title: "🔒 Architecture Firm Cybersecurity",
@@ -120,7 +126,7 @@ export const architectureFirmsContent: ServiceLandingContent = {
         question:
           "How quickly can you implement IT services for our architecture firm?",
         answer:
-          "Most architecture firms can be up and running with our IT services within 1-2 weeks. We begin with a comprehensive design technology assessment to understand your current CAD and BIM setup, then implement our Cloud 5 Pack solution. For urgent construction or design concerns, we can often provide immediate emergency support while the full implementation is underway.",
+          "Most architecture firms can be up and running with our IT services within 1-2 weeks. We begin with a comprehensive design technology assessment to understand your current CAD and BIM setup, then implement our Comprehensive Cloud Stack solution. For urgent construction or design concerns, we can often provide immediate emergency support while the full implementation is underway.",
       },
       {
         question:
@@ -137,7 +143,7 @@ export const architectureFirmsContent: ServiceLandingContent = {
       {
         question: "Can you work with our existing CAD and BIM software?",
         answer:
-          "Yes, our IT support for architecture firms is designed to integrate seamlessly with AutoCAD, Revit, SketchUp, and other BIM tools. During onboarding, we assess your current technology stack and develop a migration plan that minimizes disruption to your design workflows while enhancing security and reliability for construction projects and client deliverables.",
+          "Yes, our IT support for architecture firms is designed to work with AutoCAD, Revit, SketchUp, and other BIM tools. We are vendor-neutral: we connect your CAD/BIM tools to your project accounting rather than asking you to replace either. Connections are scoped and quoted separately from the package, before you spend anything, and we plan around your design workflows to avoid disruption.",
       },
     ],
   },
