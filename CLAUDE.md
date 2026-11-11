@@ -10,6 +10,7 @@ Next.js (App Router) marketing site + blog + checkout for Boximity MSP ("dotca")
 
 Scripts live in `package.json`; recipes in the `justfile` (`just --list`). What those files do not say:
 
+- `npm run check` runs every gate in order (lint, typecheck, format, tests with coverage) and stops at the first failure. Run it once before committing; the pre-commit hooks re-run them on the staged files.
 - `npm run test:coverage` is the gate CI runs. The thresholds in `jest.config.cjs` are a ratchet floor set to measured coverage: raise them as coverage improves, and fix the tests when a run falls below them.
 - `npm run test:e2e` needs the dev environment up first (`just dev-up`).
 - `npm run lint` is type-aware for `src` (boolean naming rule in `eslint.config.js`), so it takes a few seconds longer than a plain eslint run.
