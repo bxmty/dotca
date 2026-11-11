@@ -7,7 +7,7 @@ import { architectureFirmsContent } from "./content";
 export const metadata: Metadata = {
   title: "IT Services for Architecture Firms | CAD Software Support | Boximity",
   description:
-    "Professional IT services for architecture firms. Specialized managed IT support for architectural practices. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions. Starting at $1,250/month. Free IT assessment available.",
+    "Professional IT services for architecture firms. Managed IT for architecture firms that connects CAD/BIM to project accounting. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions. Starting at $1,250/month. Free IT assessment available.",
   keywords: [
     "IT services for architecture firms",
     "architectural firm IT support",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title:
       "IT Services for Architecture Firms | CAD Software Support | Boximity",
     description:
-      "Professional IT services for architecture firms. Specialized managed IT support for architectural practices. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions.",
+      "Professional IT services for architecture firms. Managed IT for architecture firms that connects CAD/BIM to project accounting. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions.",
   },
 };
 

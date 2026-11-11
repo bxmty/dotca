@@ -4,11 +4,11 @@ import type { ServiceLandingContent } from "../ServiceLandingPage";
 export const ontarioContent: ServiceLandingContent = {
   hero: {
     heading: "Managed IT Services Ontario",
-    lead: "Professional managed IT services designed specifically for Ontario businesses. Keep your technology running smoothly while you focus on growing your business with our Comprehensive Cloud Stack solution.",
+    lead: "Managed IT for Ontario firms with 25-100 staff, built to connect the systems you already run. Enter it once, get it right, bill it on time, with our Comprehensive Cloud Stack.",
     trustLine: "Serving Toronto, Ottawa, Hamilton, London & surrounding areas",
     imageAlt: "Office setting with technology",
     card: {
-      intro: "Everything your team needs:",
+      intro: "Everything your team needs, starting at 5 users:",
       items: [
         "24/7 Proactive Monitoring",
         "Advanced Cybersecurity",
@@ -48,7 +48,7 @@ export const ontarioContent: ServiceLandingContent = {
     heading: "What Are Managed IT Services Ontario?",
     paragraphs: [
       "Managed IT services Ontario refer to the practice of outsourcing your business technology management to a trusted partner. Instead of handling IT issues internally or hiring full-time IT staff, you subscribe to a comprehensive service that monitors, maintains, and supports all your technology infrastructure.",
-      "Our managed IT services Ontario are specifically designed for small to medium-sized businesses in Ontario, providing enterprise-grade technology solutions without the enterprise-level complexity or cost. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.",
+      "Our managed IT services Ontario are specifically designed for Ontario firms with 25-100 staff, connecting the business systems you already run and keeping them supported. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.",
     ],
     highlight: {
       title: "The Business-First Difference",
@@ -62,7 +62,7 @@ export const ontarioContent: ServiceLandingContent = {
         { emoji: "💾", label: "Backup" },
         { emoji: "🛠️", label: "Support" },
         { emoji: "☁️", label: "Cloud" },
-        { emoji: "📊", label: "Compliance" },
+        { emoji: "🔗", label: "Integration" },
       ],
     },
   },
@@ -76,6 +76,7 @@ export const ontarioContent: ServiceLandingContent = {
           "Advanced endpoint protection",
           "Email security and filtering",
           "Security awareness training",
+          "Compliance support where you need it",
         ],
       },
       {
@@ -114,28 +115,28 @@ export const ontarioContent: ServiceLandingContent = {
         emoji: "🏢",
         name: "Toronto",
         description:
-          "GTA's business hub with specialized support for professional services firms, financial institutions, and tech companies.",
+          "Firms across the GTA with several business systems that don't talk to each other, connected and supported by one team.",
         coverageNote: "Onsite and remote support",
       },
       {
         emoji: "🏛️",
         name: "Ottawa",
         description:
-          "Government and research sector expertise with focus on compliance and secure communications.",
+          "Operations-heavy firms whose systems need connecting and supporting, remotely, wherever they are in the region.",
         coverageNote: "Remote support only",
       },
       {
         emoji: "🏭",
         name: "Hamilton",
         description:
-          "Manufacturing and logistics support with industrial IT solutions and remote monitoring capabilities.",
+          "Manufacturing, wholesale and logistics firms with dispatch, ERP and accounting systems to connect.",
         coverageNote: "Onsite and remote support",
       },
       {
         emoji: "🌾",
         name: "London",
         description:
-          "Agricultural and healthcare sector IT support with specialized compliance and data management solutions.",
+          "Construction, agriculture and distribution firms running separate systems for jobs and billing.",
         coverageNote: "Onsite and remote support",
       },
     ],
@@ -150,7 +151,7 @@ export const ontarioContent: ServiceLandingContent = {
         question:
           "What makes your managed IT services Ontario different from others?",
         answer:
-          "Our managed IT services Ontario are designed specifically for small businesses, with a business-first approach that prioritizes your outcomes over technical complexity. We speak your language, understand Ontario-specific challenges, and provide personalized support that grows with your business. Unlike large MSPs, we maintain the personal touch and accessibility that small businesses need.",
+          "Our managed IT services Ontario are designed specifically for firms with 25-100 staff, with a business-first approach that prioritizes your outcomes over technical complexity. We speak your language, understand Ontario-specific challenges, and provide personalized support that grows with your business. Unlike large MSPs, we maintain the personal touch and accessibility that growing firms need.",
       },
       {
         question:
@@ -173,7 +174,7 @@ export const ontarioContent: ServiceLandingContent = {
       {
         question: "Can you work with our existing IT setup?",
         answer:
-          "Absolutely. Our managed IT services Ontario are designed to integrate with your existing technology infrastructure. We assess your current setup during the onboarding process and develop a migration plan that minimizes disruption. Whether you have legacy systems, cloud applications, or a mix of both, we can manage and optimize your entire IT environment.",
+          "Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Each fix is scoped and priced before you spend anything, so you decide which connections are worth it.",
       },
     ],
   },
