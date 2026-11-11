@@ -40,7 +40,7 @@ Hours every week lost to rework and chasing status instead of serving your custo
 
 Your dispatch, ERP, accounting and CRM each hold their own copy of the job. We connect them and keep them running, so work is entered once and flows everywhere.
 
-Connections are scoped and quoted separately from the package, before you spend anything. We work with what you already run: nothing gets replaced unless it should.
+Connections are scoped and quoted separately from the package, before you spend anything. We work with what you already run: nothing gets replaced unless it should. Platforms we have connected include Microsoft 365, Salesforce and Sage Intacct.
 
 Our founder has spent 19 years running application development and support for other businesses — that background is why we build solutions that actually fit how you work, not the other way around.
 
@@ -51,6 +51,8 @@ Our founder has spent 19 years running application development and support for o
 - **Microsoft 365 and security** — Managed accounts, protection and backup, without the overhead
 
 [Start Your Free Assessment] [See Pricing]
+
+The free assessment takes 30 minutes to an hour and covers your IT and security. We scope connections after it, as a separate step.
 
 ## Our Simple Process Gets You Up and Running Fast
 
@@ -72,7 +74,7 @@ We'll email installation instructions for our management tool to your team, ensu
 - **Invoices go out the day the job closes**, not when someone finds time to key it in.
 - **Mistakes get caught by your systems** before the customer sees them.
 - **Nothing stalls when someone is away:** the process lives in the systems, not in one person's head.
-- **One team answers for the whole stack**, including the integrations between your systems.
+- **One team owns the connections we build:** we monitor them, fix our side, and coordinate with the vendor when the cause is theirs.
 
 ## What disconnected systems cost you
 

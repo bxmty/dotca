@@ -101,7 +101,7 @@ const experienceItems = [
   },
   {
     label:
-      "One team answers for the whole stack, including the integrations between your systems.",
+      "One team owns the connections we build: we monitor them, fix our side, and coordinate with the vendor when the cause is theirs.",
   },
 ];
 
@@ -167,7 +167,8 @@ export default function Home() {
             <p className="m-0">
               Connections are scoped and quoted separately from the package,
               before you spend anything. We work with what you already run:
-              nothing gets replaced unless it should.
+              nothing gets replaced unless it should. Platforms we have
+              connected include Microsoft 365, Salesforce and Sage Intacct.
             </p>
             <p className="m-0">
               Our founder has spent 19 years running application development and
@@ -189,6 +190,10 @@ export default function Home() {
                 See Pricing
               </ButtonLink>
             </div>
+            <p className="m-0 text-small text-muted">
+              The free assessment takes 30 minutes to an hour and covers your IT
+              and security. We scope connections after it, as a separate step.
+            </p>
           </div>
         </div>
       </Section>

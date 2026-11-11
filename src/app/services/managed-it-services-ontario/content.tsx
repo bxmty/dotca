@@ -174,7 +174,7 @@ export const ontarioContent: ServiceLandingContent = {
       {
         question: "Can you work with our existing IT setup?",
         answer:
-          "Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Connections are scoped and quoted separately from the package, before you spend anything, so you decide which are worth it.",
+          "Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Platforms we have connected include Microsoft 365, Salesforce and Sage Intacct. Connections are scoped and quoted separately from the package, before you spend anything, so you decide which are worth it. Our free assessment covers your IT and security and takes 30 minutes to an hour; we scope connections after it.",
       },
     ],
   },

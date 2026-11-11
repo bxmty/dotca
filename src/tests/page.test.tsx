@@ -105,6 +105,10 @@ describe("Home page", () => {
       }),
     ).toBeInTheDocument();
     expect(solutions).not.toHaveTextContent("$");
+    expect(solutions).toHaveTextContent(
+      "Microsoft 365, Salesforce and Sage Intacct",
+    );
+    expect(solutions).toHaveTextContent("30 minutes to an hour");
     expect(
       within(solutions).getByRole("link", {
         name: "Start Your Free Assessment",
