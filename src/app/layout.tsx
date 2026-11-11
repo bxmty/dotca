@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     default: "Boximity MSP — IT That Just Works",
   },
   description:
-    "For businesses that live outside the office, Boximity MSP replaces break-fix firefighting with technology that just works — one flat price, no surprises.",
+    "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   keywords: [
     "IT Services",
     "MSP",
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     url: "https://boximity.ca",
     title: "Boximity MSP — IT That Just Works",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
     siteName: "Boximity MSP",
     images: [
       {
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Boximity MSP — IT That Just Works",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
     images: ["/images/twitter-image.jpg"],
   },
 };

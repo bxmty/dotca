@@ -16,7 +16,7 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "IT That Just Works — Away From the Desk",
   description:
-    "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+    "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   alternates: {
     canonical: "/",
   },
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     url: "/",
     title: "IT That Just Works — Away From the Desk | Boximity MSP",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   },
 };
 
@@ -146,13 +146,7 @@ export default function Home() {
             away from the desk.
           </>
         }
-        lead={
-          <>
-            For businesses that live outside the office, we replace break-fix
-            firefighting with technology that just works&#8288;&nbsp;— one flat
-            price, no surprises.
-          </>
-        }
+        lead="Enter it once. Get it right. Bill it on time. Managed IT that connects your business."
         actions={
           <>
             <ButtonLink variant="primary" href="#contact">

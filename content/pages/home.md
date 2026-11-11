@@ -1,12 +1,12 @@
 ---
 route: /
 title: "IT That Just Works — Away From the Desk"
-description: "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises."
+description: "Enter it once. Get it right. Bill it on time. Managed IT that connects your business."
 ---
 
 # IT that just works — for businesses whose work happens away from the desk.
 
-For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.
+Enter it once. Get it right. Bill it on time. Managed IT that connects your business.
 
 [Get a Business-First IT Assessment] [See Pricing Options]
 
