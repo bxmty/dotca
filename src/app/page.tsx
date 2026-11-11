@@ -1,7 +1,6 @@
 import { ButtonLink } from "./components/Button";
 import ContactForm from "./components/ContactForm";
 import HeroWaypoints from "./components/HeroWaypoints";
-import Offer from "./components/Offer";
 import PageHero from "./components/PageHero";
 import RuledGrid from "./components/RuledGrid";
 import RuledList from "./components/RuledList";
@@ -13,7 +12,7 @@ import { TEXT_LINK_CLASS_NAME } from "./components/TextLink";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "IT That Just Works — Away From the Desk",
+  title: "Managed IT That Connects Your Business",
   description:
     "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   alternates: {
@@ -21,47 +20,51 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "/",
-    title: "IT That Just Works — Away From the Desk | Boximity MSP",
+    title: "Managed IT That Connects Your Business | Boximity MSP",
     description:
       "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   },
 };
 
 // Content is kept as data so each section renders through the shared
-// Technical Manual primitives (#618). Copy is unchanged from the Bootstrap
-// page except where the spec's structure splits it (figures, offer).
+// Technical Manual primitives (#618).
 
 const trapItems = [
   {
-    title: "Security Threats",
-    body: "Bad actors are constantly targeting your valuable business and customer data.",
+    title: "The same information, retyped",
+    body: "Every system keeps its own copy of the job, and someone keys it in again, system by system.",
+  },
+  {
+    title: "Mistakes found by the customer",
+    body: "A retyped number is a wrong number, and it surfaces after the customer finds it.",
+  },
+  {
+    title: "Invoices that run late",
+    body: "Billing waits while paperwork is retyped before it can go out.",
+  },
+  {
+    title: "Nothing you can automate",
+    body: "The systems don't talk, so there is nothing for automation to connect.",
   },
   {
     title: "Wasted Time",
-    body: "Hours spent troubleshooting technology issues instead of serving your customers and growing your business.",
-  },
-  {
-    title: "Employee Frustration",
-    body: "Staff turnover increases when technology consistently fails and prevents efficient work.",
+    body: "Hours every week spent retyping instead of serving your customers and running the business.",
   },
 ];
 
-const bundleItems = [
+const packageItems = [
   {
-    label: "Secure Password Management",
-    detail: "Protect critical business accounts with enterprise-grade security",
+    label: "Your business systems, connected",
+    detail:
+      "Dispatch, ERP, accounting, CRM and CAD, entered once and kept in step",
   },
   {
-    label: "Professional Web Hosting",
-    detail: "Keep your online presence reliable and fast",
+    label: "24/7 monitoring and help desk",
+    detail: "Problems caught early, and someone to call who answers",
   },
   {
-    label: "Business Email Solutions",
-    detail: "Communicate professionally with customers and partners",
-  },
-  {
-    label: "Microsoft Collaboration Tools",
-    detail: "Enable your team to work together seamlessly",
+    label: "Microsoft 365 and security",
+    detail: "Managed accounts, protection and backup, without the overhead",
   },
 ];
 
@@ -114,52 +117,28 @@ const guarantees = [
   "A free written second opinion on any vendor quote or existing IT contract.",
 ];
 
-const bundleOffer = {
-  title: "Complete Bundle",
-  price: "$99",
-  priceUnit: "per month per user",
-  action: { href: "/pricing", label: "Choose A Plan Today" },
-  terms: "First month free when you sign up for annual service",
-  includes: [
-    "Password Manager",
-    "Web Hosting",
-    "Business Email",
-    "Microsoft Collaboration Tools",
-    "Email Support",
-    "Quarterly IT Assessment",
-    "Reduced Web Design Rates",
-    "Server Monitoring",
-  ],
-};
-
 export default function Home() {
   return (
     <>
       <PageHero
-        heading={
-          <>
-            IT that just works&#8288;&nbsp;— for businesses whose work happens
-            away from the desk.
-          </>
-        }
+        hasWideHeading
+        heading="Managed IT that connects your business: enter it once, and it flows everywhere."
         lead="Enter it once. Get it right. Bill it on time. Managed IT that connects your business."
         actions={
           <>
             <ButtonLink variant="primary" href="#contact">
               Get a Business-First IT Assessment
             </ButtonLink>
-            <ButtonLink variant="secondary" href="/pricing">
-              See Pricing Options
+            <ButtonLink variant="secondary" href="#solutions">
+              See the Managed Package
             </ButtonLink>
           </>
         }
-        // Published figures only. The price is the accent; words like
-        // "Toronto" stay ink.
+        // The audience, not a price: the home page shows no prices.
         facts={
           <>
             <span>
-              <b className="font-medium text-fig">$99</b> per month per user,
-              complete bundle
+              <b className="font-medium text-ink">25-100</b> staff firms
             </span>
             <span>
               <b className="font-medium text-ink">Toronto</b> Ontario, Canada
@@ -172,42 +151,44 @@ export default function Home() {
       <Section>
         <SectionHead
           title="The Reactive IT Trap"
-          lede="Too often, technology only gets attention after it breaks — leaving you stuck reacting to security threats, wasted time, and frustrated employees instead of running the business."
+          lede="Too often your business systems each hold their own copy of the work — leaving you retyping, correcting and chasing instead of running the business."
         />
-        <RuledGrid items={trapItems} />
+        <RuledGrid items={trapItems} hasTwoColumns />
       </Section>
 
       <Section id="solutions">
-        <SectionHead title="Our Small Business Cloud Bundle" />
+        <SectionHead title="Managed IT for firms with 25-100 staff" />
         <div className="grid gap-10 md:grid-cols-2">
           <div className="grid max-w-[66ch] content-start gap-4">
             <p className="m-0">
-              Technology is advancing at an unprecedented pace, and it&apos;s
-              completely understandable why keeping up can feel overwhelming,
-              especially when you have a business to run.
+              Your dispatch, ERP, accounting and CRM each hold their own copy of
+              the job. We connect them and keep them running, so work is entered
+              once and flows everywhere.
             </p>
             <p className="m-0">
-              You&apos;re not alone in this—many smart, capable business owners
-              seek help to manage these complexities so they can focus on what
-              they do best, without really understanding the business impact —
-              or being forced into decisions that don&apos;t fit how you
-              actually work.
+              Each integration is scoped and priced before you spend. We work
+              with what you already run: nothing gets replaced unless it should.
             </p>
             <p className="m-0">
               Our founder has spent 19 years running application development and
-              support for other businesses — that background is why we
-              understand how fast technology moves, and why we build solutions
-              that actually fit how you work, not the other way around.
+              support for other businesses — that background is why we build
+              solutions that actually fit how you work, not the other way
+              around.
             </p>
           </div>
           <div className="grid content-start gap-4">
             <h3 className="m-0 text-h3 leading-tight font-semibold">
-              Everything your 5-10 person team needs:
+              What the managed package covers:
             </h3>
-            <TickList items={bundleItems} />
-            <p className="m-0 border-t border-rule pt-3 font-semibold">
-              All managed by experts, so you don&apos;t have to become one.
-            </p>
+            <TickList items={packageItems} />
+            <div className="flex flex-wrap gap-3 border-t border-rule pt-3">
+              <ButtonLink variant="primary" href="/security-assessment">
+                Start Your Free Assessment
+              </ButtonLink>
+              <ButtonLink variant="secondary" href="/pricing">
+                See Pricing
+              </ButtonLink>
+            </div>
           </div>
         </div>
       </Section>
@@ -249,17 +230,12 @@ export default function Home() {
         <RuledList items={guarantees} />
       </Section>
 
-      <Section>
-        <SectionHead title="Limited Time Offer for Small Businesses" />
-        <Offer {...bundleOffer} />
-      </Section>
-
       <Section id="contact">
         <div className="grid gap-12 md:grid-cols-2">
           <div className="grid content-start gap-6">
             <SectionHead
               title="Take the First Step Today"
-              lede="We're ready to help your small business leverage the power of enterprise-grade technology without the enterprise-level complexity or cost."
+              lede="We're ready to help your firm connect its systems and run on technology that works, without the enterprise-level complexity or cost."
             />
             <div className="grid gap-1">
               <h3 className="m-0 text-h3 leading-tight font-semibold">

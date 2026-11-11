@@ -171,4 +171,16 @@ describe("PageHero", () => {
       );
     });
   });
+
+  it("caps the H1 at 17ch, or 26ch for a wide heading", () => {
+    const { rerender } = render(<PageHero heading="Pricing" lead="Lead." />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(
+      "max-w-[17ch]",
+    );
+
+    rerender(<PageHero hasWideHeading heading="Pricing" lead="Lead." />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(
+      "max-w-[26ch]",
+    );
+  });
 });

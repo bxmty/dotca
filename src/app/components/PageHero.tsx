@@ -24,6 +24,8 @@ type PageHeroProps = {
    * a minimum height so the aside has room; below lg the aside is hidden.
    */
   aside?: ReactNode;
+  /** A longer H1 (the home page's): widens the 17ch cap to 26ch. */
+  hasWideHeading?: boolean;
 };
 
 export default function PageHero({
@@ -32,6 +34,7 @@ export default function PageHero({
   actions,
   facts,
   aside,
+  hasWideHeading = false,
 }: PageHeroProps) {
   const asideLayoutClasses = aside
     ? " lg:min-h-[640px] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
@@ -41,7 +44,9 @@ export default function PageHero({
       className={`relative isolate grid gap-10 overflow-hidden px-4 pt-14 pb-12 md:px-7${asideLayoutClasses}`}
     >
       <div className="grid content-start gap-5.5">
-        <h1 className="m-0 max-w-[17ch] font-sans text-section leading-[1.04] font-light tracking-tight md:text-display">
+        <h1
+          className={`m-0 ${hasWideHeading ? "max-w-[26ch]" : "max-w-[17ch]"} font-sans text-section leading-[1.04] font-light tracking-tight md:text-display`}
+        >
           {heading}
         </h1>
         <p className="m-0 max-w-[52ch] text-h3 leading-snug text-muted">

@@ -1,47 +1,56 @@
 ---
 route: /
-title: "IT That Just Works — Away From the Desk"
+title: "Managed IT That Connects Your Business"
 description: "Enter it once. Get it right. Bill it on time. Managed IT that connects your business."
 ---
 
-# IT that just works — for businesses whose work happens away from the desk.
+# Managed IT that connects your business: enter it once, and it flows everywhere.
 
 Enter it once. Get it right. Bill it on time. Managed IT that connects your business.
 
-[Get a Business-First IT Assessment] [See Pricing Options]
+[Get a Business-First IT Assessment] [See the Managed Package]
+
+_25-100 staff firms · Toronto, Ontario, Canada_
 
 ## The Reactive IT Trap
 
-Too often, technology only gets attention after it breaks — leaving you stuck reacting to security threats, wasted time, and frustrated employees instead of running the business.
+Too often your business systems each hold their own copy of the work — leaving you retyping, correcting and chasing instead of running the business.
 
-### Security Threats
+### The same information, retyped
 
-Bad actors are constantly targeting your valuable business and customer data.
+Every system keeps its own copy of the job, and someone keys it in again, system by system.
+
+### Mistakes found by the customer
+
+A retyped number is a wrong number, and it surfaces after the customer finds it.
+
+### Invoices that run late
+
+Billing waits while paperwork is retyped before it can go out.
+
+### Nothing you can automate
+
+The systems don't talk, so there is nothing for automation to connect.
 
 ### Wasted Time
 
-Hours spent troubleshooting technology issues instead of serving your customers and growing your business.
+Hours every week spent retyping instead of serving your customers and running the business.
 
-### Employee Frustration
+## Managed IT for firms with 25-100 staff
 
-Staff turnover increases when technology consistently fails and prevents efficient work.
+Your dispatch, ERP, accounting and CRM each hold their own copy of the job. We connect them and keep them running, so work is entered once and flows everywhere.
 
-## Our Small Business Cloud Bundle
+Each integration is scoped and priced before you spend. We work with what you already run: nothing gets replaced unless it should.
 
-Technology is advancing at an unprecedented pace, and it's completely understandable why keeping up can feel overwhelming, especially when you have a business to run.
+Our founder has spent 19 years running application development and support for other businesses — that background is why we build solutions that actually fit how you work, not the other way around.
 
-You're not alone in this—many smart, capable business owners seek help to manage these complexities so they can focus on what they do best, without really understanding the business impact — or being forced into decisions that don't fit how you actually work.
+### What the managed package covers:
 
-Our founder has spent 19 years running application development and support for other businesses — that background is why we understand how fast technology moves, and why we build solutions that actually fit how you work, not the other way around.
+- **Your business systems, connected** — Dispatch, ERP, accounting, CRM and CAD, entered once and kept in step
+- **24/7 monitoring and help desk** — Problems caught early, and someone to call who answers
+- **Microsoft 365 and security** — Managed accounts, protection and backup, without the overhead
 
-### Everything your 5-10 person team needs:
-
-- **Secure Password Management** — Protect critical business accounts with enterprise-grade security
-- **Professional Web Hosting** — Keep your online presence reliable and fast
-- **Business Email Solutions** — Communicate professionally with customers and partners
-- **Microsoft Collaboration Tools** — Enable your team to work together seamlessly
-
-All managed by experts, so you don't have to become one.
+[Start Your Free Assessment] [See Pricing]
 
 ## Our Simple Process Gets You Up and Running Fast
 
@@ -85,23 +94,9 @@ Reference call available.
 2. No line item you weren't told about in advance — or that line item is free.
 3. A free written second opinion on any vendor quote or existing IT contract.
 
-## Limited Time Offer for Small Businesses
-
-### Basic Bundle: $99/month per user
-
-- Password Manager
-- Business Email
-- Email Support (Business Hours)
-- Setup & Onboarding Assistance
-- Periodic security posture reviews
-
-First month free when you sign up for annual service
-
-[Choose A Plan Today]
-
 ## Take the First Step Today
 
-We're ready to help your small business leverage the power of enterprise-grade technology without the enterprise-level complexity or cost.
+We're ready to help your firm connect its systems and run on technology that works, without the enterprise-level complexity or cost.
 
 ### Contact Us
 

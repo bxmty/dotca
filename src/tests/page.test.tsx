@@ -23,10 +23,10 @@ describe("Home page", () => {
     const { container } = render(<Home />);
 
     const heading = screen.getByRole("heading", { level: 1 });
-    // A word joiner and no-break space keep the dash off the line start
-    expect(heading.textContent).toMatch(
-      /IT that just works\u2060\u00a0— for businesses whose work happens away from the desk\./,
+    expect(heading.textContent).toBe(
+      "Managed IT that connects your business: enter it once, and it flows everywhere.",
     );
+    expect(heading).toHaveClass("max-w-[26ch]");
     expect(heading).toHaveClass("font-sans", "font-light", "md:text-display");
 
     // No photo above the fold, or anywhere on the page
@@ -36,7 +36,7 @@ describe("Home page", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 
-  it("links the hero to the contact form and the pricing page", () => {
+  it("links the hero to the contact form and the managed package", () => {
     render(<Home />);
 
     const hero = getHero();
@@ -46,28 +46,77 @@ describe("Home page", () => {
       }),
     ).toHaveAttribute("href", "#contact");
     expect(
-      within(hero).getByRole("link", { name: "See Pricing Options" }),
-    ).toHaveAttribute("href", "/pricing");
+      within(hero).getByRole("link", { name: "See the Managed Package" }),
+    ).toHaveAttribute("href", "#solutions");
   });
 
-  it("shows the published price in the hero fact line", () => {
+  it("shows the audience, not a price, in the hero fact line", () => {
     render(<Home />);
 
-    const facts = within(getHero()).getByText("$99");
-    expect(facts).toHaveClass("text-fig");
+    const hero = getHero();
+    const facts = within(hero).getByText("25-100");
+    expect(facts).toHaveClass("text-ink");
     expect(facts.parentElement?.parentElement).toHaveClass(
       "border-t",
       "font-mono",
     );
+    expect(hero).not.toHaveTextContent("$");
   });
 
-  it("plots one working day over the hero's right half", () => {
+  it("plots one job through four systems over the hero's right half", () => {
     render(<Home />);
 
     const hero = getHero();
     expectWaypointStops(hero);
     expect(within(hero).getByText(WAYPOINT_CAPTION)).toBeInTheDocument();
     expect(hero).toHaveClass("lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]");
+  });
+
+  it("lists the four connection problems and Wasted Time in the trap", () => {
+    render(<Home />);
+
+    const trap = screen
+      .getByRole("heading", { name: "The Reactive IT Trap" })
+      .closest("section")!;
+    const titles = within(trap)
+      .getAllByRole("heading", { level: 3 })
+      .map((heading) => heading.textContent);
+    expect(titles).toEqual([
+      "The same information, retyped",
+      "Mistakes found by the customer",
+      "Invoices that run late",
+      "Nothing you can automate",
+      "Wasted Time",
+    ]);
+    expect(trap).not.toHaveTextContent(/Security Threats|Employee Frustration/);
+  });
+
+  it("pitches the managed package to 25-100 staff firms, with no prices", () => {
+    render(<Home />);
+
+    const solutions = document.getElementById("solutions")!;
+    expect(
+      within(solutions).getByRole("heading", {
+        name: "Managed IT for firms with 25-100 staff",
+      }),
+    ).toBeInTheDocument();
+    expect(solutions).not.toHaveTextContent("$");
+    expect(
+      within(solutions).getByRole("link", {
+        name: "Start Your Free Assessment",
+      }),
+    ).toHaveAttribute("href", "/security-assessment");
+    expect(
+      within(solutions).getByRole("link", { name: "See Pricing" }),
+    ).toHaveAttribute("href", "/pricing");
+  });
+
+  it("has none of the retired home copy", () => {
+    const { container } = render(<Home />);
+
+    expect(container).not.toHaveTextContent(
+      /away from the desk|Small Business Cloud Bundle|Limited Time Offer|Basic Bundle/i,
+    );
   });
 
   it("lists the connected-systems outcomes and the cost of disconnection", () => {
@@ -123,15 +172,13 @@ describe("Home page", () => {
     );
   });
 
-  it("makes a single offer", () => {
-    render(<Home />);
+  it("shows no price and no plan offer anywhere on the page", () => {
+    const { container } = render(<Home />);
 
     expect(
-      screen.getAllByRole("link", { name: "Choose A Plan Today" }),
-    ).toHaveLength(1);
-    expect(
-      screen.getByText("First month free when you sign up for annual service"),
-    ).toHaveClass("font-mono");
+      screen.queryByRole("link", { name: "Choose A Plan Today" }),
+    ).not.toBeInTheDocument();
+    expect(container).not.toHaveTextContent(/\$\d/);
   });
 
   it("keeps the in-page anchors, with the form at #contact", () => {
