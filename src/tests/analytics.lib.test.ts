@@ -182,15 +182,15 @@ describe("analytics.ts unified analytics interface", () => {
       const status = getAnalyticsStatus();
 
       expect(status).toEqual({
-        enableGoogleAnalytics: true,
-        initialized: false, // not initialized yet
+        isGoogleAnalyticsEnabled: true,
+        isInitialized: false, // not initialized yet
       });
 
       initializeAnalytics();
 
       expect(getAnalyticsStatus()).toEqual({
-        enableGoogleAnalytics: true,
-        initialized: true,
+        isGoogleAnalyticsEnabled: true,
+        isInitialized: true,
       });
     });
   });

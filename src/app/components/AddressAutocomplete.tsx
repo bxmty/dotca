@@ -33,7 +33,7 @@ export default function AddressAutocomplete({
   required,
   countryCodes = "ca",
   placeholder,
-  "aria-invalid": ariaInvalid,
+  "aria-invalid": isInvalid,
   "aria-describedby": ariaDescribedBy,
 }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -140,7 +140,7 @@ export default function AddressAutocomplete({
         aria-expanded={isOpen}
         aria-autocomplete="list"
         aria-controls={listboxId}
-        aria-invalid={ariaInvalid}
+        aria-invalid={isInvalid}
         aria-describedby={ariaDescribedBy}
       />
       {isOpen && (

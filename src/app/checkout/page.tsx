@@ -106,7 +106,7 @@ const PRICE_CLASS_NAME = "font-mono font-medium tabular-nums";
 export default function Checkout() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<CustomerFields>({
     firstName: "",
     lastName: "",
@@ -137,7 +137,7 @@ export default function Checkout() {
       return;
     }
     setSelectedPlan(plan);
-    setLoading(false);
+    setIsLoading(false);
   };
 
   const clearFieldErrors = (fields: CustomerField[]) =>
@@ -221,7 +221,7 @@ export default function Checkout() {
     </Suspense>
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mx-auto max-w-[1120px] px-4 py-16 md:px-7">
         <Suspense fallback={<p>Loading plans...</p>}>
@@ -261,8 +261,10 @@ export default function Checkout() {
     employeeCount,
     billingCycle,
   });
-  const formattedUnitPrice = formatPrice(selectedPlan.monthlyUnitPrice);
-  const estimatedTotal = formatPrice(estimate.total);
+  const formattedUnitPrice = formatPrice(
+    selectedPlan.monthlyUnitPriceInDollars,
+  );
+  const estimatedTotal = formatPrice(estimate.totalInDollars);
 
   return (
     <>
@@ -497,7 +499,7 @@ export default function Checkout() {
                   {billingCycle === "annual" ? " × 12 months" : ""})
                 </span>
                 <span className={PRICE_CLASS_NAME}>
-                  {formatPrice(estimate.subtotal)}
+                  {formatPrice(estimate.subtotalInDollars)}
                 </span>
               </div>
 
@@ -505,7 +507,7 @@ export default function Checkout() {
                 <div className={SUMMARY_ROW_CLASS_NAME}>
                   <span>Annual Discount ({ANNUAL_DISCOUNT_PERCENT}%)</span>
                   <span className={PRICE_CLASS_NAME}>
-                    -{formatPrice(estimate.discount)}
+                    -{formatPrice(estimate.discountInDollars)}
                   </span>
                 </div>
               )}

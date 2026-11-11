@@ -31,7 +31,7 @@ describe("plan catalog", () => {
 
   it("prices each plan per user per month", () => {
     expect(
-      planCatalog.map((plan) => formatPrice(plan.monthlyUnitPrice)),
+      planCatalog.map((plan) => formatPrice(plan.monthlyUnitPriceInDollars)),
     ).toEqual(["$0.00", "$99.00", "$249.00", "$449.00"]);
   });
 
@@ -63,7 +63,11 @@ describe("estimatePrice", () => {
         employeeCount: 5,
         billingCycle: "monthly",
       }),
-    ).toEqual({ subtotal: 495, discount: 0, total: 495 });
+    ).toEqual({
+      subtotalInDollars: 495,
+      discountInDollars: 0,
+      totalInDollars: 495,
+    });
   });
 
   it("bills twelve months less the annual discount for an annual estimate", () => {
@@ -75,9 +79,9 @@ describe("estimatePrice", () => {
       billingCycle: "annual",
     });
 
-    expect(estimate.subtotal).toBe(5940);
-    expect(estimate.discount).toBeCloseTo(594, 6);
-    expect(estimate.total).toBeCloseTo(5346, 6);
+    expect(estimate.subtotalInDollars).toBe(5940);
+    expect(estimate.discountInDollars).toBeCloseTo(594, 6);
+    expect(estimate.totalInDollars).toBeCloseTo(5346, 6);
   });
 
   it("estimates at both employee-count bounds the server accepts", () => {
@@ -88,14 +92,14 @@ describe("estimatePrice", () => {
         plan: standard,
         employeeCount: MIN_EMPLOYEE_COUNT,
         billingCycle: "monthly",
-      }).total,
+      }).totalInDollars,
     ).toBe(1245);
     expect(
       estimatePrice({
         plan: standard,
         employeeCount: MAX_EMPLOYEE_COUNT,
         billingCycle: "monthly",
-      }).total,
+      }).totalInDollars,
     ).toBe(4980);
   });
 
@@ -105,7 +109,7 @@ describe("estimatePrice", () => {
         plan: getPlan("Free"),
         employeeCount: 20,
         billingCycle: "annual",
-      }).total,
+      }).totalInDollars,
     ).toBe(0);
   });
 
@@ -135,13 +139,13 @@ describe("estimatePrice", () => {
   it.each(DISPLAYED_TOTALS)(
     "displays %s %s for %i employees as %s",
     (planName, billingCycle, employeeCount, displayedTotal) => {
-      const { total } = estimatePrice({
+      const { totalInDollars } = estimatePrice({
         plan: getPlan(planName),
         employeeCount,
         billingCycle,
       });
 
-      expect(formatPrice(total)).toBe(displayedTotal);
+      expect(formatPrice(totalInDollars)).toBe(displayedTotal);
     },
   );
 });

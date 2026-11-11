@@ -13,15 +13,15 @@ export default function OptimizedImage({
   fallbackSrc = "/images/placeholder.jpg",
   ...props
 }: OptimizedImageProps) {
-  const [error, setError] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const handleError = () => {
-    setError(true);
+    setHasError(true);
   };
 
   return (
     <Image
-      src={error ? fallbackSrc : src}
+      src={hasError ? fallbackSrc : src}
       alt={alt}
       {...props}
       onError={handleError}

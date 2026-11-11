@@ -501,11 +501,11 @@ function formatValue(value: number, valueFormat: ValueFormat): string {
   }
 }
 
-function describeFlag(flag: boolean | undefined): string {
-  if (flag === undefined) {
+function describeFlag(isFlagSet: boolean | undefined): string {
+  if (isFlagSet === undefined) {
     return "missing";
   }
-  return flag ? "yes" : "no";
+  return isFlagSet ? "yes" : "no";
 }
 
 function buildThresholdCheck({

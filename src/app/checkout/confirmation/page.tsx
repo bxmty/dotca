@@ -22,7 +22,7 @@ interface PageProps {
 interface ConfirmationContent {
   heading: string;
   message: string;
-  showRetry: boolean;
+  shouldShowRetry: boolean;
 }
 
 // Stripe redirects back with redirect_status describing the payment outcome
@@ -35,14 +35,14 @@ function getConfirmationContent(
         heading: "Payment Successful",
         message:
           "Thank you for your purchase! A receipt has been sent to your email address. Our team will reach out shortly to get you onboarded.",
-        showRetry: false,
+        shouldShowRetry: false,
       };
     case "processing":
       return {
         heading: "Payment Processing",
         message:
           "Your payment is being processed. We will email you a confirmation as soon as it completes — no further action is needed.",
-        showRetry: false,
+        shouldShowRetry: false,
       };
     case "requires_payment_method":
     case "failed":
@@ -50,14 +50,14 @@ function getConfirmationContent(
         heading: "Payment Unsuccessful",
         message:
           "Your payment could not be completed. No charge was made. Please return to checkout and try again with a different payment method.",
-        showRetry: true,
+        shouldShowRetry: true,
       };
     default:
       return {
         heading: "Order Received",
         message:
           "We have received your order. If you do not receive a confirmation email shortly, please contact us at hi@boximity.ca or (289) 539-0098.",
-        showRetry: false,
+        shouldShowRetry: false,
       };
   }
 }
@@ -66,7 +66,7 @@ export default async function CheckoutConfirmationPage({
   searchParams,
 }: PageProps) {
   const { redirect_status: redirectStatus } = await searchParams;
-  const { heading, message, showRetry } =
+  const { heading, message, shouldShowRetry } =
     getConfirmationContent(redirectStatus);
 
   // A failed payment is the one outcome drawn as an error status (danger is
@@ -76,7 +76,7 @@ export default async function CheckoutConfirmationPage({
       kicker="Checkout"
       heading={heading}
       action={
-        showRetry ? (
+        shouldShowRetry ? (
           <ButtonLink variant="secondary" href="/checkout">
             Return to Checkout
           </ButtonLink>
@@ -87,7 +87,7 @@ export default async function CheckoutConfirmationPage({
         )
       }
     >
-      {showRetry ? (
+      {shouldShowRetry ? (
         <StatusNote tone="error" label="Error">
           <p className="m-0 text-ink">{message}</p>
         </StatusNote>
