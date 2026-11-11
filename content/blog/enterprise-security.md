@@ -1,5 +1,5 @@
 ---
-title: "What Enterprise-Grade Security Actually Means for 5-10 Person Firms"
+title: "What Enterprise-Grade Security Actually Means for 25-100 Person Firms"
 description: "You're Being Sold the Wrong Security Model"
 date: "2026-02-04"
 author: "Boximity Team"
@@ -15,7 +15,7 @@ featured: true
 coverImage: "/images/blog/cto.webp"
 ---
 
-# What Enterprise-Grade Security Actually Means for 5-10 Person Firms
+# What Enterprise-Grade Security Actually Means for 25-100 Person Firms
 
 Your law firm's receptionist just clicked a link in an email that looked like it came from the Ontario Bar Association. Within 90 seconds, ransomware encrypted every client file on your network. Your professional liability insurance doesn't cover cyber incidents. Client intake forms with SINs, bank details, and privileged communications are now in the hands of attackers demanding $50,000.
 
@@ -25,7 +25,7 @@ This scenario isn't hypothetical. Canada experienced over 5,200 ransomware attac
 
 **Option 2**: "You need a 24/7 Security Operations Center, SIEM platform, and dedicated security analyst. That'll be $8,000 per month."
 
-Both answers miss the point entirely. Let's talk about what enterprise-grade security actually means when you have seven people and a $2,000 monthly IT budget.
+Both answers miss the point entirely. Let's talk about what enterprise-grade security actually means when you have forty people and no security team.
 
 ---
 
@@ -33,11 +33,11 @@ Both answers miss the point entirely. Let's talk about what enterprise-grade sec
 
 Here's what most security vendors won't tell you: enterprise-grade security isn't about the size of your infrastructure or the complexity of your tools. It's about the **completeness of your protection** and the **speed of your response**.
 
-A 10-person accounting firm faces the same threat actors as a 1,000-person enterprise. Phishing emails don't check your employee count before they hit your inbox. Ransomware doesn't care that you're a boutique marketing agency. The attack methods are identical.
+A 40-person accounting firm faces the same threat actors as a 1,000-person enterprise. Phishing emails don't check your employee count before they hit your inbox. Ransomware doesn't care that you're a boutique marketing agency. The attack methods are identical.
 
-What's different is the economics. A Fortune 500 company can justify a dedicated security team because one successful breach costs them $4.5 million on average. You can't hire three full-time security analysts for your eight-person consulting firm. But you also can't afford to operate with consumer-grade protection and hope for the best.
+What's different is the economics. A Fortune 500 company can justify a dedicated security team because one successful breach costs them $4.5 million on average. You can't hire three full-time security analysts for your forty-person consulting firm. But you also can't afford to operate with consumer-grade protection and hope for the best.
 
-Most small firms end up in this uncomfortable middle: spending $600-1,200 monthly on patchwork security (basic antivirus, maybe email filtering, crossing your fingers) while remaining fundamentally vulnerable to the exact attacks that shut down businesses your size.
+Most firms your size end up in this uncomfortable middle: spending on patchwork security (basic antivirus, maybe email filtering, crossing your fingers) while remaining fundamentally vulnerable to the exact attacks that shut down businesses like yours.
 
 ---
 
@@ -49,14 +49,14 @@ Strip away the vendor marketing and enterprise-grade security comes down to four
 
 Enterprise security assumes attackers will target every possible entry point: email, endpoints, web browsing, file downloads, USB drives, mobile devices. Consumer security hopes your antivirus catches things after they're already running on your computer.
 
-For a 6-person law firm, this means:
+For a 40-person law firm, this means:
 
 - Email security that blocks phishing before it reaches inboxes, not after someone clicks
 - Endpoint protection that stops ransomware at execution, not just detects known viruses
 - Web filtering that prevents credential theft on fake login pages
 - Mobile device management that enforces encryption and remote wipe
 
-**What this doesn't mean**: Buying five different point solutions from five different vendors and hoping they work together. Enterprise-grade security for small firms means **integrated protection** that works as a system, not a collection of isolated tools.
+**What this doesn't mean**: Buying five different point solutions from five different vendors and hoping they work together. Enterprise-grade security for firms your size means **integrated protection** that works as a system, not a collection of isolated tools.
 
 ### 2. Continuous Monitoring, Not Periodic Checks
 
@@ -66,7 +66,7 @@ A traditional enterprise SOC is a room full of security analysts watching dashbo
 
 What you actually need is **automated continuous monitoring with human escalation**. Your security tools should be watching for threats constantly, correlating signals, and automatically blocking obvious attacks. When something ambiguous happens—like a user logging in from an unusual location or accessing files they've never touched before—that's when you need a human to look at it. Not in three days when you run your weekly security scan. Right now.
 
-For a professional services firm, the math looks like this: an undetected breach that runs for 72 hours before anyone notices costs an average of $180,000 in recovery, lost productivity, and client notification. Continuous monitoring that catches the breach in the first hour costs about $400-600 monthly. The ROI is obvious.
+For a professional services firm, the math looks like this: an undetected breach that runs for 72 hours before anyone notices means days of recovery, lost productivity, and client notification. Continuous monitoring that catches it in the first hour costs about $400-600 monthly in our assumptions below.
 
 ### 3. Rapid Response, Not Eventual Cleanup
 
@@ -78,7 +78,7 @@ Enterprise security responds in seconds, not minutes:
 - Phishing email detected? Removed from all inboxes automatically, not just flagged
 - Compromised credential? All active sessions terminated and password reset forced
 
-For small firms, this rapid response capability is actually more critical than it is for enterprises. Why? Because you don't have redundant systems. When your operations manager's laptop gets infected, you can't just seamlessly move their workload to a backup machine while IT forensics the problem. You need that laptop cleaned and back online in hours, not days.
+For firms your size, this rapid response capability is actually more critical than it is for enterprises. Why? Because you don't have redundant systems. When your operations manager's laptop gets infected, you can't just seamlessly move their workload to a backup machine while IT forensics the problem. You need that laptop cleaned and back online in hours, not days.
 
 ### 4. Tested Recovery, Not Theoretical Backup
 
@@ -90,7 +90,7 @@ Enterprise-grade security includes **immutable, tested backup and recovery**:
 - Recovery procedures you've actually tested (not just documented)
 - RTO (Recovery Time Objective) that matches your business tolerance
 
-For a 7-person consulting firm billing $200/hour per consultant loses $11,200 per day of downtime (7 people × 8 hours × $200). If your backup recovery process takes three days to restore everything, that's $33,600 in lost revenue—plus whatever client relationships you damage by missing deliverables.
+For a 40-person firm where each person's time costs $150/hour (an assumption), downtime costs $48,000 per day (40 people × 8 hours × $150). If your backup recovery process takes three days to restore everything, that's $144,000 in lost productivity—plus whatever client relationships you damage by missing deliverables.
 
 Consumer backup ($50/month cloud storage) doesn't prevent attackers from encrypting both your files and your backup copies. Enterprise backup ($200-400/month) maintains immutable snapshots they can't touch.
 
@@ -100,70 +100,80 @@ According to recent data, the average cost for Canadian companies to recover fro
 
 ## The Cost of Getting This Wrong vs. Getting It Right
 
-Let's make the economics concrete with a scenario most Ontario professional services firms will recognize.
+Let's make the economics concrete with a scenario most Ontario professional services firms will recognize. Every figure below follows from the assumptions here. They are illustrative, so rerun them with your own.
 
-**Your Current State**: 8-person accounting firm with:
+**Assumptions**
 
-- Consumer antivirus ($60/month)
-- Basic Microsoft 365 email ($96/month for 8 users at $12/user)
+- A 40-person firm, with 40 endpoints.
+- Each person's time costs $150/hour, so downtime costs $6,000/hour.
+- Per-user prices are the ranges quoted in this post, scaled to 40 users. Firm-wide items (monitoring, backup) are held at the ranges quoted, which may rise for a larger environment.
+- Without tested recovery, an incident means about 6 days of downtime (the low end of the 6-9 days below). With immutable backup and tested procedures, it means about 6 hours.
+- Chance of a successful attack in a given year: 10% unprotected, 3% protected. These are assumptions, not statistics.
+
+**Your Current State**: 40-person accounting firm with:
+
+- Consumer antivirus (about $300/month)
+- Basic Microsoft 365 email ($480/month for 40 users at $12/user)
 - No email security filtering
 - No endpoint management
 - Cloud storage that isn't immutable
 - No monitoring or incident response
 
-**Your monthly IT security spend**: ~$156
+**Your monthly IT security spend**: ~$780
 
 **Your actual risk exposure**:
 
 - 91% of cyberattacks start with a phishing email, and Canada received 10% of all phishing attempts globally in 2024
 - 58% of Canadian companies report receiving phishing emails
-- No email filtering means your receptionist is your primary security control
+- No email filtering means your staff are your primary security control, and with 40 people there are 40 chances to click
 - 4.7-hour average time to detect a breach (no monitoring)
 - 6-9 day recovery time (no tested backup, no response plan)
 - Average data breach cost for Canadian organizations: $6.32 million (CA$6.64 million when adjusted)
 - Small business ransomware recovery: $120,000-$1.24 million
 
-**Annualized expected loss**: The average Canadian data breach costs $6.32 million, but even scaling conservatively for a small professional services firm and assuming only a 10% chance of a successful attack in any given year, your expected annual loss significantly exceeds basic consumer security spending.
-
 **Enterprise-Grade Protection for Your Firm**:
 
-- Integrated email security with phishing protection ($200-280/month)
-- Endpoint detection and response across all devices ($240-320/month for 8 endpoints)
+- Integrated email security with phishing protection ($1,400-1,600/month at $35-40/user)
+- Endpoint detection and response across all devices ($1,200-1,600/month at $30-40 per endpoint)
 - Automated monitoring with SOC-as-a-Service escalation ($400-600/month)
 - Immutable backup and tested recovery ($250-350/month)
-- Security awareness training and phishing simulations ($80-120/month)
+- Security awareness training and phishing simulations ($400-600/month at $10-15/user)
 
-**Monthly investment**: $1,170-1,670
-**Annualized cost**: $14,040-20,040
+**Monthly investment**: $3,650-4,750
+**Annualized cost**: $43,800-57,000
 
 **Risk reduction**:
 
 - Phishing success rate drops dramatically (from 91% of attacks starting with phishing to <5% with proper email filtering and training)
 - Average detection time: 12 minutes (automated monitoring)
 - Recovery time: 4-8 hours (immutable backup, tested procedures)
-- Breach cost if one occurs: $15,000-25,000 (mostly in immediate response vs. extended recovery)
 
-**Annualized expected loss with protection**: 3% attack success rate × $20,000 average cost = $600 expected annual loss.
+**Expected annual loss, downtime only**:
 
-**Net position**: You invest $14,040-20,040 annually to reduce expected losses from $18,000 to $600. Even in the worst-case scenario where you're at the high end of the cost range, you're protecting $17,400 in expected losses while spending $20,040—and that's before factoring in the reputational damage, regulatory penalties, and client trust issues that the expected loss calculation doesn't fully capture.
+- Unprotected: 10% × (6 days × 8 hours × $6,000/hour = $288,000) = **$28,800**
+- Protected: 3% × (6 hours × $6,000/hour = $36,000) = **$1,080**
 
-For most 5-10 person professional services firms, the break-even calculation isn't even close. You're already exposed to more risk than you're paying to mitigate it.
+**Net position**: Protection cuts expected downtime losses by about $27,700 a year. At $43,800-57,000 a year, that covers roughly half to two-thirds of the cost on downtime alone.
+
+That is the honest result on these assumptions: expected downtime losses alone don't pay for the whole stack. What you are buying is protection against the tail event, a $288,000 outage plus notification, legal, regulatory and client-trust costs that this calculation leaves out, along with what your insurer and your clients' contracts may require. Whether that is worth it depends on your risk tolerance and your own numbers, which is why the first step is an assessment that uses them.
+
+For most 25-100 person professional services firms, the gap between consumer security and an integrated system is real, but the case rests on risk and obligations, not on a simple payback. Run the numbers for your firm before you decide.
 
 ---
 
 ## What This Actually Looks Like in Practice
 
-So what does enterprise-grade security look like when implemented for a 6-person marketing agency?
+So what does enterprise-grade security look like when implemented for a 40-person marketing agency?
 
 **Email Security**: Advanced threat protection analyzes every inbound email in real-time. Links are rewritten to route through a scanning service that checks the destination before allowing access. Attachments are detonated in a sandbox environment before reaching inboxes. Impersonation protection flags emails claiming to be from your CEO or clients but originating from external domains.
 
-**Cost impact**: $35-40 per user per month. For 6 users, that's $210-240 monthly.
+**Cost impact**: $35-40 per user per month. For 40 users, that's $1,400-1,600 monthly.
 
-**What it prevents**: The phishing attack that would have cost you $40,000-180,000 in recovery, notification, and lost business.
+**What it prevents**: The phishing attack that would have meant days of recovery, client notification, and lost business.
 
 **Endpoint Protection**: Every laptop and desktop runs EDR (Endpoint Detection and Response) software that monitors process behavior, not just virus signatures. When ransomware tries to encrypt files, the suspicious encryption pattern is detected in seconds, the process is killed, the machine is isolated from the network, and an alert is sent for human review.
 
-**Cost impact**: $30-40 per endpoint per month. For 6 devices, that's $180-240 monthly.
+**Cost impact**: $30-40 per endpoint per month. For 40 devices, that's $1,200-1,600 monthly.
 
 **What it prevents**: The ransomware infection that would have encrypted all your client project files and cost 6-9 days of downtime while you recovered from backups.
 
@@ -179,7 +189,7 @@ So what does enterprise-grade security look like when implemented for a 6-person
 
 **What it prevents**: The scenario where you discover your backup system has been broken for three months only after ransomware hits and you need it.
 
-**Total monthly investment**: $1,040-1,430 for comprehensive enterprise-grade protection.
+**Total monthly investment**: $3,250-4,150 for comprehensive enterprise-grade protection (before training).
 
 **What you're buying**: The difference between a security incident being a 2-hour inconvenience versus a business-threatening crisis.
 
@@ -217,9 +227,9 @@ If your current security provider can't answer these questions with specifics, y
 
 ---
 
-## Why Most Small Firms Get Sold the Wrong Solution
+## Why Most Firms Get Sold the Wrong Solution
 
-The security industry has trained small business owners to think about security in terms of products: "Do you have antivirus? Do you have a firewall? Do you have backup?"
+The security industry has trained business owners to think about security in terms of products: "Do you have antivirus? Do you have a firewall? Do you have backup?"
 
 But products don't protect you. **Systems** protect you.
 
@@ -232,17 +242,17 @@ Enterprise-grade security is a system where:
 
 The reason consumer security fails isn't because the antivirus software is bad. It fails because antivirus is just one component in a system—and if the other components (email filtering, endpoint monitoring, backup, response) aren't working together, you've got gaps large enough for attackers to walk through.
 
-The reason traditional enterprise security is overkill for small firms isn't that the protection is too good. It's because the delivery model assumes you need dedicated staff running these systems. You don't. Modern security platforms can deliver enterprise-grade protection through automation and managed services at a fraction of the cost of building it in-house.
+The reason traditional enterprise security is overkill for firms your size isn't that the protection is too good. It's because the delivery model assumes you need dedicated staff running these systems. You don't. Modern security platforms can deliver enterprise-grade protection through automation and managed services at a fraction of the cost of building it in-house.
 
-The actual question isn't "Can a 7-person firm afford enterprise-grade security?"
+The actual question isn't "Can a 40-person firm afford enterprise-grade security?"
 
-The real question is: "Can a 7-person firm afford to operate without it when the expected annual loss from inadequate security exceeds the cost of proper protection?"
+The real question is: "Can a 40-person firm afford to operate without it when one incident could cost six figures in downtime alone?"
 
 ---
 
 ## What You Should Actually Do
 
-If you're running a 5-10 person professional services firm in Ontario and you're reading this thinking "I'm pretty sure our security isn't enterprise-grade," here's the practical path forward:
+If you're running a 25-100 person professional services firm in Ontario and you're reading this thinking "I'm pretty sure our security isn't enterprise-grade," here's the practical path forward:
 
 **Immediate (This Week)**:
 
@@ -276,11 +286,11 @@ You don't need to understand threat intelligence feeds and SIEM correlation rule
 
 You don't need enterprise-scale infrastructure. You need enterprise-quality protection scaled appropriately to your size and budget.
 
-The difference between consumer security and enterprise security for a 7-person firm isn't $6,000 per month. It's $800-1,200 per month. And the difference in actual protection is the gap between a security incident being a manageable inconvenience versus a business-threatening crisis.
+The difference between consumer security and enterprise security for a 40-person firm isn't an $8,000-a-month SOC. On the assumptions above, it's roughly $2,900-4,000 more per month than patchwork. And the difference in actual protection is the gap between a security incident being a manageable inconvenience versus a business-threatening crisis.
 
 Your clients trust you with their privileged information, their financial records, their strategic plans. You have professional obligations to protect that data—legally, ethically, and reputationally. Consumer-grade security doesn't meet those obligations, and you can't afford to hope you'll be lucky.
 
-Enterprise-grade security for small firms is real. It's available. And the economics make sense when you stop comparing the cost to "what we're spending now" and start comparing it to "what we'd lose if this breaks."
+Enterprise-grade security for firms your size is real. It's available. And the economics make sense when you stop comparing the cost to "what we're spending now" and start comparing it to "what we'd lose if this breaks."
 
 ---
 
