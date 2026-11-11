@@ -89,7 +89,7 @@ describe("PricingPage", () => {
 
     for (const plan of planCatalog) {
       for (const link of screen.getAllByRole("link", { name: plan.cta })) {
-        if (plan.highlighted) {
+        if (plan.isRecommended) {
           expect(link).toHaveClass("bg-cta");
         } else {
           expect(link).not.toHaveClass("bg-cta");
@@ -113,7 +113,9 @@ describe("PricingPage", () => {
     render(<PricingPage />);
 
     const sheet = getSheet();
-    const recommendedIndex = planCatalog.findIndex((plan) => plan.highlighted);
+    const recommendedIndex = planCatalog.findIndex(
+      (plan) => plan.isRecommended,
+    );
     const rows = within(sheet).getAllByRole("row");
     const actionRow = rows[rows.length - 1];
 
@@ -136,7 +138,7 @@ describe("PricingPage", () => {
 
     getStackedBlocks().forEach((block, index) => {
       const island = block.querySelector(".hl");
-      if (planCatalog[index].highlighted) {
+      if (planCatalog[index].isRecommended) {
         expect(island).not.toBeNull();
         expect(within(island as HTMLElement).queryByRole("link")).toBeNull();
         expect(island).toHaveTextContent("Recommended");

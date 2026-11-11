@@ -261,7 +261,7 @@ export default function Checkout() {
     employeeCount,
     billingCycle,
   });
-  const unitPrice = formatPrice(selectedPlan.monthlyUnitPrice);
+  const formattedUnitPrice = formatPrice(selectedPlan.monthlyUnitPrice);
   const estimatedTotal = formatPrice(estimate.total);
 
   return (
@@ -284,7 +284,7 @@ export default function Checkout() {
                 {selectedPlan.name} Plan
               </p>
               <p className={`m-0 text-body ${PRICE_CLASS_NAME}`}>
-                {unitPrice} per user per month
+                {formattedUnitPrice} per user per month
               </p>
               <p className="m-0 max-w-[62ch] text-small text-muted">
                 {selectedPlan.description}
@@ -492,8 +492,8 @@ export default function Checkout() {
             <div className="grid gap-2 border-t border-rule pt-4 text-small">
               <div className={SUMMARY_ROW_CLASS_NAME}>
                 <span>
-                  {selectedPlan.name} Plan ({unitPrice} × {employeeCount}{" "}
-                  employees
+                  {selectedPlan.name} Plan ({formattedUnitPrice} ×{" "}
+                  {employeeCount} employees
                   {billingCycle === "annual" ? " × 12 months" : ""})
                 </span>
                 <span className={PRICE_CLASS_NAME}>

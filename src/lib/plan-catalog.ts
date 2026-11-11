@@ -18,7 +18,7 @@ export interface Plan {
   features: readonly string[];
   cta: string;
   /** Marks the Recommended plan on the pricing sheet. */
-  highlighted?: boolean;
+  isRecommended?: boolean;
 }
 
 export const planCatalog: readonly Plan[] = [
@@ -63,7 +63,7 @@ export const planCatalog: readonly Plan[] = [
       "Cloud Backup Solutions",
       "30-day email & phone support",
     ],
-    highlighted: true,
+    isRecommended: true,
     cta: "Choose Standard",
   },
   {

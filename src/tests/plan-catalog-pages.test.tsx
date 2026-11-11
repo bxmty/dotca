@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import CheckoutPage from "@/app/checkout/page";
 import PricingPage from "@/app/pricing/page";
-import { planCatalog } from "@/lib/plan-catalog";
+import { isFreePlan, planCatalog } from "@/lib/plan-catalog";
 
 // Pricing and checkout read one plan catalog: a visitor who follows a plan's
 // deep link from the pricing sheet sees the same plan, worded the same way,
@@ -39,7 +39,7 @@ function followPricingLink(cta: string): URLSearchParams {
   return target.searchParams;
 }
 
-const paidPlans = planCatalog.filter((plan) => plan.name !== "Free");
+const paidPlans = planCatalog.filter((plan) => !isFreePlan(plan));
 
 describe("pricing and checkout share the plan catalog", () => {
   it("covers the three paid plans", () => {

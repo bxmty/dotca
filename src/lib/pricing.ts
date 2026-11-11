@@ -7,8 +7,8 @@
  * in this codebase, so the mode of STRIPE_SECRET_KEY alone decides test vs
  * live pricing.
  *
- * Display prices do live here, in lib/plan-catalog.ts. They render the
- * pricing sheet and the checkout estimate and are never sent to Stripe;
+ * Display prices do live in the codebase, in lib/plan-catalog.ts. They render
+ * the pricing sheet and the checkout estimate and are never sent to Stripe;
  * nothing checks them against the Stripe Prices, so change both together.
  */
 

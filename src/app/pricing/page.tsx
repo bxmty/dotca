@@ -59,7 +59,7 @@ function RecommendedTag({ className }: { className: string }) {
 function PlanPrice({ plan }: { plan: Plan }) {
   return (
     <span
-      className={`${PRICE_CLASS_NAME} ${plan.highlighted ? "text-fig" : ""}`}
+      className={`${PRICE_CLASS_NAME} ${plan.isRecommended ? "text-fig" : ""}`}
     >
       {formatPrice(plan.monthlyUnitPrice)}
     </span>
@@ -85,7 +85,7 @@ function PlanAction({
 }) {
   return (
     <ButtonLink
-      variant={plan.highlighted ? "primary" : "secondary"}
+      variant={plan.isRecommended ? "primary" : "secondary"}
       isBlock
       isCompact={isCompact}
       href={getPlanHref(plan)}
@@ -97,12 +97,12 @@ function PlanAction({
 
 /** The Recommended plan's island head: pale purple under a 3 px CTA rule. */
 function getIslandHeadClassName(plan: Plan): string {
-  return plan.highlighted ? `hl ${RECOMMENDED_RULE_CLASS_NAME}` : "";
+  return plan.isRecommended ? `hl ${RECOMMENDED_RULE_CLASS_NAME}` : "";
 }
 
 /** Cells of the Recommended column carry the island, except the action row. */
 function getPlanCellClassName(plan: Plan): string {
-  return plan.highlighted ? `${CELL_CLASS_NAME} hl` : CELL_CLASS_NAME;
+  return plan.isRecommended ? `${CELL_CLASS_NAME} hl` : CELL_CLASS_NAME;
 }
 
 function PricingTable() {
@@ -125,7 +125,7 @@ function PricingTable() {
               )}`}
             >
               {plan.name}
-              {plan.highlighted && <RecommendedTag className="mt-1 block" />}
+              {plan.isRecommended && <RecommendedTag className="mt-1 block" />}
             </th>
           ))}
         </tr>
@@ -194,7 +194,7 @@ function StackedPlans() {
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h3 className="m-0 text-h3 leading-tight font-semibold">
                 {plan.name}
-                {plan.highlighted && <RecommendedTag className="ml-1.5" />}
+                {plan.isRecommended && <RecommendedTag className="ml-1.5" />}
               </h3>
               <span>
                 <PlanPrice plan={plan} />{" "}
