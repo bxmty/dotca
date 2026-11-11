@@ -122,7 +122,7 @@ export default function Home() {
     <>
       <PageHero
         heading="Enter it once. Get it right. Bill it on time."
-        lead="Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM."
+        lead="Managed IT that connects your dispatch, ERP, accounting and CRM."
         actions={
           <>
             <ButtonLink variant="primary" href="#contact">
@@ -137,7 +137,8 @@ export default function Home() {
         facts={
           <>
             <span>
-              <b className="font-medium text-ink">25-100</b> staff firms
+              <b className="font-medium text-ink">Connects</b> dispatch, ERP,
+              accounting, CRM
             </span>
             <span>
               <b className="font-medium text-ink">Toronto</b> Ontario, Canada
@@ -156,7 +157,7 @@ export default function Home() {
       </Section>
 
       <Section id="solutions">
-        <SectionHead title="Managed IT for firms with 25-100 staff" />
+        <SectionHead title="Managed IT that connects your business" />
         <div className="grid gap-10 md:grid-cols-2">
           <div className="grid max-w-[66ch] content-start gap-4">
             <p className="m-0">
@@ -216,11 +217,10 @@ export default function Home() {
         <SectionHead title="How it works for a client" />
         <div className="grid max-w-[780px] gap-5.5">
           <p className="m-0 text-prose leading-snug">
-            A real client, shared with their permission: a logistics firm with
-            around 100 staff. Before: the TMS, the accounting suite and GPS
-            tracking each kept their own copy of the job, and someone retyped
-            it. Now: the job is entered once, and the invoice goes out the day
-            it delivers.
+            A real client, shared with their permission: a logistics firm.
+            Before: the TMS, the accounting suite and GPS tracking each kept
+            their own copy of the job, and someone retyped it. Now: the job is
+            entered once, and the invoice goes out the day it delivers.
           </p>
           <p className="m-0 font-semibold">Reference call available.</p>
           <div>

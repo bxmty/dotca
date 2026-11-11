@@ -28,7 +28,7 @@ describe("Home page", () => {
     );
     expect(
       screen.getByText(
-        "Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM.",
+        "Managed IT that connects your dispatch, ERP, accounting and CRM.",
       ),
     ).toBeInTheDocument();
     expect(heading).toHaveClass("font-sans", "font-light", "md:text-display");
@@ -58,7 +58,7 @@ describe("Home page", () => {
     render(<Home />);
 
     const hero = getHero();
-    const facts = within(hero).getByText("25-100");
+    const facts = within(hero).getByText("Connects");
     expect(facts).toHaveClass("text-ink");
     expect(facts.parentElement?.parentElement).toHaveClass(
       "border-t",
@@ -95,13 +95,13 @@ describe("Home page", () => {
     expect(trap).not.toHaveTextContent(/Security Threats|Employee Frustration/);
   });
 
-  it("pitches the managed package to 25-100 staff firms, with no prices", () => {
+  it("pitches the managed package without a headcount, with no prices", () => {
     render(<Home />);
 
     const solutions = document.getElementById("solutions")!;
     expect(
       within(solutions).getByRole("heading", {
-        name: "Managed IT for firms with 25-100 staff",
+        name: "Managed IT that connects your business",
       }),
     ).toBeInTheDocument();
     expect(solutions).not.toHaveTextContent("$");
@@ -148,7 +148,7 @@ describe("Home page", () => {
 
     const proof = document.getElementById("proof")!;
     expect(proof).toHaveTextContent(
-      "A real client, shared with their permission: a logistics firm with around 100 staff",
+      "A real client, shared with their permission: a logistics firm.",
     );
     expect(proof).toHaveTextContent("Reference call available.");
     expect(

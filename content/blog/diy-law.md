@@ -77,7 +77,7 @@ At 40 people you run several systems: practice management, billing, document man
 
 ## The Fix: Managed IT Sized for a Growing Firm
 
-You don't need enterprise IT. You need something designed specifically for professional services firms with 25-100 staff like yours, which is what we call the Comprehensive Cloud Stack.
+You don't need enterprise IT. You need something designed specifically for professional services firms like yours, which is what we call the Comprehensive Cloud Stack.
 
 **What you actually need:**
 

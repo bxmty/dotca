@@ -6,11 +6,11 @@ description: "Enter it once. Get it right. Bill it on time. Managed IT that conn
 
 # Enter it once. Get it right. Bill it on time.
 
-Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM.
+Managed IT that connects your dispatch, ERP, accounting and CRM.
 
 [Get a Business-First IT Assessment] [See the Managed Package]
 
-_25-100 staff firms · Toronto, Ontario, Canada_
+_Connects dispatch, ERP, accounting, CRM · Toronto, Ontario, Canada_
 
 ## The Reactive IT Trap
 
@@ -36,7 +36,7 @@ The systems don't talk, so there is nothing for automation to connect.
 
 Hours every week lost to rework and chasing status instead of serving your customers.
 
-## Managed IT for firms with 25-100 staff
+## Managed IT that connects your business
 
 Your dispatch, ERP, accounting and CRM each hold their own copy of the job. We connect them and keep them running, so work is entered once and flows everywhere.
 
@@ -84,7 +84,7 @@ We'll email installation instructions for our management tool to your team, ensu
 
 ## How it works for a client
 
-A real client, shared with their permission: a logistics firm with around 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
+A real client, shared with their permission: a logistics firm. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
 
 Reference call available.
 

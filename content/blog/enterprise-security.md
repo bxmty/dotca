@@ -1,5 +1,5 @@
 ---
-title: "What Enterprise-Grade Security Actually Means for 25-100 Person Firms"
+title: "What Enterprise-Grade Security Actually Means for Professional Services Firms"
 description: "You're Being Sold the Wrong Security Model"
 date: "2026-02-04"
 author: "Boximity Team"
@@ -15,7 +15,7 @@ featured: true
 coverImage: "/images/blog/cto.webp"
 ---
 
-# What Enterprise-Grade Security Actually Means for 25-100 Person Firms
+# What Enterprise-Grade Security Actually Means for Professional Services Firms
 
 Your law firm's receptionist just clicked a link in an email that looked like it came from the Ontario Bar Association. Within 90 seconds, ransomware encrypted every client file on your network. Your professional liability insurance doesn't cover cyber incidents. Client intake forms with SINs, bank details, and privileged communications are now in the hands of attackers demanding $50,000.
 
@@ -157,7 +157,7 @@ Let's make the economics concrete with a scenario most Ontario professional serv
 
 That is the honest result on these assumptions: expected downtime losses alone don't pay for the whole stack. What you are buying is protection against the tail event, a $144,000 outage plus notification, legal, regulatory and client-trust costs that this calculation leaves out, along with what your insurer and your clients' contracts may require. Whether that is worth it depends on your risk tolerance and your own numbers, which is why the first step is an assessment that uses them.
 
-For most 25-100 person professional services firms, the gap between consumer security and an integrated system is real, but the case rests on risk and obligations, not on a simple payback. Run the numbers for your firm before you decide.
+For most professional services firms, the gap between consumer security and an integrated system is real, but the case rests on risk and obligations, not on a simple payback. Run the numbers for your firm before you decide.
 
 ---
 
@@ -252,7 +252,7 @@ The real question is: "Can a 40-person firm afford to operate without it when on
 
 ## What You Should Actually Do
 
-If you're running a 25-100 person professional services firm in Ontario and you're reading this thinking "I'm pretty sure our security isn't enterprise-grade," here's the practical path forward:
+If you're running a professional services firm in Ontario and you're reading this thinking "I'm pretty sure our security isn't enterprise-grade," here's the practical path forward:
 
 **Immediate (This Week)**:
 

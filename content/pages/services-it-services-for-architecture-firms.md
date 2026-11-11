@@ -55,7 +55,7 @@ Architecture technology evolves rapidly with new BIM platforms, sustainable desi
 
 IT services for architecture firms refer to specialized technology management tailored to the unique needs of architectural practices. Unlike generic IT support, our solutions understand the critical importance of CAD file security, BIM collaboration requirements, and building design workflow reliability.
 
-Our architecture firm IT support services are specifically designed for architecture firms with 25-100 staff, connecting your design and project-accounting systems and keeping them supported. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.
+Our architecture firm IT support services are specifically designed for architecture firms, connecting your design and project-accounting systems and keeping them supported. We become your virtual IT department, handling everything from cybersecurity to system updates to technical support.
 
 #### Design-First Technology Approach
 
