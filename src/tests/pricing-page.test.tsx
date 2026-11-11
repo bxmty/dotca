@@ -1,10 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import PricingPage from "@/app/pricing/page";
-import { pricingPlans } from "@/app/pricing/plans";
+import { formatPrice, planCatalog } from "@/lib/plan-catalog";
 import { expectContoursWithoutWaypoints } from "./heroExpectations";
 
-// The pricing sheet renders twice from one pricingPlans source: a ruled table
+// The pricing sheet renders twice from one plan catalog: a ruled table
 // from 900 px and stacked blocks below it (CSS hides the other).
 
 // The self-serve targets as they were before the restyle; they must not move.
@@ -49,8 +49,8 @@ describe("PricingPage", () => {
     const columnHeaders = within(getSheet())
       .getAllByRole("columnheader")
       .slice(1);
-    expect(columnHeaders).toHaveLength(pricingPlans.length);
-    pricingPlans.forEach((plan, index) => {
+    expect(columnHeaders).toHaveLength(planCatalog.length);
+    planCatalog.forEach((plan, index) => {
       expect(columnHeaders[index]).toHaveTextContent(plan.name);
     });
   });
@@ -59,8 +59,8 @@ describe("PricingPage", () => {
     render(<PricingPage />);
 
     const blocks = getStackedBlocks();
-    expect(blocks).toHaveLength(pricingPlans.length);
-    pricingPlans.forEach((plan, index) => {
+    expect(blocks).toHaveLength(planCatalog.length);
+    planCatalog.forEach((plan, index) => {
       expect(
         within(blocks[index]).getByRole("heading", { level: 3 }),
       ).toHaveTextContent(plan.name);
@@ -70,7 +70,7 @@ describe("PricingPage", () => {
   it("keeps every plan's CTA href in both layouts", () => {
     render(<PricingPage />);
 
-    expect(pricingPlans.map((plan) => plan.name)).toEqual(
+    expect(planCatalog.map((plan) => plan.name)).toEqual(
       Object.keys(EXPECTED_HREFS),
     );
     for (const layout of [getSheet(), ...getStackedBlocks()]) {
@@ -79,7 +79,7 @@ describe("PricingPage", () => {
         expect(link).toHaveAttribute("href", EXPECTED_HREFS[planName]);
       }
     }
-    for (const plan of pricingPlans) {
+    for (const plan of planCatalog) {
       expect(screen.getAllByRole("link", { name: plan.cta })).toHaveLength(2);
     }
   });
@@ -87,9 +87,9 @@ describe("PricingPage", () => {
   it("makes only the recommended plan's button primary", () => {
     render(<PricingPage />);
 
-    for (const plan of pricingPlans) {
+    for (const plan of planCatalog) {
       for (const link of screen.getAllByRole("link", { name: plan.cta })) {
-        if (plan.highlighted) {
+        if (plan.isRecommended) {
           expect(link).toHaveClass("bg-cta");
         } else {
           expect(link).not.toHaveClass("bg-cta");
@@ -113,7 +113,9 @@ describe("PricingPage", () => {
     render(<PricingPage />);
 
     const sheet = getSheet();
-    const recommendedIndex = pricingPlans.findIndex((plan) => plan.highlighted);
+    const recommendedIndex = planCatalog.findIndex(
+      (plan) => plan.isRecommended,
+    );
     const rows = within(sheet).getAllByRole("row");
     const actionRow = rows[rows.length - 1];
 
@@ -136,7 +138,7 @@ describe("PricingPage", () => {
 
     getStackedBlocks().forEach((block, index) => {
       const island = block.querySelector(".hl");
-      if (pricingPlans[index].highlighted) {
+      if (planCatalog[index].isRecommended) {
         expect(island).not.toBeNull();
         expect(within(island as HTMLElement).queryByRole("link")).toBeNull();
         expect(island).toHaveTextContent("Recommended");
@@ -150,8 +152,10 @@ describe("PricingPage", () => {
     render(<PricingPage />);
 
     const sheet = getSheet();
-    for (const plan of pricingPlans) {
-      expect(within(sheet).getByText(plan.price)).toHaveClass("text-h2");
+    for (const plan of planCatalog) {
+      expect(
+        within(sheet).getByText(formatPrice(plan.monthlyUnitPrice)),
+      ).toHaveClass("text-h2");
       expect(within(sheet).getByText(plan.description)).toBeInTheDocument();
       for (const feature of plan.features) {
         expect(within(sheet).getAllByText(feature).length).toBeGreaterThan(0);
