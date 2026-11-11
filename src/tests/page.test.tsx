@@ -70,16 +70,31 @@ describe("Home page", () => {
     expect(hero).toHaveClass("lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]");
   });
 
-  it("renders all four key figures, with no source lines yet", () => {
+  it("lists the connected-systems outcomes and the cost of disconnection", () => {
     render(<Home />);
 
-    const figures = screen.getByText("$108,000").closest("ul")!;
-    expect(within(figures).getAllByRole("listitem")).toHaveLength(4);
-    expect(figures).toHaveTextContent("Up to2weeks");
-    expect(figures).toHaveTextContent("up to22%");
-    expect(figures).toHaveTextContent("$108,000");
-    expect(figures).toHaveTextContent("60%higher");
-    expect(within(figures).queryByText(/^Source:/)).not.toBeInTheDocument();
+    const benefits = document.getElementById("benefits")!;
+    expect(
+      within(benefits).getByRole("heading", {
+        name: "What changes when your systems connect",
+      }),
+    ).toBeInTheDocument();
+    expect(within(benefits).getAllByRole("listitem")).toHaveLength(8);
+    expect(
+      within(benefits).getByText(/Invoices go out the day the job closes/),
+    ).toBeInTheDocument();
+    expect(benefits).not.toHaveTextContent(/breach|\$108,000|downtime/i);
+  });
+
+  it("shows the anonymised proof case with a reference-call CTA", () => {
+    render(<Home />);
+
+    const proof = document.getElementById("proof")!;
+    expect(proof).toHaveTextContent("A logistics firm with 100 staff");
+    expect(proof).toHaveTextContent("Reference call available.");
+    expect(
+      within(proof).getByRole("link", { name: "Book a reference call" }),
+    ).toHaveAttribute("href", "#contact");
   });
 
   it("numbers the process steps 01 to 03", () => {

@@ -1,6 +1,5 @@
 import { ButtonLink } from "./components/Button";
 import ContactForm from "./components/ContactForm";
-import { KeyFigureGrid, type KeyFigureProps } from "./components/KeyFigure";
 import HeroWaypoints from "./components/HeroWaypoints";
 import Offer from "./components/Offer";
 import PageHero from "./components/PageHero";
@@ -82,34 +81,31 @@ const processSteps = [
 ];
 
 const experienceItems = [
-  { label: "Greater Confidence in Decision-Making" },
-  { label: "Peace of Mind from Proactive Protection" },
-  { label: "Enhanced Security" },
+  {
+    label:
+      "Data entered once. It reaches dispatch, accounting and the CRM without retyping.",
+  },
+  {
+    label:
+      "Invoices go out the day the job closes, not when someone finds time to key it in.",
+  },
+  {
+    label: "Mistakes get caught by your systems before the customer sees them.",
+  },
+  {
+    label:
+      "Nothing stalls when someone is away: the process lives in the systems, not in one person's head.",
+  },
+  {
+    label:
+      "One team answers for the whole stack, including the integrations between your systems.",
+  },
 ];
 
-// None of the four is sourced yet; add `source` to a figure once it is
-// (decision 5, msp-playbook#165).
-const costFigures: readonly KeyFigureProps[] = [
-  {
-    prefix: "Up to",
-    value: "2",
-    unit: "weeks",
-    label: "of downtime after a cyber incident",
-  },
-  {
-    prefix: "up to",
-    value: "22%",
-    label: "employee productivity losses due to technology issues",
-  },
-  {
-    value: "$108,000",
-    label: "average data breach costs for small businesses",
-  },
-  {
-    value: "60%",
-    unit: "higher",
-    label: "employee turnover when technology consistently fails",
-  },
+const disconnectedCosts = [
+  "Hours every week spent retyping the same information.",
+  "Billing that lags the work by days.",
+  "Errors that surface only after the customer finds them.",
 ];
 
 const guarantees = [
@@ -222,11 +218,29 @@ export default function Home() {
       </Section>
 
       <Section id="benefits">
-        <SectionHead title="What You'll Experience With Our Solution" />
+        <SectionHead title="What changes when your systems connect" />
         <TickList items={experienceItems} />
         <div className="mt-6 grid gap-5.5">
-          <SectionHead title="The Real Cost of Inadequate Technology" />
-          <KeyFigureGrid figures={costFigures} />
+          <SectionHead title="What disconnected systems cost you" />
+          <RuledList items={disconnectedCosts} />
+        </div>
+      </Section>
+
+      <Section id="proof">
+        <SectionHead title="How it works for a client" />
+        <div className="grid max-w-[780px] gap-5.5">
+          <p className="m-0 text-prose leading-snug">
+            A logistics firm with 100 staff. Before: the TMS, the accounting
+            suite and GPS tracking each kept their own copy of the job, and
+            someone retyped it. Now: the job is entered once, and the invoice
+            goes out the day it delivers.
+          </p>
+          <p className="m-0 font-semibold">Reference call available.</p>
+          <div>
+            <ButtonLink variant="secondary" href="#contact">
+              Book a reference call
+            </ButtonLink>
+          </div>
         </div>
       </Section>
 

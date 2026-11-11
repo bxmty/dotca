@@ -57,21 +57,27 @@ Submit your past year's IT spend and information about your most recent technolo
 
 We'll email installation instructions for our management tool to your team, ensuring all systems are properly configured.
 
-## What You'll Experience With Our Solution
+## What changes when your systems connect
 
-- **Greater Confidence in Decision-Making**
-- **Peace of Mind from Proactive Protection**
-- **Enhanced Security**
+- **Data entered once.** It reaches dispatch, accounting and the CRM without retyping.
+- **Invoices go out the day the job closes**, not when someone finds time to key it in.
+- **Mistakes get caught by your systems** before the customer sees them.
+- **Nothing stalls when someone is away:** the process lives in the systems, not in one person's head.
+- **One team answers for the whole stack**, including the integrations between your systems.
 
-## The Real Cost of Inadequate Technology
+## What disconnected systems cost you
 
-**Up to 2 weeks** of downtime after a cyber incident
+1. Hours every week spent retyping the same information.
+2. Billing that lags the work by days.
+3. Errors that surface only after the customer finds them.
 
-Employee productivity losses of **up to 22%** due to technology issues
+## How it works for a client
 
-Average data breach costs of **$108,000** for small businesses
+A logistics firm with 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
 
-**60% higher** employee turnover when technology consistently fails
+Reference call available.
+
+[Book a reference call]
 
 ## Our Guarantees
 
