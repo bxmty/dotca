@@ -4,9 +4,9 @@ title: "Managed IT That Connects Your Business"
 description: "Enter it once. Get it right. Bill it on time. Managed IT that connects your business."
 ---
 
-# Managed IT that connects your business: enter it once, and it flows everywhere.
+# Enter it once. Get it right. Bill it on time.
 
-Enter it once. Get it right. Bill it on time. Managed IT that connects your business.
+Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM.
 
 [Get a Business-First IT Assessment] [See the Managed Package]
 
@@ -34,13 +34,13 @@ The systems don't talk, so there is nothing for automation to connect.
 
 ### Wasted Time
 
-Hours every week spent retyping instead of serving your customers and running the business.
+Hours every week lost to rework and chasing status instead of serving your customers.
 
 ## Managed IT for firms with 25-100 staff
 
 Your dispatch, ERP, accounting and CRM each hold their own copy of the job. We connect them and keep them running, so work is entered once and flows everywhere.
 
-Each integration is scoped and priced before you spend. We work with what you already run: nothing gets replaced unless it should.
+Connections are scoped and quoted separately from the package, before you spend anything. We work with what you already run: nothing gets replaced unless it should.
 
 Our founder has spent 19 years running application development and support for other businesses — that background is why we build solutions that actually fit how you work, not the other way around.
 
@@ -82,7 +82,7 @@ We'll email installation instructions for our management tool to your team, ensu
 
 ## How it works for a client
 
-A logistics firm with around 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
+A real client, shared with their permission: a logistics firm with around 100 staff. Before: the TMS, the accounting suite and GPS tracking each kept their own copy of the job, and someone retyped it. Now: the job is entered once, and the invoice goes out the day it delivers.
 
 Reference call available.
 

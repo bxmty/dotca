@@ -20,9 +20,10 @@ Every figure below comes from these assumptions. They are illustrative, not meas
 - **Firm size:** 40 staff, lawyers and support combined.
 - **Informal IT handler:** one person (a partner, office manager or senior assistant) spends **10 hours a week** on IT, and their time is worth **$150/hour**.
 - **Everyone else:** loses **30 minutes a week** each to IT problems, at **$75/hour**.
-- **Downtime:** **8 hours a year** of significant downtime, at **$3,000/hour** (40 people × $75/hour).
+- **Downtime:** **8 hours a year** of significant downtime, at **$3,000/hour** (40 people × $75/hour, the same blended rate we use in our security post).
 - **Emergency help:** four call-outs a year at $250 each.
-- **Managed IT price:** the published starting rate is $1,250/month for 5 users, or $250 per user. We assume it scales per user, so 40 users is $10,000/month. Your actual quote will differ.
+- **What managed IT removes:** it doesn't remove all of this. We assume it removes **70%** of the time and downtime costs below; your people still have problems, and someone still owns the relationship.
+- **Managed IT price (a placeholder):** our published starting rate is $1,250/month for a 5-user package. That is a minimum, not a per-user rate, and volume pricing at 40 users will differ. For illustration only, we scale it to $250 per user, so $10,000/month for 40 users. Use your own quote.
 
 ## The Real Cost of "Just Handling It Ourselves"
 
@@ -53,22 +54,22 @@ The Law Society of Ontario requires reasonable security measures for client data
 - Is your backup strategy compliant with file retention rules?
 - Can you prove your security measures in case of a complaint?
 
-A single Law Society complaint about inadequate data security can cost $25,000-$50,000 in legal fees and remediation, plus reputational damage that's impossible to quantify.
+A complaint about inadequate data security can mean legal fees, remediation and reputational damage that is hard to quantify. We haven't put a number on it here.
 
 **Competitive Disadvantage**
 
-Firms with professional IT are:
+Firms with professional IT can be:
 
 - Responding to client requests faster
 - Working remotely with secure, reliable access
 - Using automated systems for document management
 - Presenting a more professional technology experience to clients
 
-When a potential client chooses between you and a competitor, and your technology feels dated or unreliable, that influences their decision. How much is one lost client worth? If you lose even one $20,000 annual client to a technology impression, that's a meaningful share of a year's managed IT cost.
+When a potential client chooses between you and a competitor, and your technology feels dated or unreliable, that influences their decision. How much is one lost client worth? If technology costs you even one client, that is a meaningful share of a year's managed IT cost.
 
 **Staff Retention and Recruitment**
 
-Good legal assistants and junior lawyers expect reliable technology. When systems constantly fail, good staff get frustrated and leave. Replacing a legal assistant costs $15,000-$25,000 in recruiting and training. If unreliable IT contributes to even one departure every few years, that's another hidden cost of DIY.
+Good legal assistants and junior lawyers expect reliable technology. When systems constantly fail, good staff get frustrated and leave. Replacing a legal assistant means recruiting and training costs, which we haven't counted here. If unreliable IT contributes to even one departure every few years, that's another hidden cost of DIY.
 
 **Systems That Don't Talk**
 
@@ -90,7 +91,7 @@ You don't need enterprise IT. You need something designed specifically for profe
 
 At the assumed $10,000/month ($120,000/year) for 40 users, you get a team that understands legal practice requirements, 24/7 proactive monitoring, security and encryption aligned with Law Society expectations, backup that meets retention requirements, unlimited support, and technology planning for growth.
 
-Compare that with the $181,000/year DIY estimate: a difference of **$61,000 a year**, about $5,000 a month. That is the honest figure on these assumptions, and your own numbers may land higher or lower. It also leaves out compliance exposure and the cost of an incident.
+If managed IT removes 70% of the $181,000 DIY cost, that is **$126,700 a year** of cost removed, against $120,000 for the service: roughly break-even, about $6,700 ahead. That is the honest figure on these assumptions, and the price is a placeholder. Every $1,000 a month lower in your own quote adds $12,000 a year. It also leaves out compliance exposure and the cost of an incident, which is what you are really insuring against.
 
 ## What This Looks Like in Practice
 
@@ -98,7 +99,7 @@ Month 1: We assess your current systems, document everything (you probably don't
 
 Months 2-3: Systems optimized, monitoring active, backups tested and compliant. You stop worrying about whether your technology is secure.
 
-Month 4+: Your informal IT handler gets their 10 hours a week back, about 43 hours a month, worth roughly $6,500 a month at the assumed $150/hour. That alone covers about two-thirds of the monthly cost, before counting everyone else's recovered time and reduced downtime.
+Month 4+: Your informal IT handler gets about 7 of their 10 hours a week back (70%), roughly 30 hours a month, worth about $4,550 a month at the assumed $150/hour. That alone covers about 45% of the monthly cost at the placeholder price, before counting everyone else's recovered time and reduced downtime.
 
 For Ontario law firms specifically, we understand:
 

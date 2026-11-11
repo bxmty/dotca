@@ -143,7 +143,7 @@ export const architectureFirmsContent: ServiceLandingContent = {
       {
         question: "Can you work with our existing CAD and BIM software?",
         answer:
-          "Yes, our IT support for architecture firms is designed to integrate seamlessly with AutoCAD, Revit, SketchUp, and other BIM tools. We are vendor-neutral: we connect your CAD/BIM tools to your project accounting rather than asking you to replace either. Each fix is scoped and priced before you spend, and we plan around your design workflows to avoid disruption.",
+          "Yes, our IT support for architecture firms is designed to work with AutoCAD, Revit, SketchUp, and other BIM tools. We are vendor-neutral: we connect your CAD/BIM tools to your project accounting rather than asking you to replace either. Connections are scoped and quoted separately from the package, before you spend anything, and we plan around your design workflows to avoid disruption.",
       },
     ],
   },

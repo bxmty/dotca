@@ -90,7 +90,7 @@ Enterprise-grade security includes **immutable, tested backup and recovery**:
 - Recovery procedures you've actually tested (not just documented)
 - RTO (Recovery Time Objective) that matches your business tolerance
 
-For a 40-person firm where each person's time costs $150/hour (an assumption), downtime costs $48,000 per day (40 people × 8 hours × $150). If your backup recovery process takes three days to restore everything, that's $144,000 in lost productivity—plus whatever client relationships you damage by missing deliverables.
+For a 40-person firm where each person's time costs a blended $75/hour (an assumption), downtime costs $24,000 per day (40 people × 8 hours × $75). If your backup recovery process takes three days to restore everything, that's $72,000 in lost productivity—plus whatever client relationships you damage by missing deliverables.
 
 Consumer backup ($50/month cloud storage) doesn't prevent attackers from encrypting both your files and your backup copies. Enterprise backup ($200-400/month) maintains immutable snapshots they can't touch.
 
@@ -105,21 +105,21 @@ Let's make the economics concrete with a scenario most Ontario professional serv
 **Assumptions**
 
 - A 40-person firm, with 40 endpoints.
-- Each person's time costs $150/hour, so downtime costs $6,000/hour.
+- Each person's time costs a blended $75/hour, so downtime costs $3,000/hour.
 - Per-user prices are the ranges quoted in this post, scaled to 40 users. Firm-wide items (monitoring, backup) are held at the ranges quoted, which may rise for a larger environment.
-- Without tested recovery, an incident means about 6 days of downtime (the low end of the 6-9 days below). With immutable backup and tested procedures, it means about 6 hours.
+- Without tested recovery, an incident means about 6 days of downtime (the low end of the 6-9 days below). With immutable backup and tested procedures, it means about 6 hours. That is an assumption, not a service-level commitment.
 - Chance of a successful attack in a given year: 10% unprotected, 3% protected. These are assumptions, not statistics.
 
 **Your Current State**: 40-person accounting firm with:
 
-- Consumer antivirus (about $300/month)
-- Basic Microsoft 365 email ($480/month for 40 users at $12/user)
+- Consumer antivirus (about $200/month, assuming $5 per endpoint)
+- Basic Microsoft 365 email (about $480/month, assuming $12/user)
 - No email security filtering
 - No endpoint management
 - Cloud storage that isn't immutable
 - No monitoring or incident response
 
-**Your monthly IT security spend**: ~$780
+**Your monthly IT security spend**: ~$680
 
 **Your actual risk exposure**:
 
@@ -150,12 +150,12 @@ Let's make the economics concrete with a scenario most Ontario professional serv
 
 **Expected annual loss, downtime only**:
 
-- Unprotected: 10% × (6 days × 8 hours × $6,000/hour = $288,000) = **$28,800**
-- Protected: 3% × (6 hours × $6,000/hour = $36,000) = **$1,080**
+- Unprotected: 10% × (6 days × 8 hours × $3,000/hour = $144,000) = **$14,400**
+- Protected: 3% × (6 hours × $3,000/hour = $18,000) = **$540**
 
-**Net position**: Protection cuts expected downtime losses by about $27,700 a year. At $43,800-57,000 a year, that covers roughly half to two-thirds of the cost on downtime alone.
+**Net position**: Protection cuts expected downtime losses by about $13,900 a year. At $43,800-57,000 a year, that covers roughly a quarter to a third of the cost on downtime alone.
 
-That is the honest result on these assumptions: expected downtime losses alone don't pay for the whole stack. What you are buying is protection against the tail event, a $288,000 outage plus notification, legal, regulatory and client-trust costs that this calculation leaves out, along with what your insurer and your clients' contracts may require. Whether that is worth it depends on your risk tolerance and your own numbers, which is why the first step is an assessment that uses them.
+That is the honest result on these assumptions: expected downtime losses alone don't pay for the whole stack. What you are buying is protection against the tail event, a $144,000 outage plus notification, legal, regulatory and client-trust costs that this calculation leaves out, along with what your insurer and your clients' contracts may require. Whether that is worth it depends on your risk tolerance and your own numbers, which is why the first step is an assessment that uses them.
 
 For most 25-100 person professional services firms, the gap between consumer security and an integrated system is real, but the case rests on risk and obligations, not on a simple payback. Run the numbers for your firm before you decide.
 
@@ -286,7 +286,7 @@ You don't need to understand threat intelligence feeds and SIEM correlation rule
 
 You don't need enterprise-scale infrastructure. You need enterprise-quality protection scaled appropriately to your size and budget.
 
-The difference between consumer security and enterprise security for a 40-person firm isn't an $8,000-a-month SOC. On the assumptions above, it's roughly $2,900-4,000 more per month than patchwork. And the difference in actual protection is the gap between a security incident being a manageable inconvenience versus a business-threatening crisis.
+The difference between consumer security and enterprise security for a 40-person firm isn't an $8,000-a-month SOC. On the assumptions above, it's roughly $3,000-4,100 more per month than patchwork. And the difference in actual protection is the gap between a security incident being a manageable inconvenience versus a business-threatening crisis.
 
 Your clients trust you with their privileged information, their financial records, their strategic plans. You have professional obligations to protect that data—legally, ethically, and reputationally. Consumer-grade security doesn't meet those obligations, and you can't afford to hope you'll be lucky.
 

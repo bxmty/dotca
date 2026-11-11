@@ -24,9 +24,13 @@ describe("Home page", () => {
 
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(
-      "Managed IT that connects your business: enter it once, and it flows everywhere.",
+      "Enter it once. Get it right. Bill it on time.",
     );
-    expect(heading).toHaveClass("max-w-[26ch]");
+    expect(
+      screen.getByText(
+        "Managed IT for firms with 25-100 staff that connects your dispatch, ERP, accounting and CRM.",
+      ),
+    ).toBeInTheDocument();
     expect(heading).toHaveClass("font-sans", "font-light", "md:text-display");
 
     // No photo above the fold, or anywhere on the page
@@ -139,7 +143,9 @@ describe("Home page", () => {
     render(<Home />);
 
     const proof = document.getElementById("proof")!;
-    expect(proof).toHaveTextContent("A logistics firm with around 100 staff");
+    expect(proof).toHaveTextContent(
+      "A real client, shared with their permission: a logistics firm with around 100 staff",
+    );
     expect(proof).toHaveTextContent("Reference call available.");
     expect(
       within(proof).getByRole("link", { name: "Book a reference call" }),

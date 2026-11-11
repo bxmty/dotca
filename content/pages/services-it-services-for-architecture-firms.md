@@ -128,7 +128,7 @@ Our IT services for architecture firms include 24/7 proactive monitoring, which 
 
 ### Can you work with our existing CAD and BIM software?
 
-Yes, our IT support for architecture firms is designed to integrate seamlessly with AutoCAD, Revit, SketchUp, and other BIM tools. We are vendor-neutral: we connect your CAD/BIM tools to your project accounting rather than asking you to replace either. Each fix is scoped and priced before you spend, and we plan around your design workflows to avoid disruption.
+Yes, our IT support for architecture firms is designed to work with AutoCAD, Revit, SketchUp, and other BIM tools. We are vendor-neutral: we connect your CAD/BIM tools to your project accounting rather than asking you to replace either. Connections are scoped and quoted separately from the package, before you spend anything, and we plan around your design workflows to avoid disruption.
 
 ## Ready to Transform Your Architecture Firm with Professional IT Services?
 

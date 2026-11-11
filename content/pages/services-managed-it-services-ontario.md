@@ -6,7 +6,7 @@ description: "Managed IT for Ontario firms with 25-100 staff that connects the s
 
 # Managed IT Services Ontario
 
-Managed IT for Ontario firms with 25-100 staff, built to connect the systems you already run. Enter it once, get it right, bill it on time, with our Comprehensive Cloud Stack.
+Managed IT for Ontario firms with 25-100 staff, built to connect the systems you already run, with our Comprehensive Cloud Stack.
 
 [Get Free IT Assessment]
 [View Comprehensive Cloud Stack Pricing]
@@ -154,7 +154,7 @@ Our managed IT services Ontario include 24/7 proactive monitoring, which means w
 
 ### Can you work with our existing IT setup?
 
-Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Each fix is scoped and priced before you spend anything, so you decide which connections are worth it.
+Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Connections are scoped and quoted separately from the package, before you spend anything, so you decide which are worth it.
 
 ## Ready to Transform Your Ontario Business with Managed IT Services?
 

@@ -4,7 +4,7 @@ import type { ServiceLandingContent } from "../ServiceLandingPage";
 export const ontarioContent: ServiceLandingContent = {
   hero: {
     heading: "Managed IT Services Ontario",
-    lead: "Managed IT for Ontario firms with 25-100 staff, built to connect the systems you already run. Enter it once, get it right, bill it on time, with our Comprehensive Cloud Stack.",
+    lead: "Managed IT for Ontario firms with 25-100 staff, built to connect the systems you already run, with our Comprehensive Cloud Stack.",
     trustLine: "Serving Toronto, Ottawa, Hamilton, London & surrounding areas",
     imageAlt: "Office setting with technology",
     card: {
@@ -174,7 +174,7 @@ export const ontarioContent: ServiceLandingContent = {
       {
         question: "Can you work with our existing IT setup?",
         answer:
-          "Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Each fix is scoped and priced before you spend anything, so you decide which connections are worth it.",
+          "Yes, and that is the point. We are vendor-neutral. We connect what you already run, whether that is dispatch, ERP, accounting, CRM or CAD, instead of asking you to replace it. Connections are scoped and quoted separately from the package, before you spend anything, so you decide which are worth it.",
       },
     ],
   },
