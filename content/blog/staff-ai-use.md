@@ -4,7 +4,7 @@ description: "Most staff who use AI at work have had no training and no clear ru
 date: "2026-10-27"
 author: "Matthew Mattice"
 tags: ["AI", "Small Business", "Policy"]
-published: false
+published: true
 featured: false
 coverImage: "/images/blog/staff-ai-use.webp"
 cta:

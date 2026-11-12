@@ -2,7 +2,7 @@
 title: "A One-Page AI Rule for Your Team"
 description: "A plain-language page you can hand to your staff: what's fine, what needs a yes first, what's never allowed, and who to ask. Edit it to suit your firm."
 date: "2026-10-27"
-published: false
+published: true
 assetFile: ai-use-rule-staff.pdf
 assetLabel: "Download the one-page AI rule"
 relatedBlogSlug: "staff-ai-use"
