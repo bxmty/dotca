@@ -28,6 +28,9 @@ test-results/
 # production
 /build
 
+# agent worktrees: full checkouts of other branches
+.claude/worktrees/
+
 # misc
 .DS_Store
 *.pem
