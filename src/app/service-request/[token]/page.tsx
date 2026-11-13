@@ -38,7 +38,9 @@ export default async function ServiceRequestPage({
 
   if (resolution.status === "could_not_check") {
     // Every token lands here during an outage, valid or not, so this reveals
-    // nothing about the one in the URL. The token itself stays out of Sentry.
+    // nothing about the one in the URL. The message holds no token, but the
+    // SDK attaches this request's URL to the event: src/lib/sentry-scrub.ts
+    // filters the token segment out of it before the event is sent.
     Sentry.captureMessage(
       `Service request page: the intake token could not be checked (${resolution.detail})`,
       "error",
