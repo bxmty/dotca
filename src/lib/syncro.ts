@@ -59,6 +59,8 @@ const SUBJECT_PREFIX: Record<NotificationFormType, string> = {
   "Lead magnet": "Website lead magnet",
   "Security assessment": "Website security assessment",
   "Discovery call assessment": "Discovery call assessment",
+  // Never a Lead: service requests become tickets (createIntakeTicket)
+  "Service request": "Website service request",
 };
 
 const STAGING_NOTE =

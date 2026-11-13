@@ -15,7 +15,16 @@ export type NotificationFormType =
   | "Paid signup"
   | "Lead magnet"
   | "Security assessment"
-  | "Discovery call assessment";
+  | "Discovery call assessment"
+  // A joiner/leaver request from a client's authorized contact (#565)
+  | "Service request";
+
+/**
+ * Leads the subject line, not the body, so a service request nobody could
+ * check against the client's authorized contacts is never mistaken for a
+ * verified one in an inbox listing.
+ */
+const AUTHORIZATION_UNVERIFIED_FLAG = "[AUTHORIZATION UNVERIFIED]";
 
 function escapeHtml(value: string): string {
   return value
@@ -81,11 +90,18 @@ export async function sendWebmasterNotification({
   formType,
   submitterName,
   fields,
+  isAuthorizationUnverified = false,
 }: {
   formType: NotificationFormType;
   submitterName: string;
   fields: Record<string, string>;
+  /**
+   * Service requests only: Syncro could not say whether the submitter is an
+   * authorized contact, so the request went out by email alone.
+   */
+  isAuthorizationUnverified?: boolean;
 }): Promise<boolean> {
+  const subject = `New ${formType} submission — ${submitterName}`;
   const rows = Object.entries(fields).filter(([, value]) => value !== "");
 
   const text = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
@@ -105,7 +121,9 @@ export async function sendWebmasterNotification({
     senderName: "Boximity Website",
     // WEBMASTER_EMAIL is part of this email's env contract.
     to: process.env.WEBMASTER_EMAIL,
-    subject: `New ${formType} submission — ${submitterName}`,
+    subject: isAuthorizationUnverified
+      ? `${AUTHORIZATION_UNVERIFIED_FLAG} ${subject}`
+      : subject,
     html,
     text,
   });

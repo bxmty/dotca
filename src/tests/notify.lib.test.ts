@@ -49,6 +49,44 @@ describe("sendWebmasterNotification", () => {
     expect(text).toContain("Email: test@example.com");
   });
 
+  it("sends a service request under its own form type", async () => {
+    await sendWebmasterNotification({
+      formType: "Service request",
+      submitterName: "Dana Office",
+      fields: { Request: "Leaver" },
+    });
+
+    expect(mockSend.mock.calls[0][0].subject).toBe(
+      "New Service request submission — Dana Office",
+    );
+  });
+
+  it("flags an unverified authorization at the front of the subject line", async () => {
+    await sendWebmasterNotification({
+      formType: "Service request",
+      submitterName: "Dana Office",
+      fields: { Request: "Leaver" },
+      isAuthorizationUnverified: true,
+    });
+
+    expect(mockSend.mock.calls[0][0].subject).toBe(
+      "[AUTHORIZATION UNVERIFIED] New Service request submission — Dana Office",
+    );
+  });
+
+  it("does not flag a submission whose authorization was verified", async () => {
+    await sendWebmasterNotification({
+      formType: "Service request",
+      submitterName: "Dana Office",
+      fields: { Request: "Leaver" },
+      isAuthorizationUnverified: false,
+    });
+
+    expect(mockSend.mock.calls[0][0].subject).toBe(
+      "New Service request submission — Dana Office",
+    );
+  });
+
   it("lays the fields out as text lines and an HTML table", async () => {
     await sendWebmasterNotification({
       formType: "Contact",
