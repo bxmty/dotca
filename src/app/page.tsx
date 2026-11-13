@@ -9,6 +9,10 @@ import SectionHead from "./components/SectionHead";
 import Steps from "./components/Steps";
 import TickList from "./components/TickList";
 import { TEXT_LINK_CLASS_NAME } from "./components/TextLink";
+import {
+  COMPANY_PHONE_DISPLAY,
+  COMPANY_PHONE_TEL_HREF,
+} from "@/lib/company-phone";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -260,8 +264,11 @@ export default function Home() {
                 </a>
               </p>
               <p className="m-0">
-                <a href="tel:+12895390098" className={TEXT_LINK_CLASS_NAME}>
-                  (289) 539-0098
+                <a
+                  href={COMPANY_PHONE_TEL_HREF}
+                  className={TEXT_LINK_CLASS_NAME}
+                >
+                  {COMPANY_PHONE_DISPLAY}
                 </a>
               </p>
             </div>

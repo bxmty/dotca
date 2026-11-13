@@ -7,6 +7,7 @@ import {
 } from "@/lib/stripe";
 import { isEmailAddress } from "@/lib/formValidation";
 import { validateOrder } from "@/lib/pricing";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
 
 // Stryker disable next-line StringLiteral: Next.js route-segment config, not read under jest
 export const runtime = "nodejs";
@@ -176,8 +177,7 @@ export async function POST(request: Request) {
       console.error("Stripe catalog misconfiguration:", error.message);
       return NextResponse.json(
         {
-          error:
-            "Checkout is temporarily unavailable. Please contact us at hi@boximity.ca or (289) 539-0098.",
+          error: `Checkout is temporarily unavailable. Please contact us at hi@boximity.ca or ${COMPANY_PHONE_DISPLAY}.`,
         },
         { status: 503 },
       );

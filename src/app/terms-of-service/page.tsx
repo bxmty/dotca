@@ -1,4 +1,5 @@
 import ProsePage from "@/app/components/ProsePage";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
 
 export default function TermsOfService() {
   return (
@@ -718,7 +719,7 @@ export default function TermsOfService() {
         <h2>APPENDIX A</h2>
         <h3>SERVICE REQUEST LODGEMENT PROCESS</h3>
         <p>
-          <strong>Phone:</strong> 289 539-0098
+          <strong>Phone:</strong> {COMPANY_PHONE_DISPLAY}
         </p>
         <p>
           <strong>Email:</strong> hd@boximity.ca
@@ -752,7 +753,7 @@ export default function TermsOfService() {
           <strong>After Hours Support:</strong>
         </p>
         <ul>
-          <li>Call 289 539-0098 for immediate attention</li>
+          <li>Call {COMPANY_PHONE_DISPLAY} for immediate attention</li>
           <li>Additional charges apply for After Hours work</li>
           <li>
             Email requests reviewed next Business Day unless After Hours

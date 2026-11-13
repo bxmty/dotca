@@ -32,6 +32,9 @@ const UN_WORDS_THAT_ARE_NOT_NEGATIONS =
   "ique|it|if|ion|iver|ix|icode|ilateral|ison|der|til|animous|cle";
 const NEGATED_BOOLEAN_NAME = `(Not|No|Non|Never|Without)(?=[A-Z0-9]|$)|Un(?!${UN_WORDS_THAT_ARE_NOT_NEGATIONS})[a-z]`;
 
+// The site's phone number in any spacing: (289) 539-0098, +12895390098
+const COMPANY_PHONE_DIGITS = "/539\\D?0098/";
+
 export default [
   {
     // Stryker's sandbox (a copy of the project) and its report output
@@ -119,6 +122,32 @@ export default [
           custom: { regex: NEGATED_BOOLEAN_NAME, match: false },
           filter: { regex: EXTERNALLY_NAMED_BOOLEANS, match: false },
         },
+      ],
+    },
+  },
+  {
+    // The phone number is written once, in src/lib/company-phone.ts; every
+    // other module imports it. Matches the display and tel: forms in string
+    // literals, template literals and JSX text.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: [
+      "src/lib/company-phone.ts",
+      "src/tests/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...[
+          `Literal[value=${COMPANY_PHONE_DIGITS}]`,
+          `TemplateElement[value.raw=${COMPANY_PHONE_DIGITS}]`,
+          `JSXText[value=${COMPANY_PHONE_DIGITS}]`,
+        ].map((selector) => ({
+          selector,
+          message:
+            "Import COMPANY_PHONE_DISPLAY or COMPANY_PHONE_TEL_HREF from @/lib/company-phone instead of writing the phone number.",
+        })),
       ],
     },
   },

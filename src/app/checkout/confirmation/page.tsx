@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
 import { ButtonLink } from "../../components/Button";
 import StatusNote from "../../components/StatusNote";
 import StatusPage from "../../components/StatusPage";
@@ -55,8 +56,7 @@ function getConfirmationContent(
     default:
       return {
         heading: "Order Received",
-        message:
-          "We have received your order. If you do not receive a confirmation email shortly, please contact us at hi@boximity.ca or (289) 539-0098.",
+        message: `We have received your order. If you do not receive a confirmation email shortly, please contact us at hi@boximity.ca or ${COMPANY_PHONE_DISPLAY}.`,
         shouldShowRetry: false,
       };
   }
