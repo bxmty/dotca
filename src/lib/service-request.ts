@@ -270,7 +270,7 @@ export const SERVICE_REQUEST_TEXT_MAX_LENGTH = 200;
 export const SERVICE_REQUEST_LONG_TEXT_MAX_LENGTH = 2000;
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-const TIME_PATTERN = /^(\d{2}):(\d{2})(?::\d{2})?$/;
+const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::\d{2})?$/;
 
 /** A real calendar day written as YYYY-MM-DD. */
 function isCalendarDate(value: string): boolean {
@@ -278,16 +278,16 @@ function isCalendarDate(value: string): boolean {
   if (!match) return false;
   const [year, month, day] = match.slice(1).map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
-  // Date rolls an impossible day over (Feb 30 → Mar 2), so compare it back
-  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  // Date rolls an impossible day into a neighbouring month (Feb 30 → Mar 2,
+  // Feb 00 → Jan 31), so a date that kept its month is a real one
+  return date.getUTCMonth() === month - 1;
 }
 
 /** A datetime-local value: YYYY-MM-DDTHH:mm, seconds optional. */
 function isLocalDateTime(value: string): boolean {
-  const [date, time = "", ...extra] = value.split("T");
-  const match = TIME_PATTERN.exec(time);
-  if (!match || extra.length > 0 || !isCalendarDate(date)) return false;
-  return Number(match[1]) < 24 && Number(match[2]) < 60;
+  const match = DATE_TIME_PATTERN.exec(value);
+  if (!match || !isCalendarDate(match[1])) return false;
+  return Number(match[2]) < 24 && Number(match[3]) < 60;
 }
 
 /** The fix for a filled-in value that is not acceptable, or null when it is. */

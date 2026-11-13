@@ -213,6 +213,9 @@ describe("validateServiceRequest", () => {
     ["startDate", "next Monday", "enter the date as YYYY-MM-DD"],
     ["startDate", "2026-13-01", "enter the date as YYYY-MM-DD"],
     ["startDate", "2026-02-30", "enter the date as YYYY-MM-DD"],
+    ["startDate", "2026-04-31", "enter the date as YYYY-MM-DD"],
+    ["startDate", "2026-02-00", "enter the date as YYYY-MM-DD"],
+    ["startDate", "2026-00-10", "enter the date as YYYY-MM-DD"],
     ["startDate", "x2026-12-01", "enter the date as YYYY-MM-DD"],
     ["startDate", "2026-12-01x", "enter the date as YYYY-MM-DD"],
     ["remoteAccess", "maybe", "choose one of the options"],
@@ -232,6 +235,9 @@ describe("validateServiceRequest", () => {
   it.each([
     ["accessCutoff", "2026-11-30", "enter the date and time"],
     ["accessCutoff", "2026-11-30T25:00", "enter the date and time"],
+    ["accessCutoff", "2026-11-30T24:00", "enter the date and time"],
+    ["accessCutoff", "2026-11-30Tx17:00", "enter the date and time"],
+    ["accessCutoff", "2026-11-30T17:00T", "enter the date and time"],
     ["accessCutoff", "2026-11-30T17:60", "enter the date and time"],
     ["accessCutoff", "2026-02-30T17:00", "enter the date and time"],
     ["accessCutoff", "x2026-11-30T17:00", "enter the date and time"],
@@ -251,13 +257,30 @@ describe("validateServiceRequest", () => {
     });
   });
 
-  it("accepts an access cutoff with seconds", () => {
+  it.each([
+    "2026-11-30T17:00:30",
+    "2026-11-30T23:59",
+    "2026-11-30T00:00",
+    "2028-02-29T09:30",
+  ])("accepts the access cutoff %p", (accessCutoff) => {
     const result = validateServiceRequest("leaver", {
       ...leaverFields,
-      accessCutoff: "2026-11-30T17:00:30",
+      accessCutoff,
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("accepts an amicable departure", () => {
+    const result = validateServiceRequest("leaver", {
+      ...leaverFields,
+      departureType: "amicable",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      request: { fields: { departureType: "amicable" } },
+    });
   });
 
   it("leads with the missing fields when some are missing and some are invalid", () => {
@@ -347,6 +370,29 @@ describe("formatServiceRequestFields", () => {
       ["Distribution lists", "accounting@client.example"],
       ["Notes", "Starts in the Burlington office."],
     ]);
+  });
+
+  it("leaves a capital T in ordinary text alone", () => {
+    const fields = formatServiceRequestFields(
+      validRequest("joiner", { ...joinerFields, jobTitle: "CTO" }),
+    );
+
+    expect(fields["Job title"]).toBe("CTO");
+  });
+
+  it("labels an amicable departure and an unreturned laptop", () => {
+    const fields = formatServiceRequestFields(
+      validRequest("leaver", {
+        ...leaverFields,
+        departureType: "amicable",
+        hardwareReturn: "no",
+      }),
+    );
+
+    expect(fields).toMatchObject({
+      "Departure type": "Amicable",
+      "Hardware coming back": "No",
+    });
   });
 
   it("labels every leaver field, blank ones as empty strings", () => {
