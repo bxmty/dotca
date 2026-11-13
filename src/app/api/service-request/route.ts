@@ -15,7 +15,10 @@ import {
   type IntakeOrganization,
   resolveIntakeToken,
 } from "@/lib/syncro";
-import { sendWebmasterNotification } from "@/lib/notify";
+import {
+  sendWebmasterNotification,
+  type SubmitterAuthorization,
+} from "@/lib/notify";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import {
   formatUnavailableMessage,
@@ -54,19 +57,19 @@ function respondUnavailable() {
 
 /**
  * The webmaster email. The subject carries no client name, so the
- * organization leads the fields; `isAuthorizationUnverified` flags the
+ * organization leads the fields; an "unverified" `authorization` flags the
  * subject line. Resolves false when the send fails or throws.
  */
 async function notifyWebmaster(
   serviceRequest: ServiceRequest,
   organization: IntakeOrganization,
-  isAuthorizationUnverified: boolean,
+  authorization: SubmitterAuthorization,
 ): Promise<boolean> {
   try {
     return await sendWebmasterNotification({
       formType: "Service request",
       submitterName: serviceRequest.fields.requesterName,
-      isAuthorizationUnverified,
+      authorization,
       fields: {
         Client: organization.name,
         ...formatServiceRequestFields(serviceRequest),
@@ -173,7 +176,7 @@ export async function POST(request: Request) {
     const isEmailSent = await notifyWebmaster(
       serviceRequest,
       organization,
-      true,
+      "unverified",
     );
     reportFailure(
       `Service request authorization unverified: contacts could not be checked (${
@@ -187,7 +190,7 @@ export async function POST(request: Request) {
 
   const [ticketResult, isEmailSent] = await Promise.all([
     fileTicket(serviceRequest, organization.id, authorization.contact.id),
-    notifyWebmaster(serviceRequest, organization, false),
+    notifyWebmaster(serviceRequest, organization, "verified"),
   ]);
   if (!ticketResult.ok || !isEmailSent) {
     reportFailure(

@@ -66,7 +66,7 @@ describe("sendWebmasterNotification", () => {
       formType: "Service request",
       submitterName: "Dana Office",
       fields: { Request: "Leaver" },
-      isAuthorizationUnverified: true,
+      authorization: "unverified",
     });
 
     expect(mockSend.mock.calls[0][0].subject).toBe(
@@ -79,7 +79,7 @@ describe("sendWebmasterNotification", () => {
       formType: "Service request",
       submitterName: "Dana Office",
       fields: { Request: "Leaver" },
-      isAuthorizationUnverified: false,
+      authorization: "verified",
     });
 
     expect(mockSend.mock.calls[0][0].subject).toBe(

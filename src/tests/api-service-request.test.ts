@@ -154,7 +154,7 @@ describe("POST /api/service-request", () => {
     expect(mockNotify).toHaveBeenCalledWith({
       formType: "Service request",
       submitterName: "Dana Office",
-      isAuthorizationUnverified: false,
+      authorization: "verified",
       fields: expect.objectContaining({
         Client: CLIENT_NAME,
         Request: "Joiner",
@@ -442,7 +442,7 @@ describe("POST /api/service-request", () => {
       expect(mockNotify).toHaveBeenCalledWith({
         formType: "Service request",
         submitterName: "Dana Office",
-        isAuthorizationUnverified: true,
+        authorization: "unverified",
         fields: expect.objectContaining({
           Client: CLIENT_NAME,
           Request: "Joiner",
@@ -490,6 +490,6 @@ describe("POST /api/service-request", () => {
       success: true,
       ticketNumber: "4321",
     });
-    expect(mockNotify.mock.calls[0][0].isAuthorizationUnverified).toBe(false);
+    expect(mockNotify.mock.calls[0][0].authorization).toBe("verified");
   });
 });
