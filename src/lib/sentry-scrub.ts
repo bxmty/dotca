@@ -82,7 +82,9 @@ function dropRequestBody(payload: unknown): unknown {
   if (!isObject(withoutAttribute) || !isObject(withoutAttribute.request)) {
     return withoutAttribute;
   }
-  const { data: _requestBody, ...request } = withoutAttribute.request;
+  const request = Object.fromEntries(
+    Object.entries(withoutAttribute.request).filter(([key]) => key !== "data"),
+  );
   return { ...withoutAttribute, request };
 }
 
