@@ -53,9 +53,9 @@ export default async function BlogTagPage({ params }: PageProps) {
   }
 
   const canonicalSlug = tagToSlug(displayTag);
-  const hasSpacesOrNonCanonical = tagParam !== canonicalSlug;
+  const isCanonicalSlug = tagParam === canonicalSlug;
 
-  if (hasSpacesOrNonCanonical) {
+  if (!isCanonicalSlug) {
     redirect(`/blog/tag/${canonicalSlug}`);
   }
 

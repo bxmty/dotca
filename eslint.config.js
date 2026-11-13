@@ -13,9 +13,24 @@ const BOOLEAN_NAME_PREFIXES = [
 ];
 
 // API response fields (ok, success), content keys in frontmatter and quiz YAML
-// (published, featured, risk) and HTML attributes (required, aria-invalid)
+// (published, featured, risk), HTML attributes (required, aria-invalid) and
+// the SDR discovery wire format (isNotAsked: the "Not asked" answer state)
 const EXTERNALLY_NAMED_BOOLEANS =
-  "^(ok|success|published|featured|risk|required|aria-invalid)$";
+  "^(ok|success|published|featured|risk|required|aria-invalid|isNotAsked)$";
+
+// Negated boolean names (naming-conventions.mdc: "Never use negative names").
+// Tested against the name with its prefix removed, so `isNotValid` arrives as
+// `NotValid`. Two shapes, each anchored on a camelCase word:
+// - a whole negating word: Not, No, Non, Never, Without. The next letter must
+//   start a new word, so Notice, Node, Notes and None pass.
+// - a word starting with Un. English has no rule that separates Unverified
+//   from Unique, so the real words are listed; add to the list when a new one
+//   is flagged.
+// In-/Dis- words (isInvalid, isDisabled) are left to review: they mirror HTML
+// attributes, and the prefixes open far more real words than negations.
+const UN_WORDS_THAT_ARE_NOT_NEGATIONS =
+  "ique|it|if|ion|iver|ix|icode|ilateral|ison|der|til|animous|cle";
+const NEGATED_BOOLEAN_NAME = `(Not|No|Non|Never|Without)(?=[A-Z0-9]|$)|Un(?!${UN_WORDS_THAT_ARE_NOT_NEGATIONS})[a-z]`;
 
 export default [
   {
@@ -75,8 +90,8 @@ export default [
     },
   },
   {
-    // Boolean names read as a yes/no question (naming-conventions.mdc). The
-    // rule needs type information, which is why this block alone turns on
+    // Boolean names read as a yes/no question (naming-conventions.mdc) and
+    // name the positive case. The rule needs type information, which is why this block alone turns on
     // typed linting. Names fixed by a wire format or by HTML are exempt.
     // Tests are skipped: tsconfig excludes them, so they have no type info.
     files: ["src/**/*.ts", "src/**/*.tsx"],
@@ -101,6 +116,7 @@ export default [
           types: ["boolean"],
           format: ["PascalCase"],
           prefix: BOOLEAN_NAME_PREFIXES,
+          custom: { regex: NEGATED_BOOLEAN_NAME, match: false },
           filter: { regex: EXTERNALLY_NAMED_BOOLEANS, match: false },
         },
       ],
