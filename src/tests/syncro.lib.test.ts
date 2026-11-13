@@ -1,4 +1,4 @@
-import { createLead, describeLeadOutcome } from "@/lib/syncro";
+import { createLead, describeSyncroWriteOutcome } from "@/lib/syncro";
 
 const originalEnv = process.env;
 
@@ -396,7 +396,7 @@ describe("createLead", () => {
   );
 });
 
-describe("describeLeadOutcome", () => {
+describe("describeSyncroWriteOutcome", () => {
   it.each([
     [{ ok: true as const, leadId: 1 }, "ok"],
     [
@@ -426,6 +426,6 @@ describe("describeLeadOutcome", () => {
       "unreachable (missing_config)",
     ],
   ])("summarises %o without Syncro's message", (result, expected) => {
-    expect(describeLeadOutcome(result)).toBe(expected);
+    expect(describeSyncroWriteOutcome(result)).toBe(expected);
   });
 });

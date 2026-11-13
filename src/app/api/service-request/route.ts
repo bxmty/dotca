@@ -10,7 +10,7 @@ import {
 import {
   createIntakeTicket,
   type CreateTicketResult,
-  describeTicketOutcome,
+  describeSyncroWriteOutcome,
   findAuthorizedContact,
   type IntakeOrganization,
   resolveIntakeToken,
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
   ]);
   if (!ticketResult.ok || !isEmailSent) {
     reportFailure(
-      `Service request delivery failure: Syncro ticket ${describeTicketOutcome(
+      `Service request delivery failure: Syncro ticket ${describeSyncroWriteOutcome(
         ticketResult,
       )}, webmaster email ${isEmailSent ? "ok" : "failed"}`,
     );

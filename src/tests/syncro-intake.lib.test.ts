@@ -1069,7 +1069,7 @@ describe("createIntakeTicket", () => {
   it("reports a missing config as unreachable without calling Syncro", async () => {
     process.env = { ...process.env, SYNCRO_SUBDOMAIN: undefined };
     const fetchMock = mockSyncro(() => ({ status: 200, body: {} }));
-    const { createIntakeTicket, describeTicketOutcome } = loadSyncro();
+    const { createIntakeTicket, describeSyncroWriteOutcome } = loadSyncro();
 
     const result = await createIntakeTicket(ticket);
 
@@ -1078,7 +1078,9 @@ describe("createIntakeTicket", () => {
       reason: "unreachable",
       code: "missing_config",
     });
-    expect(describeTicketOutcome(result)).toBe("unreachable (missing_config)");
+    expect(describeSyncroWriteOutcome(result)).toBe(
+      "unreachable (missing_config)",
+    );
     expect(fetchMock).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(
       "Syncro ticket skipped: SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set",
@@ -1103,7 +1105,7 @@ describe("createIntakeTicket", () => {
 
   it("reports a Syncro 5xx as unreachable", async () => {
     mockSyncro(() => ({ status: 502 }));
-    const { createIntakeTicket, describeTicketOutcome } = loadSyncro();
+    const { createIntakeTicket, describeSyncroWriteOutcome } = loadSyncro();
 
     const result = await createIntakeTicket(ticket);
 
@@ -1113,7 +1115,7 @@ describe("createIntakeTicket", () => {
       code: "server_error",
       status: 502,
     });
-    expect(describeTicketOutcome(result)).toBe(
+    expect(describeSyncroWriteOutcome(result)).toBe(
       "unreachable (server_error, HTTP 502)",
     );
     expect(console.error).toHaveBeenCalledWith(
@@ -1125,7 +1127,7 @@ describe("createIntakeTicket", () => {
     // Syncro's validation errors can quote the value they reject
     const echoingMessage = "Subject 'Leaver: John Roe' is too long";
     mockSyncro(() => ({ status: 422, body: { message: echoingMessage } }));
-    const { createIntakeTicket, describeTicketOutcome } = loadSyncro();
+    const { createIntakeTicket, describeSyncroWriteOutcome } = loadSyncro();
 
     const result = await createIntakeTicket(ticket);
 
@@ -1135,7 +1137,7 @@ describe("createIntakeTicket", () => {
       status: 422,
       message: echoingMessage,
     });
-    expect(describeTicketOutcome(result)).toBe("rejected (HTTP 422)");
+    expect(describeSyncroWriteOutcome(result)).toBe("rejected (HTTP 422)");
     expect(jest.mocked(console.error).mock.calls).toEqual([
       ["Syncro rejected the ticket: HTTP 422"],
     ]);
@@ -1143,9 +1145,11 @@ describe("createIntakeTicket", () => {
 
   it("summarizes a created ticket as ok", async () => {
     mockSyncro(() => ({ status: 200, body: { ticket: { id: 1, number: 2 } } }));
-    const { createIntakeTicket, describeTicketOutcome } = loadSyncro();
+    const { createIntakeTicket, describeSyncroWriteOutcome } = loadSyncro();
 
-    expect(describeTicketOutcome(await createIntakeTicket(ticket))).toBe("ok");
+    expect(describeSyncroWriteOutcome(await createIntakeTicket(ticket))).toBe(
+      "ok",
+    );
   });
 });
 

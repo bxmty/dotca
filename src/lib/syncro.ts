@@ -33,7 +33,11 @@ export type SyncroWriteFailure =
   | {
       ok: false;
       reason: "unreachable";
-      /** "exception" only ever comes from toLeadResult: the writes never throw */
+      /**
+       * The writes never throw, so "exception" is never theirs: it is how a
+       * caller records a write that rejected anyway (toLeadResult for leads,
+       * the service-request route for tickets).
+       */
       code: "missing_config" | "network_error" | "server_error" | "exception";
       /** HTTP status, when Syncro answered with a 5xx */
       status?: number;
@@ -552,11 +556,11 @@ export async function findAuthorizedContact(
 }
 
 /**
- * One-phrase summary of a lead write for logs and Sentry: the failure kind,
- * code and HTTP status only. Never includes Syncro's message, which can echo
- * submitted values.
+ * One-phrase summary of a Syncro write (a lead or a ticket) for logs and
+ * Sentry: the failure kind, code and HTTP status only. Never includes
+ * Syncro's message, which can echo submitted values.
  */
-export function describeLeadOutcome(
+export function describeSyncroWriteOutcome(
   result: { ok: true } | SyncroWriteFailure,
 ): string {
   if (result.ok) return "ok";
@@ -741,9 +745,4 @@ export async function createIntakeTicket(
     console.error(`Syncro rejected the ticket: HTTP ${posted.status}`);
   }
   return posted;
-}
-
-/** describeLeadOutcome for a ticket write: kind, code and HTTP status only. */
-export function describeTicketOutcome(result: CreateTicketResult): string {
-  return describeLeadOutcome(result);
 }
