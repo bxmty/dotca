@@ -80,7 +80,14 @@ async function notifyWebmaster(
   }
 }
 
-/** createIntakeTicket never rejects, but a rejection reads as unreachable. */
+/**
+ * File the ticket. createIntakeTicket's contract is never to reject, and the
+ * catch is kept all the same: the two sinks settle together under
+ * Promise.all, so a rejection here (a broken contract, or a formatter that
+ * throws) would answer 500 for a submission whose email landed. The route's
+ * guarantee is that either sink landing is a success, so a rejection reads
+ * as an unreachable Syncro ("exception") and is reported like one.
+ */
 async function fileTicket(
   serviceRequest: ServiceRequest,
   organizationId: number,
