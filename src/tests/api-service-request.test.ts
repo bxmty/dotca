@@ -228,7 +228,8 @@ describe("POST /api/service-request", () => {
       const response = await post(joinerBody);
 
       await expectResponse(response, 429, {
-        error: "Too many submissions. Please try again later.",
+        error:
+          "Too many submissions. Try again later. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
       });
       expect(mockResolveToken).not.toHaveBeenCalled();
       expectNothingSent();

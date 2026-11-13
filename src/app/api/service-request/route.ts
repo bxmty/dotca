@@ -31,6 +31,14 @@ const NOT_AUTHORIZED_MESSAGE = formatUnavailableMessage(
   "We don't recognise that email address.",
 );
 
+/**
+ * A requester who is turned away still gets a way through: a refused
+ * submission says so and gives a phone number (spec #565).
+ */
+const RATE_LIMITED_MESSAGE = formatUnavailableMessage(
+  "Too many submissions. Try again later.",
+);
+
 /** Sentry and the server log; callers pass no submitted value, token or client name. */
 function reportFailure(message: string): void {
   console.error(message);
@@ -117,10 +125,7 @@ export async function POST(request: Request) {
   }
 
   if (isRateLimited(getClientIp(request))) {
-    return NextResponse.json(
-      { error: "Too many submissions. Please try again later." },
-      { status: 429 },
-    );
+    return NextResponse.json({ error: RATE_LIMITED_MESSAGE }, { status: 429 });
   }
 
   const validation = validateServiceRequest(mode, fields);
