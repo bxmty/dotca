@@ -580,7 +580,8 @@ export function toLeadResult(
 /**
  * The one Syncro write path: config check, POST, and the split between a
  * rejection (4xx) and an unreachable Syncro. Never throws. `recordName`
- * names the write in log lines ("lead", "ticket"). An aborted `signal` reads
+ * names the write in log lines ("lead", "ticket"); a rejection is returned
+ * unlogged, for the caller to log. An aborted `signal` reads
  * as a network error; lead writes pass none and wait as long as fetch does.
  */
 async function postToSyncro(
@@ -632,11 +633,9 @@ async function postToSyncro(
     };
   }
 
+  // The rejection is the caller's to log: only the caller knows whether
+  // Syncro's message, which can echo what was submitted, may reach the log.
   const message = readErrorMessage(body);
-  console.error(
-    `Syncro rejected the ${recordName}: HTTP ${response.status}`,
-    message,
-  );
   return {
     ok: false,
     reason: "rejected",
@@ -650,7 +649,15 @@ export async function createLead(
   lead: LeadSubmission,
 ): Promise<CreateLeadResult> {
   const posted = await postToSyncro("/leads", buildLeadPayload(lead), "lead");
-  if (!posted.ok) return posted;
+  if (!posted.ok) {
+    if (posted.reason === "rejected") {
+      console.error(
+        `Syncro rejected the lead: HTTP ${posted.status}`,
+        posted.message,
+      );
+    }
+    return posted;
+  }
   const leadId = readLeadId(posted.body);
   return leadId === undefined ? { ok: true } : { ok: true, leadId };
 }
@@ -727,7 +734,13 @@ export async function createIntakeTicket(
       signal,
     ),
   );
-  return posted.ok ? { ok: true, ...readTicketReference(posted.body) } : posted;
+  if (posted.ok) return { ok: true, ...readTicketReference(posted.body) };
+  if (posted.reason === "rejected") {
+    // Status only: Syncro's message can quote the request it rejects, and a
+    // service request is a named employee's details.
+    console.error(`Syncro rejected the ticket: HTTP ${posted.status}`);
+  }
+  return posted;
 }
 
 /** describeLeadOutcome for a ticket write: kind, code and HTTP status only. */

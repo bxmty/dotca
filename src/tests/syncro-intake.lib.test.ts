@@ -1121,11 +1121,10 @@ describe("createIntakeTicket", () => {
     );
   });
 
-  it("reports a Syncro 4xx as a rejection, with Syncro's message kept out of the summary", async () => {
-    mockSyncro(() => ({
-      status: 422,
-      body: { message: "Problem type is not included in the list" },
-    }));
+  it("reports a Syncro 4xx as a rejection, with Syncro's message kept out of the summary and the log", async () => {
+    // Syncro's validation errors can quote the value they reject
+    const echoingMessage = "Subject 'Leaver: John Roe' is too long";
+    mockSyncro(() => ({ status: 422, body: { message: echoingMessage } }));
     const { createIntakeTicket, describeTicketOutcome } = loadSyncro();
 
     const result = await createIntakeTicket(ticket);
@@ -1134,13 +1133,12 @@ describe("createIntakeTicket", () => {
       ok: false,
       reason: "rejected",
       status: 422,
-      message: "Problem type is not included in the list",
+      message: echoingMessage,
     });
     expect(describeTicketOutcome(result)).toBe("rejected (HTTP 422)");
-    expect(console.error).toHaveBeenCalledWith(
-      "Syncro rejected the ticket: HTTP 422",
-      "Problem type is not included in the list",
-    );
+    expect(jest.mocked(console.error).mock.calls).toEqual([
+      ["Syncro rejected the ticket: HTTP 422"],
+    ]);
   });
 
   it("summarizes a created ticket as ok", async () => {

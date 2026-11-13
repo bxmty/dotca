@@ -282,6 +282,10 @@ describe("createLead", () => {
       status: 422,
       message: "Email is invalid",
     });
+    // The lead path logs Syncro's message; the ticket path must not (#565)
+    expect(jest.mocked(console.error).mock.calls).toEqual([
+      ["Syncro rejected the lead: HTTP 422", "Email is invalid"],
+    ]);
   });
 
   it("reports a 4xx with an HTML body as a rejection, without throwing", async () => {
