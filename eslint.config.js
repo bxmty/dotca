@@ -85,7 +85,10 @@ export default [
     rules: {
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "warn",
-      "no-console": "warn",
+      // console.warn and console.error are how server code logs. console.log
+      // is a leftover unless it writes a deliberate log line, which says so
+      // in an eslint-disable comment.
+      "no-console": ["error", { allow: ["warn", "error"] }],
       "@next/next/no-img-element": "off",
     },
     settings: {
@@ -123,6 +126,27 @@ export default [
           filter: { regex: EXTERNALLY_NAMED_BOOLEANS, match: false },
         },
       ],
+    },
+  },
+  {
+    // Command-line scripts and the jest setup print to stdout by design
+    files: ["scripts/**", "*.js", "*.cjs", "*.mjs"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
+    // Known debt: analytics debug logging that also runs in the browser.
+    // Kept at "warn" so it stays visible until it is removed or gated; do not
+    // add files here.
+    files: [
+      "src/lib/gtag.ts",
+      "src/lib/web-vitals.ts",
+      "src/pages/_app.tsx",
+      "src/app/api/analytics/web-vitals/route.ts",
+    ],
+    rules: {
+      "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
   {
