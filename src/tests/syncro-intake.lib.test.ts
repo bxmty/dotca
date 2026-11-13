@@ -109,6 +109,7 @@ describe("resolveIntakeToken", () => {
             properties: { intake_token: `  ${INTAKE_TOKEN}\n` },
           },
         ],
+        meta: { total_pages: 1 },
       },
     }));
     const { resolveIntakeToken } = loadSyncro();
@@ -185,6 +186,7 @@ describe("resolveIntakeToken", () => {
             properties: { intake_token: INTAKE_TOKEN },
           },
         ],
+        meta: { total_pages: 1 },
       },
     }));
     const { resolveIntakeToken } = loadSyncro();
@@ -212,6 +214,7 @@ describe("resolveIntakeToken", () => {
         customers: [
           { id: 42, ...names, properties: { intake_token: INTAKE_TOKEN } },
         ],
+        meta: { total_pages: 1 },
       },
     }));
     const { resolveIntakeToken } = loadSyncro();
@@ -259,6 +262,149 @@ describe("resolveIntakeToken", () => {
       status: "matched",
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("pages until an empty page when Syncro sends no page count", async () => {
+    const fetchMock = mockSyncro((url) => {
+      const page = url.searchParams.get("page");
+      if (page === "1") {
+        return {
+          status: 200,
+          body: { customers: [customersPage.customers[0]] },
+        };
+      }
+      if (page === "2") {
+        return {
+          status: 200,
+          body: { customers: [customersPage.customers[1]] },
+        };
+      }
+      return { status: 200, body: { customers: [] } };
+    });
+    const { resolveIntakeToken } = loadSyncro();
+
+    expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
+      status: "matched",
+      organization: { id: 42 },
+    });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "https://boximity.syncromsp.com/api/v1/customers?page=1",
+      "https://boximity.syncromsp.com/api/v1/customers?page=2",
+      "https://boximity.syncromsp.com/api/v1/customers?page=3",
+    ]);
+  });
+
+  it.each<[string, unknown]>([
+    ["sends no page count", undefined],
+    ["claims more pages than the limit", { total_pages: 500 }],
+  ])(
+    "gives up after 50 pages of a list that never ends when Syncro %s",
+    async (_case, meta) => {
+      const fetchMock = mockSyncro(() => ({
+        status: 200,
+        body: { customers: customersPage.customers, meta },
+      }));
+      const { resolveIntakeToken } = loadSyncro();
+
+      // A list cut short is not a list to judge a token on
+      expect(await resolveIntakeToken("not-a-real-token")).toEqual({
+        status: "could_not_check",
+        detail: "invalid_response",
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(50);
+    },
+  );
+
+  it("reads a list that ends exactly at the page limit", async () => {
+    const fetchMock = mockSyncro(() => ({
+      status: 200,
+      body: { customers: customersPage.customers, meta: { total_pages: 50 } },
+    }));
+    const { resolveIntakeToken } = loadSyncro();
+
+    expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
+      status: "matched",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(50);
+  });
+
+  describe("when Syncro answers 200 with a list that cannot be the real one", () => {
+    const START_IN_MS = Date.UTC(2026, 10, 12, 15, 0, 0);
+    const FIVE_MINUTES_IN_MS = 5 * 60 * 1000;
+
+    const degradedLists: [string, unknown[]][] = [
+      ["an empty customer list", []],
+      [
+        "customers that carry no properties",
+        [
+          { id: 11, business_name: "Other Client" },
+          { id: 42, business_name: "Placeholder Dental", properties: null },
+        ],
+      ],
+    ];
+
+    it.each(degradedLists)(
+      "answers could not check for %s",
+      async (_case, customers) => {
+        mockSyncro(() => ({
+          status: 200,
+          body: { customers, meta: { total_pages: 1 } },
+        }));
+        const { resolveIntakeToken } = loadSyncro();
+
+        expect(await resolveIntakeToken(INTAKE_TOKEN)).toEqual({
+          status: "could_not_check",
+          detail: "invalid_response",
+        });
+      },
+    );
+
+    it.each(degradedLists)(
+      "keeps the last-known-good list, with a Sentry warning, over %s",
+      async (_case, customers) => {
+        const now = jest.spyOn(Date, "now").mockReturnValue(START_IN_MS);
+        mockSyncro(() => ({ status: 200, body: customersPage }));
+        const { resolveIntakeToken } = loadSyncro();
+        await resolveIntakeToken(INTAKE_TOKEN);
+
+        mockSyncro(() => ({
+          status: 200,
+          body: { customers, meta: { total_pages: 1 } },
+        }));
+        now.mockReturnValue(START_IN_MS + FIVE_MINUTES_IN_MS);
+
+        expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
+          status: "matched",
+          organization: { id: 42, name: "Placeholder Dental" },
+        });
+        expect(mockCaptureMessage).toHaveBeenCalledWith(
+          "Syncro customer list unavailable (invalid_response): serving the last-known-good copy",
+          "warning",
+        );
+        // The degraded answer replaced nothing: the next read still matches
+        expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
+          status: "matched",
+        });
+      },
+    );
+
+    it("accepts a list in which one customer carries properties", async () => {
+      mockSyncro(() => ({
+        status: 200,
+        body: {
+          customers: [
+            { id: 11, business_name: "Other Client" },
+            { id: 12, business_name: "No Link Yet", properties: {} },
+          ],
+          meta: { total_pages: 1 },
+        },
+      }));
+      const { resolveIntakeToken } = loadSyncro();
+
+      expect(await resolveIntakeToken(INTAKE_TOKEN)).toEqual({
+        status: "no_match",
+      });
+    });
   });
 
   describe("when Syncro cannot be asked and nothing is cached", () => {
@@ -352,6 +498,12 @@ describe("resolveIntakeToken", () => {
     const START_IN_MS = Date.UTC(2026, 10, 12, 15, 0, 0);
     const FIVE_MINUTES_IN_MS = 5 * 60 * 1000;
 
+    /** The list once the client's token has been cleared in Syncro */
+    const customersWithoutTheToken = {
+      customers: [customersPage.customers[0]],
+      meta: { total_pages: 1 },
+    };
+
     it("answers from memory for five minutes, then asks Syncro again", async () => {
       const now = jest.spyOn(Date, "now").mockReturnValue(START_IN_MS);
       const fetchMock = mockSyncro(() => ({
@@ -376,7 +528,7 @@ describe("resolveIntakeToken", () => {
       const { resolveIntakeToken } = loadSyncro();
       await resolveIntakeToken(INTAKE_TOKEN);
 
-      mockSyncro(() => ({ status: 200, body: { customers: [] } }));
+      mockSyncro(() => ({ status: 200, body: customersWithoutTheToken }));
       expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
         status: "matched",
       });
@@ -460,7 +612,7 @@ describe("resolveIntakeToken", () => {
       now.mockReturnValue(START_IN_MS + FIVE_MINUTES_IN_MS);
       await resolveIntakeToken(INTAKE_TOKEN);
 
-      mockSyncro(() => ({ status: 200, body: { customers: [] } }));
+      mockSyncro(() => ({ status: 200, body: customersWithoutTheToken }));
       expect(await resolveIntakeToken(INTAKE_TOKEN)).toEqual({
         status: "no_match",
       });
@@ -513,6 +665,7 @@ describe("findAuthorizedContact", () => {
           properties: { intake_authorized: value },
         },
       ],
+      meta: { total_pages: 1 },
     };
   }
 
@@ -611,6 +764,7 @@ describe("findAuthorizedContact", () => {
             properties: { intake_authorized: "1" },
           },
         ],
+        meta: { total_pages: 1 },
       },
     }));
     const { findAuthorizedContact } = loadSyncro();

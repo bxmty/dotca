@@ -227,6 +227,13 @@ async function withIntakeTimeout<Result>(
 }
 
 /**
+ * The most pages one list read follows. Far above any list Boximity holds; it
+ * stops a Syncro that never sends an empty page from being paged until the
+ * timeout.
+ */
+const MAX_LIST_PAGES = 50;
+
+/**
  * Every page of a Syncro list endpoint, or the first failure. Never throws.
  * The intake timeout covers the whole read, not each page.
  */
@@ -261,7 +268,7 @@ async function fetchSyncroListPages({
   signal: AbortSignal;
 }): Promise<ListFetch> {
   const records: unknown[] = [];
-  for (let page = 1; ; page += 1) {
+  for (let page = 1; page <= MAX_LIST_PAGES; page += 1) {
     const search = new URLSearchParams({ ...query, page: String(page) });
     let response: Response;
     try {
@@ -292,13 +299,18 @@ async function fetchSyncroListPages({
     }
     records.push(...pageRecords);
 
+    // The list ends at an empty page, or at the last page Syncro counts.
+    // Without a count (`meta.total_pages` absent) only the empty page ends
+    // it: stopping at page 1 would pass a first page off as the whole list.
     const { meta } = pageBody;
     const totalPages = isRecord(meta) ? meta.total_pages : undefined;
-    const hasMorePages = typeof totalPages === "number" && page < totalPages;
-    if (!hasMorePages || pageRecords.length === 0) {
+    const isLastPage = typeof totalPages === "number" && page >= totalPages;
+    if (isLastPage || pageRecords.length === 0) {
       return { ok: true, records };
     }
   }
+  // Still going at the limit: a list cut short is not one to judge a token on
+  return { ok: false, detail: "invalid_response" };
 }
 
 /**
@@ -369,6 +381,20 @@ function toTokenHolders(records: unknown[]): TokenHolder[] {
   return holders;
 }
 
+/**
+ * Does the customer list look like the real one? Boximity always has
+ * customers, and Syncro sends each with a `properties` object. A 200 with no
+ * customers, or with none carrying `properties`, is a degraded answer: taken
+ * at face value it would replace the last-known-good list and turn every
+ * valid link into a 404 until the cache expires. It reads as "could not
+ * check" instead, so stale-serving applies.
+ */
+function hasCustomerCustomFields(records: unknown[]): boolean {
+  return records.some(
+    (record) => isRecord(record) && isRecord(record.properties),
+  );
+}
+
 let cachedTokenHolders: CachedList<TokenHolder> | undefined;
 
 /**
@@ -395,9 +421,11 @@ export async function resolveIntakeToken(
     },
     fetchItems: async () => {
       const fetched = await fetchSyncroList("/customers", "customers");
-      return fetched.ok
-        ? { ok: true, items: toTokenHolders(fetched.records) }
-        : fetched;
+      if (!fetched.ok) return fetched;
+      if (!hasCustomerCustomFields(fetched.records)) {
+        return { ok: false, detail: "invalid_response" };
+      }
+      return { ok: true, items: toTokenHolders(fetched.records) };
     },
   });
   if (!read.isAvailable) {
