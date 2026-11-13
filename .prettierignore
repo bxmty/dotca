@@ -3,6 +3,8 @@ package-lock.json
 *.tsbuildinfo
 next-env.d.ts
 CLAUDE.md
+# next dev owns the block in AGENTS.md and rewrites it in its own format
+AGENTS.md
 ansible/
 .github/actions/
 .claude/

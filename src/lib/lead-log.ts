@@ -29,6 +29,7 @@ export function logLeadSubmission({
   syncro: CreateLeadResult;
   isEmailSent: boolean;
 }): void {
+  // eslint-disable-next-line no-console -- structured event line, read from the container logs
   console.log(
     JSON.stringify({
       event: "lead_submission",

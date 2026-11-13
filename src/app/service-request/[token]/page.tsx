@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/app/components/Button";
 import StatusPage from "@/app/components/StatusPage";
+import {
+  COMPANY_PHONE_DISPLAY,
+  COMPANY_PHONE_TEL_HREF,
+} from "@/lib/company-phone";
 import { formatUnavailableMessage } from "@/lib/service-unavailable";
 import { resolveIntakeToken } from "@/lib/syncro";
 import ServiceRequestForm from "./ServiceRequestForm";
@@ -50,8 +54,8 @@ export default async function ServiceRequestPage({
         kicker="Error"
         heading="This form is temporarily unavailable"
         action={
-          <ButtonLink href="tel:+12895390098" variant="secondary">
-            Call (289) 539-0098
+          <ButtonLink href={COMPANY_PHONE_TEL_HREF} variant="secondary">
+            Call {COMPANY_PHONE_DISPLAY}
           </ButtonLink>
         }
       >

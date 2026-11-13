@@ -7,6 +7,7 @@ import { parseGa4CookieIds, sendConversionEvent } from "@/lib/ga4";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { sendConfirmationEmail } from "@/lib/confirmation-email";
 import { splitFullName } from "@/lib/person-name";
+import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 function isMissingOrString(value: unknown): value is string | undefined {
   return value === undefined || value === null || typeof value === "string";
@@ -201,8 +202,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error:
-          "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+        error: SERVICE_UNAVAILABLE_MESSAGE,
       },
       { status: 503 },
     );

@@ -62,6 +62,7 @@ function tryCheckToken(token: string | null): InstallTokenCheck | null {
 
 /** One line per click, deliberately without IP, user agent or query values. */
 function logClick(outcome: InstallOutcome, reason?: InstallTokenCheck): void {
+  // eslint-disable-next-line no-console -- structured event line, read from the container logs
   console.log(
     JSON.stringify({
       event: "install_click",

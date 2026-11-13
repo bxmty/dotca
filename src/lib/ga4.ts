@@ -68,6 +68,7 @@ export async function sendConversionEvent({
   if (!clientId) {
     // Expected on every ad-blocked visitor — not exceptional, so this stays
     // a console.log rather than a Sentry alert that would bury real issues.
+    // eslint-disable-next-line no-console -- structured event line, read from the container logs
     console.log(`GA4 client_id missing; dropping "${name}" conversion`);
     return;
   }

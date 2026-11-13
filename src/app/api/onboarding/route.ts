@@ -9,6 +9,7 @@ import * as Sentry from "@sentry/nextjs";
 import { sendConfirmationEmail } from "@/lib/confirmation-email";
 import { buildInstallUrl } from "@/lib/install-link";
 import { splitFullName } from "@/lib/person-name";
+import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
  * This signup's signed /install link, or undefined when it cannot be signed
@@ -203,8 +204,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          "Service temporarily unavailable. Please contact us directly at hi@boximity.ca or (289) 539-0098.",
+        error: SERVICE_UNAVAILABLE_MESSAGE,
       },
       { status: 503 },
     );

@@ -96,7 +96,7 @@ const notAllowed = !hasPermission;  // Avoid negatives
 
 **Rules:**
 - Start with: `is`, `has`, `can`, `should`, `will`, `did`, `wants`. `npm run lint` enforces this on variables, parameters and type properties; wire-format and HTML attribute names are allowlisted in `eslint.config.js`
-- Never use negative names: `isNotValid` → `isValid`
+- Never use negative names: `isNotValid` → `isValid`. `npm run lint` rejects `Not`, `No`, `Non`, `Never`, `Without` and `Un…` words in a boolean name; `In…`/`Dis…` words (`isInvalid`, `isDisabled`) are left to review
 - Make the true case the positive case
 
 ### Collections
