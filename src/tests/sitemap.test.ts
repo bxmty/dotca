@@ -221,4 +221,10 @@ describe("sitemap", () => {
 
     expect(urls.filter((url) => url.includes("/call"))).toEqual([]);
   });
+
+  it("leaves out the service request intake", () => {
+    const urls = sitemap().map(({ url }) => url);
+
+    expect(urls.filter((url) => url.includes("service-request"))).toEqual([]);
+  });
 });
