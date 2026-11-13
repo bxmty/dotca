@@ -177,8 +177,13 @@ export default function ServiceRequestForm({ token }: { token: string }) {
       }
 
       setFieldErrors(readFieldErrors(body));
+      // A 404 means the link stopped resolving after the page loaded; its
+      // body ("Not found") tells the requester nothing they can act on.
       setSubmitError(
-        isRecord(body) && typeof body.error === "string" && body.error !== ""
+        response.status !== 404 &&
+          isRecord(body) &&
+          typeof body.error === "string" &&
+          body.error !== ""
           ? body.error
           : SUBMIT_FAILED_MESSAGE,
       );

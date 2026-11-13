@@ -406,6 +406,10 @@ describe("ServiceRequestForm", () => {
           }),
       ],
       [
+        "the link stopped resolving (404)",
+        () => replyWith({ status: 404, body: { error: "Not found" } }),
+      ],
+      [
         "a 200 does not confirm success",
         () => replyWith({ status: 200, body: {} }),
       ],
