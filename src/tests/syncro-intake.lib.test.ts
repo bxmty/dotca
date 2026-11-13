@@ -641,12 +641,14 @@ describe("findAuthorizedContact", () => {
     contacts: [
       {
         id: 501,
+        customer_id: 42,
         name: "Dana Office",
         email: "Dana.Office@Client.example",
         properties: { intake_authorized: "1" },
       },
       {
         id: 502,
+        customer_id: 42,
         name: "Sam Existing",
         email: "sam@client.example",
         properties: { intake_authorized: "0" },
@@ -660,6 +662,7 @@ describe("findAuthorizedContact", () => {
       contacts: [
         {
           id: 501,
+          customer_id: 42,
           name: "Dana Office",
           email: "dana@client.example",
           properties: { intake_authorized: value },
@@ -749,16 +752,28 @@ describe("findAuthorizedContact", () => {
       body: {
         contacts: [
           null,
-          { id: 1, email: "noprops@client.example" },
+          { id: 1, customer_id: 42, email: "noprops@client.example" },
           {
             id: "2",
+            customer_id: 42,
             email: "textid@client.example",
             properties: { intake_authorized: "1" },
           },
-          { id: 3, email: 7, properties: { intake_authorized: "1" } },
-          { id: 4, email: " ", properties: { intake_authorized: "1" } },
+          {
+            id: 3,
+            customer_id: 42,
+            email: 7,
+            properties: { intake_authorized: "1" },
+          },
+          {
+            id: 4,
+            customer_id: 42,
+            email: " ",
+            properties: { intake_authorized: "1" },
+          },
           {
             id: 5,
+            customer_id: 42,
             name: 9,
             email: "noname@client.example",
             properties: { intake_authorized: "1" },
@@ -827,6 +842,41 @@ describe("findAuthorizedContact", () => {
       "https://boximity.syncromsp.com/api/v1/contacts?customer_id=43&page=1",
     ]);
   });
+
+  it.each<[string, Record<string, unknown>]>([
+    ["belongs to another organization", { customer_id: 43 }],
+    ["names no organization", {}],
+    ["names its organization as text", { customer_id: "42" }],
+  ])(
+    "does not authorize a contact that %s, even when Syncro returns it for this one",
+    async (_case, owner) => {
+      // A Syncro that ignores the customer_id filter answers with everybody
+      mockSyncro(() => ({
+        status: 200,
+        body: {
+          contacts: [
+            {
+              id: 601,
+              name: "Robin Elsewhere",
+              email: "robin@elsewhere.example",
+              properties: { intake_authorized: "1" },
+              ...owner,
+            },
+            contactsPage.contacts[0],
+          ],
+          meta: { total_pages: 1 },
+        },
+      }));
+      const { findAuthorizedContact } = loadSyncro();
+
+      expect(
+        await findAuthorizedContact(42, "robin@elsewhere.example"),
+      ).toEqual({ status: "not_authorized" });
+      expect(
+        await findAuthorizedContact(42, "dana.office@client.example"),
+      ).toMatchObject({ status: "authorized", contact: { id: 501 } });
+    },
+  );
 
   it.each<[string, SyncroReply, string]>([
     ["the network fails", new TypeError("fetch failed"), "network_error"],

@@ -486,11 +486,20 @@ function isTickedCheckbox(value: unknown): boolean {
   );
 }
 
-/** The contacts allowed to file; everything else is dropped. */
-function toAuthorizedContacts(records: unknown[]): IntakeContact[] {
+/**
+ * The organization's contacts allowed to file; everything else is dropped.
+ * Each record is checked against the organization itself: the `customer_id`
+ * query filter is Syncro's to honour, and a Syncro that ignored it would
+ * otherwise authorize another client's contact on this client's link.
+ */
+function toAuthorizedContacts(
+  records: unknown[],
+  organizationId: number,
+): IntakeContact[] {
   const contacts: IntakeContact[] = [];
   for (const record of records) {
     if (!isRecord(record) || typeof record.id !== "number") continue;
+    if (record.customer_id !== organizationId) continue;
     if (!isRecord(record.properties)) continue;
     if (!isTickedCheckbox(record.properties[INTAKE_AUTHORIZED_FIELD])) continue;
     const email = normalizeEmailAddress(readTrimmedText(record.email));
@@ -522,7 +531,10 @@ export async function findAuthorizedContact(
         customer_id: String(organizationId),
       });
       return fetched.ok
-        ? { ok: true, items: toAuthorizedContacts(fetched.records) }
+        ? {
+            ok: true,
+            items: toAuthorizedContacts(fetched.records, organizationId),
+          }
         : fetched;
     },
   });
