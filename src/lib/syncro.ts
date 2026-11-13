@@ -205,7 +205,31 @@ type ListFetch =
   | { ok: true; records: unknown[] }
   | { ok: false; detail: SyncroReadFailureDetail };
 
-/** Every page of a Syncro list endpoint, or the first failure. Never throws. */
+/**
+ * How long an intake call waits on Syncro: one ticket write, or every page of
+ * one list read. A Syncro that accepts the connection and never answers would
+ * otherwise hold the page render and the route open. Past this the call is
+ * aborted and reads as a network error, so stale-serving and fail-open apply.
+ */
+const INTAKE_TIMEOUT_IN_MS = 10_000;
+
+/** Run `call` with a signal that aborts once the intake timeout has passed. */
+async function withIntakeTimeout<Result>(
+  call: (signal: AbortSignal) => Promise<Result>,
+): Promise<Result> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), INTAKE_TIMEOUT_IN_MS);
+  try {
+    return await call(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Every page of a Syncro list endpoint, or the first failure. Never throws.
+ * The intake timeout covers the whole read, not each page.
+ */
 async function fetchSyncroList(
   path: string,
   listKey: string,
@@ -215,18 +239,39 @@ async function fetchSyncroList(
   if (!config.isConfigured) {
     return { ok: false, detail: "missing_config" };
   }
+  const { baseUrl, apiKey } = config;
+  return withIntakeTimeout((signal) =>
+    fetchSyncroListPages({ baseUrl, apiKey, path, listKey, query, signal }),
+  );
+}
 
+async function fetchSyncroListPages({
+  baseUrl,
+  apiKey,
+  path,
+  listKey,
+  query,
+  signal,
+}: {
+  baseUrl: string;
+  apiKey: string;
+  path: string;
+  listKey: string;
+  query: Record<string, string>;
+  signal: AbortSignal;
+}): Promise<ListFetch> {
   const records: unknown[] = [];
   for (let page = 1; ; page += 1) {
     const search = new URLSearchParams({ ...query, page: String(page) });
     let response: Response;
     try {
-      response = await fetch(`${config.baseUrl}${path}?${search}`, {
+      response = await fetch(`${baseUrl}${path}?${search}`, {
         method: "GET",
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${config.apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
+        signal,
       });
     } catch {
       return { ok: false, detail: "network_error" };
@@ -236,6 +281,10 @@ async function fetchSyncroList(
     }
 
     const body = await readJson(response);
+    if (signal.aborted) {
+      // The body stalled: a timeout, not a malformed answer
+      return { ok: false, detail: "network_error" };
+    }
     const pageBody = isRecord(body) ? body : {};
     const pageRecords = pageBody[listKey];
     if (!Array.isArray(pageRecords)) {
@@ -491,12 +540,14 @@ export function toLeadResult(
 /**
  * The one Syncro write path: config check, POST, and the split between a
  * rejection (4xx) and an unreachable Syncro. Never throws. `recordName`
- * names the write in log lines ("lead", "ticket").
+ * names the write in log lines ("lead", "ticket"). An aborted `signal` reads
+ * as a network error; lead writes pass none and wait as long as fetch does.
  */
 async function postToSyncro(
   path: string,
   payload: Record<string, unknown>,
   recordName: string,
+  signal?: AbortSignal,
 ): Promise<{ ok: true; body: unknown } | SyncroWriteFailure> {
   const config = readSyncroConfig();
   if (!config.isConfigured) {
@@ -516,6 +567,7 @@ async function postToSyncro(
         Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify(payload),
+      ...(signal ? { signal } : {}),
     });
   } catch (error) {
     console.error(`Syncro ${recordName} request failed:`, error);
@@ -603,30 +655,37 @@ function readTicketReference(body: unknown): {
  * Create the service-request ticket (POST /tickets) in status New. The
  * initial comment is public and emailed on purpose: Syncro's ticket
  * autoresponder is the only confirmation the requester is sent. Never throws.
+ *
+ * A write that times out reads as unreachable although Syncro may still
+ * create the ticket: the email still lands and Sentry is told. A 2xx whose
+ * body stalls is a created ticket without a reference.
  */
 export async function createIntakeTicket(
   ticket: IntakeTicket,
 ): Promise<CreateTicketResult> {
-  const posted = await postToSyncro(
-    "/tickets",
-    {
-      customer_id: ticket.organizationId,
-      contact_id: ticket.contactId,
-      subject: isStagingDeploy()
-        ? `[STAGING] ${ticket.subject}`
-        : ticket.subject,
-      problem_type: INTAKE_TICKET_ISSUE_TYPE,
-      status: INTAKE_TICKET_STATUS,
-      comments_attributes: [
-        {
-          subject: "Initial Issue",
-          body: ticket.comment,
-          hidden: false,
-          do_not_email: false,
-        },
-      ],
-    },
-    "ticket",
+  const posted = await withIntakeTimeout((signal) =>
+    postToSyncro(
+      "/tickets",
+      {
+        customer_id: ticket.organizationId,
+        contact_id: ticket.contactId,
+        subject: isStagingDeploy()
+          ? `[STAGING] ${ticket.subject}`
+          : ticket.subject,
+        problem_type: INTAKE_TICKET_ISSUE_TYPE,
+        status: INTAKE_TICKET_STATUS,
+        comments_attributes: [
+          {
+            subject: "Initial Issue",
+            body: ticket.comment,
+            hidden: false,
+            do_not_email: false,
+          },
+        ],
+      },
+      "ticket",
+      signal,
+    ),
   );
   return posted.ok ? { ok: true, ...readTicketReference(posted.body) } : posted;
 }

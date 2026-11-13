@@ -92,6 +92,7 @@ describe("resolveIntakeToken", () => {
           Accept: "application/json",
           Authorization: "Bearer test-syncro-key",
         },
+        signal: expect.any(AbortSignal),
       },
     );
     expect(mockCaptureMessage).not.toHaveBeenCalled();
@@ -541,6 +542,7 @@ describe("findAuthorizedContact", () => {
           Accept: "application/json",
           Authorization: "Bearer test-syncro-key",
         },
+        signal: expect.any(AbortSignal),
       },
     );
   });
@@ -942,5 +944,164 @@ describe("createIntakeTicket", () => {
     const { createIntakeTicket, describeTicketOutcome } = loadSyncro();
 
     expect(describeTicketOutcome(await createIntakeTicket(ticket))).toBe("ok");
+  });
+});
+
+describe("a Syncro that never answers", () => {
+  const TIMEOUT_IN_MS = 10_000;
+
+  /** Every request hangs until its abort signal fires, as a real fetch does. */
+  function mockHungSyncro(): jest.Mock {
+    const mock = jest.fn(
+      (_input: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(
+              new DOMException("This operation was aborted", "AbortError"),
+            );
+          });
+        }),
+    );
+    global.fetch = mock as unknown as typeof fetch;
+    return mock;
+  }
+
+  /** Syncro answers `status`, then the body stalls until the request is aborted. */
+  function mockStalledBody(status: number): void {
+    global.fetch = jest.fn((_input: string, init?: RequestInit) =>
+      Promise.resolve({
+        ok: status >= 200 && status < 300,
+        status,
+        json: () =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(
+                new DOMException("This operation was aborted", "AbortError"),
+              );
+            });
+          }),
+      }),
+    ) as unknown as typeof fetch;
+  }
+
+  const STILL_WAITING = "still waiting on Syncro";
+
+  /** What `pending` has settled to once `elapsedInMs` has passed, if anything. */
+  async function outcomeAfter<Result>(
+    pending: Promise<Result>,
+    elapsedInMs: number,
+  ): Promise<Result | typeof STILL_WAITING> {
+    await jest.advanceTimersByTimeAsync(elapsedInMs);
+    return Promise.race([pending, Promise.resolve(STILL_WAITING)]);
+  }
+
+  const ticket = {
+    organizationId: 42,
+    contactId: 501,
+    subject: "Leaver: John Roe, last day 2026-11-30",
+    comment: "Leaver request",
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  it("gives up on the customer list after ten seconds and answers could not check", async () => {
+    mockHungSyncro();
+    const { resolveIntakeToken } = loadSyncro();
+    const pending = resolveIntakeToken(INTAKE_TOKEN);
+
+    expect(await outcomeAfter(pending, TIMEOUT_IN_MS - 1)).toBe(STILL_WAITING);
+    expect(await outcomeAfter(pending, 1)).toEqual({
+      status: "could_not_check",
+      detail: "network_error",
+    });
+  });
+
+  it("gives up on a customer list whose body stalls", async () => {
+    mockStalledBody(200);
+    const { resolveIntakeToken } = loadSyncro();
+
+    const result = await outcomeAfter(
+      resolveIntakeToken(INTAKE_TOKEN),
+      TIMEOUT_IN_MS,
+    );
+
+    expect(result).toEqual({
+      status: "could_not_check",
+      detail: "network_error",
+    });
+  });
+
+  it("serves the last-known-good customer list, with a Sentry warning", async () => {
+    mockSyncro(() => ({ status: 200, body: customersPage }));
+    const { resolveIntakeToken } = loadSyncro();
+    await resolveIntakeToken(INTAKE_TOKEN);
+    jest.advanceTimersByTime(5 * 60 * 1000);
+
+    mockHungSyncro();
+    const result = await outcomeAfter(
+      resolveIntakeToken(INTAKE_TOKEN),
+      TIMEOUT_IN_MS,
+    );
+
+    expect(result).toEqual({
+      status: "matched",
+      organization: { id: 42, name: "Placeholder Dental" },
+      isStale: true,
+    });
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      "Syncro customer list unavailable (network_error): serving the last-known-good copy",
+      "warning",
+    );
+  });
+
+  it("gives up on the contact list and leaves authorization unverified", async () => {
+    mockHungSyncro();
+    const { findAuthorizedContact } = loadSyncro();
+
+    const result = await outcomeAfter(
+      findAuthorizedContact(42, "dana@client.example"),
+      TIMEOUT_IN_MS,
+    );
+
+    expect(result).toEqual({
+      status: "could_not_check",
+      detail: "network_error",
+    });
+  });
+
+  it("gives up on the ticket after ten seconds and reports Syncro unreachable", async () => {
+    mockHungSyncro();
+    const { createIntakeTicket } = loadSyncro();
+    const pending = createIntakeTicket(ticket);
+
+    expect(await outcomeAfter(pending, TIMEOUT_IN_MS - 1)).toBe(STILL_WAITING);
+    expect(await outcomeAfter(pending, 1)).toEqual({
+      ok: false,
+      reason: "unreachable",
+      code: "network_error",
+    });
+  });
+
+  it("counts a ticket Syncro accepted as created when the body stalls", async () => {
+    mockStalledBody(201);
+    const { createIntakeTicket } = loadSyncro();
+
+    const result = await outcomeAfter(
+      createIntakeTicket(ticket),
+      TIMEOUT_IN_MS,
+    );
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("stops the clock once Syncro has answered", async () => {
+    mockSyncro(() => ({ status: 200, body: customersPage }));
+    const { resolveIntakeToken } = loadSyncro();
+
+    await resolveIntakeToken(INTAKE_TOKEN);
+
+    expect(jest.getTimerCount()).toBe(0);
   });
 });
