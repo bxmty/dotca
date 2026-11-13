@@ -172,8 +172,6 @@ export type ResolveIntakeTokenResult =
   | {
       status: "matched";
       organization: IntakeOrganization;
-      /** True when Syncro was unreachable and the last-known-good list answered */
-      isStale: boolean;
     }
   /** Syncro's customer list (fresh or last-known-good) holds no such token */
   | { status: "no_match" }
@@ -184,7 +182,8 @@ export type ResolveIntakeTokenResult =
  * Why a list could not be read, safe for logs and Sentry: "missing_config",
  * "network_error", "invalid_response" or "HTTP <status>". Never Syncro's body.
  */
-export type SyncroReadFailureDetail = string;
+export type SyncroReadFailureDetail =
+  "missing_config" | "network_error" | "invalid_response" | `HTTP ${number}`;
 
 /** Organization custom field holding the client's intake link secret */
 const INTAKE_TOKEN_FIELD = "intake_token";
@@ -202,7 +201,7 @@ interface CachedList<Item> {
 }
 
 type ListRead<Item> =
-  | { isAvailable: true; items: Item[]; isStale: boolean }
+  | { isAvailable: true; items: Item[] }
   | { isAvailable: false; detail: SyncroReadFailureDetail };
 
 type ListFetch =
@@ -339,20 +338,20 @@ async function readCachedList<Item>({
   >;
 }): Promise<ListRead<Item>> {
   if (cached && Date.now() - cached.fetchedAtInMs < LIST_CACHE_TTL_IN_MS) {
-    return { isAvailable: true, items: cached.items, isStale: false };
+    return { isAvailable: true, items: cached.items };
   }
 
   const fetched = await fetchItems();
   if (fetched.ok) {
     store({ items: fetched.items, fetchedAtInMs: Date.now() });
-    return { isAvailable: true, items: fetched.items, isStale: false };
+    return { isAvailable: true, items: fetched.items };
   }
 
   if (cached) {
     const message = `Syncro ${listName} unavailable (${fetched.detail}): serving the last-known-good copy`;
     console.error(message);
     Sentry.captureMessage(message, "warning");
-    return { isAvailable: true, items: cached.items, isStale: true };
+    return { isAvailable: true, items: cached.items };
   }
 
   console.error(`Syncro ${listName} unavailable (${fetched.detail})`);
@@ -417,7 +416,7 @@ export async function resolveIntakeToken(
     return { status: "no_match" };
   }
 
-  const read = await readCachedList<TokenHolder>({
+  const customerListRead = await readCachedList<TokenHolder>({
     listName: "customer list",
     cached: cachedTokenHolders,
     store: (entry) => {
@@ -432,18 +431,17 @@ export async function resolveIntakeToken(
       return { ok: true, items: toTokenHolders(fetched.records) };
     },
   });
-  if (!read.isAvailable) {
-    return { status: "could_not_check", detail: read.detail };
+  if (!customerListRead.isAvailable) {
+    return { status: "could_not_check", detail: customerListRead.detail };
   }
 
-  const holder = read.items.find(
+  const holder = customerListRead.items.find(
     (candidate) => candidate.token === submittedToken,
   );
   return holder
     ? {
         status: "matched",
         organization: { id: holder.id, name: holder.name },
-        isStale: read.isStale,
       }
     : { status: "no_match" };
 }
@@ -460,8 +458,6 @@ export type FindAuthorizedContactResult =
   | {
       status: "authorized";
       contact: IntakeContact;
-      /** True when Syncro was unreachable and the last-known-good list answered */
-      isStale: boolean;
     }
   /** The organization's contact list holds no authorized contact with this email */
   | { status: "not_authorized" }
@@ -524,7 +520,7 @@ export async function findAuthorizedContact(
   organizationId: number,
   email: string,
 ): Promise<FindAuthorizedContactResult> {
-  const read = await readCachedList<IntakeContact>({
+  const contactListRead = await readCachedList<IntakeContact>({
     listName: "contact list",
     cached: cachedAuthorizedContacts.get(organizationId),
     store: (entry) => {
@@ -542,16 +538,16 @@ export async function findAuthorizedContact(
         : fetched;
     },
   });
-  if (!read.isAvailable) {
-    return { status: "could_not_check", detail: read.detail };
+  if (!contactListRead.isAvailable) {
+    return { status: "could_not_check", detail: contactListRead.detail };
   }
 
   const submittedEmail = normalizeEmailAddress(email);
-  const contact = read.items.find(
+  const contact = contactListRead.items.find(
     (candidate) => candidate.email === submittedEmail,
   );
   return contact
-    ? { status: "authorized", contact: { ...contact }, isStale: read.isStale }
+    ? { status: "authorized", contact: { ...contact } }
     : { status: "not_authorized" };
 }
 

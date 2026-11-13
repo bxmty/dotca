@@ -82,7 +82,6 @@ describe("resolveIntakeToken", () => {
     expect(result).toEqual({
       status: "matched",
       organization: { id: 42, name: "Placeholder Dental" },
-      isStale: false,
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://boximity.syncromsp.com/api/v1/customers?page=1",
@@ -552,7 +551,6 @@ describe("resolveIntakeToken", () => {
       expect(result).toEqual({
         status: "matched",
         organization: { id: 42, name: "Placeholder Dental" },
-        isStale: true,
       });
       expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
       expect(mockCaptureMessage).toHaveBeenCalledWith(
@@ -593,11 +591,9 @@ describe("resolveIntakeToken", () => {
 
       expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
         status: "matched",
-        isStale: true,
       });
       expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
         status: "matched",
-        isStale: true,
       });
       expect(failingFetch).toHaveBeenCalledTimes(2);
     });
@@ -627,7 +623,6 @@ describe("resolveIntakeToken", () => {
 
       expect(await resolveIntakeToken(INTAKE_TOKEN)).toMatchObject({
         status: "matched",
-        isStale: false,
       });
     });
   });
@@ -688,7 +683,6 @@ describe("findAuthorizedContact", () => {
         name: "Dana Office",
         email: "dana.office@client.example",
       },
-      isStale: false,
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://boximity.syncromsp.com/api/v1/contacts?customer_id=42&page=1",
@@ -798,7 +792,6 @@ describe("findAuthorizedContact", () => {
     expect(await findAuthorizedContact(42, "noname@client.example")).toEqual({
       status: "authorized",
       contact: { id: 5, name: "", email: "noname@client.example" },
-      isStale: false,
     });
   });
 
@@ -926,7 +919,7 @@ describe("findAuthorizedContact", () => {
     now.mockReturnValue(START_IN_MS + FIVE_MINUTES_IN_MS - 1);
     expect(
       await findAuthorizedContact(42, "dana.office@client.example"),
-    ).toMatchObject({ status: "authorized", isStale: false });
+    ).toMatchObject({ status: "authorized" });
     expect(secondFetch).not.toHaveBeenCalled();
 
     now.mockReturnValue(START_IN_MS + FIVE_MINUTES_IN_MS);
@@ -953,7 +946,6 @@ describe("findAuthorizedContact", () => {
         name: "Dana Office",
         email: "dana.office@client.example",
       },
-      isStale: true,
     });
     expect(await findAuthorizedContact(42, "sam@client.example")).toEqual({
       status: "not_authorized",
@@ -1254,7 +1246,6 @@ describe("a Syncro that never answers", () => {
     expect(result).toEqual({
       status: "matched",
       organization: { id: 42, name: "Placeholder Dental" },
-      isStale: true,
     });
     expect(mockCaptureMessage).toHaveBeenCalledWith(
       "Syncro customer list unavailable (network_error): serving the last-known-good copy",

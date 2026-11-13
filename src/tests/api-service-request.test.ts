@@ -116,12 +116,10 @@ describe("POST /api/service-request", () => {
     mockResolveToken.mockResolvedValue({
       status: "matched",
       organization: { id: 77, name: CLIENT_NAME },
-      isStale: false,
     });
     mockFindContact.mockResolvedValue({
       status: "authorized",
       contact: { id: 501, name: "Dana Office", email: "dana@client.example" },
-      isStale: false,
     });
     mockCreateTicket.mockResolvedValue({
       ok: true,
@@ -482,12 +480,10 @@ describe("POST /api/service-request", () => {
     mockResolveToken.mockResolvedValue({
       status: "matched",
       organization: { id: 77, name: CLIENT_NAME },
-      isStale: true,
     });
     mockFindContact.mockResolvedValue({
       status: "authorized",
       contact: { id: 501, name: "Dana Office", email: "dana@client.example" },
-      isStale: true,
     });
 
     await expectResponse(await post(joinerBody), 200, {
