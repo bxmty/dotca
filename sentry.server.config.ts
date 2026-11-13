@@ -20,7 +20,9 @@ Sentry.init({
   // v11 collects user info, cookies, and request data by default, which
   // matches the previous sendDefaultPii: true setting.
 
-  // Signed links carry a token in the URL, which spans and events record.
+  // Links carry a token in the URL (`?t=`, or the intake link's path
+  // segment), which spans and events record. The scrubber also drops the
+  // request body the SDK captures for the intake submission route.
   beforeSend: (event) => scrubLinkTokens(event),
   beforeSendTransaction: (event) => scrubLinkTokens(event),
   beforeSendSpan: Sentry.withStreamedSpan((span) => scrubLinkTokens(span)),

@@ -1,5 +1,8 @@
 import type { NotificationFormType } from "@/lib/notify";
-import { describeLeadOutcome, type CreateLeadResult } from "@/lib/syncro";
+import {
+  describeSyncroWriteOutcome,
+  type CreateLeadResult,
+} from "@/lib/syncro";
 
 /**
  * One structured line per website lead, so a submission is recoverable from
@@ -34,7 +37,7 @@ export function logLeadSubmission({
       company,
       email,
       phone,
-      syncro: describeLeadOutcome(syncro),
+      syncro: describeSyncroWriteOutcome(syncro),
       webmasterEmail: isEmailSent ? "ok" : "failed",
     }),
   );

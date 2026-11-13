@@ -172,7 +172,7 @@ After successful verification (minimum 24 hours):
 | `LEAD_MAGNET_SIGNING_SECRET`         | Lead magnet download links       | Low             |
 | `SDR_LINK_SIGNING_SECRET`            | SDR call console links           | Medium          |
 | `SYNCRO_SUBDOMAIN`                   | Syncro account subdomain         | Low             |
-| `SYNCRO_API_KEY`                     | Scoped Syncro API token (leads)  | High            |
+| `SYNCRO_API_KEY`                     | Scoped Syncro API token          | High            |
 | `SYNCRO_FREE_INSTALLER_URL`          | Free-tier agent installer link   | High            |
 | `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
 | `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
@@ -314,9 +314,9 @@ To raise an existing key from Sending access to Full access, change its permissi
 
 ### Syncro API Token
 
-`SYNCRO_SUBDOMAIN` and `SYNCRO_API_KEY` let website leads be written to Syncro. Both are required at the deploy gate, so a missing value fails the deploy.
+`SYNCRO_SUBDOMAIN` and `SYNCRO_API_KEY` let website leads be written to Syncro, and let the joiner/leaver intake (`/service-request/<token>`) read customers and contacts and create tickets. Both are required at the deploy gate, so a missing value fails the deploy.
 
-1. **Create a replacement token in Syncro** with the same scoped permissions as the current one. Do not use a full-admin token.
+1. **Create a replacement token in Syncro** with the same scoped permissions as the current one. The site creates leads, lists customers, lists contacts and creates tickets, and nothing else. Do not use a full-admin token.
 2. **Update each environment that holds the old token** (`gh` prompts for the value):
 
    ```bash
@@ -324,7 +324,7 @@ To raise an existing key from Sending access to Full access, change its permissi
    gh secret set SYNCRO_API_KEY --env production -R bxmty/dotca
    ```
 
-3. **Redeploy staging**, submit a test lead, and confirm it appears in Syncro Leads. Then redeploy production.
+3. **Redeploy staging**, submit a test lead, and confirm it appears in Syncro Leads. Open a client's intake link and confirm the form loads: a token without the customer-read permission shows the "temporarily unavailable" page instead. Then redeploy production.
 4. **Revoke the previous token** in Syncro after both deploys succeed.
 
 ### Free-tier Syncro Installer Link

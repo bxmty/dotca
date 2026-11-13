@@ -55,4 +55,48 @@ describe("SegmentedChoice", () => {
     expect(onChange).toHaveBeenLastCalledWith("monthly");
     expect(screen.getByRole("radio", { name: /^Monthly/ })).toBeChecked();
   });
+
+  it("leaves every option unchecked while nothing is chosen", () => {
+    render(
+      <SegmentedChoice
+        legend="Billing cycle"
+        name="billingCycle"
+        options={OPTIONS}
+        value=""
+        onChange={() => {}}
+        isOptional
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: /^Monthly/ })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Annual/ })).not.toBeChecked();
+    expect(
+      screen.getByRole("group", { name: /^Billing cycle\s*optional$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("ties an error to the group, worded as the fix", () => {
+    render(
+      <SegmentedChoice
+        legend="Billing cycle"
+        name="billingCycle"
+        options={OPTIONS}
+        value=""
+        onChange={() => {}}
+        error="choose a billing cycle"
+      />,
+    );
+
+    expect(
+      screen.getByRole("group", { name: "Billing cycle" }),
+    ).toHaveAccessibleDescription("Fix: choose a billing cycle");
+  });
+
+  it("has no description while there is no error", () => {
+    render(<BillingCycle />);
+
+    expect(
+      screen.getByRole("group", { name: "Billing cycle" }),
+    ).not.toHaveAttribute("aria-describedby");
+  });
 });
