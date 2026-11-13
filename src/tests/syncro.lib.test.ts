@@ -385,6 +385,9 @@ describe("createLead", () => {
         code: "missing_config",
       });
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        "Syncro lead skipped: SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set",
+      );
     },
   );
 });
