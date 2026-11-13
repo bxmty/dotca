@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { Fragment, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/app/components/Button";
 import {
   Field,
@@ -43,6 +43,12 @@ const AUTO_COMPLETE_BY_KEY: Record<string, string> = {
   requesterName: "name",
   requesterEmail: "email",
 };
+
+/** How tall a long-text field opens; it can be dragged taller */
+const LONG_TEXT_VISIBLE_ROW_COUNT = 3;
+
+/** What the route answers once the link no longer resolves */
+const HTTP_STATUS_NOT_FOUND = 404;
 
 /** Shown when the server gave no usable message: say so, and give a phone number. */
 const SUBMIT_FAILED_MESSAGE = formatUnavailableMessage(
@@ -180,7 +186,7 @@ export default function ServiceRequestForm({ token }: { token: string }) {
       // A 404 means the link stopped resolving after the page loaded; its
       // body ("Not found") tells the requester nothing they can act on.
       setSubmitError(
-        response.status !== 404 &&
+        response.status !== HTTP_STATUS_NOT_FOUND &&
           isRecord(body) &&
           typeof body.error === "string" &&
           body.error !== ""
@@ -239,7 +245,7 @@ export default function ServiceRequestForm({ token }: { token: string }) {
             <textarea
               id={id}
               name={spec.key}
-              rows={3}
+              rows={LONG_TEXT_VISIBLE_ROW_COUNT}
               maxLength={SERVICE_REQUEST_LONG_TEXT_MAX_LENGTH}
               value={value}
               onChange={(event) => setValue(spec.key, event.target.value)}
@@ -329,15 +335,21 @@ export default function ServiceRequestForm({ token }: { token: string }) {
               >
                 {section.name}
               </h2>
-              {section.specs.map((spec) => renderField(spec))}
-              {section.specs.some((spec) => spec.key === "departureType") &&
-                values.departureType === "involuntary" && (
-                  <StatusNote tone="note" label="Note">
-                    We handle an involuntary departure ahead of other requests.
-                    We phone you to confirm as soon as we see it, and access is
-                    cut once you confirm.
-                  </StatusNote>
-                )}
+              {section.specs.map((spec) => {
+                const selectedChoiceNote = spec.choices?.find(
+                  (choice) => choice.value === values[spec.key],
+                )?.note;
+                return (
+                  <Fragment key={spec.key}>
+                    {renderField(spec)}
+                    {selectedChoiceNote && (
+                      <StatusNote tone="note" label="Note">
+                        {selectedChoiceNote}
+                      </StatusNote>
+                    )}
+                  </Fragment>
+                );
+              })}
             </section>
           );
         })}

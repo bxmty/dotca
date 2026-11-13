@@ -64,6 +64,8 @@ export type ServiceRequestFieldKind =
 export interface ServiceRequestChoice {
   value: string;
   label: string;
+  /** Shown under the field on the form while this choice is selected */
+  note?: string;
 }
 
 export interface ServiceRequestFieldSpec<Key extends string = string> {
@@ -199,7 +201,11 @@ export const LEAVER_FIELD_SPECS: readonly ServiceRequestFieldSpec<
     requiredMessage: "choose a departure type",
     choices: [
       { value: "amicable", label: "Amicable" },
-      { value: "involuntary", label: "Involuntary" },
+      {
+        value: "involuntary",
+        label: "Involuntary",
+        note: "We handle an involuntary departure ahead of other requests. We phone you to confirm as soon as we see it, and access is cut once you confirm.",
+      },
     ],
   },
   {
@@ -340,15 +346,16 @@ export function validateServiceRequest(
     };
   }
 
-  const submitted = isRecord(fields) ? fields : {};
-  const cleaned: Record<string, string> = {};
+  const submittedFields = isRecord(fields) ? fields : {};
+  const cleanedFields: Record<string, string> = {};
   const fieldErrors: Record<string, string> = {};
   const missingLabels: string[] = [];
 
   for (const spec of getServiceRequestFieldSpecs(mode)) {
-    const raw = submitted[spec.key];
-    const value = typeof raw === "string" ? raw.trim() : "";
-    cleaned[spec.key] = value;
+    const submittedValue = submittedFields[spec.key];
+    const value =
+      typeof submittedValue === "string" ? submittedValue.trim() : "";
+    cleanedFields[spec.key] = value;
 
     if (value === "") {
       if (spec.requiredMessage !== undefined) {
@@ -363,8 +370,9 @@ export function validateServiceRequest(
       fieldErrors[spec.key] = valueError;
     }
   }
-  cleaned.requesterPhone =
-    formatE164Phone(cleaned.requesterPhone) ?? cleaned.requesterPhone;
+  cleanedFields.requesterPhone =
+    formatE164Phone(cleanedFields.requesterPhone) ??
+    cleanedFields.requesterPhone;
 
   if (missingLabels.length > 0) {
     return {
@@ -383,7 +391,7 @@ export function validateServiceRequest(
 
   return {
     ok: true,
-    request: { mode, fields: cleaned } as unknown as ServiceRequest,
+    request: { mode, fields: cleanedFields } as unknown as ServiceRequest,
   };
 }
 

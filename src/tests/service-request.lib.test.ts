@@ -2,9 +2,30 @@ import {
   formatServiceRequestComment,
   formatServiceRequestFields,
   formatServiceRequestSubject,
+  JOINER_FIELD_SPECS,
+  LEAVER_FIELD_SPECS,
   type ServiceRequest,
   validateServiceRequest,
 } from "@/lib/service-request";
+
+describe("field specs", () => {
+  it("attaches a note to the involuntary departure choice and to no other", () => {
+    const choicesWithNote = [...JOINER_FIELD_SPECS, ...LEAVER_FIELD_SPECS]
+      .flatMap((spec) =>
+        (spec.choices ?? []).map((choice) => ({ key: spec.key, ...choice })),
+      )
+      .filter((choice) => choice.note !== undefined);
+
+    expect(choicesWithNote).toEqual([
+      {
+        key: "departureType",
+        value: "involuntary",
+        label: "Involuntary",
+        note: "We handle an involuntary departure ahead of other requests. We phone you to confirm as soon as we see it, and access is cut once you confirm.",
+      },
+    ]);
+  });
+});
 
 const joinerFields = {
   requesterName: "Dana Office",
