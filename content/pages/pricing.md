@@ -14,7 +14,7 @@ Enterprise-grade technology solutions without enterprise-level complexity or cos
 
 _per user per month_
 
-Understand your device security posture at no cost
+Ideal for startups and freelancers looking to understand their security posture
 
 - Syncro security agent (Windows only — Mac and Linux planned)
 - Periodic malware scans, plus a deeper scan when your security posture is poor
@@ -30,7 +30,7 @@ The Free plan is information only: it includes no antivirus, no automated alerts
 
 _per user per month_
 
-Essential IT security and communication tools: password manager, business email and support
+Perfect for small teams needing essential IT security and communication tools
 
 - Everything in Free
 - Password Manager

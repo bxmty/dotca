@@ -25,7 +25,8 @@ export const planCatalog: readonly Plan[] = [
   {
     name: "Free",
     monthlyUnitPriceInDollars: 0,
-    description: "Device updates, antivirus and monitoring at no cost",
+    description:
+      "Ideal for startups and freelancers looking to secure their digital assets",
     features: [
       "Automatic Windows Updates",
       "Basic Antivirus Protection",
@@ -37,7 +38,7 @@ export const planCatalog: readonly Plan[] = [
     name: "Basic",
     monthlyUnitPriceInDollars: 99,
     description:
-      "Essential IT security and communication tools: password manager, business email and support",
+      "Perfect for small teams needing essential IT security and communication tools",
     features: [
       "Everything in Free",
       "Password Manager",
