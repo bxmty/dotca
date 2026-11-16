@@ -1388,7 +1388,7 @@ describe("createNewHireContact", () => {
 
       expect(await createNewHireContact(newHire)).toEqual({
         status: "not_created",
-        detail: "existing contacts could not be checked (HTTP 503)",
+        failure: { reason: "lookup_failed", code: "HTTP 503" },
       });
       expect(sentCreates(fetchMock)).toEqual([]);
       expect(jest.mocked(console.error).mock.calls).toEqual([
@@ -1405,7 +1405,7 @@ describe("createNewHireContact", () => {
 
       expect(await createNewHireContact(newHire)).toEqual({
         status: "not_created",
-        detail: "Syncro contact unreachable (missing_config)",
+        failure: { reason: "unreachable", code: "missing_config" },
       });
       expect(fetchMock).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
@@ -1420,7 +1420,7 @@ describe("createNewHireContact", () => {
 
       expect(await createNewHireContact(newHire)).toEqual({
         status: "not_created",
-        detail: "Syncro contact unreachable (network_error)",
+        failure: { reason: "unreachable", code: "network_error" },
       });
       expect(jest.mocked(console.error).mock.calls).toEqual([
         ["Syncro contact request failed:", networkError],
@@ -1433,7 +1433,7 @@ describe("createNewHireContact", () => {
 
       expect(await createNewHireContact(newHire)).toEqual({
         status: "not_created",
-        detail: "Syncro contact unreachable (server_error, HTTP 502)",
+        failure: { reason: "unreachable", code: "server_error", status: 502 },
       });
       expect(jest.mocked(console.error).mock.calls).toEqual([
         ["Syncro contact request failed: HTTP 502"],
@@ -1454,7 +1454,7 @@ describe("createNewHireContact", () => {
 
       expect(result).toEqual({
         status: "not_created",
-        detail: "Syncro contact rejected (HTTP 422)",
+        failure: { reason: "rejected", status: 422 },
       });
       expect(jest.mocked(console.error).mock.calls).toEqual([
         ["Syncro rejected the contact: HTTP 422"],
@@ -1626,7 +1626,7 @@ describe("a Syncro that never answers", () => {
     expect(await outcomeAfter(pending, TIMEOUT_IN_MS - 1)).toBe(STILL_WAITING);
     expect(await outcomeAfter(pending, 1)).toEqual({
       status: "not_created",
-      detail: "existing contacts could not be checked (network_error)",
+      failure: { reason: "lookup_failed", code: "network_error" },
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -1646,7 +1646,7 @@ describe("a Syncro that never answers", () => {
     expect(await outcomeAfter(pending, TIMEOUT_IN_MS - 1)).toBe(STILL_WAITING);
     expect(await outcomeAfter(pending, 1)).toEqual({
       status: "not_created",
-      detail: "Syncro contact unreachable (network_error)",
+      failure: { reason: "unreachable", code: "network_error" },
     });
     expect(jest.getTimerCount()).toBe(0);
   });

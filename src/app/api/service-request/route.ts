@@ -13,6 +13,8 @@ import {
   createNewHireContact,
   type CreateNewHireContactResult,
   type CreateTicketResult,
+  describeNewHireContact,
+  describeNewHireContactFailure,
   describeSyncroWriteOutcome,
   findAuthorizedContact,
   type IntakeOrganization,
@@ -102,22 +104,8 @@ async function createContactForNewHire(
   } catch {
     return {
       status: "not_created",
-      detail: "Syncro contact unreachable (exception)",
+      failure: { reason: "unreachable", code: "exception" },
     };
-  }
-}
-
-/** What the ticket comment tells the tech about the new hire's contact. */
-function describeNewHireContact(result: CreateNewHireContactResult): string {
-  switch (result.status) {
-    case "created":
-      return result.contact
-        ? `#${result.contact.id} ${result.contact.url}`
-        : "created (Syncro returned no id to link)";
-    case "existing":
-      return `possible existing contact #${result.contact.id} ${result.contact.url}. No contact was created or changed.`;
-    default:
-      return "not created. Add the contact manually.";
   }
 }
 
@@ -140,7 +128,9 @@ async function buildTicketComment(
   );
   if (contactResult.status === "not_created") {
     reportFailure(
-      `Service request new hire contact not created: ${contactResult.detail}`,
+      `Service request new hire contact not created: ${describeNewHireContactFailure(
+        contactResult.failure,
+      )}`,
     );
   }
   return `${comment}\n\nSyncro contact\nNew hire's contact: ${describeNewHireContact(

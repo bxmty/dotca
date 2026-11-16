@@ -312,7 +312,7 @@ describe("POST /api/service-request", () => {
       beforeEach(() => {
         mockCreateContact.mockResolvedValue({
           status: "not_created",
-          detail: "Syncro contact rejected (HTTP 422)",
+          failure: { reason: "rejected", status: 422 },
         });
       });
 

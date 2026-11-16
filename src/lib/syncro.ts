@@ -569,6 +569,35 @@ export function describeSyncroWriteOutcome(
 }
 
 /**
+ * One-phrase summary of why a new hire's contact was not created, for logs
+ * and Sentry: which step failed and how.
+ */
+export function describeNewHireContactFailure(
+  failure: NewHireContactFailure,
+): string {
+  if (failure.reason === "lookup_failed") {
+    return `existing contacts could not be checked (${failure.code})`;
+  }
+  return `Syncro contact ${describeSyncroWriteOutcome({ ok: false, ...failure })}`;
+}
+
+/** What the ticket comment tells the tech about the new hire's contact. */
+export function describeNewHireContact(
+  result: CreateNewHireContactResult,
+): string {
+  switch (result.status) {
+    case "created":
+      return result.contact
+        ? `#${result.contact.id} ${result.contact.url}`
+        : "created (Syncro returned no id to link)";
+    case "existing":
+      return `possible existing contact #${result.contact.id} ${result.contact.url}. No contact was created or changed.`;
+    default:
+      return "not created. Add the contact manually.";
+  }
+}
+
+/**
  * Unwrap createLead from Promise.allSettled. It never rejects, but the
  * routes settle every sink defensively; a rejection reads as unreachable.
  */
@@ -763,19 +792,27 @@ export interface SyncroContactLink {
   url: string;
 }
 
+/**
+ * Why a new hire's contact was not created, safe for logs and Sentry: the
+ * failure kind, code and HTTP status only, never Syncro's message or a
+ * submitted value. "lookup_failed" is the existing-contact read; the other
+ * two are the create itself, shaped as the ticket path's SyncroWriteFailure.
+ */
+export type NewHireContactFailure =
+  | { reason: "lookup_failed"; code: SyncroReadFailureDetail }
+  | { reason: "rejected"; status: number }
+  | {
+      reason: "unreachable";
+      code: "missing_config" | "network_error" | "server_error" | "exception";
+      status?: number;
+    };
+
 export type CreateNewHireContactResult =
   /** `contact` is absent when Syncro accepted the create and named no id */
   | { status: "created"; contact?: SyncroContactLink }
   /** The organization already holds a contact with this name or personal email */
   | { status: "existing"; contact: SyncroContactLink }
-  | {
-      status: "not_created";
-      /**
-       * Which step failed and how, safe for logs and Sentry: failure kind,
-       * code and HTTP status only. Never Syncro's body or a submitted value.
-       */
-      detail: string;
-    };
+  | { status: "not_created"; failure: NewHireContactFailure };
 
 const CONTACT_STAGING_NOTE =
   "Created by the STAGING website (staging.boximity.ca): a test submission.";
@@ -848,7 +885,7 @@ export async function createNewHireContact(
     );
     return {
       status: "not_created",
-      detail: "Syncro contact unreachable (missing_config)",
+      failure: { reason: "unreachable", code: "missing_config" },
     };
   }
   const toContactLink = (id: number): SyncroContactLink => ({
@@ -860,9 +897,14 @@ export async function createNewHireContact(
     customer_id: String(newHire.organizationId),
   });
   if (!contactList.ok) {
-    const detail = `existing contacts could not be checked (${contactList.detail})`;
-    console.error(`Syncro contact skipped: ${detail}`);
-    return { status: "not_created", detail };
+    const failure: NewHireContactFailure = {
+      reason: "lookup_failed",
+      code: contactList.detail,
+    };
+    console.error(
+      `Syncro contact skipped: ${describeNewHireContactFailure(failure)}`,
+    );
+    return { status: "not_created", failure };
   }
   const existingContactId = findExistingContactId(contactList.records, newHire);
   if (existingContactId !== undefined) {
@@ -891,10 +933,18 @@ export async function createNewHireContact(
       // Status only: Syncro's message can quote the name, phone or personal
       // email it rejects.
       console.error(`Syncro rejected the contact: HTTP ${posted.status}`);
+      return {
+        status: "not_created",
+        failure: { reason: "rejected", status: posted.status },
+      };
     }
     return {
       status: "not_created",
-      detail: `Syncro contact ${describeSyncroWriteOutcome(posted)}`,
+      failure: {
+        reason: "unreachable",
+        code: posted.code,
+        ...(posted.status === undefined ? {} : { status: posted.status }),
+      },
     };
   }
   const contactId = readContactId(posted.body);
