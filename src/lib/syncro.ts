@@ -78,6 +78,9 @@ const STAGING_ORIGIN_NOTE =
   "Created by the STAGING website (staging.boximity.ca): a test submission";
 const LEAD_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}, not a real prospect.`;
 const CONTACT_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}.`;
+/** Tells the tech the contact's `email` is a stand-in (#802) */
+const CONTACT_EMAIL_HANDOVER_NOTE =
+  "Replace Email with the work address once it is provisioned.";
 
 type SyncroConfig =
   | {
@@ -878,7 +881,7 @@ export interface NewHireContactRequest {
   organizationId: number;
   /** The new hire's name, as the requester typed it */
   name: string;
-  /** Personal contact details: recorded in the contact's notes, never `email` */
+  /** Personal contact details: `email` until the work address replaces it */
   personalEmail: string;
   /** E.164 */
   personalPhone: string;
@@ -985,7 +988,7 @@ async function postNewHireContact(
   contactRequest: NewHireContactRequest,
 ): Promise<NewHireContactStep> {
   const notes = [
-    `Personal email: ${contactRequest.personalEmail}`,
+    `Personal email: ${contactRequest.personalEmail}. ${CONTACT_EMAIL_HANDOVER_NOTE}`,
     ...(isStagingDeploy() ? [CONTACT_STAGING_NOTE] : []),
   ];
   const posted = await withIntakeTimeout((signal) =>
@@ -994,6 +997,7 @@ async function postNewHireContact(
       {
         customer_id: contactRequest.organizationId,
         name: contactRequest.name,
+        email: contactRequest.personalEmail,
         mobile: contactRequest.personalPhone,
         notes: notes.join("\n"),
       },
@@ -1028,9 +1032,11 @@ async function postNewHireContact(
  * Create a Syncro contact for a new hire (POST /contacts) so techs have a
  * record to manage the account from. Never throws.
  *
- * The personal email goes in `notes`: `email` is kept for the work address
- * and drives Syncro's portal and ticket mail, so the new hire is never
- * emailed by Syncro. `enable_portal_user` is left unset for the same reason.
+ * The personal email goes in `email` until the tech replaces it with the
+ * provisioned work address, and in `notes` so it survives that swap. The
+ * Syncro UI's "Additional Emails" (`ticket_matching_emails`) would be the
+ * better home, but the API ignores it on create and update (#802).
+ * `enable_portal_user` is left unset: the new hire gets no portal invite.
  *
  * The organization's contacts are read first, uncached, so a rehire or a
  * resubmission is not created twice: a match is reported and left untouched.

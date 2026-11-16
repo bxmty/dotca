@@ -1239,7 +1239,7 @@ describe("createNewHireContact", () => {
       .map(([url, init]) => ({ url, body: JSON.parse(String(init.body)) }));
   }
 
-  it("creates the contact under the organization with the personal email in notes, never in email", async () => {
+  it("creates the contact under the organization with the personal email in email until a work address replaces it", async () => {
     const fetchMock = mockContacts({ status: 200, body: noContactsPage });
     const { createNewHireContact } = loadSyncro();
 
@@ -1258,8 +1258,10 @@ describe("createNewHireContact", () => {
         body: {
           customer_id: 42,
           name: "Jane Doe",
+          email: "Jane.Doe@personal.example",
           mobile: "+19055550188",
-          notes: "Personal email: Jane.Doe@personal.example",
+          notes:
+            "Personal email: Jane.Doe@personal.example. Replace Email with the work address once it is provisioned.",
         },
       },
     ]);
@@ -1294,7 +1296,7 @@ describe("createNewHireContact", () => {
     await createNewHireContact(newHire);
 
     expect(sentCreates(fetchMock)[0].body.notes).toBe(
-      "Personal email: Jane.Doe@personal.example\nCreated by the STAGING website (staging.boximity.ca): a test submission.",
+      "Personal email: Jane.Doe@personal.example. Replace Email with the work address once it is provisioned.\nCreated by the STAGING website (staging.boximity.ca): a test submission.",
     );
   });
 
