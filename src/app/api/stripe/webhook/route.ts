@@ -145,6 +145,7 @@ export async function POST(request: Request) {
   // invoice is otherwise indistinguishable from a broken webhook
   const eventObject = event.data.object as { billing_reason?: string | null };
   const billingReason = eventObject.billing_reason ?? "n/a";
+  // eslint-disable-next-line no-console -- structured event line, read from the container logs
   console.log(
     `Stripe webhook received: ${event.type} (billing_reason: ${billingReason})`,
   );

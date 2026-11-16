@@ -15,18 +15,14 @@ jest.mock("@/app/checkout/PlanSelector", () => ({
   __esModule: true,
   default: function MockPlanSelector({
     onPlanSelected,
-    pricingPlans,
   }: {
-    onPlanSelected: (plan: Record<string, unknown>) => void;
-    pricingPlans: Array<{ name: string }>;
+    onPlanSelected: (plan: unknown) => void;
   }) {
     // Simulate selecting the Basic plan after render
     React.useEffect(() => {
-      const basic = pricingPlans.find((plan) => plan.name === "Basic");
-      if (basic) {
-        onPlanSelected(basic);
-      }
-    }, [onPlanSelected, pricingPlans]);
+      const { findPlanByName } = jest.requireActual("@/lib/plan-catalog");
+      onPlanSelected(findPlanByName("Basic"));
+    }, [onPlanSelected]);
 
     return <div data-testid="plan-selector">Plan Selector Mock</div>;
   },

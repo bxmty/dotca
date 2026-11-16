@@ -49,12 +49,15 @@ const customJestConfig = {
   // uncovered function while contributing no branches, so a new page added
   // without a test is the most likely way to trip this gate. Cover the new
   // module rather than shaving the floor.
+  //
+  // Last measured 2026-11-12 (#565): 94.27% branches, 93.54% functions,
+  // 95.97% lines, 94.68% statements.
   coverageThreshold: {
     global: {
-      branches: 75,
-      functions: 66,
-      lines: 79,
-      statements: 77,
+      branches: 94,
+      functions: 93,
+      lines: 95,
+      statements: 94,
     },
   },
 };

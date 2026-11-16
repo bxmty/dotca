@@ -41,4 +41,13 @@ describe("robots.txt", () => {
       sitemap: "https://boximity.ca/sitemap.xml",
     });
   });
+
+  // robots.txt is public: a Disallow line would announce the intake route to
+  // anyone who reads it, and would stop a crawler from ever seeing the page's
+  // own noindex. The page keeps itself out of indexes instead (#565).
+  it("never names the service request intake", () => {
+    process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
+
+    expect(JSON.stringify(robots())).not.toContain("service-request");
+  });
 });

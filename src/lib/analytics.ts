@@ -23,12 +23,12 @@ export interface UnifiedEventData {
 }
 
 export interface AnalyticsConfig {
-  enableGoogleAnalytics: boolean;
+  isGoogleAnalyticsEnabled: boolean;
 }
 
 // Default configuration - can be overridden by environment variables
 const getAnalyticsConfig = (): AnalyticsConfig => ({
-  enableGoogleAnalytics: !!GA_MEASUREMENT_ID,
+  isGoogleAnalyticsEnabled: !!GA_MEASUREMENT_ID,
 });
 
 // Global analytics state
@@ -46,7 +46,7 @@ export const initializeAnalytics = (): void => {
   const config = getAnalyticsConfig();
 
   // Initialize Google Analytics if enabled and available
-  if (config.enableGoogleAnalytics) {
+  if (config.isGoogleAnalyticsEnabled) {
     try {
       initGA();
     } catch (error) {
@@ -68,7 +68,7 @@ export const trackPageView = async (url: string): Promise<void> => {
     initializeAnalytics();
   }
 
-  if (config.enableGoogleAnalytics) {
+  if (config.isGoogleAnalyticsEnabled) {
     try {
       gaPageview(url);
     } catch (error) {
@@ -90,7 +90,7 @@ export const trackEvent = async (
     initializeAnalytics();
   }
 
-  if (config.enableGoogleAnalytics) {
+  if (config.isGoogleAnalyticsEnabled) {
     try {
       gaEvent({
         action: eventData.action,
@@ -144,17 +144,17 @@ export const trackEngagement = async (action: string): Promise<void> => {
  * Check if analytics tracking is properly configured
  */
 export const isAnalyticsConfigured = (): boolean => {
-  return getAnalyticsConfig().enableGoogleAnalytics;
+  return getAnalyticsConfig().isGoogleAnalyticsEnabled;
 };
 
 /**
  * Get current analytics configuration (for debugging)
  */
 export const getAnalyticsStatus = (): AnalyticsConfig & {
-  initialized: boolean;
+  isInitialized: boolean;
 } => ({
   ...getAnalyticsConfig(),
-  initialized: isInitialized,
+  isInitialized,
 });
 
 // Export convenience functions for common use cases

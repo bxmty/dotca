@@ -41,6 +41,7 @@ function buildLinkExpiredResponse(slug: string): Response {
 function logDownload(slug: string): void {
   // Feeds the weekly numbers. Slug and time only — never the email or token.
   try {
+    // eslint-disable-next-line no-console -- structured event line, read from the container logs
     console.log(
       JSON.stringify({
         event: "lead_magnet_download",

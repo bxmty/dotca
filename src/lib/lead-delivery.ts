@@ -3,7 +3,7 @@ import { logLeadSubmission } from "@/lib/lead-log";
 import { sendWebmasterNotification } from "@/lib/notify";
 import {
   createLead,
-  describeLeadOutcome,
+  describeSyncroWriteOutcome,
   toLeadResult,
   type CreateLeadResult,
   type LeadSubmission,
@@ -128,7 +128,7 @@ export async function deliverLead({
   logLead(lead, syncroResult, isEmailSent);
   if (!syncroResult.ok || !isEmailSent) {
     // No submitted values in this string: it goes to Sentry
-    const detail = `Syncro ${describeLeadOutcome(syncroResult)}, webmaster email ${
+    const detail = `Syncro ${describeSyncroWriteOutcome(syncroResult)}, webmaster email ${
       isEmailSent ? "ok" : "failed"
     }`;
     const context = failureContext ? ` (${failureContext})` : "";

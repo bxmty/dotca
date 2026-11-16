@@ -439,7 +439,7 @@ In these Conditions, the Rate Schedule and every Quote, Order, Plan contract, or
 
 ### SERVICE REQUEST LODGEMENT PROCESS
 
-**Phone:** 289 539-0098
+**Phone:** (289) 539-0098
 
 **Email:** hd@boximity.ca
 
@@ -460,7 +460,7 @@ In these Conditions, the Rate Schedule and every Quote, Order, Plan contract, or
 
 **After Hours Support:**
 
-- Call 289 539-0098 for immediate attention
+- Call (289) 539-0098 for immediate attention
 - Additional charges apply for After Hours work
 - Email requests reviewed next Business Day unless After Hours arrangement agreed
 

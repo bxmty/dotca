@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { BRIEF_OPT_IN_LABEL } from "@/app/components/BriefOptInCheckbox";
 import CheckoutPage from "@/app/checkout/page";
+import { findPlanByName } from "@/lib/plan-catalog";
 
 // Mock next/navigation
 const mockReplace = jest.fn();
@@ -14,18 +15,14 @@ jest.mock("next/navigation", () => ({
 
 // Mock the PlanSelector component
 let mockOnPlanSelected: ((plan: unknown) => void) | null = null;
-let mockPricingPlans: { name: string }[] = [];
 
 jest.mock("@/app/checkout/PlanSelector", () => {
   return function MockPlanSelector({
     onPlanSelected,
-    pricingPlans,
   }: {
     onPlanSelected: (plan: unknown) => void;
-    pricingPlans: { name: string }[];
   }) {
     mockOnPlanSelected = onPlanSelected;
-    mockPricingPlans = pricingPlans;
 
     return null;
   };
@@ -87,8 +84,7 @@ jest.mock("next/link", () => {
 });
 
 function selectBasicPlan() {
-  const basic = mockPricingPlans.find((plan) => plan.name === "Basic");
-  mockOnPlanSelected!(basic);
+  mockOnPlanSelected!(findPlanByName("Basic"));
 }
 
 async function fillCustomerInformation() {
@@ -139,8 +135,7 @@ describe("CheckoutPage Component", () => {
   it("redirects the Free plan to onboarding", async () => {
     render(<CheckoutPage />);
 
-    const free = mockPricingPlans.find((plan) => plan.name === "Free");
-    mockOnPlanSelected!(free);
+    mockOnPlanSelected!(findPlanByName("Free"));
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith("/onboarding");
@@ -403,6 +398,43 @@ describe("CheckoutPage Component", () => {
     fireEvent.click(monthlyRadio);
     expect(monthlyRadio).toBeChecked();
     expect(annualRadio).not.toBeChecked();
+  });
+
+  it("itemises the annual discount in the order summary", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    await waitFor(() => {
+      expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("Basic Plan ($99.00 × 5 employees)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Annual Discount/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/^Annual/));
+
+    expect(screen.getByLabelText(/^Annual/)).toHaveAccessibleName(/save 10%/);
+    expect(
+      screen.getByText("Basic Plan ($99.00 × 5 employees × 12 months)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$5,940.00")).toBeInTheDocument();
+    expect(screen.getByText("Annual Discount (10%)")).toBeInTheDocument();
+    expect(screen.getByText("-$594.00")).toBeInTheDocument();
+  });
+
+  it("limits the employee count input to the bounds the server accepts", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    const employeeInput = await screen.findByLabelText(
+      "Number of Employees (minimum 5)",
+    );
+    expect(employeeInput).toHaveValue(5);
+    expect(employeeInput).toHaveAttribute("min", "5");
+    expect(employeeInput).toHaveAttribute("max", "20");
   });
 
   it("shows purchase terms instead of waitlist terms", async () => {

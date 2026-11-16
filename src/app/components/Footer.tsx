@@ -1,5 +1,9 @@
 import Link from "next/link";
 import Logo from "./Logo";
+import {
+  COMPANY_PHONE_DISPLAY,
+  COMPANY_PHONE_TEL_HREF,
+} from "@/lib/company-phone";
 
 type FooterLink = { href: string; label: string };
 type FooterGroup = { heading: string; links: readonly FooterLink[] };
@@ -96,8 +100,8 @@ export default function Footer() {
               hi@boximity.ca
             </a>
             {" · "}
-            <a href="tel:+12895390098" className="text-band-fig">
-              (289) 539-0098
+            <a href={COMPANY_PHONE_TEL_HREF} className="text-band-fig">
+              {COMPANY_PHONE_DISPLAY}
             </a>
           </span>
           {commitHash && (

@@ -242,8 +242,8 @@ check_environment_variables() {
         ["RESEND_API_KEY"]="Resend email redundancy API key"
         ["RESEND_FROM_EMAIL"]="Resend sending address"
         ["WEBMASTER_EMAIL"]="Webmaster notification inbox"
-        ["SYNCRO_SUBDOMAIN"]="Syncro account subdomain for website leads"
-        ["SYNCRO_API_KEY"]="Syncro API token for website leads"
+        ["SYNCRO_SUBDOMAIN"]="Syncro account subdomain for website leads and service requests"
+        ["SYNCRO_API_KEY"]="Syncro API token for website leads and service requests"
     )
 
     # Optional but recommended variables

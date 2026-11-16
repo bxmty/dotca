@@ -4,7 +4,8 @@ import Script from "next/script";
 import { Suspense } from "react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import HideOnPresenter from "./components/HideOnPresenter";
+import SiteChrome from "./components/SiteChrome";
+import { IntakeFooter, IntakeHeader } from "./components/IntakeChrome";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import JsonLd from "./components/JsonLd";
@@ -137,15 +138,15 @@ export default function RootLayout({
           Skip to main content
         </a>
         <div className="flex min-h-screen flex-col">
-          <HideOnPresenter>
+          <SiteChrome intake={<IntakeHeader />}>
             <Navbar />
-          </HideOnPresenter>
+          </SiteChrome>
           <main id="main-content" className="grow">
             {children}
           </main>
-          <HideOnPresenter>
+          <SiteChrome intake={<IntakeFooter />}>
             <Footer />
-          </HideOnPresenter>
+          </SiteChrome>
         </div>
       </body>
     </html>

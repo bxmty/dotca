@@ -4,6 +4,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubLinkTokens } from "./src/lib/sentry-scrub";
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -19,6 +20,12 @@ Sentry.init({
 
   // v11 collects user info, cookies, and request data by default, which
   // matches the previous sendDefaultPii: true setting.
+
+  // Links carry a token in the URL (`?t=`, or the intake link's path
+  // segment), which spans and events record. Same hooks as the server config.
+  beforeSend: (event) => scrubLinkTokens(event),
+  beforeSendTransaction: (event) => scrubLinkTokens(event),
+  beforeSendSpan: Sentry.withStreamedSpan((span) => scrubLinkTokens(span)),
 
   // Bots/scanners probe for Next.js Server Actions with a bogus Next-Action
   // header even though this app defines none; Next.js's fallback error
