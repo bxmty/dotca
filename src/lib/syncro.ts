@@ -8,7 +8,7 @@ import { splitFullName } from "@/lib/person-name";
 /**
  * Syncro (PSA) reads and writes. Website leads land here as Syncro Leads;
  * the joiner/leaver intake (#565) reads customers and contacts (cached, see
- * readCachedList) and writes tickets.
+ * readCachedList) and writes tickets, plus a contact for each new hire (#801).
  *
  * Never throws: callers branch on the result to build the success/failure
  * matrix with the webmaster email. A Syncro rejection (4xx) and "could not
@@ -77,7 +77,13 @@ const STAGING_NOTE =
   "Created by the STAGING website (staging.boximity.ca): a test submission, not a real prospect.";
 
 type SyncroConfig =
-  | { isConfigured: true; baseUrl: string; apiKey: string }
+  | {
+      isConfigured: true;
+      /** The web app techs sign in to, e.g. https://boximity.syncromsp.com */
+      siteUrl: string;
+      baseUrl: string;
+      apiKey: string;
+    }
   | { isConfigured: false };
 
 /** Shared by every Syncro call. Not configured when either secret is unset. */
@@ -87,11 +93,8 @@ function readSyncroConfig(): SyncroConfig {
   if (!subdomain || !apiKey) {
     return { isConfigured: false };
   }
-  return {
-    isConfigured: true,
-    baseUrl: `https://${subdomain}.syncromsp.com/api/v1`,
-    apiKey,
-  };
+  const siteUrl = `https://${subdomain}.syncromsp.com`;
+  return { isConfigured: true, siteUrl, baseUrl: `${siteUrl}/api/v1`, apiKey };
 }
 
 // Staging signal from #554 (same as the Sentry environment tag), not NODE_ENV
@@ -741,4 +744,161 @@ export async function createIntakeTicket(
     console.error(`Syncro rejected the ticket: HTTP ${posted.status}`);
   }
   return posted;
+}
+
+export interface NewHireContact {
+  /** From resolveIntakeToken */
+  organizationId: number;
+  /** The new hire's name, as the requester typed it */
+  name: string;
+  /** Personal contact details: recorded in the contact's notes, never `email` */
+  personalEmail: string;
+  /** E.164 */
+  personalPhone: string;
+}
+
+export interface SyncroContactLink {
+  id: number;
+  /** The contact's page in the Syncro web app */
+  url: string;
+}
+
+export type CreateNewHireContactResult =
+  /** `contact` is absent when Syncro accepted the create and named no id */
+  | { status: "created"; contact?: SyncroContactLink }
+  /** The organization already holds a contact with this name or personal email */
+  | { status: "existing"; contact: SyncroContactLink }
+  | {
+      status: "not_created";
+      /**
+       * Which step failed and how, safe for logs and Sentry: failure kind,
+       * code and HTTP status only. Never Syncro's body or a submitted value.
+       */
+      detail: string;
+    };
+
+const CONTACT_STAGING_NOTE =
+  "Created by the STAGING website (staging.boximity.ca): a test submission.";
+
+/** A name as it is compared: case and spacing do not make a different person. */
+function normalizePersonName(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Does free text (a contact's notes) mention this normalized email address? */
+function mentionsEmailAddress(text: string, emailAddress: string): boolean {
+  return text
+    .toLowerCase()
+    .split(/[\s,;:<>()]+/)
+    .includes(emailAddress);
+}
+
+/**
+ * The first of the organization's contacts that could be this new hire: the
+ * same name, or the personal email in `email` or `notes` (where
+ * createNewHireContact writes it). Records of another customer are ignored,
+ * as in toAuthorizedContacts.
+ */
+function findExistingContactId(
+  records: unknown[],
+  newHire: NewHireContact,
+): number | undefined {
+  const name = normalizePersonName(newHire.name);
+  const personalEmail = normalizeEmailAddress(newHire.personalEmail);
+  for (const record of records) {
+    if (!isRecord(record) || typeof record.id !== "number") continue;
+    if (record.customer_id !== newHire.organizationId) continue;
+    if (
+      normalizePersonName(readTrimmedText(record.name)) === name ||
+      normalizeEmailAddress(readTrimmedText(record.email)) === personalEmail ||
+      mentionsEmailAddress(readTrimmedText(record.notes), personalEmail)
+    ) {
+      return record.id;
+    }
+  }
+  return undefined;
+}
+
+function readContactId(body: unknown): number | undefined {
+  const contact = isRecord(body) && isRecord(body.contact) ? body.contact : {};
+  return typeof contact.id === "number" ? contact.id : undefined;
+}
+
+/**
+ * Create a Syncro contact for a new hire (POST /contacts) so techs have a
+ * record to manage the account from. Never throws.
+ *
+ * The personal email goes in `notes`: `email` is kept for the work address
+ * and drives Syncro's portal and ticket mail, so the new hire is never
+ * emailed by Syncro. `enable_portal_user` is left unset for the same reason.
+ *
+ * The organization's contacts are read first, uncached, so a rehire or a
+ * resubmission is not created twice: a match is reported and left untouched.
+ * When that read fails nothing is created, since a duplicate is harder to
+ * undo than a contact added by hand. Each of the two calls has the intake
+ * timeout to itself.
+ */
+export async function createNewHireContact(
+  newHire: NewHireContact,
+): Promise<CreateNewHireContactResult> {
+  const config = readSyncroConfig();
+  if (!config.isConfigured) {
+    console.error(
+      "Syncro contact skipped: SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set",
+    );
+    return {
+      status: "not_created",
+      detail: "Syncro contact unreachable (missing_config)",
+    };
+  }
+  const toContactLink = (id: number): SyncroContactLink => ({
+    id,
+    url: `${config.siteUrl}/contacts/${id}`,
+  });
+
+  const contactList = await fetchSyncroList("/contacts", "contacts", {
+    customer_id: String(newHire.organizationId),
+  });
+  if (!contactList.ok) {
+    const detail = `existing contacts could not be checked (${contactList.detail})`;
+    console.error(`Syncro contact skipped: ${detail}`);
+    return { status: "not_created", detail };
+  }
+  const existingContactId = findExistingContactId(contactList.records, newHire);
+  if (existingContactId !== undefined) {
+    return { status: "existing", contact: toContactLink(existingContactId) };
+  }
+
+  const notes = [
+    `Personal email: ${newHire.personalEmail}`,
+    ...(isStagingDeploy() ? [CONTACT_STAGING_NOTE] : []),
+  ];
+  const posted = await withIntakeTimeout((signal) =>
+    postToSyncro(
+      "/contacts",
+      {
+        customer_id: newHire.organizationId,
+        name: newHire.name,
+        mobile: newHire.personalPhone,
+        notes: notes.join("\n"),
+      },
+      "contact",
+      signal,
+    ),
+  );
+  if (!posted.ok) {
+    if (posted.reason === "rejected") {
+      // Status only: Syncro's message can quote the name, phone or personal
+      // email it rejects.
+      console.error(`Syncro rejected the contact: HTTP ${posted.status}`);
+    }
+    return {
+      status: "not_created",
+      detail: `Syncro contact ${describeSyncroWriteOutcome(posted)}`,
+    };
+  }
+  const contactId = readContactId(posted.body);
+  return contactId === undefined
+    ? { status: "created" }
+    : { status: "created", contact: toContactLink(contactId) };
 }

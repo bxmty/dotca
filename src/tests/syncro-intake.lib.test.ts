@@ -37,9 +37,11 @@ function loadSyncro(): SyncroModule {
 }
 
 /** Answer each Syncro request from `reply`; an Error reply is a network failure. */
-function mockSyncro(reply: (url: URL) => SyncroReply): jest.Mock {
-  const mock = jest.fn((input: string) => {
-    const answer = reply(new URL(input));
+function mockSyncro(
+  reply: (url: URL, init?: RequestInit) => SyncroReply,
+): jest.Mock {
+  const mock = jest.fn((input: string, init?: RequestInit) => {
+    const answer = reply(new URL(input), init);
     if (answer instanceof Error) return Promise.reject(answer);
     const { status, body } = answer;
     return Promise.resolve({
@@ -1145,6 +1147,322 @@ describe("createIntakeTicket", () => {
   });
 });
 
+describe("createNewHireContact", () => {
+  const newHire = {
+    organizationId: 42,
+    name: "Jane Doe",
+    personalEmail: "Jane.Doe@personal.example",
+    personalPhone: "+19055550188",
+  };
+
+  const noContactsPage = { contacts: [], meta: { total_pages: 1 } };
+  const createdReply = { status: 200, body: { contact: { id: 9102 } } };
+
+  /** GET answers the organization's contact list, POST answers the create. */
+  function mockContacts(
+    listReply: SyncroReply,
+    createReply: SyncroReply = createdReply,
+  ): jest.Mock {
+    return mockSyncro((_url, init) =>
+      init?.method === "POST" ? createReply : listReply,
+    );
+  }
+
+  function sentCreates(
+    fetchMock: jest.Mock,
+  ): { url: string; body: Record<string, unknown> }[] {
+    return (fetchMock.mock.calls as unknown as [string, RequestInit][])
+      .filter(([, init]) => init.method === "POST")
+      .map(([url, init]) => ({ url, body: JSON.parse(String(init.body)) }));
+  }
+
+  it("creates the contact under the organization with the personal email in notes, never in email", async () => {
+    const fetchMock = mockContacts({ status: 200, body: noContactsPage });
+    const { createNewHireContact } = loadSyncro();
+
+    const result = await createNewHireContact(newHire);
+
+    expect(result).toEqual({
+      status: "created",
+      contact: {
+        id: 9102,
+        url: "https://boximity.syncromsp.com/contacts/9102",
+      },
+    });
+    expect(sentCreates(fetchMock)).toEqual([
+      {
+        url: "https://boximity.syncromsp.com/api/v1/contacts",
+        body: {
+          customer_id: 42,
+          name: "Jane Doe",
+          mobile: "+19055550188",
+          notes: "Personal email: Jane.Doe@personal.example",
+        },
+      },
+    ]);
+  });
+
+  it("reads the organization's contacts before it creates one", async () => {
+    const fetchMock = mockContacts({ status: 200, body: noContactsPage });
+    const { createNewHireContact } = loadSyncro();
+
+    await createNewHireContact(newHire);
+
+    const [[listUrl, listInit], [, createInit]] = fetchMock.mock
+      .calls as unknown as [string, RequestInit][];
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(listUrl).toBe(
+      "https://boximity.syncromsp.com/api/v1/contacts?customer_id=42&page=1",
+    );
+    expect(listInit.method).toBe("GET");
+    expect(createInit.method).toBe("POST");
+    expect(createInit.headers).toEqual({
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: "Bearer test-syncro-key",
+    });
+  });
+
+  it("notes a contact created by the staging site", async () => {
+    process.env = { ...process.env, NEXT_PUBLIC_ENVIRONMENT: "staging" };
+    const fetchMock = mockContacts({ status: 200, body: noContactsPage });
+    const { createNewHireContact } = loadSyncro();
+
+    await createNewHireContact(newHire);
+
+    expect(sentCreates(fetchMock)[0].body.notes).toBe(
+      "Personal email: Jane.Doe@personal.example\nCreated by the STAGING website (staging.boximity.ca): a test submission.",
+    );
+  });
+
+  it.each([
+    [{ contact: { id: "9102" } }],
+    [{ contact: null }],
+    [{}],
+    [undefined],
+  ])(
+    "counts the contact as created without a link when Syncro answers %p",
+    async (body) => {
+      mockContacts(
+        { status: 200, body: noContactsPage },
+        { status: 201, body },
+      );
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toEqual({
+        status: "created",
+      });
+    },
+  );
+
+  describe("when the organization already has a matching contact", () => {
+    function existingContact(fields: Record<string, unknown>) {
+      return {
+        contacts: [
+          {
+            id: 501,
+            customer_id: 42,
+            name: "Dana Office",
+            email: "dana@client.example",
+            notes: null,
+          },
+          { id: 733, customer_id: 42, ...fields },
+        ],
+        meta: { total_pages: 1 },
+      };
+    }
+
+    it.each([
+      ["the same name", { name: "Jane Doe", email: null }],
+      ["the same name in another case and spacing", { name: " jane   DOE " }],
+      [
+        "the personal email as its email",
+        { name: "J. Doe", email: " JANE.DOE@personal.example " },
+      ],
+      [
+        "the personal email in its notes",
+        {
+          name: "J. Doe",
+          email: "jane@client.example",
+          notes: "Rehire.\nPersonal email: jane.doe@PERSONAL.example",
+        },
+      ],
+    ])(
+      "skips the create for a contact with %s and changes nothing",
+      async (_label, fields) => {
+        const fetchMock = mockContacts({
+          status: 200,
+          body: existingContact(fields),
+        });
+        const { createNewHireContact } = loadSyncro();
+
+        const result = await createNewHireContact(newHire);
+
+        expect(result).toEqual({
+          status: "existing",
+          contact: {
+            id: 733,
+            url: "https://boximity.syncromsp.com/contacts/733",
+          },
+        });
+        // One read and no write of any kind: the existing contact is untouched
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(
+          (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1]
+            .method,
+        ).toBe("GET");
+      },
+    );
+
+    it("finds a match on a later page of the contact list", async () => {
+      const fetchMock = mockSyncro((url) =>
+        url.searchParams.get("page") === "1"
+          ? {
+              status: 200,
+              body: {
+                contacts: [{ id: 501, customer_id: 42, name: "Dana Office" }],
+                meta: { total_pages: 2 },
+              },
+            }
+          : {
+              status: 200,
+              body: {
+                contacts: [{ id: 733, customer_id: 42, name: "Jane Doe" }],
+                meta: { total_pages: 2 },
+              },
+            },
+      );
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toMatchObject({
+        status: "existing",
+        contact: { id: 733 },
+      });
+      expect(sentCreates(fetchMock)).toEqual([]);
+    });
+
+    it.each([
+      [
+        "another organization's contact with the same name",
+        { id: 733, customer_id: 43, name: "Jane Doe" },
+      ],
+      [
+        "a longer address that ends with the personal email",
+        {
+          id: 733,
+          customer_id: 42,
+          name: "Mary Doe",
+          email: "maryjane.doe@personal.example",
+          notes: "Personal email: maryjane.doe@personal.example",
+        },
+      ],
+      [
+        "a longer name that contains the new hire's",
+        { id: 733, customer_id: 42, name: "Jane Doe-Smith" },
+      ],
+      [
+        "a record without a numeric id",
+        { id: "733", customer_id: 42, name: "Jane Doe" },
+      ],
+      ["a record that is not an object", "Jane Doe"],
+      ["a blank record", { id: 733, customer_id: 42 }],
+    ])("still creates the contact beside %s", async (_label, record) => {
+      const fetchMock = mockContacts({
+        status: 200,
+        body: { contacts: [record], meta: { total_pages: 1 } },
+      });
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toMatchObject({
+        status: "created",
+        contact: { id: 9102 },
+      });
+      expect(sentCreates(fetchMock)).toHaveLength(1);
+    });
+  });
+
+  describe("when the contact cannot be created", () => {
+    it("creates nothing when the existing contacts cannot be read", async () => {
+      const fetchMock = mockContacts({ status: 503 });
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toEqual({
+        status: "not_created",
+        detail: "existing contacts could not be checked (HTTP 503)",
+      });
+      expect(sentCreates(fetchMock)).toEqual([]);
+      expect(jest.mocked(console.error).mock.calls).toEqual([
+        [
+          "Syncro contact skipped: existing contacts could not be checked (HTTP 503)",
+        ],
+      ]);
+    });
+
+    it("reports a missing config without calling Syncro", async () => {
+      process.env = { ...process.env, SYNCRO_API_KEY: undefined };
+      const fetchMock = mockContacts({ status: 200, body: noContactsPage });
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toEqual({
+        status: "not_created",
+        detail: "Syncro contact unreachable (missing_config)",
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        "Syncro contact skipped: SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set",
+      );
+    });
+
+    it("reports a network failure on the create", async () => {
+      const networkError = new TypeError("fetch failed");
+      mockContacts({ status: 200, body: noContactsPage }, networkError);
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toEqual({
+        status: "not_created",
+        detail: "Syncro contact unreachable (network_error)",
+      });
+      expect(jest.mocked(console.error).mock.calls).toEqual([
+        ["Syncro contact request failed:", networkError],
+      ]);
+    });
+
+    it("reports a Syncro 5xx on the create", async () => {
+      mockContacts({ status: 200, body: noContactsPage }, { status: 502 });
+      const { createNewHireContact } = loadSyncro();
+
+      expect(await createNewHireContact(newHire)).toEqual({
+        status: "not_created",
+        detail: "Syncro contact unreachable (server_error, HTTP 502)",
+      });
+      expect(jest.mocked(console.error).mock.calls).toEqual([
+        ["Syncro contact request failed: HTTP 502"],
+      ]);
+    });
+
+    it("reports a rejection by status alone: Syncro's message reaches neither the result nor the log", async () => {
+      // Syncro's validation errors can quote the value they reject
+      const echoingMessage =
+        "Mobile +19055550188 is already taken by Jane Doe <Jane.Doe@personal.example>";
+      mockContacts(
+        { status: 200, body: noContactsPage },
+        { status: 422, body: { message: echoingMessage } },
+      );
+      const { createNewHireContact } = loadSyncro();
+
+      const result = await createNewHireContact(newHire);
+
+      expect(result).toEqual({
+        status: "not_created",
+        detail: "Syncro contact rejected (HTTP 422)",
+      });
+      expect(jest.mocked(console.error).mock.calls).toEqual([
+        ["Syncro rejected the contact: HTTP 422"],
+      ]);
+    });
+  });
+});
+
 describe("a Syncro that never answers", () => {
   const TIMEOUT_IN_MS = 10_000;
 
@@ -1291,6 +1609,46 @@ describe("a Syncro that never answers", () => {
     );
 
     expect(result).toEqual({ ok: true });
+  });
+
+  const newHire = {
+    organizationId: 42,
+    name: "Jane Doe",
+    personalEmail: "jane.doe@personal.example",
+    personalPhone: "+19055550188",
+  };
+
+  it("gives up on the existing-contact check after ten seconds and creates nothing", async () => {
+    const fetchMock = mockHungSyncro();
+    const { createNewHireContact } = loadSyncro();
+    const pending = createNewHireContact(newHire);
+
+    expect(await outcomeAfter(pending, TIMEOUT_IN_MS - 1)).toBe(STILL_WAITING);
+    expect(await outcomeAfter(pending, 1)).toEqual({
+      status: "not_created",
+      detail: "existing contacts could not be checked (network_error)",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up on the contact create after ten seconds", async () => {
+    const hungCreate = mockHungSyncro();
+    const answerList = mockSyncro(() => ({
+      status: 200,
+      body: { contacts: [], meta: { total_pages: 1 } },
+    }));
+    global.fetch = jest.fn((input: string, init?: RequestInit) =>
+      init?.method === "POST" ? hungCreate(input, init) : answerList(input),
+    ) as unknown as typeof fetch;
+    const { createNewHireContact } = loadSyncro();
+    const pending = createNewHireContact(newHire);
+
+    expect(await outcomeAfter(pending, TIMEOUT_IN_MS - 1)).toBe(STILL_WAITING);
+    expect(await outcomeAfter(pending, 1)).toEqual({
+      status: "not_created",
+      detail: "Syncro contact unreachable (network_error)",
+    });
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it("stops the clock once Syncro has answered", async () => {
