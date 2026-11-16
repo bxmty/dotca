@@ -60,6 +60,12 @@ describe("/service-request/[token]", () => {
       ).toBeNull();
     });
 
+    it("gives the phone number as text, with no link off the page", async () => {
+      await renderPage();
+
+      expect(screen.queryAllByRole("link")).toEqual([]);
+    });
+
     it("reports the failure to Sentry without the token", async () => {
       await renderPage();
 
