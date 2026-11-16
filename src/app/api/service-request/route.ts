@@ -14,6 +14,7 @@ import {
   type CreateNewHireContactResult,
   type CreateTicketResult,
   describeNewHireContactFailure,
+  describeNewHireContactOutcome,
   describeSyncroWriteOutcome,
   findAuthorizedContact,
   formatNewHireContactNote,
@@ -63,12 +64,15 @@ function respondUnavailable() {
 /**
  * The webmaster email. The subject carries no client name, so the
  * organization leads the fields; an "unverified" `authorization` flags the
- * subject line. Resolves false when the send fails or throws.
+ * subject line. A joiner's `contactResult` adds what became of the new
+ * hire's Syncro contact, so a ticket filed by hand from this email does not
+ * get a second contact. Resolves false when the send fails or throws.
  */
 async function notifyWebmaster(
   serviceRequest: ServiceRequest,
   organization: IntakeOrganization,
   authorization: SubmitterAuthorization,
+  contactResult?: CreateNewHireContactResult,
 ): Promise<boolean> {
   try {
     return await sendWebmasterNotification({
@@ -78,6 +82,12 @@ async function notifyWebmaster(
       fields: {
         Client: organization.name,
         ...formatServiceRequestFields(serviceRequest),
+        ...(contactResult
+          ? {
+              "New hire's Syncro contact":
+                describeNewHireContactOutcome(contactResult),
+            }
+          : {}),
       },
     });
   } catch {
@@ -86,46 +96,29 @@ async function notifyWebmaster(
 }
 
 /**
- * Create the new hire's Syncro contact. Like fileTicket, the catch outlives
- * createNewHireContact's contract never to reject: a contact that could not
- * be created must not cost the requester their ticket.
+ * createNewHireContact for a joiner's fields, settled: like fileTicket, the
+ * catch outlives the lib's contract never to reject, since a contact that
+ * could not be created must not cost the requester their ticket. A contact
+ * that was not created is reported to Sentry by failure kind only.
  */
-async function createContactForNewHire(
+async function settleNewHireContact(
   fields: JoinerFields,
   organizationId: number,
 ): Promise<CreateNewHireContactResult> {
+  let contactResult: CreateNewHireContactResult;
   try {
-    return await createNewHireContact({
+    contactResult = await createNewHireContact({
       organizationId,
       name: fields.newHireName,
       personalEmail: fields.newHirePersonalEmail,
       personalPhone: fields.newHirePersonalPhone,
     });
   } catch {
-    return {
+    contactResult = {
       status: "not_created",
       failure: { reason: "unreachable", code: "exception" },
     };
   }
-}
-
-/**
- * The ticket comment. A joiner's ends with a note on the new hire's Syncro
- * contact, which is created first so the comment can link it. A contact that
- * was not created is reported to Sentry by failure kind only, and the ticket
- * is filed all the same.
- */
-async function buildTicketComment(
-  serviceRequest: ServiceRequest,
-  organizationId: number,
-): Promise<string> {
-  const comment = formatServiceRequestComment(serviceRequest);
-  if (serviceRequest.mode !== "joiner") return comment;
-
-  const contactResult = await createContactForNewHire(
-    serviceRequest.fields,
-    organizationId,
-  );
   if (contactResult.status === "not_created") {
     reportFailure(
       `Service request new hire contact not created: ${describeNewHireContactFailure(
@@ -133,7 +126,18 @@ async function buildTicketComment(
       )}`,
     );
   }
-  return `${comment}\n\n${formatNewHireContactNote(contactResult)}`;
+  return contactResult;
+}
+
+/** The ticket comment. A joiner's ends with the note on the new hire's contact. */
+function buildTicketComment(
+  serviceRequest: ServiceRequest,
+  contactResult?: CreateNewHireContactResult,
+): string {
+  const comment = formatServiceRequestComment(serviceRequest);
+  return contactResult
+    ? `${comment}\n\n${formatNewHireContactNote(contactResult)}`
+    : comment;
 }
 
 /**
@@ -144,17 +148,25 @@ async function buildTicketComment(
  * guarantee is that either sink landing is a success, so a rejection reads
  * as an unreachable Syncro ("exception") and is reported like one.
  */
-async function fileTicket(
-  serviceRequest: ServiceRequest,
-  organizationId: number,
-  contactId: number,
-): Promise<CreateTicketResult> {
+async function fileTicket({
+  serviceRequest,
+  organizationId,
+  requesterContactId,
+  contactResult,
+}: {
+  serviceRequest: ServiceRequest;
+  organizationId: number;
+  /** The requester's contact, which the ticket is attributed to */
+  requesterContactId: number;
+  /** What became of the new hire's contact; absent for a leaver */
+  contactResult?: CreateNewHireContactResult;
+}): Promise<CreateTicketResult> {
   try {
     return await createIntakeTicket({
       organizationId,
-      contactId,
+      contactId: requesterContactId,
       subject: formatServiceRequestSubject(serviceRequest),
-      comment: await buildTicketComment(serviceRequest, organizationId),
+      comment: buildTicketComment(serviceRequest, contactResult),
     });
   } catch {
     return { ok: false, reason: "unreachable", code: "exception" };
@@ -253,15 +265,32 @@ export async function POST(request: Request) {
       : respondUnavailable();
   }
 
+  // The new hire's contact comes first, so that the ticket comment can link
+  // it and both sinks can say what became of it.
+  const contactResult =
+    serviceRequest.mode === "joiner"
+      ? await settleNewHireContact(serviceRequest.fields, organization.id)
+      : undefined;
+
   const [ticketResult, isEmailSent] = await Promise.all([
-    fileTicket(serviceRequest, organization.id, authorization.contact.id),
-    notifyWebmaster(serviceRequest, organization, "verified"),
+    fileTicket({
+      serviceRequest,
+      organizationId: organization.id,
+      requesterContactId: authorization.contact.id,
+      contactResult,
+    }),
+    notifyWebmaster(serviceRequest, organization, "verified", contactResult),
   ]);
   if (!ticketResult.ok || !isEmailSent) {
+    // The contact outcome rides along: a contact with no ticket pointing at
+    // it is otherwise invisible to whoever files the ticket by hand.
+    const contactOutcome = contactResult
+      ? `, new hire contact ${describeNewHireContactOutcome(contactResult)}`
+      : "";
     reportFailure(
       `Service request delivery failure: Syncro ticket ${describeSyncroWriteOutcome(
         ticketResult,
-      )}, webmaster email ${isEmailSent ? "ok" : "failed"}`,
+      )}, webmaster email ${isEmailSent ? "ok" : "failed"}${contactOutcome}`,
     );
   }
   if (!ticketResult.ok) {

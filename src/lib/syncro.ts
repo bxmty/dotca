@@ -591,6 +591,31 @@ function mayHaveCreatedContact(failure: NewHireContactFailure): boolean {
   return failure.reason === "unreachable" && failure.code !== "missing_config";
 }
 
+/**
+ * One-phrase summary of what became of the new hire's contact, for the
+ * webmaster notification and Sentry: the outcome and the Syncro contact id
+ * only, so whoever files a failed ticket by hand knows a contact may already
+ * exist. Never a name, an email address, a phone number or Syncro's message.
+ */
+export function describeNewHireContactOutcome(
+  result: CreateNewHireContactResult,
+): string {
+  switch (result.status) {
+    case "created":
+      return result.contact
+        ? `created #${result.contact.id}`
+        : "created (Syncro returned no id)";
+    case "existing":
+      return `possible existing #${result.contact.id} (not created or changed)`;
+    default:
+      return `${
+        mayHaveCreatedContact(result.failure)
+          ? "may not have been created"
+          : "not created"
+      } (${describeNewHireContactFailure(result.failure)})`;
+  }
+}
+
 /** The new hire's contact as the ticket note states it, one variant per outcome. */
 function describeNewHireContact(result: CreateNewHireContactResult): string {
   switch (result.status) {

@@ -352,7 +352,7 @@ describe("POST /api/service-request", () => {
         expect(mockCaptureMessage.mock.calls.map(([detail]) => detail)).toEqual(
           [
             "Service request new hire contact not created: Syncro contact rejected (HTTP 422)",
-            "Service request delivery failure: Syncro ticket unreachable (network_error), webmaster email ok",
+            "Service request delivery failure: Syncro ticket unreachable (network_error), webmaster email ok, new hire contact not created (Syncro contact rejected (HTTP 422))",
           ],
         );
       });
@@ -431,12 +431,98 @@ describe("POST /api/service-request", () => {
       expectNoSubmissionInSentry();
     });
 
-    it("leaves the webmaster notification as the submitted fields", async () => {
+    describe("when the ticket then fails to file", () => {
+      // The contact exists with no ticket pointing at it: whoever files the
+      // ticket by hand has to learn that from the email and from Sentry.
+      beforeEach(() => {
+        mockCreateTicket.mockResolvedValue({
+          ok: false,
+          reason: "unreachable",
+          code: "network_error",
+        });
+      });
+
+      it("names the created contact in the webmaster notification and in Sentry, by id alone", async () => {
+        await expectResponse(await post(joinerBody), 200, { success: true });
+
+        expect(mockNotify.mock.calls[0][0].fields).toMatchObject({
+          "New hire's Syncro contact": "created #9102",
+        });
+        expect(mockCaptureMessage.mock.calls).toEqual([
+          [
+            "Service request delivery failure: Syncro ticket unreachable (network_error), webmaster email ok, new hire contact created #9102",
+            "error",
+          ],
+        ]);
+        expectNoSubmissionInSentry();
+      });
+
+      it.each([
+        [{ status: "created" }, "created (Syncro returned no id)"],
+        [
+          {
+            status: "existing",
+            contact: {
+              id: 733,
+              url: "https://boximity.syncromsp.com/contacts/733",
+            },
+          },
+          "possible existing #733 (not created or changed)",
+        ],
+        [
+          {
+            status: "not_created",
+            failure: { reason: "rejected", status: 422 },
+          },
+          "not created (Syncro contact rejected (HTTP 422))",
+        ],
+        [
+          {
+            status: "not_created",
+            failure: { reason: "unreachable", code: "network_error" },
+          },
+          "may not have been created (Syncro contact unreachable (network_error))",
+        ],
+      ])(
+        "reports the contact outcome %o as %s",
+        async (contactResult, expected) => {
+          mockCreateContact.mockResolvedValue(contactResult);
+
+          await post(joinerBody);
+
+          expect(mockNotify.mock.calls[0][0].fields).toMatchObject({
+            "New hire's Syncro contact": expected,
+          });
+          expect(mockCaptureMessage.mock.calls.at(-1)).toEqual([
+            `Service request delivery failure: Syncro ticket unreachable (network_error), webmaster email ok, new hire contact ${expected}`,
+            "error",
+          ]);
+          expectNoSubmissionInSentry();
+        },
+      );
+
+      it("says nothing of a contact for a leaver", async () => {
+        await post(leaverBody);
+
+        expect(
+          Object.keys(mockNotify.mock.calls[0][0].fields).join(),
+        ).not.toMatch(/Syncro contact/);
+        expect(mockCaptureMessage.mock.calls).toEqual([
+          [
+            "Service request delivery failure: Syncro ticket unreachable (network_error), webmaster email ok",
+            "error",
+          ],
+        ]);
+      });
+    });
+
+    it("tells the webmaster the contact outcome when the ticket files too", async () => {
       await post(joinerBody);
 
-      expect(JSON.stringify(mockNotify.mock.calls[0][0].fields)).not.toMatch(
-        /Syncro contact|9102/,
-      );
+      expect(mockNotify.mock.calls[0][0].fields).toMatchObject({
+        "New hire's Syncro contact": "created #9102",
+      });
+      expect(mockCaptureMessage).not.toHaveBeenCalled();
     });
 
     it("words the note so the requester, who is emailed the comment, cannot read it as an instruction", async () => {
@@ -663,7 +749,7 @@ describe("POST /api/service-request", () => {
       await expectResponse(await post(joinerBody), 200, { success: true });
       expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
       expect(mockCaptureMessage).toHaveBeenCalledWith(
-        "Service request delivery failure: Syncro ticket unreachable (server_error, HTTP 502), webmaster email ok",
+        "Service request delivery failure: Syncro ticket unreachable (server_error, HTTP 502), webmaster email ok, new hire contact created #9102",
         "error",
       );
       expectNoSubmissionInSentry();
@@ -678,7 +764,7 @@ describe("POST /api/service-request", () => {
       });
       expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
       expect(mockCaptureMessage).toHaveBeenCalledWith(
-        "Service request delivery failure: Syncro ticket ok, webmaster email failed",
+        "Service request delivery failure: Syncro ticket ok, webmaster email failed, new hire contact created #9102",
         "error",
       );
     });
@@ -697,7 +783,7 @@ describe("POST /api/service-request", () => {
       });
       expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
       expect(mockCaptureMessage).toHaveBeenCalledWith(
-        "Service request delivery failure: Syncro ticket rejected (HTTP 422), webmaster email failed",
+        "Service request delivery failure: Syncro ticket rejected (HTTP 422), webmaster email failed, new hire contact created #9102",
         "error",
       );
       expectNoSubmissionInSentry();
@@ -708,7 +794,7 @@ describe("POST /api/service-request", () => {
 
       await expectResponse(await post(joinerBody), 200, { success: true });
       expect(mockCaptureMessage).toHaveBeenCalledWith(
-        "Service request delivery failure: Syncro ticket unreachable (exception), webmaster email ok",
+        "Service request delivery failure: Syncro ticket unreachable (exception), webmaster email ok, new hire contact created #9102",
         "error",
       );
     });
