@@ -55,4 +55,26 @@ describe("RuledGrid", () => {
 
     expect(container.innerHTML).not.toMatch(/shadow|rounded-full|card/);
   });
+
+  it("lays out two columns, spanning a last odd cell, when asked", () => {
+    render(
+      <RuledGrid
+        hasTwoColumns
+        items={[
+          { title: "One", body: "a" },
+          { title: "Two", body: "b" },
+          { title: "Three", body: "c" },
+        ]}
+      />,
+    );
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveClass("min-[700px]:grid-cols-2");
+    expect(list).not.toHaveClass(
+      "grid-cols-[repeat(auto-fit,minmax(220px,1fr))]",
+    );
+    expect(within(list).getAllByRole("listitem")[2]).toHaveClass(
+      "min-[700px]:last:odd:col-span-2",
+    );
+  });
 });

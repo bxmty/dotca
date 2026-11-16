@@ -7,7 +7,7 @@ import { architectureFirmsContent } from "./content";
 export const metadata: Metadata = {
   title: "IT Services for Architecture Firms | CAD Software Support | Boximity",
   description:
-    "Professional IT services for architecture firms. Specialized managed IT support for architectural practices with 5-15 employees. CAD software management, BIM tools, and Cloud 5 Pack solutions. Starting at $1,250/month. Free IT assessment available.",
+    "Professional IT services for architecture firms. Managed IT for architecture firms that connects CAD/BIM to project accounting. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions. Starting at $1,250/month. Free IT assessment available.",
   keywords: [
     "IT services for architecture firms",
     "architectural firm IT support",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title:
       "IT Services for Architecture Firms | CAD Software Support | Boximity",
     description:
-      "Professional IT services for architecture firms. Specialized managed IT support for architectural practices with 5-15 employees. CAD software management, BIM tools, and Cloud 5 Pack solutions.",
+      "Professional IT services for architecture firms. Managed IT for architecture firms that connects CAD/BIM to project accounting. CAD software management, BIM tools, and Comprehensive Cloud Stack solutions.",
   },
 };
 
@@ -40,7 +40,7 @@ export default function ITForArchitectureFirms() {
           getServiceSchema({
             name: "IT Services for Architecture Firms",
             description:
-              "Specialized managed IT services for architecture firms with 5-15 employees: CAD and BIM software support, secure design file management, backup and recovery, Microsoft 365 management, and unlimited help desk support.",
+              "Specialized managed IT services for architecture firms: CAD and BIM software support, secure design file management, backup and recovery, Microsoft 365 management, and unlimited help desk support.",
             url: "/services/it-services-for-architecture-firms",
           }),
           getFAQPageSchema(architectureFirmsContent.faq.items),

@@ -8,7 +8,7 @@ test.describe("Post-Deployment Navigation Tests @read-only", () => {
     await page.waitForLoadState("networkidle");
 
     // Check that the page has loaded by verifying key elements
-    await expect(page).toHaveTitle(/IT That Just Works/);
+    await expect(page).toHaveTitle(/Managed IT That Connects Your Business/);
 
     // Verify main navigation exists
     const nav = page.locator("nav, header nav, .navbar");
