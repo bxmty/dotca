@@ -33,7 +33,7 @@ describe("web app manifest", () => {
   it("describes the business and paints the install splash white", () => {
     expect(manifest()).toMatchObject({
       description:
-        "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
+        "For businesses that live outside the office, we replace break-fix firefighting with technology that just works \u2014 one flat price, no surprises.",
       background_color: "#ffffff",
       theme_color: "#ffffff",
     });
