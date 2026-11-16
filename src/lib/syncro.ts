@@ -73,8 +73,11 @@ const SUBJECT_PREFIX: Record<NotificationFormType, string> = {
   "Service request": "Website service request",
 };
 
-const STAGING_NOTE =
-  "Created by the STAGING website (staging.boximity.ca): a test submission, not a real prospect.";
+/** What every record the staging site writes to Syncro says of itself */
+const STAGING_ORIGIN_NOTE =
+  "Created by the STAGING website (staging.boximity.ca): a test submission";
+const LEAD_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}, not a real prospect.`;
+const CONTACT_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}.`;
 
 type SyncroConfig =
   | {
@@ -106,7 +109,7 @@ function isStagingDeploy(): boolean {
 function buildHiddenNotes(lead: LeadSubmission, isStaging: boolean): string {
   const notes: string[] = [];
   if (isStaging) {
-    notes.push(STAGING_NOTE);
+    notes.push(LEAD_STAGING_NOTE);
   }
   if (lead.hasOptedInToBrief === true) {
     notes.push(
@@ -157,9 +160,26 @@ function readErrorMessage(body: unknown): string | undefined {
   return raw === undefined ? undefined : JSON.stringify(raw);
 }
 
-function readLeadId(body: unknown): number | undefined {
-  const lead = (body as { lead?: { id?: unknown } } | null)?.lead;
-  return typeof lead?.id === "number" ? lead.id : undefined;
+/**
+ * The record a Syncro write answers with, nested under its name
+ * (`{ lead: {...} }`, `{ ticket: {...} }`, `{ contact: {...} }`). Empty when
+ * the body names none.
+ */
+function readWrittenRecord(
+  body: unknown,
+  recordName: string,
+): Record<string, unknown> {
+  const record = isRecord(body) ? body[recordName] : undefined;
+  return isRecord(record) ? record : {};
+}
+
+/** The id Syncro gave the record it wrote, when the body names one */
+function readWrittenRecordId(
+  body: unknown,
+  recordName: string,
+): number | undefined {
+  const { id } = readWrittenRecord(body, recordName);
+  return typeof id === "number" ? id : undefined;
 }
 
 // --- Joiner/leaver intake (#565) -------------------------------------------
@@ -740,7 +760,7 @@ export async function createLead(
     }
     return posted;
   }
-  const leadId = readLeadId(posted.body);
+  const leadId = readWrittenRecordId(posted.body, "lead");
   return leadId === undefined ? { ok: true } : { ok: true, leadId };
 }
 
@@ -770,12 +790,12 @@ function readTicketReference(body: unknown): {
   ticketId?: number;
   ticketNumber?: string;
 } {
-  const ticket = isRecord(body) && isRecord(body.ticket) ? body.ticket : {};
-  const { id, number } = ticket;
+  const ticketId = readWrittenRecordId(body, "ticket");
+  const { number } = readWrittenRecord(body, "ticket");
   const ticketNumber =
     typeof number === "number" ? String(number) : readTrimmedText(number);
   return {
-    ...(typeof id === "number" ? { ticketId: id } : {}),
+    ...(ticketId === undefined ? {} : { ticketId }),
     ...(ticketNumber === "" ? {} : { ticketNumber }),
   };
 }
@@ -825,7 +845,8 @@ export async function createIntakeTicket(
   return posted;
 }
 
-export interface NewHireContact {
+/** What createNewHireContact is asked to create: not yet a Syncro contact */
+export interface NewHireContactRequest {
   /** From resolveIntakeToken */
   organizationId: number;
   /** The new hire's name, as the requester typed it */
@@ -864,9 +885,6 @@ export type CreateNewHireContactResult =
   | { status: "existing"; contact: SyncroContactLink }
   | { status: "not_created"; failure: NewHireContactFailure };
 
-const CONTACT_STAGING_NOTE =
-  "Created by the STAGING website (staging.boximity.ca): a test submission.";
-
 /** A name as it is compared: case and spacing do not make a different person. */
 function normalizePersonName(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -888,13 +906,13 @@ function mentionsEmailAddress(text: string, emailAddress: string): boolean {
  */
 function findExistingContactId(
   records: unknown[],
-  newHire: NewHireContact,
+  contactRequest: NewHireContactRequest,
 ): number | undefined {
-  const name = normalizePersonName(newHire.name);
-  const personalEmail = normalizeEmailAddress(newHire.personalEmail);
+  const name = normalizePersonName(contactRequest.name);
+  const personalEmail = normalizeEmailAddress(contactRequest.personalEmail);
   for (const record of records) {
     if (!isRecord(record) || typeof record.id !== "number") continue;
-    if (record.customer_id !== newHire.organizationId) continue;
+    if (record.customer_id !== contactRequest.organizationId) continue;
     if (
       normalizePersonName(readTrimmedText(record.name)) === name ||
       normalizeEmailAddress(readTrimmedText(record.email)) === personalEmail ||
@@ -906,9 +924,77 @@ function findExistingContactId(
   return undefined;
 }
 
-function readContactId(body: unknown): number | undefined {
-  const contact = isRecord(body) && isRecord(body.contact) ? body.contact : {};
-  return typeof contact.id === "number" ? contact.id : undefined;
+/** One step of createNewHireContact: the contact id it found or made, if any */
+type NewHireContactStep =
+  | { ok: true; contactId?: number }
+  | { ok: false; failure: NewHireContactFailure };
+
+/**
+ * Step one: read the organization's contacts, uncached, for one that could
+ * be this new hire. A read that fails is a failed step, not "none found".
+ */
+async function findExistingContact(
+  contactRequest: NewHireContactRequest,
+): Promise<NewHireContactStep> {
+  const contactList = await fetchSyncroList("/contacts", "contacts", {
+    customer_id: String(contactRequest.organizationId),
+  });
+  if (!contactList.ok) {
+    const failure: NewHireContactFailure = {
+      reason: "lookup_failed",
+      code: contactList.detail,
+    };
+    console.error(
+      `Syncro contact skipped: ${describeNewHireContactFailure(failure)}`,
+    );
+    return { ok: false, failure };
+  }
+  const contactId = findExistingContactId(contactList.records, contactRequest);
+  return contactId === undefined ? { ok: true } : { ok: true, contactId };
+}
+
+/** Step two: POST /contacts. `contactId` is absent when Syncro named none. */
+async function postNewHireContact(
+  contactRequest: NewHireContactRequest,
+): Promise<NewHireContactStep> {
+  const notes = [
+    `Personal email: ${contactRequest.personalEmail}`,
+    ...(isStagingDeploy() ? [CONTACT_STAGING_NOTE] : []),
+  ];
+  const posted = await withIntakeTimeout((signal) =>
+    postToSyncro(
+      "/contacts",
+      {
+        customer_id: contactRequest.organizationId,
+        name: contactRequest.name,
+        mobile: contactRequest.personalPhone,
+        notes: notes.join("\n"),
+      },
+      "contact",
+      signal,
+    ),
+  );
+  if (posted.ok) {
+    const contactId = readWrittenRecordId(posted.body, "contact");
+    return contactId === undefined ? { ok: true } : { ok: true, contactId };
+  }
+  if (posted.reason === "rejected") {
+    // Status only: Syncro's message can quote the name, phone or personal
+    // email it rejects.
+    console.error(`Syncro rejected the contact: HTTP ${posted.status}`);
+    return {
+      ok: false,
+      failure: { reason: "rejected", status: posted.status },
+    };
+  }
+  return {
+    ok: false,
+    failure: {
+      reason: "unreachable",
+      code: posted.code,
+      ...(posted.status === undefined ? {} : { status: posted.status }),
+    },
+  };
 }
 
 /**
@@ -924,9 +1010,12 @@ function readContactId(body: unknown): number | undefined {
  * When that read fails nothing is created, since a duplicate is harder to
  * undo than a contact added by hand. Each of the two calls has the intake
  * timeout to itself.
+ *
+ * A create that times out or loses its connection reads as not created
+ * although Syncro may still create the contact: see mayHaveCreatedContact.
  */
 export async function createNewHireContact(
-  newHire: NewHireContact,
+  contactRequest: NewHireContactRequest,
 ): Promise<CreateNewHireContactResult> {
   const config = readSyncroConfig();
   if (!config.isConfigured) {
@@ -943,62 +1032,19 @@ export async function createNewHireContact(
     url: `${config.siteUrl}/contacts/${id}`,
   });
 
-  const contactList = await fetchSyncroList("/contacts", "contacts", {
-    customer_id: String(newHire.organizationId),
-  });
-  if (!contactList.ok) {
-    const failure: NewHireContactFailure = {
-      reason: "lookup_failed",
-      code: contactList.detail,
-    };
-    console.error(
-      `Syncro contact skipped: ${describeNewHireContactFailure(failure)}`,
-    );
-    return { status: "not_created", failure };
+  const existing = await findExistingContact(contactRequest);
+  if (!existing.ok) {
+    return { status: "not_created", failure: existing.failure };
   }
-  const existingContactId = findExistingContactId(contactList.records, newHire);
-  if (existingContactId !== undefined) {
-    return { status: "existing", contact: toContactLink(existingContactId) };
+  if (existing.contactId !== undefined) {
+    return { status: "existing", contact: toContactLink(existing.contactId) };
   }
 
-  const notes = [
-    `Personal email: ${newHire.personalEmail}`,
-    ...(isStagingDeploy() ? [CONTACT_STAGING_NOTE] : []),
-  ];
-  const posted = await withIntakeTimeout((signal) =>
-    postToSyncro(
-      "/contacts",
-      {
-        customer_id: newHire.organizationId,
-        name: newHire.name,
-        mobile: newHire.personalPhone,
-        notes: notes.join("\n"),
-      },
-      "contact",
-      signal,
-    ),
-  );
-  if (!posted.ok) {
-    if (posted.reason === "rejected") {
-      // Status only: Syncro's message can quote the name, phone or personal
-      // email it rejects.
-      console.error(`Syncro rejected the contact: HTTP ${posted.status}`);
-      return {
-        status: "not_created",
-        failure: { reason: "rejected", status: posted.status },
-      };
-    }
-    return {
-      status: "not_created",
-      failure: {
-        reason: "unreachable",
-        code: posted.code,
-        ...(posted.status === undefined ? {} : { status: posted.status }),
-      },
-    };
+  const created = await postNewHireContact(contactRequest);
+  if (!created.ok) {
+    return { status: "not_created", failure: created.failure };
   }
-  const contactId = readContactId(posted.body);
-  return contactId === undefined
+  return created.contactId === undefined
     ? { status: "created" }
-    : { status: "created", contact: toContactLink(contactId) };
+    : { status: "created", contact: toContactLink(created.contactId) };
 }
