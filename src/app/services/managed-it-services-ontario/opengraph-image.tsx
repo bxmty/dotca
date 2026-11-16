@@ -8,6 +8,6 @@ export default function Image() {
   return renderOgImage({
     eyebrow: "SERVICES",
     title: "Managed IT Services Ontario",
-    footer: "Cloud 5 Pack from $1,250/month",
+    footer: "Comprehensive Cloud Stack from $1,250/month",
   });
 }

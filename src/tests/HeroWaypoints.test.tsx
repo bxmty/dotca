@@ -4,16 +4,16 @@ import HeroWaypoints from "@/app/components/HeroWaypoints";
 import { expectWaypointStops, WAYPOINT_CAPTION } from "./heroExpectations";
 
 describe("HeroWaypoints", () => {
-  it("lists one working day's four stops in order, with time and place", () => {
+  it("lists one job's four stops in order, with step and place", () => {
     const { container } = render(<HeroWaypoints />);
 
     const stops = expectWaypointStops(container);
-    expect(within(stops[0]).getByText("06:40")).toHaveClass(
+    expect(within(stops[0]).getByText("01")).toHaveClass(
       "font-mono",
       "text-h3",
       "text-ink",
     );
-    expect(within(stops[0]).getByText("Job site")).toHaveClass(
+    expect(within(stops[0]).getByText("Dispatch")).toHaveClass(
       "font-mono",
       "uppercase",
       "text-muted",
@@ -35,7 +35,7 @@ describe("HeroWaypoints", () => {
     expect(screen.getByRole("list")).toHaveAttribute("role", "list");
   });
 
-  it("captions the day in the bottom-right corner", () => {
+  it("captions the route in the bottom-right corner", () => {
     render(<HeroWaypoints />);
 
     const caption = screen.getByText(WAYPOINT_CAPTION);

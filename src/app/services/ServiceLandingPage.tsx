@@ -97,7 +97,7 @@ export interface ServiceLandingContent {
   };
 }
 
-// The Cloud 5 Pack is the one offer on every service page.
+// The Comprehensive Cloud Stack is the one offer on every service page.
 const PACK_PRICE = "$1,250";
 const PACK_TERMS =
   "No contracts · 30-day money-back guarantee · Cancel anytime";
@@ -132,7 +132,7 @@ export default function ServiceLandingPage({
               Get Free IT Assessment
             </ButtonLink>
             <ButtonLink variant="secondary" href="/pricing">
-              View Cloud 5 Pack Pricing
+              View Comprehensive Cloud Stack Pricing
             </ButtonLink>
           </>
         }
@@ -141,7 +141,7 @@ export default function ServiceLandingPage({
           <>
             <span>
               <b className="font-medium text-fig">{PACK_PRICE}</b> per month,
-              Cloud 5 Pack
+              Comprehensive Cloud Stack
             </span>
             <span>{hero.trustLine}</span>
             {trustSignal && <span>{trustSignal}</span>}
@@ -186,7 +186,7 @@ export default function ServiceLandingPage({
       <Section>
         <SectionHead title={pack.heading} lede={hero.card.intro} />
         <Offer
-          title="Cloud 5 Pack"
+          title="Comprehensive Cloud Stack"
           price={PACK_PRICE}
           priceUnit="per month for 5 users"
           action={{

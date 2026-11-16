@@ -1,19 +1,19 @@
-// Shared expectations for the page hero's waypoints (#632), so the home,
+// Shared expectations for the page hero's waypoints (#632, #766), so the home,
 // pricing and service page tests agree with the HeroWaypoints tests.
 import { within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-/** Each stop's accessible text: time, a screen-reader-only comma, place. */
+/** Each stop's accessible text: step, a screen-reader-only comma, place. */
 export const WAYPOINT_STOP_TEXTS = [
-  "06:40, Job site",
-  "09:15, On the road",
-  "13:30, Client's office",
-  "21:05, Home",
+  "01, Dispatch",
+  "02, ERP",
+  "03, Accounting",
+  "04, Invoice",
 ];
 
-export const WAYPOINT_CAPTION = "One working day · four offices · one IT team";
+export const WAYPOINT_CAPTION = "Enter it once · it flows everywhere";
 
-/** Returns the stops' list items, after checking they're the day's four. */
+/** Returns the stops' list items, after checking they're the job's four. */
 export function expectWaypointStops(container: HTMLElement): HTMLElement[] {
   const stops = within(within(container).getByRole("list")).getAllByRole(
     "listitem",

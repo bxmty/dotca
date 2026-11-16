@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Boximity MSP — IT That Just Works",
     short_name: "Boximity MSP",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
