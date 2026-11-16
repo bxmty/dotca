@@ -50,7 +50,7 @@ Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context. `CONTEXT.md` and `docs/adr/` are created lazily and are absent today. See `docs/agents/domain.md`.
+Single-context. `CONTEXT.md` at the repo root holds the glossary; `docs/adr/` is created lazily and is absent today. See `docs/agents/domain.md`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
