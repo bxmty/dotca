@@ -31,6 +31,13 @@ export interface JoinerFields extends RequesterFields {
   jobTitle: string;
   /** YYYY-MM-DD */
   startDate: string;
+  /**
+   * Personal contact details: the new hire's own email and phone, separate
+   * from the work account. Never the requester's email.
+   */
+  newHirePersonalEmail: string;
+  /** E.164 once validated */
+  newHirePersonalPhone: string;
   /** The existing employee whose access the new hire should match */
   matchAccessOf: string;
   apps: string;
@@ -79,6 +86,8 @@ export interface ServiceRequestFieldSpec<Key extends string = string> {
   requiredMessage?: string;
   /** Present on `choice` fields only */
   choices?: readonly ServiceRequestChoice[];
+  /** Shown under the field on the form; never in the ticket or notification */
+  note?: string;
 }
 
 const YES_NO_CHOICES: readonly ServiceRequestChoice[] = [
@@ -135,6 +144,22 @@ export const JOINER_FIELD_SPECS: readonly ServiceRequestFieldSpec<
     section: "New hire",
     kind: "date",
     requiredMessage: "enter the start date",
+  },
+  {
+    key: "newHirePersonalEmail",
+    label: "New hire's personal email",
+    section: "New hire",
+    kind: "email",
+    requiredMessage: "enter the new hire's personal email",
+  },
+  {
+    key: "newHirePersonalPhone",
+    label: "New hire's personal phone",
+    section: "New hire",
+    kind: "phone",
+    requiredMessage: "enter the new hire's personal phone",
+    // Sits under the last of the two personal contact fields and covers both
+    note: "Used only to send login details and to reach the new hire before day one.",
   },
   {
     key: "matchAccessOf",
@@ -275,6 +300,9 @@ export type ServiceRequestValidation =
 export const SERVICE_REQUEST_TEXT_MAX_LENGTH = 200;
 export const SERVICE_REQUEST_LONG_TEXT_MAX_LENGTH = 2000;
 
+/** The fix when the new hire's personal email is the requester's email. */
+const NEW_HIRE_OWN_EMAIL_MESSAGE = "enter the new hire's own email";
+
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::\d{2})?$/;
 
@@ -329,7 +357,7 @@ function findValueError(
 }
 
 /**
- * Check a submission and return it cleaned: values trimmed, the phone in
+ * Check a submission and return it cleaned: values trimmed, phones in
  * E.164, blank optional fields as "", fields the mode does not have dropped.
  * Takes `unknown` because the route validates a parsed JSON body; the form
  * passes its state through the same check before it submits.
@@ -355,7 +383,8 @@ export function validateServiceRequest(
     const submittedValue = submittedFields[spec.key];
     const value =
       typeof submittedValue === "string" ? submittedValue.trim() : "";
-    cleanedFields[spec.key] = value;
+    cleanedFields[spec.key] =
+      spec.kind === "phone" ? (formatE164Phone(value) ?? value) : value;
 
     if (value === "") {
       if (spec.requiredMessage !== undefined) {
@@ -370,9 +399,16 @@ export function validateServiceRequest(
       fieldErrors[spec.key] = valueError;
     }
   }
-  cleanedFields.requesterPhone =
-    formatE164Phone(cleanedFields.requesterPhone) ??
-    cleanedFields.requesterPhone;
+  // Personal contact details are the new hire's own: login details sent to
+  // the requester's address would never reach the new hire.
+  if (
+    mode === "joiner" &&
+    fieldErrors.newHirePersonalEmail === undefined &&
+    cleanedFields.newHirePersonalEmail.toLowerCase() ===
+      cleanedFields.requesterEmail.toLowerCase()
+  ) {
+    fieldErrors.newHirePersonalEmail = NEW_HIRE_OWN_EMAIL_MESSAGE;
+  }
 
   if (missingLabels.length > 0) {
     return {

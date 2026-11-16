@@ -34,6 +34,8 @@ const joinerFields = {
   newHireName: "Jane Doe",
   jobTitle: "Bookkeeper",
   startDate: "2026-12-01",
+  newHirePersonalEmail: "jane.doe@personal.example",
+  newHirePersonalPhone: "+19055550188",
   matchAccessOf: "Sam Existing",
   apps: "QuickBooks, Microsoft 365",
   licenses: "Microsoft 365 Business Premium",
@@ -81,6 +83,8 @@ describe("validateServiceRequest", () => {
       requesterPhone: "+12895550123",
       newHireName: "Jane Doe",
       startDate: "2026-12-01",
+      newHirePersonalEmail: "jane.doe@personal.example",
+      newHirePersonalPhone: "+19055550188",
       matchAccessOf: "Sam Existing",
     });
 
@@ -95,6 +99,8 @@ describe("validateServiceRequest", () => {
           newHireName: "Jane Doe",
           jobTitle: "",
           startDate: "2026-12-01",
+          newHirePersonalEmail: "jane.doe@personal.example",
+          newHirePersonalPhone: "+19055550188",
           matchAccessOf: "Sam Existing",
           apps: "",
           licenses: "",
@@ -132,19 +138,92 @@ describe("validateServiceRequest", () => {
     });
   });
 
+  it("formats the new hire's personal phone as E.164", () => {
+    const result = validateServiceRequest("joiner", {
+      ...joinerFields,
+      newHirePersonalPhone: "(905) 555-0188",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      request: { fields: { newHirePersonalPhone: "+19055550188" } },
+    });
+  });
+
+  it("rejects a personal phone that is not a full number", () => {
+    const result = validateServiceRequest("joiner", {
+      ...joinerFields,
+      newHirePersonalPhone: "555-0188",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      fieldErrors: {
+        newHirePersonalPhone: "enter a full phone number with its area code",
+      },
+    });
+  });
+
+  it("rejects a malformed personal email", () => {
+    const result = validateServiceRequest("joiner", {
+      ...joinerFields,
+      newHirePersonalEmail: "jane.doe@personal",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      fieldErrors: {
+        newHirePersonalEmail: "enter the full address, like dana@company.ca",
+      },
+    });
+  });
+
+  it.each(["dana@client.example", "Dana@Client.Example"])(
+    "rejects the requester's email (%s) as the new hire's personal email",
+    (newHirePersonalEmail) => {
+      const result = validateServiceRequest("joiner", {
+        ...joinerFields,
+        newHirePersonalEmail,
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        error: "Please check the highlighted fields and try again.",
+        fieldErrors: {
+          newHirePersonalEmail: "enter the new hire's own email",
+        },
+      });
+    },
+  );
+
+  it("keeps a leaver request free of the new hire's personal contact details", () => {
+    const result = validateServiceRequest("leaver", {
+      ...leaverFields,
+      newHirePersonalEmail: "dana@client.example",
+      newHirePersonalPhone: "555",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      request: { mode: "leaver", fields: leaverFields },
+    });
+  });
+
   it("names every missing required joiner field", () => {
     const result = validateServiceRequest("joiner", {});
 
     expect(result).toEqual({
       ok: false,
       error:
-        "Please fill in: Your name, Your email, Your phone, New hire's name, Start date, Match the access of.",
+        "Please fill in: Your name, Your email, Your phone, New hire's name, Start date, New hire's personal email, New hire's personal phone, Match the access of.",
       fieldErrors: {
         requesterName: "enter your name",
         requesterEmail: "enter your email",
         requesterPhone: "enter your phone",
         newHireName: "enter the new hire's name",
         startDate: "enter the start date",
+        newHirePersonalEmail: "enter the new hire's personal email",
+        newHirePersonalPhone: "enter the new hire's personal phone",
         matchAccessOf: "enter whose access to match",
       },
     });
@@ -383,6 +462,8 @@ describe("formatServiceRequestFields", () => {
       ["New hire's name", "Jane Doe"],
       ["Job title", "Bookkeeper"],
       ["Start date", "2026-12-01"],
+      ["New hire's personal email", "jane.doe@personal.example"],
+      ["New hire's personal phone", "+19055550188"],
       ["Match the access of", "Sam Existing"],
       ["Apps", "QuickBooks, Microsoft 365"],
       ["Licenses", "Microsoft 365 Business Premium"],
@@ -490,6 +571,8 @@ describe("formatServiceRequestComment", () => {
         "New hire's name: Jane Doe",
         "Job title: (not provided)",
         "Start date: 2026-12-01",
+        "New hire's personal email: jane.doe@personal.example",
+        "New hire's personal phone: +19055550188",
         "",
         "Access and equipment",
         "Match the access of: Sam Existing",

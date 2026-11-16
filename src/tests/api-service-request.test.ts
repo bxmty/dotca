@@ -44,6 +44,8 @@ const joinerFields = {
   newHireName: "Jane Doe",
   jobTitle: "Bookkeeper",
   startDate: "2026-12-01",
+  newHirePersonalEmail: "jane.doe@personal.example",
+  newHirePersonalPhone: "+19055550188",
   matchAccessOf: "Sam Existing",
   apps: "QuickBooks, Microsoft 365",
   licenses: "",
@@ -99,6 +101,8 @@ function expectNoSubmissionInSentry() {
       "Dana",
       "5550123",
       "Jane Doe",
+      "jane.doe",
+      "5550188",
       "John Roe",
       TOKEN,
       CLIENT_NAME,
@@ -164,6 +168,23 @@ describe("POST /api/service-request", () => {
     expect(mockCaptureMessage).not.toHaveBeenCalled();
   });
 
+  it("puts the new hire's personal contact details in the ticket comment and the notification", async () => {
+    await post({
+      ...joinerBody,
+      fields: { ...joinerFields, newHirePersonalPhone: "(905) 555-0188" },
+    });
+
+    const { comment } = mockCreateTicket.mock.calls[0][0];
+    expect(comment).toContain(
+      "New hire's personal email: jane.doe@personal.example",
+    );
+    expect(comment).toContain("New hire's personal phone: +19055550188");
+    expect(mockNotify.mock.calls[0][0].fields).toMatchObject({
+      "New hire's personal email": "jane.doe@personal.example",
+      "New hire's personal phone": "+19055550188",
+    });
+  });
+
   it("files a leaver with the employee and last working day in the subject", async () => {
     const response = await post({
       token: TOKEN,
@@ -182,6 +203,11 @@ describe("POST /api/service-request", () => {
       Client: CLIENT_NAME,
       Request: "Leaver",
     });
+    // A leaver has no new hire: nothing about personal contact details
+    expect(mockCreateTicket.mock.calls[0][0].comment).not.toMatch(/personal/i);
+    expect(
+      Object.keys(mockNotify.mock.calls[0][0].fields).join("\n"),
+    ).not.toMatch(/personal/i);
   });
 
   it("succeeds without a ticket reference when Syncro returns none", async () => {
@@ -277,6 +303,23 @@ describe("POST /api/service-request", () => {
         "matchAccessOf",
         "newHireName",
       ]);
+      expect(mockResolveToken).not.toHaveBeenCalled();
+      expectNothingSent();
+    });
+
+    it("returns 400 when the new hire's personal email is the requester's email", async () => {
+      const response = await post({
+        ...joinerBody,
+        fields: {
+          ...joinerFields,
+          newHirePersonalEmail: "DANA@client.example",
+        },
+      });
+
+      await expectResponse(response, 400, {
+        error: "Please check the highlighted fields and try again.",
+        fieldErrors: { newHirePersonalEmail: "enter the new hire's own email" },
+      });
       expect(mockResolveToken).not.toHaveBeenCalled();
       expectNothingSent();
     });
