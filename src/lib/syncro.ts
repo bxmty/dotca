@@ -536,16 +536,20 @@ function toAuthorizedContacts(
 const cachedAuthorizedContacts = new Map<number, CachedList<IntakeContact>>();
 
 /**
- * Is `email` one of the organization's contacts with `intake_authorized`
- * ticked? Matched case-insensitively. Never throws.
+ * The organization's authorized contacts through the cache. `isRefreshForced`
+ * asks Syncro even within the TTL, keeping the cached copy as the fallback.
  */
-export async function findAuthorizedContact(
+function readAuthorizedContacts(
   organizationId: number,
-  email: string,
-): Promise<FindAuthorizedContactResult> {
-  const contactListRead = await readCachedList<IntakeContact>({
+  isRefreshForced: boolean,
+): Promise<ListRead<IntakeContact>> {
+  const cached = cachedAuthorizedContacts.get(organizationId);
+  return readCachedList<IntakeContact>({
     listName: "contact list",
-    cached: cachedAuthorizedContacts.get(organizationId),
+    cached:
+      cached && isRefreshForced
+        ? { ...cached, fetchedAtInMs: Number.NEGATIVE_INFINITY }
+        : cached,
     store: (entry) => {
       cachedAuthorizedContacts.set(organizationId, entry);
     },
@@ -561,14 +565,37 @@ export async function findAuthorizedContact(
         : fetched;
     },
   });
+}
+
+/**
+ * Is `email` one of the organization's contacts with `intake_authorized`
+ * ticked? Matched case-insensitively. Never throws.
+ *
+ * A miss on a cached list asks Syncro once more before refusing: a contact
+ * ticked a moment ago is let in now, not when the cache expires. The rate
+ * limit bounds how often a miss can reach Syncro.
+ */
+export async function findAuthorizedContact(
+  organizationId: number,
+  email: string,
+): Promise<FindAuthorizedContactResult> {
+  const cachedBefore = cachedAuthorizedContacts.get(organizationId);
+  const contactListRead = await readAuthorizedContacts(organizationId, false);
   if (!contactListRead.isAvailable) {
     return { status: "could_not_check", detail: contactListRead.detail };
   }
 
   const submittedEmail = normalizeEmailAddress(email);
-  const contact = contactListRead.items.find(
-    (candidate) => candidate.email === submittedEmail,
-  );
+  const findIn = (contacts: IntakeContact[]) =>
+    contacts.find((candidate) => candidate.email === submittedEmail);
+  let contact = findIn(contactListRead.items);
+  const isCachedList =
+    cachedBefore !== undefined &&
+    cachedAuthorizedContacts.get(organizationId) === cachedBefore;
+  if (!contact && isCachedList) {
+    const reRead = await readAuthorizedContacts(organizationId, true);
+    if (reRead.isAvailable) contact = findIn(reRead.items);
+  }
   return contact
     ? { status: "authorized", contact: { ...contact } }
     : { status: "not_authorized" };
