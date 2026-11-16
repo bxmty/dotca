@@ -4,11 +4,14 @@ import {
   formatServiceRequestComment,
   formatServiceRequestFields,
   formatServiceRequestSubject,
+  type JoinerFields,
   type ServiceRequest,
   validateServiceRequest,
 } from "@/lib/service-request";
 import {
   createIntakeTicket,
+  createNewHireContact,
+  type CreateNewHireContactResult,
   type CreateTicketResult,
   describeSyncroWriteOutcome,
   findAuthorizedContact,
@@ -81,6 +84,71 @@ async function notifyWebmaster(
 }
 
 /**
+ * Create the new hire's Syncro contact. Like fileTicket, the catch outlives
+ * createNewHireContact's contract never to reject: a contact that could not
+ * be created must not cost the requester their ticket.
+ */
+async function createContactForNewHire(
+  fields: JoinerFields,
+  organizationId: number,
+): Promise<CreateNewHireContactResult> {
+  try {
+    return await createNewHireContact({
+      organizationId,
+      name: fields.newHireName,
+      personalEmail: fields.newHirePersonalEmail,
+      personalPhone: fields.newHirePersonalPhone,
+    });
+  } catch {
+    return {
+      status: "not_created",
+      detail: "Syncro contact unreachable (exception)",
+    };
+  }
+}
+
+/** What the ticket comment tells the tech about the new hire's contact. */
+function describeNewHireContact(result: CreateNewHireContactResult): string {
+  switch (result.status) {
+    case "created":
+      return result.contact
+        ? `#${result.contact.id} ${result.contact.url}`
+        : "created (Syncro returned no id to link)";
+    case "existing":
+      return `possible existing contact #${result.contact.id} ${result.contact.url}. No contact was created or changed.`;
+    default:
+      return "not created. Add the contact manually.";
+  }
+}
+
+/**
+ * The ticket comment. A joiner's ends with a note on the new hire's Syncro
+ * contact, which is created first so the comment can link it. A contact that
+ * was not created is reported to Sentry by failure kind only, and the ticket
+ * is filed all the same.
+ */
+async function buildTicketComment(
+  serviceRequest: ServiceRequest,
+  organizationId: number,
+): Promise<string> {
+  const comment = formatServiceRequestComment(serviceRequest);
+  if (serviceRequest.mode !== "joiner") return comment;
+
+  const contactResult = await createContactForNewHire(
+    serviceRequest.fields,
+    organizationId,
+  );
+  if (contactResult.status === "not_created") {
+    reportFailure(
+      `Service request new hire contact not created: ${contactResult.detail}`,
+    );
+  }
+  return `${comment}\n\nSyncro contact\nNew hire's contact: ${describeNewHireContact(
+    contactResult,
+  )}`;
+}
+
+/**
  * File the ticket. createIntakeTicket's contract is never to reject, and the
  * catch is kept all the same: the two sinks settle together under
  * Promise.all, so a rejection here (a broken contract, or a formatter that
@@ -98,7 +166,7 @@ async function fileTicket(
       organizationId,
       contactId,
       subject: formatServiceRequestSubject(serviceRequest),
-      comment: formatServiceRequestComment(serviceRequest),
+      comment: await buildTicketComment(serviceRequest, organizationId),
     });
   } catch {
     return { ok: false, reason: "unreachable", code: "exception" };
@@ -107,7 +175,8 @@ async function fileTicket(
 
 /**
  * Joiner/leaver intake (spec #565): files an authorized client contact's
- * request as a Syncro ticket and emails the webmaster alongside it. Guards
+ * request as a Syncro ticket and emails the webmaster alongside it. A joiner
+ * also gets a Syncro contact for the new hire, created before the ticket. Guards
  * run in the spec's order; the submission succeeds when either sink lands.
  */
 export async function POST(request: Request) {
@@ -178,8 +247,9 @@ export async function POST(request: Request) {
 
   if (authorization.status === "could_not_check") {
     // Fail open: the confirmation call, not the allowlist, gates action. No
-    // ticket, since it would assert an authorization nobody verified; the
-    // email goes out flagged in its subject line.
+    // ticket, since it would assert an authorization nobody verified, and no
+    // new hire contact: nothing is written to Syncro on an unverified
+    // request. The email goes out flagged in its subject line.
     const isEmailSent = await notifyWebmaster(
       serviceRequest,
       organization,

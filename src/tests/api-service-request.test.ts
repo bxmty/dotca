@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { POST } from "@/app/api/service-request/route";
 import {
   createIntakeTicket,
+  createNewHireContact,
   findAuthorizedContact,
   resolveIntakeToken,
 } from "@/lib/syncro";
@@ -15,12 +16,13 @@ jest.mock("@sentry/nextjs", () => ({
   captureMessage: jest.fn(),
   captureException: jest.fn(),
 }));
-// The Syncro reads and the ticket write are mocked; outcome summaries stay real
+// The Syncro reads and writes are mocked; outcome summaries stay real
 jest.mock("@/lib/syncro", () => ({
   ...jest.requireActual("@/lib/syncro"),
   resolveIntakeToken: jest.fn(),
   findAuthorizedContact: jest.fn(),
   createIntakeTicket: jest.fn(),
+  createNewHireContact: jest.fn(),
 }));
 jest.mock("@/lib/notify", () => ({
   sendWebmasterNotification: jest.fn(),
@@ -29,6 +31,7 @@ jest.mock("@/lib/notify", () => ({
 const mockResolveToken = resolveIntakeToken as jest.Mock;
 const mockFindContact = findAuthorizedContact as jest.Mock;
 const mockCreateTicket = createIntakeTicket as jest.Mock;
+const mockCreateContact = createNewHireContact as jest.Mock;
 const mockNotify = sendWebmasterNotification as jest.Mock;
 const mockCaptureMessage = Sentry.captureMessage as jest.Mock;
 
@@ -130,6 +133,13 @@ describe("POST /api/service-request", () => {
       ticketId: 9001,
       ticketNumber: "4321",
     });
+    mockCreateContact.mockResolvedValue({
+      status: "created",
+      contact: {
+        id: 9102,
+        url: "https://boximity.syncromsp.com/contacts/9102",
+      },
+    });
     mockNotify.mockResolvedValue(true);
   });
 
@@ -210,6 +220,186 @@ describe("POST /api/service-request", () => {
     ).not.toMatch(/personal/i);
   });
 
+  describe("the new hire's Syncro contact", () => {
+    const leaverBody = { token: TOKEN, mode: "leaver", fields: leaverFields };
+
+    it("creates the contact under the organization, then files the ticket for the requester", async () => {
+      const response = await post({
+        ...joinerBody,
+        fields: { ...joinerFields, newHirePersonalPhone: "(905) 555-0188" },
+      });
+
+      await expectResponse(response, 200, {
+        success: true,
+        ticketNumber: "4321",
+      });
+      expect(mockCreateContact.mock.calls).toEqual([
+        [
+          {
+            organizationId: 77,
+            name: "Jane Doe",
+            personalEmail: "jane.doe@personal.example",
+            personalPhone: "+19055550188",
+          },
+        ],
+      ]);
+      expect(mockCreateTicket).toHaveBeenCalledTimes(1);
+      expect(mockCreateContact.mock.invocationCallOrder[0]).toBeLessThan(
+        mockCreateTicket.mock.invocationCallOrder[0],
+      );
+      // Attributed to the requester, not to the new hire's contact
+      expect(mockCreateTicket.mock.calls[0][0].contactId).toBe(501);
+      expect(mockCaptureMessage).not.toHaveBeenCalled();
+    });
+
+    it("waits for the contact before it files the ticket", async () => {
+      let finishContact!: (result: unknown) => void;
+      mockCreateContact.mockReturnValue(
+        new Promise((resolve) => {
+          finishContact = resolve;
+        }),
+      );
+
+      const pending = post(joinerBody);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(mockCreateTicket).not.toHaveBeenCalled();
+
+      finishContact({ status: "created" });
+      await pending;
+      expect(mockCreateTicket).toHaveBeenCalledTimes(1);
+    });
+
+    it("links the created contact at the end of the ticket comment", async () => {
+      await post(joinerBody);
+
+      const { comment } = mockCreateTicket.mock.calls[0][0];
+      expect(comment).toMatch(
+        /\nNotes: \(not provided\)\n\nSyncro contact\nNew hire's contact: #9102 https:\/\/boximity\.syncromsp\.com\/contacts\/9102$/,
+      );
+    });
+
+    it("says the contact was created when Syncro named no id to link", async () => {
+      mockCreateContact.mockResolvedValue({ status: "created" });
+
+      await post(joinerBody);
+
+      expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
+        /\n\nSyncro contact\nNew hire's contact: created \(Syncro returned no id to link\)$/,
+      );
+      expect(mockCaptureMessage).not.toHaveBeenCalled();
+    });
+
+    it("notes a possible existing contact instead of creating one", async () => {
+      mockCreateContact.mockResolvedValue({
+        status: "existing",
+        contact: {
+          id: 733,
+          url: "https://boximity.syncromsp.com/contacts/733",
+        },
+      });
+
+      await expectResponse(await post(joinerBody), 200, {
+        success: true,
+        ticketNumber: "4321",
+      });
+      expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
+        /\n\nSyncro contact\nNew hire's contact: possible existing contact #733 https:\/\/boximity\.syncromsp\.com\/contacts\/733\. No contact was created or changed\.$/,
+      );
+      expect(mockCaptureMessage).not.toHaveBeenCalled();
+    });
+
+    describe("when the contact is not created", () => {
+      beforeEach(() => {
+        mockCreateContact.mockResolvedValue({
+          status: "not_created",
+          detail: "Syncro contact rejected (HTTP 422)",
+        });
+      });
+
+      it("still files the ticket, with a note to add the contact manually, and confirms as usual", async () => {
+        await expectResponse(await post(joinerBody), 200, {
+          success: true,
+          ticketNumber: "4321",
+        });
+
+        expect(mockCreateTicket).toHaveBeenCalledTimes(1);
+        expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
+          /\n\nSyncro contact\nNew hire's contact: not created\. Add the contact manually\.$/,
+        );
+        expect(mockNotify).toHaveBeenCalledTimes(1);
+      });
+
+      it("tells Sentry which step failed, without submitted values", async () => {
+        await post(joinerBody);
+
+        expect(mockCaptureMessage.mock.calls).toEqual([
+          [
+            "Service request new hire contact not created: Syncro contact rejected (HTTP 422)",
+            "error",
+          ],
+        ]);
+        expectNoSubmissionInSentry();
+      });
+
+      it("reports the contact and a failed ticket as two events", async () => {
+        mockCreateTicket.mockResolvedValue({
+          ok: false,
+          reason: "unreachable",
+          code: "network_error",
+        });
+
+        await expectResponse(await post(joinerBody), 200, { success: true });
+        expect(mockCaptureMessage.mock.calls.map(([detail]) => detail)).toEqual(
+          [
+            "Service request new hire contact not created: Syncro contact rejected (HTTP 422)",
+            "Service request delivery failure: Syncro ticket unreachable (network_error), webmaster email ok",
+          ],
+        );
+      });
+    });
+
+    it("treats a contact create that throws as a contact that was not created", async () => {
+      mockCreateContact.mockRejectedValue(
+        new Error("Jane Doe <jane.doe@personal.example> exploded"),
+      );
+
+      await expectResponse(await post(joinerBody), 200, {
+        success: true,
+        ticketNumber: "4321",
+      });
+      expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
+        /New hire's contact: not created\. Add the contact manually\.$/,
+      );
+      expect(mockCaptureMessage.mock.calls).toEqual([
+        [
+          "Service request new hire contact not created: Syncro contact unreachable (exception)",
+          "error",
+        ],
+      ]);
+      expectNoSubmissionInSentry();
+    });
+
+    it("leaves the webmaster notification as the submitted fields", async () => {
+      await post(joinerBody);
+
+      expect(JSON.stringify(mockNotify.mock.calls[0][0].fields)).not.toMatch(
+        /Syncro contact|9102/,
+      );
+    });
+
+    it("makes no contact call for a leaver", async () => {
+      await expectResponse(await post(leaverBody), 200, {
+        success: true,
+        ticketNumber: "4321",
+      });
+
+      expect(mockCreateContact).not.toHaveBeenCalled();
+      expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
+        /\nNotes: \(not provided\)$/,
+      );
+    });
+  });
+
   it("succeeds without a ticket reference when Syncro returns none", async () => {
     mockCreateTicket.mockResolvedValue({ ok: true, ticketId: 9001 });
 
@@ -218,6 +408,7 @@ describe("POST /api/service-request", () => {
 
   describe("guards", () => {
     function expectNothingSent() {
+      expect(mockCreateContact).not.toHaveBeenCalled();
       expect(mockCreateTicket).not.toHaveBeenCalled();
       expect(mockNotify).not.toHaveBeenCalled();
     }
@@ -458,6 +649,7 @@ describe("POST /api/service-request", () => {
         error: UNAVAILABLE_COPY,
       });
       expect(mockFindContact).not.toHaveBeenCalled();
+      expect(mockCreateContact).not.toHaveBeenCalled();
       expect(mockCreateTicket).not.toHaveBeenCalled();
       expect(mockNotify).not.toHaveBeenCalled();
       expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
@@ -480,6 +672,8 @@ describe("POST /api/service-request", () => {
     it("sends the email flagged unverified, creates no ticket and still confirms", async () => {
       await expectResponse(await post(joinerBody), 200, { success: true });
 
+      // No Syncro write of any kind on an unverified request
+      expect(mockCreateContact).not.toHaveBeenCalled();
       expect(mockCreateTicket).not.toHaveBeenCalled();
       expect(mockNotify).toHaveBeenCalledTimes(1);
       expect(mockNotify).toHaveBeenCalledWith({
