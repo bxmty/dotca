@@ -591,10 +591,8 @@ function mayHaveCreatedContact(failure: NewHireContactFailure): boolean {
   return failure.reason === "unreachable" && failure.code !== "missing_config";
 }
 
-/** What the ticket comment tells the tech about the new hire's contact. */
-export function describeNewHireContact(
-  result: CreateNewHireContactResult,
-): string {
+/** The new hire's contact as the ticket note states it, one variant per outcome. */
+function describeNewHireContact(result: CreateNewHireContactResult): string {
   switch (result.status) {
     case "created":
       return result.contact
@@ -604,9 +602,24 @@ export function describeNewHireContact(
       return `possible existing contact #${result.contact.id} ${result.contact.url}. No contact was created or changed.`;
     default:
       return mayHaveCreatedContact(result.failure)
-        ? "may not have been created. Check the organization's contacts before adding one."
-        : "not created. Add the contact manually.";
+        ? "may not have been created. A Boximity technician will check the organization's contacts before adding one."
+        : "not created. A Boximity technician will add it manually.";
   }
+}
+
+/**
+ * The note on the new hire's contact that ends a joiner's ticket comment.
+ * The comment is public and Syncro emails it to the requester, so the note
+ * is addressed to Boximity's techs by name and states what they will do
+ * instead of giving an instruction the requester could take as theirs.
+ */
+export function formatNewHireContactNote(
+  result: CreateNewHireContactResult,
+): string {
+  return [
+    "Note for Boximity technicians (the requester does not need to do anything)",
+    `New hire's Syncro contact: ${describeNewHireContact(result)}`,
+  ].join("\n");
 }
 
 /**

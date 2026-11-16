@@ -13,10 +13,10 @@ import {
   createNewHireContact,
   type CreateNewHireContactResult,
   type CreateTicketResult,
-  describeNewHireContact,
   describeNewHireContactFailure,
   describeSyncroWriteOutcome,
   findAuthorizedContact,
+  formatNewHireContactNote,
   type IntakeOrganization,
   resolveIntakeToken,
 } from "@/lib/syncro";
@@ -133,9 +133,7 @@ async function buildTicketComment(
       )}`,
     );
   }
-  return `${comment}\n\nSyncro contact\nNew hire's contact: ${describeNewHireContact(
-    contactResult,
-  )}`;
+  return `${comment}\n\n${formatNewHireContactNote(contactResult)}`;
 }
 
 /**

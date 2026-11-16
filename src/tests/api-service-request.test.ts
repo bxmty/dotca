@@ -274,7 +274,7 @@ describe("POST /api/service-request", () => {
 
       const { comment } = mockCreateTicket.mock.calls[0][0];
       expect(comment).toMatch(
-        /\nNotes: \(not provided\)\n\nSyncro contact\nNew hire's contact: #9102 https:\/\/boximity\.syncromsp\.com\/contacts\/9102$/,
+        /\nNotes: \(not provided\)\n\nNote for Boximity technicians \(the requester does not need to do anything\)\nNew hire's Syncro contact: #9102 https:\/\/boximity\.syncromsp\.com\/contacts\/9102$/,
       );
     });
 
@@ -284,7 +284,7 @@ describe("POST /api/service-request", () => {
       await post(joinerBody);
 
       expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
-        /\n\nSyncro contact\nNew hire's contact: created \(Syncro returned no id to link\)$/,
+        /\n\nNote for Boximity technicians \(the requester does not need to do anything\)\nNew hire's Syncro contact: created \(Syncro returned no id to link\)$/,
       );
       expect(mockCaptureMessage).not.toHaveBeenCalled();
     });
@@ -303,7 +303,7 @@ describe("POST /api/service-request", () => {
         ticketNumber: "4321",
       });
       expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
-        /\n\nSyncro contact\nNew hire's contact: possible existing contact #733 https:\/\/boximity\.syncromsp\.com\/contacts\/733\. No contact was created or changed\.$/,
+        /\n\nNote for Boximity technicians \(the requester does not need to do anything\)\nNew hire's Syncro contact: possible existing contact #733 https:\/\/boximity\.syncromsp\.com\/contacts\/733\. No contact was created or changed\.$/,
       );
       expect(mockCaptureMessage).not.toHaveBeenCalled();
     });
@@ -316,7 +316,7 @@ describe("POST /api/service-request", () => {
         });
       });
 
-      it("still files the ticket, with a note to add the contact manually, and confirms as usual", async () => {
+      it("still files the ticket, with a note that a technician will add the contact, and confirms as usual", async () => {
         await expectResponse(await post(joinerBody), 200, {
           success: true,
           ticketNumber: "4321",
@@ -324,7 +324,7 @@ describe("POST /api/service-request", () => {
 
         expect(mockCreateTicket).toHaveBeenCalledTimes(1);
         expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
-          /\n\nSyncro contact\nNew hire's contact: not created\. Add the contact manually\.$/,
+          /\n\nNote for Boximity technicians \(the requester does not need to do anything\)\nNew hire's Syncro contact: not created\. A Boximity technician will add it manually\.$/,
         );
         expect(mockNotify).toHaveBeenCalledTimes(1);
       });
@@ -382,7 +382,7 @@ describe("POST /api/service-request", () => {
 
           const { comment } = mockCreateTicket.mock.calls[0][0];
           expect(comment).toMatch(
-            /contact: may not have been created\. .*[Cc]heck the organization's contacts before adding one\.$/,
+            /\nNew hire's Syncro contact: may not have been created\. A Boximity technician will check the organization's contacts before adding one\.$/,
           );
           expect(comment).not.toMatch(/contact: not created/);
         },
@@ -403,7 +403,9 @@ describe("POST /api/service-request", () => {
         await post(joinerBody);
 
         const { comment } = mockCreateTicket.mock.calls[0][0];
-        expect(comment).toMatch(/contact: not created\. /);
+        expect(comment).toMatch(
+          /\nNew hire's Syncro contact: not created\. A Boximity technician will add it manually\.$/,
+        );
         expect(comment).not.toMatch(/may not have been created/);
       });
     });
@@ -418,7 +420,7 @@ describe("POST /api/service-request", () => {
         ticketNumber: "4321",
       });
       expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
-        /contact: may not have been created\. .*[Cc]heck the organization's contacts before adding one\.$/,
+        /\nNew hire's Syncro contact: may not have been created\. A Boximity technician will check the organization's contacts before adding one\.$/,
       );
       expect(mockCaptureMessage.mock.calls).toEqual([
         [
@@ -435,6 +437,39 @@ describe("POST /api/service-request", () => {
       expect(JSON.stringify(mockNotify.mock.calls[0][0].fields)).not.toMatch(
         /Syncro contact|9102/,
       );
+    });
+
+    it("words the note so the requester, who is emailed the comment, cannot read it as an instruction", async () => {
+      const outcomes = [
+        { status: "created" },
+        {
+          status: "existing",
+          contact: {
+            id: 733,
+            url: "https://boximity.syncromsp.com/contacts/733",
+          },
+        },
+        { status: "not_created", failure: { reason: "rejected", status: 422 } },
+        {
+          status: "not_created",
+          failure: { reason: "unreachable", code: "network_error" },
+        },
+      ];
+      for (const outcome of outcomes) {
+        mockCreateTicket.mockClear();
+        mockCreateContact.mockResolvedValue(outcome);
+
+        await post(joinerBody);
+
+        const note = mockCreateTicket.mock.calls[0][0].comment
+          .split("\n\n")
+          .at(-1);
+        expect(note).toMatch(
+          /^Note for Boximity technicians \(the requester does not need to do anything\)\n/,
+        );
+        // No imperative addressed to whoever is reading
+        expect(note).not.toMatch(/(^|\. )(Add|Check|Create|Contact) /m);
+      }
     });
 
     it("makes no contact call for a leaver", async () => {
