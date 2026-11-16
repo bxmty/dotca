@@ -358,7 +358,57 @@ describe("POST /api/service-request", () => {
       });
     });
 
-    it("treats a contact create that throws as a contact that was not created", async () => {
+    describe("when the create may have gone through", () => {
+      // A create that timed out, lost its connection or answered 5xx can
+      // still have landed in Syncro, as createIntakeTicket documents.
+      it.each([
+        ["network_error", { reason: "unreachable", code: "network_error" }],
+        [
+          "server_error",
+          { reason: "unreachable", code: "server_error", status: 502 },
+        ],
+      ])(
+        "says the contact may not have been created, to be checked before one is added (%s)",
+        async (_code, failure) => {
+          mockCreateContact.mockResolvedValue({
+            status: "not_created",
+            failure,
+          });
+
+          await expectResponse(await post(joinerBody), 200, {
+            success: true,
+            ticketNumber: "4321",
+          });
+
+          const { comment } = mockCreateTicket.mock.calls[0][0];
+          expect(comment).toMatch(
+            /contact: may not have been created\. .*[Cc]heck the organization's contacts before adding one\.$/,
+          );
+          expect(comment).not.toMatch(/contact: not created/);
+        },
+      );
+    });
+
+    describe("when nothing can have been created", () => {
+      it.each([
+        ["rejected", { reason: "rejected", status: 422 }],
+        ["missing_config", { reason: "unreachable", code: "missing_config" }],
+        ["lookup_failed", { reason: "lookup_failed", code: "network_error" }],
+      ])("says the contact was not created (%s)", async (_reason, failure) => {
+        mockCreateContact.mockResolvedValue({
+          status: "not_created",
+          failure,
+        });
+
+        await post(joinerBody);
+
+        const { comment } = mockCreateTicket.mock.calls[0][0];
+        expect(comment).toMatch(/contact: not created\. /);
+        expect(comment).not.toMatch(/may not have been created/);
+      });
+    });
+
+    it("treats a contact create that throws as a contact that may not have been created", async () => {
       mockCreateContact.mockRejectedValue(
         new Error("Jane Doe <jane.doe@personal.example> exploded"),
       );
@@ -368,7 +418,7 @@ describe("POST /api/service-request", () => {
         ticketNumber: "4321",
       });
       expect(mockCreateTicket.mock.calls[0][0].comment).toMatch(
-        /New hire's contact: not created\. Add the contact manually\.$/,
+        /contact: may not have been created\. .*[Cc]heck the organization's contacts before adding one\.$/,
       );
       expect(mockCaptureMessage.mock.calls).toEqual([
         [

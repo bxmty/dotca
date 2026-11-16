@@ -581,6 +581,16 @@ export function describeNewHireContactFailure(
   return `Syncro contact ${describeSyncroWriteOutcome({ ok: false, ...failure })}`;
 }
 
+/**
+ * Can Syncro hold the contact although the create reads as failed? A create
+ * that timed out, lost its connection, answered 5xx or threw may still have
+ * landed (the caveat createIntakeTicket documents for tickets). A rejection,
+ * a missing config and a failed existing-contact read created nothing.
+ */
+function mayHaveCreatedContact(failure: NewHireContactFailure): boolean {
+  return failure.reason === "unreachable" && failure.code !== "missing_config";
+}
+
 /** What the ticket comment tells the tech about the new hire's contact. */
 export function describeNewHireContact(
   result: CreateNewHireContactResult,
@@ -593,7 +603,9 @@ export function describeNewHireContact(
     case "existing":
       return `possible existing contact #${result.contact.id} ${result.contact.url}. No contact was created or changed.`;
     default:
-      return "not created. Add the contact manually.";
+      return mayHaveCreatedContact(result.failure)
+        ? "may not have been created. Check the organization's contacts before adding one."
+        : "not created. Add the contact manually.";
   }
 }
 
