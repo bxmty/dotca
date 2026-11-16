@@ -930,6 +930,69 @@ describe("findAuthorizedContact", () => {
     ).toEqual({ status: "not_authorized" });
   });
 
+  it("asks Syncro again when a cached list misses, so a contact ticked a moment ago is let in", async () => {
+    const now = jest.spyOn(Date, "now").mockReturnValue(START_IN_MS);
+    mockSyncro(() => ({ status: 200, body: contactsPage }));
+    const { findAuthorizedContact } = loadSyncro();
+    await findAuthorizedContact(42, "dana.office@client.example");
+
+    const tickedPage = {
+      ...contactsPage,
+      contacts: contactsPage.contacts.map((contact) => ({
+        ...contact,
+        properties: { intake_authorized: "true" },
+      })),
+    };
+    const reRead = mockSyncro(() => ({ status: 200, body: tickedPage }));
+    now.mockReturnValue(START_IN_MS + 60 * 1000);
+
+    expect(await findAuthorizedContact(42, "sam@client.example")).toEqual({
+      status: "authorized",
+      contact: { id: 502, name: "Sam Existing", email: "sam@client.example" },
+    });
+    expect(reRead).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-reads a cached list once per miss and refuses an email still absent", async () => {
+    mockSyncro(() => ({ status: 200, body: contactsPage }));
+    const { findAuthorizedContact } = loadSyncro();
+    await findAuthorizedContact(42, "dana.office@client.example");
+
+    const reRead = mockSyncro(() => ({ status: 200, body: contactsPage }));
+
+    expect(await findAuthorizedContact(42, "nobody@client.example")).toEqual({
+      status: "not_authorized",
+    });
+    expect(reRead).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not read twice when the list was just fetched", async () => {
+    const fetchMock = mockSyncro(() => ({ status: 200, body: contactsPage }));
+    const { findAuthorizedContact } = loadSyncro();
+
+    expect(await findAuthorizedContact(42, "nobody@client.example")).toEqual({
+      status: "not_authorized",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses on the cached list when the re-read after a miss fails", async () => {
+    mockSyncro(() => ({ status: 200, body: contactsPage }));
+    const { findAuthorizedContact } = loadSyncro();
+    await findAuthorizedContact(42, "dana.office@client.example");
+
+    mockSyncro(() => ({ status: 503 }));
+
+    expect(await findAuthorizedContact(42, "nobody@client.example")).toEqual({
+      status: "not_authorized",
+    });
+    expect(
+      await findAuthorizedContact(42, "dana.office@client.example"),
+    ).toMatchObject({
+      status: "authorized",
+    });
+  });
+
   it("serves the last-known-good contacts, with a Sentry warning, while Syncro is unreachable", async () => {
     const now = jest.spyOn(Date, "now").mockReturnValue(START_IN_MS);
     mockSyncro(() => ({ status: 200, body: contactsPage }));
@@ -1176,7 +1239,7 @@ describe("createNewHireContact", () => {
       .map(([url, init]) => ({ url, body: JSON.parse(String(init.body)) }));
   }
 
-  it("creates the contact under the organization with the personal email in notes, never in email", async () => {
+  it("creates the contact under the organization with the personal email in email until a work address replaces it", async () => {
     const fetchMock = mockContacts({ status: 200, body: noContactsPage });
     const { createNewHireContact } = loadSyncro();
 
@@ -1195,8 +1258,10 @@ describe("createNewHireContact", () => {
         body: {
           customer_id: 42,
           name: "Jane Doe",
+          email: "Jane.Doe@personal.example",
           mobile: "+19055550188",
-          notes: "Personal email: Jane.Doe@personal.example",
+          notes:
+            "Personal email: Jane.Doe@personal.example. Replace Email with the work address once it is provisioned.",
         },
       },
     ]);
@@ -1231,7 +1296,7 @@ describe("createNewHireContact", () => {
     await createNewHireContact(newHire);
 
     expect(sentCreates(fetchMock)[0].body.notes).toBe(
-      "Personal email: Jane.Doe@personal.example\nCreated by the STAGING website (staging.boximity.ca): a test submission.",
+      "Personal email: Jane.Doe@personal.example. Replace Email with the work address once it is provisioned.\nCreated by the STAGING website (staging.boximity.ca): a test submission.",
     );
   });
 

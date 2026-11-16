@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import RootLayout from "@/app/layout";
 import { SDR_PRESENTER_PATH } from "@/lib/sdr-console-route";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
 
 let mockPathname = "/";
 jest.mock("next/navigation", () => ({
@@ -46,5 +47,38 @@ describe("the site's chrome in the root layout", () => {
     expect(markup).not.toContain("/book");
     expect(markup).not.toContain("hi@boximity.ca");
     expect(markup).not.toContain("tel:");
+  });
+
+  describe("on a service request page", () => {
+    const INTAKE_PATH = "/service-request/test-token";
+
+    it("keeps a header and footer but no link out of the page", () => {
+      const markup = renderLayoutAt(INTAKE_PATH);
+
+      expect(markup).toContain("page content");
+      expect(markup).toContain("<header");
+      expect(markup).toContain("<footer");
+      const hrefs = [...markup.matchAll(/href="([^"]*)"/g)].map(
+        ([, href]) => href,
+      );
+      // Only the skip link, which stays on the page
+      expect(hrefs).toEqual(["#main-content"]);
+      expect(markup).not.toContain("<nav");
+    });
+
+    it("shows the logo and the contact details as plain text", () => {
+      const markup = renderLayoutAt(INTAKE_PATH);
+
+      expect(markup).toContain("<svg");
+      expect(markup).toContain("© 2026 Boximity MSP");
+      expect(markup).toContain("hi@boximity.ca");
+      expect(markup).toContain(COMPANY_PHONE_DISPLAY);
+      expect(markup).not.toContain("mailto:");
+      expect(markup).not.toContain("tel:");
+    });
+
+    it("keeps the full chrome on a path that is not a service request page", () => {
+      expect(renderLayoutAt("/service-request")).toContain("<nav");
+    });
   });
 });

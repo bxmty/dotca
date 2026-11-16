@@ -25,3 +25,19 @@ _Avoid_: Leaver (for the person), terminated user
 **Personal contact details**:
 A new hire's own email address and phone number, separate from the work account Boximity creates for them.
 _Avoid_: Contact info, private email, home phone
+
+**Business day**:
+A weekday that is not an Ontario statutory holiday or the Civic Holiday. A holiday that falls on a weekend moves to the next weekday.
+_Avoid_: Working day, business hours (the Terms of Service define those separately)
+
+**Joiner notice**:
+The minimum lead time for a joiner service request: the new hire's start date is at least the third business day after the day the request is filed, counted in Toronto time. The start date must itself be a business day.
+_Avoid_: 48 business hours, SLA, lead time
+
+**Amicable departure**:
+A leaver service request planned ahead. Its last working day must be a business day, and needs no notice.
+_Avoid_: Scheduled leave, voluntary departure
+
+**Involuntary departure**:
+A leaver service request handled ahead of other requests; access is cut once the requester confirms by phone. Its dates have no business-day rule.
+_Avoid_: Termination, firing

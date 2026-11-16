@@ -1,12 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ButtonLink } from "@/app/components/Button";
 import StatusPage from "@/app/components/StatusPage";
-import {
-  COMPANY_PHONE_DISPLAY,
-  COMPANY_PHONE_TEL_HREF,
-} from "@/lib/company-phone";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
 import { formatUnavailableMessage } from "@/lib/service-unavailable";
 import { resolveIntakeToken } from "@/lib/syncro";
 import ServiceRequestForm from "./ServiceRequestForm";
@@ -53,10 +49,11 @@ export default async function ServiceRequestPage({
       <StatusPage
         kicker="Error"
         heading="This form is temporarily unavailable"
+        // Plain text: a service request page links nowhere
         action={
-          <ButtonLink href={COMPANY_PHONE_TEL_HREF} variant="secondary">
+          <p className="m-0 font-mono text-small text-ink">
             Call {COMPANY_PHONE_DISPLAY}
-          </ButtonLink>
+          </p>
         }
       >
         <p className="m-0">

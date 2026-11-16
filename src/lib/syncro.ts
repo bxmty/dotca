@@ -78,6 +78,9 @@ const STAGING_ORIGIN_NOTE =
   "Created by the STAGING website (staging.boximity.ca): a test submission";
 const LEAD_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}, not a real prospect.`;
 const CONTACT_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}.`;
+/** Tells the tech the contact's `email` is a stand-in (#802) */
+const CONTACT_EMAIL_HANDOVER_NOTE =
+  "Replace Email with the work address once it is provisioned.";
 
 type SyncroConfig =
   | {
@@ -536,16 +539,20 @@ function toAuthorizedContacts(
 const cachedAuthorizedContacts = new Map<number, CachedList<IntakeContact>>();
 
 /**
- * Is `email` one of the organization's contacts with `intake_authorized`
- * ticked? Matched case-insensitively. Never throws.
+ * The organization's authorized contacts through the cache. `isRefreshForced`
+ * asks Syncro even within the TTL, keeping the cached copy as the fallback.
  */
-export async function findAuthorizedContact(
+function readAuthorizedContacts(
   organizationId: number,
-  email: string,
-): Promise<FindAuthorizedContactResult> {
-  const contactListRead = await readCachedList<IntakeContact>({
+  isRefreshForced: boolean,
+): Promise<ListRead<IntakeContact>> {
+  const cached = cachedAuthorizedContacts.get(organizationId);
+  return readCachedList<IntakeContact>({
     listName: "contact list",
-    cached: cachedAuthorizedContacts.get(organizationId),
+    cached:
+      cached && isRefreshForced
+        ? { ...cached, fetchedAtInMs: Number.NEGATIVE_INFINITY }
+        : cached,
     store: (entry) => {
       cachedAuthorizedContacts.set(organizationId, entry);
     },
@@ -561,14 +568,37 @@ export async function findAuthorizedContact(
         : fetched;
     },
   });
+}
+
+/**
+ * Is `email` one of the organization's contacts with `intake_authorized`
+ * ticked? Matched case-insensitively. Never throws.
+ *
+ * A miss on a cached list asks Syncro once more before refusing: a contact
+ * ticked a moment ago is let in now, not when the cache expires. The rate
+ * limit bounds how often a miss can reach Syncro.
+ */
+export async function findAuthorizedContact(
+  organizationId: number,
+  email: string,
+): Promise<FindAuthorizedContactResult> {
+  const cachedBefore = cachedAuthorizedContacts.get(organizationId);
+  const contactListRead = await readAuthorizedContacts(organizationId, false);
   if (!contactListRead.isAvailable) {
     return { status: "could_not_check", detail: contactListRead.detail };
   }
 
   const submittedEmail = normalizeEmailAddress(email);
-  const contact = contactListRead.items.find(
-    (candidate) => candidate.email === submittedEmail,
-  );
+  const findIn = (contacts: IntakeContact[]) =>
+    contacts.find((candidate) => candidate.email === submittedEmail);
+  let contact = findIn(contactListRead.items);
+  const isCachedList =
+    cachedBefore !== undefined &&
+    cachedAuthorizedContacts.get(organizationId) === cachedBefore;
+  if (!contact && isCachedList) {
+    const reRead = await readAuthorizedContacts(organizationId, true);
+    if (reRead.isAvailable) contact = findIn(reRead.items);
+  }
   return contact
     ? { status: "authorized", contact: { ...contact } }
     : { status: "not_authorized" };
@@ -851,7 +881,7 @@ export interface NewHireContactRequest {
   organizationId: number;
   /** The new hire's name, as the requester typed it */
   name: string;
-  /** Personal contact details: recorded in the contact's notes, never `email` */
+  /** Personal contact details: `email` until the work address replaces it */
   personalEmail: string;
   /** E.164 */
   personalPhone: string;
@@ -958,7 +988,7 @@ async function postNewHireContact(
   contactRequest: NewHireContactRequest,
 ): Promise<NewHireContactStep> {
   const notes = [
-    `Personal email: ${contactRequest.personalEmail}`,
+    `Personal email: ${contactRequest.personalEmail}. ${CONTACT_EMAIL_HANDOVER_NOTE}`,
     ...(isStagingDeploy() ? [CONTACT_STAGING_NOTE] : []),
   ];
   const posted = await withIntakeTimeout((signal) =>
@@ -967,6 +997,7 @@ async function postNewHireContact(
       {
         customer_id: contactRequest.organizationId,
         name: contactRequest.name,
+        email: contactRequest.personalEmail,
         mobile: contactRequest.personalPhone,
         notes: notes.join("\n"),
       },
@@ -1001,9 +1032,11 @@ async function postNewHireContact(
  * Create a Syncro contact for a new hire (POST /contacts) so techs have a
  * record to manage the account from. Never throws.
  *
- * The personal email goes in `notes`: `email` is kept for the work address
- * and drives Syncro's portal and ticket mail, so the new hire is never
- * emailed by Syncro. `enable_portal_user` is left unset for the same reason.
+ * The personal email goes in `email` until the tech replaces it with the
+ * provisioned work address, and in `notes` so it survives that swap. The
+ * Syncro UI's "Additional Emails" (`ticket_matching_emails`) would be the
+ * better home, but the API ignores it on create and update (#802).
+ * `enable_portal_user` is left unset: the new hire gets no portal invite.
  *
  * The organization's contacts are read first, uncached, so a rehire or a
  * resubmission is not created twice: a match is reported and left untouched.
