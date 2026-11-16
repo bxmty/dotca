@@ -8,7 +8,7 @@ import { splitFullName } from "@/lib/person-name";
 /**
  * Syncro (PSA) reads and writes. Website leads land here as Syncro Leads;
  * the joiner/leaver intake (#565) reads customers and contacts (cached, see
- * readCachedList) and writes tickets.
+ * readCachedList) and writes tickets, plus a contact for each new hire (#801).
  *
  * Never throws: callers branch on the result to build the success/failure
  * matrix with the webmaster email. A Syncro rejection (4xx) and "could not
@@ -73,11 +73,20 @@ const SUBJECT_PREFIX: Record<NotificationFormType, string> = {
   "Service request": "Website service request",
 };
 
-const STAGING_NOTE =
-  "Created by the STAGING website (staging.boximity.ca): a test submission, not a real prospect.";
+/** What every record the staging site writes to Syncro says of itself */
+const STAGING_ORIGIN_NOTE =
+  "Created by the STAGING website (staging.boximity.ca): a test submission";
+const LEAD_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}, not a real prospect.`;
+const CONTACT_STAGING_NOTE = `${STAGING_ORIGIN_NOTE}.`;
 
 type SyncroConfig =
-  | { isConfigured: true; baseUrl: string; apiKey: string }
+  | {
+      isConfigured: true;
+      /** The web app techs sign in to, e.g. https://boximity.syncromsp.com */
+      siteUrl: string;
+      baseUrl: string;
+      apiKey: string;
+    }
   | { isConfigured: false };
 
 /** Shared by every Syncro call. Not configured when either secret is unset. */
@@ -87,11 +96,8 @@ function readSyncroConfig(): SyncroConfig {
   if (!subdomain || !apiKey) {
     return { isConfigured: false };
   }
-  return {
-    isConfigured: true,
-    baseUrl: `https://${subdomain}.syncromsp.com/api/v1`,
-    apiKey,
-  };
+  const siteUrl = `https://${subdomain}.syncromsp.com`;
+  return { isConfigured: true, siteUrl, baseUrl: `${siteUrl}/api/v1`, apiKey };
 }
 
 // Staging signal from #554 (same as the Sentry environment tag), not NODE_ENV
@@ -103,7 +109,7 @@ function isStagingDeploy(): boolean {
 function buildHiddenNotes(lead: LeadSubmission, isStaging: boolean): string {
   const notes: string[] = [];
   if (isStaging) {
-    notes.push(STAGING_NOTE);
+    notes.push(LEAD_STAGING_NOTE);
   }
   if (lead.hasOptedInToBrief === true) {
     notes.push(
@@ -154,9 +160,26 @@ function readErrorMessage(body: unknown): string | undefined {
   return raw === undefined ? undefined : JSON.stringify(raw);
 }
 
-function readLeadId(body: unknown): number | undefined {
-  const lead = (body as { lead?: { id?: unknown } } | null)?.lead;
-  return typeof lead?.id === "number" ? lead.id : undefined;
+/**
+ * The record a Syncro write answers with, nested under its name
+ * (`{ lead: {...} }`, `{ ticket: {...} }`, `{ contact: {...} }`). Empty when
+ * the body names none.
+ */
+function readWrittenRecord(
+  body: unknown,
+  recordName: string,
+): Record<string, unknown> {
+  const record = isRecord(body) ? body[recordName] : undefined;
+  return isRecord(record) ? record : {};
+}
+
+/** The id Syncro gave the record it wrote, when the body names one */
+function readWrittenRecordId(
+  body: unknown,
+  recordName: string,
+): number | undefined {
+  const { id } = readWrittenRecord(body, recordName);
+  return typeof id === "number" ? id : undefined;
 }
 
 // --- Joiner/leaver intake (#565) -------------------------------------------
@@ -566,6 +589,85 @@ export function describeSyncroWriteOutcome(
 }
 
 /**
+ * One-phrase summary of why a new hire's contact was not created, for logs
+ * and Sentry: which step failed and how.
+ */
+export function describeNewHireContactFailure(
+  failure: NewHireContactFailure,
+): string {
+  if (failure.reason === "lookup_failed") {
+    return `existing contacts could not be checked (${failure.code})`;
+  }
+  return `Syncro contact ${describeSyncroWriteOutcome({ ok: false, ...failure })}`;
+}
+
+/**
+ * Can Syncro hold the contact although the create reads as failed? A create
+ * that timed out, lost its connection, answered 5xx or threw may still have
+ * landed (the caveat createIntakeTicket documents for tickets). A rejection,
+ * a missing config and a failed existing-contact read created nothing.
+ */
+function mayHaveCreatedContact(failure: NewHireContactFailure): boolean {
+  return failure.reason === "unreachable" && failure.code !== "missing_config";
+}
+
+/**
+ * One-phrase summary of what became of the new hire's contact, for the
+ * webmaster notification and Sentry: the outcome and the Syncro contact id
+ * only, so whoever files a failed ticket by hand knows a contact may already
+ * exist. Never a name, an email address, a phone number or Syncro's message.
+ */
+export function describeNewHireContactOutcome(
+  result: CreateNewHireContactResult,
+): string {
+  switch (result.status) {
+    case "created":
+      return result.contact
+        ? `created #${result.contact.id}`
+        : "created (Syncro returned no id)";
+    case "existing":
+      return `possible existing #${result.contact.id} (not created or changed)`;
+    default:
+      return `${
+        mayHaveCreatedContact(result.failure)
+          ? "may not have been created"
+          : "not created"
+      } (${describeNewHireContactFailure(result.failure)})`;
+  }
+}
+
+/** The new hire's contact as the ticket note states it, one variant per outcome. */
+function describeNewHireContact(result: CreateNewHireContactResult): string {
+  switch (result.status) {
+    case "created":
+      return result.contact
+        ? `#${result.contact.id} ${result.contact.url}`
+        : "created (Syncro returned no id to link)";
+    case "existing":
+      return `possible existing contact #${result.contact.id} ${result.contact.url}. No contact was created or changed.`;
+    default:
+      return mayHaveCreatedContact(result.failure)
+        ? "may not have been created. A Boximity technician will check the organization's contacts before adding one."
+        : "not created. A Boximity technician will add it manually.";
+  }
+}
+
+/**
+ * The note on the new hire's contact that ends a joiner's ticket comment.
+ * The comment is public and Syncro emails it to the requester, so the note
+ * is addressed to Boximity's techs by name and states what they will do
+ * instead of giving an instruction the requester could take as theirs.
+ */
+export function formatNewHireContactNote(
+  result: CreateNewHireContactResult,
+): string {
+  return [
+    "Note for Boximity technicians (the requester does not need to do anything)",
+    `New hire's Syncro contact: ${describeNewHireContact(result)}`,
+  ].join("\n");
+}
+
+/**
  * Unwrap createLead from Promise.allSettled. It never rejects, but the
  * routes settle every sink defensively; a rejection reads as unreachable.
  */
@@ -658,7 +760,7 @@ export async function createLead(
     }
     return posted;
   }
-  const leadId = readLeadId(posted.body);
+  const leadId = readWrittenRecordId(posted.body, "lead");
   return leadId === undefined ? { ok: true } : { ok: true, leadId };
 }
 
@@ -688,12 +790,12 @@ function readTicketReference(body: unknown): {
   ticketId?: number;
   ticketNumber?: string;
 } {
-  const ticket = isRecord(body) && isRecord(body.ticket) ? body.ticket : {};
-  const { id, number } = ticket;
+  const ticketId = readWrittenRecordId(body, "ticket");
+  const { number } = readWrittenRecord(body, "ticket");
   const ticketNumber =
     typeof number === "number" ? String(number) : readTrimmedText(number);
   return {
-    ...(typeof id === "number" ? { ticketId: id } : {}),
+    ...(ticketId === undefined ? {} : { ticketId }),
     ...(ticketNumber === "" ? {} : { ticketNumber }),
   };
 }
@@ -741,4 +843,208 @@ export async function createIntakeTicket(
     console.error(`Syncro rejected the ticket: HTTP ${posted.status}`);
   }
   return posted;
+}
+
+/** What createNewHireContact is asked to create: not yet a Syncro contact */
+export interface NewHireContactRequest {
+  /** From resolveIntakeToken */
+  organizationId: number;
+  /** The new hire's name, as the requester typed it */
+  name: string;
+  /** Personal contact details: recorded in the contact's notes, never `email` */
+  personalEmail: string;
+  /** E.164 */
+  personalPhone: string;
+}
+
+export interface SyncroContactLink {
+  id: number;
+  /** The contact's page in the Syncro web app */
+  url: string;
+}
+
+/**
+ * Why a new hire's contact was not created, safe for logs and Sentry: the
+ * failure kind, code and HTTP status only, never Syncro's message or a
+ * submitted value. "lookup_failed" is the existing-contact read; the other
+ * two are the create itself, shaped as the ticket path's SyncroWriteFailure.
+ */
+export type NewHireContactFailure =
+  | { reason: "lookup_failed"; code: SyncroReadFailureDetail }
+  | { reason: "rejected"; status: number }
+  | {
+      reason: "unreachable";
+      code: "missing_config" | "network_error" | "server_error" | "exception";
+      status?: number;
+    };
+
+export type CreateNewHireContactResult =
+  /** `contact` is absent when Syncro accepted the create and named no id */
+  | { status: "created"; contact?: SyncroContactLink }
+  /** The organization already holds a contact with this name or personal email */
+  | { status: "existing"; contact: SyncroContactLink }
+  | { status: "not_created"; failure: NewHireContactFailure };
+
+/** A name as it is compared: case and spacing do not make a different person. */
+function normalizePersonName(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Does free text (a contact's notes) mention this normalized email address? */
+function mentionsEmailAddress(text: string, emailAddress: string): boolean {
+  return text
+    .toLowerCase()
+    .split(/[\s,;:<>()]+/)
+    .includes(emailAddress);
+}
+
+/**
+ * The first of the organization's contacts that could be this new hire: the
+ * same name, or the personal email in `email` or `notes` (where
+ * createNewHireContact writes it). Records of another customer are ignored,
+ * as in toAuthorizedContacts.
+ */
+function findExistingContactId(
+  records: unknown[],
+  contactRequest: NewHireContactRequest,
+): number | undefined {
+  const name = normalizePersonName(contactRequest.name);
+  const personalEmail = normalizeEmailAddress(contactRequest.personalEmail);
+  for (const record of records) {
+    if (!isRecord(record) || typeof record.id !== "number") continue;
+    if (record.customer_id !== contactRequest.organizationId) continue;
+    if (
+      normalizePersonName(readTrimmedText(record.name)) === name ||
+      normalizeEmailAddress(readTrimmedText(record.email)) === personalEmail ||
+      mentionsEmailAddress(readTrimmedText(record.notes), personalEmail)
+    ) {
+      return record.id;
+    }
+  }
+  return undefined;
+}
+
+/** One step of createNewHireContact: the contact id it found or made, if any */
+type NewHireContactStep =
+  | { ok: true; contactId?: number }
+  | { ok: false; failure: NewHireContactFailure };
+
+/**
+ * Step one: read the organization's contacts, uncached, for one that could
+ * be this new hire. A read that fails is a failed step, not "none found".
+ */
+async function findExistingContact(
+  contactRequest: NewHireContactRequest,
+): Promise<NewHireContactStep> {
+  const contactList = await fetchSyncroList("/contacts", "contacts", {
+    customer_id: String(contactRequest.organizationId),
+  });
+  if (!contactList.ok) {
+    const failure: NewHireContactFailure = {
+      reason: "lookup_failed",
+      code: contactList.detail,
+    };
+    console.error(
+      `Syncro contact skipped: ${describeNewHireContactFailure(failure)}`,
+    );
+    return { ok: false, failure };
+  }
+  const contactId = findExistingContactId(contactList.records, contactRequest);
+  return contactId === undefined ? { ok: true } : { ok: true, contactId };
+}
+
+/** Step two: POST /contacts. `contactId` is absent when Syncro named none. */
+async function postNewHireContact(
+  contactRequest: NewHireContactRequest,
+): Promise<NewHireContactStep> {
+  const notes = [
+    `Personal email: ${contactRequest.personalEmail}`,
+    ...(isStagingDeploy() ? [CONTACT_STAGING_NOTE] : []),
+  ];
+  const posted = await withIntakeTimeout((signal) =>
+    postToSyncro(
+      "/contacts",
+      {
+        customer_id: contactRequest.organizationId,
+        name: contactRequest.name,
+        mobile: contactRequest.personalPhone,
+        notes: notes.join("\n"),
+      },
+      "contact",
+      signal,
+    ),
+  );
+  if (posted.ok) {
+    const contactId = readWrittenRecordId(posted.body, "contact");
+    return contactId === undefined ? { ok: true } : { ok: true, contactId };
+  }
+  if (posted.reason === "rejected") {
+    // Status only: Syncro's message can quote the name, phone or personal
+    // email it rejects.
+    console.error(`Syncro rejected the contact: HTTP ${posted.status}`);
+    return {
+      ok: false,
+      failure: { reason: "rejected", status: posted.status },
+    };
+  }
+  return {
+    ok: false,
+    failure: {
+      reason: "unreachable",
+      code: posted.code,
+      ...(posted.status === undefined ? {} : { status: posted.status }),
+    },
+  };
+}
+
+/**
+ * Create a Syncro contact for a new hire (POST /contacts) so techs have a
+ * record to manage the account from. Never throws.
+ *
+ * The personal email goes in `notes`: `email` is kept for the work address
+ * and drives Syncro's portal and ticket mail, so the new hire is never
+ * emailed by Syncro. `enable_portal_user` is left unset for the same reason.
+ *
+ * The organization's contacts are read first, uncached, so a rehire or a
+ * resubmission is not created twice: a match is reported and left untouched.
+ * When that read fails nothing is created, since a duplicate is harder to
+ * undo than a contact added by hand. Each of the two calls has the intake
+ * timeout to itself.
+ *
+ * A create that times out or loses its connection reads as not created
+ * although Syncro may still create the contact: see mayHaveCreatedContact.
+ */
+export async function createNewHireContact(
+  contactRequest: NewHireContactRequest,
+): Promise<CreateNewHireContactResult> {
+  const config = readSyncroConfig();
+  if (!config.isConfigured) {
+    console.error(
+      "Syncro contact skipped: SYNCRO_SUBDOMAIN or SYNCRO_API_KEY is not set",
+    );
+    return {
+      status: "not_created",
+      failure: { reason: "unreachable", code: "missing_config" },
+    };
+  }
+  const toContactLink = (id: number): SyncroContactLink => ({
+    id,
+    url: `${config.siteUrl}/contacts/${id}`,
+  });
+
+  const existing = await findExistingContact(contactRequest);
+  if (!existing.ok) {
+    return { status: "not_created", failure: existing.failure };
+  }
+  if (existing.contactId !== undefined) {
+    return { status: "existing", contact: toContactLink(existing.contactId) };
+  }
+
+  const created = await postNewHireContact(contactRequest);
+  if (!created.ok) {
+    return { status: "not_created", failure: created.failure };
+  }
+  return created.contactId === undefined
+    ? { status: "created" }
+    : { status: "created", contact: toContactLink(created.contactId) };
 }

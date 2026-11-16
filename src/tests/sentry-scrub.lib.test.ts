@@ -92,7 +92,8 @@ describe("scrubLinkTokens: intake token path segment (#565)", () => {
 });
 
 describe("scrubLinkTokens: intake submission body (#565)", () => {
-  const BODY = '{"token":"k3Zr","fields":{"requesterEmail":"a@b.ca"}}';
+  const BODY =
+    '{"token":"k3Zr","fields":{"requesterEmail":"a@b.ca","newHirePersonalEmail":"jane@home.example","newHirePersonalPhone":"+19055550188"}}';
 
   it("drops the request body from an event raised by the intake route", () => {
     const event = {
@@ -113,6 +114,9 @@ describe("scrubLinkTokens: intake submission body (#565)", () => {
       headers: { "user-agent": "jest" },
     });
     expect(JSON.stringify(scrubbed)).not.toContain("k3Zr");
+    // Personal contact details (#800) leave with the rest of the body
+    expect(JSON.stringify(scrubbed)).not.toContain("jane@home.example");
+    expect(JSON.stringify(scrubbed)).not.toContain("5550188");
     expect(event.request.data).toBe(BODY);
   });
 

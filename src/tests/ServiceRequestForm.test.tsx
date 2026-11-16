@@ -24,9 +24,9 @@ const replyWith = ({ status, body }: Reply) =>
 const setField = (label: RegExp | string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
-const setPhone = (value: string) =>
+const setPhone = (value: string, key = "requesterPhone") =>
   fireEvent.change(
-    document.getElementById("service-request-requesterPhone") as HTMLElement,
+    document.getElementById(`service-request-${key}`) as HTMLElement,
     { target: { value } },
   );
 
@@ -45,6 +45,8 @@ function fillJoiner() {
   fillRequester();
   setField("New hire's name", "Jane Doe");
   setField("Start date", "2026-12-01");
+  setField("New hire's personal email", "jane.doe@personal.example");
+  setPhone("19055550188", "newHirePersonalPhone");
   setField("Match the access of", "Sam Existing");
 }
 
@@ -105,6 +107,44 @@ describe("ServiceRequestForm", () => {
       ).toBeInTheDocument();
     });
 
+    it("asks for the new hire's personal contact details and says what they are for", () => {
+      render(<ServiceRequestForm token={TOKEN} />);
+
+      const newHireSection = screen.getByRole("region", { name: "New hire" });
+      expect(
+        within(newHireSection).getByLabelText("New hire's personal email"),
+      ).toBeRequired();
+      expect(
+        within(newHireSection).getByLabelText("New hire's personal phone"),
+      ).toBeRequired();
+      // The requester's browser must not offer the requester's own details
+      expect(
+        within(newHireSection).getByLabelText("New hire's personal email"),
+      ).toHaveAttribute("autocomplete", "off");
+      expect(
+        within(newHireSection).getByLabelText("New hire's personal phone"),
+      ).toHaveAttribute("autocomplete", "off");
+      expect(screen.getByLabelText("Your phone")).toHaveAttribute(
+        "autocomplete",
+        "tel",
+      );
+      expect(
+        within(newHireSection).getByText(
+          "Used only to send login details and to reach the new hire before day one.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("leaves the personal contact details and their note off the leaver form", () => {
+      render(<ServiceRequestForm token={TOKEN} />);
+
+      choose(/what are you reporting/i, "Someone is leaving");
+
+      expect(screen.queryByLabelText("New hire's personal email")).toBeNull();
+      expect(screen.queryByLabelText("New hire's personal phone")).toBeNull();
+      expect(screen.queryByText(/before day one/i)).toBeNull();
+    });
+
     it("says an involuntary departure changes how fast Boximity acts", () => {
       render(<ServiceRequestForm token={TOKEN} />);
       choose(/what are you reporting/i, "Someone is leaving");
@@ -163,6 +203,19 @@ describe("ServiceRequestForm", () => {
       expect(screen.getByLabelText("Your email")).toHaveAccessibleDescription(
         /enter the full address/,
       );
+    });
+
+    it("rejects the requester's own email as the new hire's personal email", () => {
+      render(<ServiceRequestForm token={TOKEN} />);
+      fillJoiner();
+      setField("New hire's personal email", "Dana@Client.Example");
+
+      submit();
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(
+        screen.getByLabelText("New hire's personal email"),
+      ).toHaveAccessibleDescription(/enter the new hire's own email/);
     });
 
     it("clears a field's error once the field is edited", () => {
@@ -228,6 +281,8 @@ describe("ServiceRequestForm", () => {
           newHireName: "Jane Doe",
           jobTitle: "",
           startDate: "2026-12-01",
+          newHirePersonalEmail: "jane.doe@personal.example",
+          newHirePersonalPhone: "+19055550188",
           matchAccessOf: "Sam Existing",
           apps: "Accounting suite",
           licenses: "",

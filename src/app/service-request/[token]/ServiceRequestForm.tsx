@@ -42,6 +42,7 @@ const INPUT_TYPE_BY_KIND = {
 const AUTO_COMPLETE_BY_KEY: Record<string, string> = {
   requesterName: "name",
   requesterEmail: "email",
+  requesterPhone: "tel",
 };
 
 /** How tall a long-text field opens; it can be dragged taller */
@@ -229,6 +230,7 @@ export default function ServiceRequestForm({ token }: { token: string }) {
             label={spec.label}
             value={value}
             onChange={(phone) => setValue(spec.key, phone)}
+            autoComplete={AUTO_COMPLETE_BY_KEY[spec.key] ?? "off"}
             error={error}
             isOptional={isOptional}
           />
@@ -342,6 +344,9 @@ export default function ServiceRequestForm({ token }: { token: string }) {
                 return (
                   <Fragment key={spec.key}>
                     {renderField(spec)}
+                    {spec.note && (
+                      <p className="m-0 text-small text-muted">{spec.note}</p>
+                    )}
                     {selectedChoiceNote && (
                       <StatusNote tone="note" label="Note">
                         {selectedChoiceNote}
