@@ -316,7 +316,7 @@ To raise an existing key from Sending access to Full access, change its permissi
 
 `SYNCRO_SUBDOMAIN` and `SYNCRO_API_KEY` let website leads be written to Syncro, and let the joiner/leaver intake (`/service-request/<token>`) read customers and contacts and create tickets. Both are required at the deploy gate, so a missing value fails the deploy.
 
-1. **Create a replacement token in Syncro** with the same scoped permissions as the current one. The site creates leads, lists customers, lists contacts and creates tickets, and nothing else. Do not use a full-admin token.
+1. **Create a replacement token in Syncro** with the same scoped permissions as the current one. The site creates leads, lists customers, lists and creates contacts, and creates tickets, and nothing else. Syncro files contact writes under **Customers - Edit**, not a Contacts permission: without it every new hire's contact create returns HTTP 401 (the ticket is still filed). Do not use a full-admin token.
 2. **Update each environment that holds the old token** (`gh` prompts for the value):
 
    ```bash
