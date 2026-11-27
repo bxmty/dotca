@@ -16,6 +16,18 @@
     {
       "matchManagers": ["npm"],
       "enabled": true
+    },
+    {
+      "description": "One PR (one staging deploy) for all non-major updates",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "non-major dependencies",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Payments: own PR so checkout changes get their own review",
+      "matchPackageNames": ["stripe", "@stripe/**"],
+      "groupName": "stripe",
+      "schedule": ["before 6am on monday"]
     }
   ]
 }
