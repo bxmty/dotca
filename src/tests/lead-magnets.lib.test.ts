@@ -56,9 +56,9 @@ describe("getLeadMagnetBySlug", () => {
         description: "A test guide",
         date: "2026-01-01",
         published: true,
-        assetFile: "test-guide.pdf",
         assetLabel: "Get the checklist",
         relatedBlogSlug: "some-post",
+        assets: [{ file: "test-guide.pdf", label: "Get the checklist" }],
       },
     });
     expect(mockReadFileSync).toHaveBeenCalledWith(
@@ -75,7 +75,7 @@ describe("getLeadMagnetBySlug", () => {
       description: "A test guide",
       date: "2026-01-01",
       published: true,
-      assetFile: "test-guide.pdf",
+      assets: [{ file: "test-guide.pdf", label: "Download the guide" }],
     });
   });
 
@@ -151,6 +151,83 @@ describe("getLeadMagnetBySlug", () => {
       expect(getLeadMagnetBySlug("test-guide")).toBeNull();
     },
   );
+});
+
+describe("multiple assets", () => {
+  // assetFilesYaml is the YAML after "assetFiles:", replacing assetFile.
+  function multiAssetFile(assetFilesYaml: string[]): string {
+    return leadMagnetFile({ published: true }).replace(
+      "assetFile: test-guide.pdf",
+      ["assetFiles:", ...assetFilesYaml].join("\n"),
+    );
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it("lists every declared asset in order, PDF or Word, and labels the magnet with the first", () => {
+    mockReadFileSync.mockReturnValue(
+      multiAssetFile([
+        "  - file: rule-staff.pdf",
+        "    label: Download the one-page rule",
+        "  - file: rule-owner-notes.pdf",
+        "    label: Download the owner's notes",
+        "  - file: rule-staff.docx",
+        "    label: Download the Word version",
+      ]),
+    );
+
+    expect(getLeadMagnetBySlug("test-guide")?.frontmatter).toStrictEqual({
+      title: "Test Guide",
+      description: "A test guide",
+      date: "2026-01-01",
+      published: true,
+      assetLabel: "Download the one-page rule",
+      assets: [
+        { file: "rule-staff.pdf", label: "Download the one-page rule" },
+        { file: "rule-owner-notes.pdf", label: "Download the owner's notes" },
+        { file: "rule-staff.docx", label: "Download the Word version" },
+      ],
+    });
+  });
+
+  it("accepts a single .docx assetFile", () => {
+    mockReadFileSync.mockReturnValue(
+      leadMagnetFile({ published: true }).replace(
+        "assetFile: test-guide.pdf",
+        "assetFile: test-guide.docx",
+      ),
+    );
+
+    expect(getLeadMagnetBySlug("test-guide")?.frontmatter.assets).toEqual([
+      { file: "test-guide.docx", label: "Download the guide" },
+    ]);
+  });
+
+  it.each([
+    ["an empty list", ["  []"]],
+    ["a non-list value", ["  guide.pdf"]],
+    ["a path traversal", ['  - file: "../../.env"', "    label: Bad"]],
+    ["a path separator", ["  - file: sub/guide.pdf", "    label: Bad"]],
+    ["a wrong extension", ["  - file: guide.exe", "    label: Bad"]],
+    ["a missing label", ["  - file: guide.pdf"]],
+    ["a missing file", ["  - label: No file"]],
+    [
+      "duplicate filenames",
+      [
+        "  - file: guide.pdf",
+        "    label: One",
+        "  - file: guide.pdf",
+        "    label: Two",
+      ],
+    ],
+  ])("rejects the magnet for %s", (_name, assetFilesYaml) => {
+    mockReadFileSync.mockReturnValue(multiAssetFile(assetFilesYaml));
+
+    expect(getLeadMagnetBySlug("test-guide")).toBeNull();
+  });
 });
 
 describe("content directory override", () => {

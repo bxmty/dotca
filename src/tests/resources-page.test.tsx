@@ -88,6 +88,7 @@ describe("/resources/[slug] page", () => {
   it("prebuilds only published magnets", async () => {
     expect(await generateStaticParams()).toEqual([
       { slug: "test-fixture-guide" },
+      { slug: "multi-asset-fixture-guide" },
     ]);
   });
 

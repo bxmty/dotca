@@ -24,10 +24,19 @@ const EMAIL = "jane.doe@example.com";
 const HOUR_MS = 60 * 60 * 1000;
 const originalEnv = process.env;
 
-function download({ slug, token }: { slug?: string; token?: string }) {
+function download({
+  slug,
+  token,
+  file,
+}: {
+  slug?: string;
+  token?: string;
+  file?: string;
+}) {
   const url = new URL("http://localhost/api/lead-magnet/download");
   if (slug !== undefined) url.searchParams.set("slug", slug);
   if (token !== undefined) url.searchParams.set("token", token);
+  if (file !== undefined) url.searchParams.set("file", file);
   return GET(new Request(url));
 }
 
@@ -78,6 +87,7 @@ describe("GET /api/lead-magnet/download", () => {
     expect(JSON.parse(line)).toEqual({
       event: "lead_magnet_download",
       slug: SLUG,
+      file: "test-fixture-guide.pdf",
       timestamp: "2026-10-17T15:30:00.000Z",
     });
     expect(line).not.toContain(EMAIL);
@@ -161,6 +171,108 @@ describe("GET /api/lead-magnet/download", () => {
     } finally {
       readSpy.mockRestore();
     }
+  });
+
+  it("serves a single-asset magnet's file when the link names it", async () => {
+    const token = signLeadMagnetToken({ slug: SLUG, email: EMAIL });
+
+    const response = await download({
+      slug: SLUG,
+      token,
+      file: "test-fixture-guide.pdf",
+    });
+
+    expect(response.status).toBe(200);
+    expect(Buffer.from(await response.arrayBuffer()).equals(FIXTURE_PDF)).toBe(
+      true,
+    );
+  });
+
+  describe("a magnet with several files", () => {
+    const MULTI_SLUG = "multi-asset-fixture-guide";
+
+    it.each([
+      ["multi-asset-fixture-staff.pdf", "application/pdf"],
+      ["multi-asset-fixture-notes.pdf", "application/pdf"],
+      [
+        "multi-asset-fixture-staff.docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ],
+    ])("serves %s as %s", async (file, contentType) => {
+      const token = signLeadMagnetToken({ slug: MULTI_SLUG, email: EMAIL });
+
+      const response = await download({ slug: MULTI_SLUG, token, file });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe(contentType);
+      expect(response.headers.get("content-disposition")).toBe(
+        `attachment; filename="${file}"`,
+      );
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(response.headers.get("x-robots-tag")).toBe("noindex");
+      expect(
+        Buffer.from(await response.arrayBuffer()).equals(
+          fs.readFileSync(path.join(FIXTURE_DIR, "assets", file)),
+        ),
+      ).toBe(true);
+      expect(JSON.parse(String(logSpy.mock.calls[0][0])).file).toBe(file);
+    });
+
+    it("serves the first file when the link names none", async () => {
+      const token = signLeadMagnetToken({ slug: MULTI_SLUG, email: EMAIL });
+
+      const response = await download({ slug: MULTI_SLUG, token });
+
+      expect(response.headers.get("content-disposition")).toBe(
+        'attachment; filename="multi-asset-fixture-staff.pdf"',
+      );
+    });
+
+    it.each([
+      ["another magnet's file", "test-fixture-guide.pdf"],
+      ["a traversal attempt", "../test-fixture-guide.md"],
+      ["an empty name", ""],
+    ])("returns 404 for %s", async (_name, file) => {
+      const token = signLeadMagnetToken({ slug: MULTI_SLUG, email: EMAIL });
+
+      const response = await download({ slug: MULTI_SLUG, token, file });
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ error: "Not found" });
+      expect(logSpy).not.toHaveBeenCalled();
+    });
+
+    it("refuses an expired token for each file", async () => {
+      jest.useFakeTimers({ now: new Date("2026-10-01T12:00:00Z") });
+      const token = signLeadMagnetToken({ slug: MULTI_SLUG, email: EMAIL });
+      jest.advanceTimersByTime(25 * HOUR_MS);
+
+      for (const file of [
+        "multi-asset-fixture-staff.pdf",
+        "multi-asset-fixture-notes.pdf",
+        "multi-asset-fixture-staff.docx",
+      ]) {
+        const response = await download({ slug: MULTI_SLUG, token, file });
+        expect(response.status).toBe(403);
+        expect(await response.text()).toContain(
+          `href="/resources/${MULTI_SLUG}"`,
+        );
+      }
+    });
+
+    it("refuses another magnet's token for each file", async () => {
+      const token = signLeadMagnetToken({ slug: SLUG, email: EMAIL });
+
+      for (const file of [
+        "multi-asset-fixture-staff.pdf",
+        "multi-asset-fixture-notes.pdf",
+        "multi-asset-fixture-staff.docx",
+      ]) {
+        const response = await download({ slug: MULTI_SLUG, token, file });
+        expect(response.status).toBe(403);
+      }
+      expect(logSpy).not.toHaveBeenCalled();
+    });
   });
 
   it("returns 503 and alerts when the signing secret is not configured", async () => {

@@ -14,6 +14,8 @@ import { formatUnavailableMessage } from "@/lib/service-unavailable";
 export const dynamic = "force-dynamic";
 
 const NO_STORE = "private, no-store";
+const DOCX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 // Stryker disable next-line StringLiteral: any value that fails the slug pattern or the token shape answers like an absent one
 const ABSENT = "";
 
@@ -38,14 +40,15 @@ function buildLinkExpiredResponse(slug: string): Response {
   });
 }
 
-function logDownload(slug: string): void {
-  // Feeds the weekly numbers. Slug and time only — never the email or token.
+function logDownload(slug: string, file: string): void {
+  // Feeds the weekly numbers. Slug, file and time only — never the email or token.
   try {
     // eslint-disable-next-line no-console -- structured event line, read from the container logs
     console.log(
       JSON.stringify({
         event: "lead_magnet_download",
         slug,
+        file,
         timestamp: new Date().toISOString(),
       }),
     );
@@ -60,7 +63,12 @@ export function GET(request: Request): Response {
   const token = searchParams.get("token") ?? ABSENT;
 
   const magnet = getLeadMagnetBySlug(slug);
-  if (!magnet) {
+  const { assets } = magnet?.frontmatter ?? { assets: [] };
+  // No file param means the first asset, so links sent before #704 still work.
+  // Matching against the loader-validated list is what keeps `file` a bare name.
+  const requestedFile = searchParams.get("file") ?? assets[0]?.file;
+  const asset = assets.find(({ file }) => file === requestedFile);
+  if (!asset) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -85,10 +93,12 @@ export function GET(request: Request): Response {
     return buildLinkExpiredResponse(slug);
   }
 
-  const { assetFile } = magnet.frontmatter;
-  let pdf: Buffer;
+  const assetFile = asset.file;
+  let fileContents: Buffer;
   try {
-    pdf = fs.readFileSync(path.join(getLeadMagnetAssetsDir(), assetFile));
+    fileContents = fs.readFileSync(
+      path.join(getLeadMagnetAssetsDir(), assetFile),
+    );
   } catch (error) {
     console.error(`Lead magnet asset missing for ${slug}:`, error);
     Sentry.captureException(error);
@@ -98,16 +108,18 @@ export function GET(request: Request): Response {
     );
   }
 
-  const response = new Response(new Uint8Array(pdf), {
+  const response = new Response(new Uint8Array(fileContents), {
     status: 200,
     headers: {
-      "Content-Type": "application/pdf",
+      "Content-Type": assetFile.toLowerCase().endsWith(".docx")
+        ? DOCX_CONTENT_TYPE
+        : "application/pdf",
       "Content-Disposition": `attachment; filename="${assetFile}"`,
-      "Content-Length": String(pdf.length),
+      "Content-Length": String(fileContents.length),
       "Cache-Control": NO_STORE,
       "X-Robots-Tag": "noindex",
     },
   });
-  logDownload(slug);
+  logDownload(slug, assetFile);
   return response;
 }

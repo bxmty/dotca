@@ -1,10 +1,15 @@
 import fs from "fs";
 import path from "path";
 import { parseFrontmatter } from "@/lib/parseFrontmatter";
-import { LeadMagnet, LeadMagnetFrontmatter } from "@/types/leadMagnet";
+import { DEFAULT_LEAD_MAGNET_ASSET_LABEL } from "@/lib/lead-magnet-labels";
+import {
+  LeadMagnet,
+  LeadMagnetAsset,
+  LeadMagnetFrontmatter,
+} from "@/types/leadMagnet";
 
 /**
- * Lead magnets are content-as-code, mirroring content/blog. Their PDFs live in
+ * Lead magnets are content-as-code, mirroring content/blog. Their files live in
  * content/lead-magnets/assets — deliberately outside public/, so a PDF has no
  * static URL and can only be reached through the signed download route.
  */
@@ -23,7 +28,7 @@ function getContentDir(): string {
     : DEFAULT_CONTENT_DIR;
 }
 
-/** Where a magnet's assetFile lives: assets/ inside the content directory. */
+/** Where a magnet's asset files live: assets/ inside the content directory. */
 export function getLeadMagnetAssetsDir(): string {
   return path.join(getContentDir(), "assets");
 }
@@ -31,11 +36,25 @@ export function getLeadMagnetAssetsDir(): string {
 // Same guard blog.ts uses against path traversal, kept case-sensitive so a
 // slug maps to exactly one file on case-sensitive and case-insensitive disks.
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
-// assetFile is joined onto the assets directory, so it must be a bare filename.
-const ASSET_FILE_PATTERN = /^[a-z0-9-]+\.pdf$/i;
+// Asset files are joined onto the assets directory, so each must be a bare filename.
+const ASSET_FILE_PATTERN = /^[a-z0-9-]+\.(pdf|docx)$/i;
 
 export function isLeadMagnetSlug(slug: string): boolean {
   return SLUG_PATTERN.test(slug);
+}
+
+function isValidAssetList(assets: unknown): assets is LeadMagnetAsset[] {
+  if (!Array.isArray(assets) || assets.length === 0) return false;
+  const files = assets.map((asset) => asset?.file);
+  return (
+    assets.every(
+      (asset) =>
+        typeof asset?.file === "string" &&
+        ASSET_FILE_PATTERN.test(asset.file) &&
+        typeof asset.label === "string" &&
+        asset.label !== "",
+    ) && new Set(files).size === files.length
+  );
 }
 
 function parseLeadMagnet(slug: string): LeadMagnet | null {
@@ -45,13 +64,24 @@ function parseLeadMagnet(slug: string): LeadMagnet | null {
       fs.readFileSync(filePath, "utf8"),
     );
 
-    if (!data.title || !data.description || !data.date || !data.assetFile) {
+    if (
+      !data.title ||
+      !data.description ||
+      !data.date ||
+      !(data.assetFile || data.assetFiles)
+    ) {
       console.warn(`Lead magnet ${slug} is missing required frontmatter`);
       return null;
     }
 
-    if (!ASSET_FILE_PATTERN.test(data.assetFile)) {
-      console.warn(`Lead magnet ${slug} has an invalid assetFile`);
+    const assets = data.assetFiles ?? [
+      {
+        file: data.assetFile,
+        label: data.assetLabel ?? DEFAULT_LEAD_MAGNET_ASSET_LABEL,
+      },
+    ];
+    if (!isValidAssetList(assets)) {
+      console.warn(`Lead magnet ${slug} has an invalid asset file list`);
       return null;
     }
 
@@ -60,9 +90,10 @@ function parseLeadMagnet(slug: string): LeadMagnet | null {
       description: data.description,
       date: String(data.date),
       published: data.published !== false,
-      assetFile: data.assetFile,
+      assets,
     };
-    if (data.assetLabel) frontmatter.assetLabel = data.assetLabel;
+    const assetLabel = data.assetFiles ? assets[0].label : data.assetLabel;
+    if (assetLabel) frontmatter.assetLabel = assetLabel;
     if (data.relatedBlogSlug)
       frontmatter.relatedBlogSlug = data.relatedBlogSlug;
 
