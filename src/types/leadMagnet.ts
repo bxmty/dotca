@@ -5,6 +5,12 @@ export interface LeadMagnetAsset {
   label: string;
 }
 
+/** One signed download link for one asset, as the gate and email show it. */
+export interface LeadMagnetDownload {
+  label: string;
+  url: string;
+}
+
 export interface LeadMagnetFrontmatter {
   title: string;
   /** Gate-page copy and meta description. */

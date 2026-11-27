@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import * as Sentry from "@sentry/nextjs";
 import {
+  getAssetContentType,
   getLeadMagnetAssetsDir,
   getLeadMagnetBySlug,
 } from "@/lib/lead-magnets";
@@ -14,8 +15,6 @@ import { formatUnavailableMessage } from "@/lib/service-unavailable";
 export const dynamic = "force-dynamic";
 
 const NO_STORE = "private, no-store";
-const DOCX_CONTENT_TYPE =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 // Stryker disable next-line StringLiteral: any value that fails the slug pattern or the token shape answers like an absent one
 const ABSENT = "";
 
@@ -93,11 +92,10 @@ export function GET(request: Request): Response {
     return buildLinkExpiredResponse(slug);
   }
 
-  const assetFile = asset.file;
   let fileContents: Buffer;
   try {
     fileContents = fs.readFileSync(
-      path.join(getLeadMagnetAssetsDir(), assetFile),
+      path.join(getLeadMagnetAssetsDir(), asset.file),
     );
   } catch (error) {
     console.error(`Lead magnet asset missing for ${slug}:`, error);
@@ -111,15 +109,13 @@ export function GET(request: Request): Response {
   const response = new Response(new Uint8Array(fileContents), {
     status: 200,
     headers: {
-      "Content-Type": assetFile.toLowerCase().endsWith(".docx")
-        ? DOCX_CONTENT_TYPE
-        : "application/pdf",
-      "Content-Disposition": `attachment; filename="${assetFile}"`,
+      "Content-Type": getAssetContentType(asset.file),
+      "Content-Disposition": `attachment; filename="${asset.file}"`,
       "Content-Length": String(fileContents.length),
       "Cache-Control": NO_STORE,
       "X-Robots-Tag": "noindex",
     },
   });
-  logDownload(slug, assetFile);
+  logDownload(slug, asset.file);
   return response;
 }

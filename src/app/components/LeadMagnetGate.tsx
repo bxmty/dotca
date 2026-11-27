@@ -10,6 +10,7 @@ import {
   isEmailAddress,
 } from "../../lib/formValidation";
 import { DEFAULT_LEAD_MAGNET_ASSET_LABEL } from "../../lib/lead-magnet-labels";
+import type { LeadMagnetDownload } from "../../types/leadMagnet";
 
 const EMAIL_FIELD_ID = "lead-magnet-email";
 const BRIEF_FIELD_ID = "lead-magnet-brief";
@@ -38,9 +39,7 @@ export default function LeadMagnetGate({
   const [emailError, setEmailError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [downloads, setDownloads] = useState<{ label: string; url: string }[]>(
-    [],
-  );
+  const [downloads, setDownloads] = useState<LeadMagnetDownload[]>([]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();

@@ -8,6 +8,7 @@ import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { deliverLead } from "@/lib/lead-delivery";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { SITE_URL } from "@/lib/schema";
+import type { LeadMagnetDownload } from "@/types/leadMagnet";
 import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
@@ -126,14 +127,16 @@ export async function POST(request: Request) {
       );
     }
     // One link per file, all sharing the slug-scoped token.
-    const downloads = magnet.frontmatter.assets.map(({ file, label }) => ({
-      label,
-      url: `/api/lead-magnet/download?${new URLSearchParams({
-        slug: magnet.slug,
-        token,
-        file,
-      })}`,
-    }));
+    const downloads: LeadMagnetDownload[] = magnet.frontmatter.assets.map(
+      ({ file, label }) => ({
+        label,
+        url: `/api/lead-magnet/download?${new URLSearchParams({
+          slug: magnet.slug,
+          token,
+          file,
+        })}`,
+      }),
+    );
 
     // The durable copy of the links. The lead already exists, so this can't
     // fail the response: settled, in case the never-throws contract breaks.

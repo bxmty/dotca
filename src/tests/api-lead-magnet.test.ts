@@ -13,6 +13,7 @@ import {
 } from "@/lib/notify";
 import { verifyLeadMagnetToken } from "@/lib/lead-magnet-token";
 import { resetRateLimits } from "@/lib/rate-limit";
+import type { LeadMagnetDownload } from "@/types/leadMagnet";
 
 jest.mock("@sentry/nextjs", () => ({
   captureMessage: jest.fn(),
@@ -324,8 +325,12 @@ describe("POST /api/lead-magnet", () => {
     const response = await post({ slug: multiSlug, email: EMAIL });
 
     expect(response.status).toBe(200);
-    const { downloads, downloadUrl } = await response.json();
-    expect(downloads.map(({ label }: { label: string }) => label)).toEqual(
+    const {
+      downloads,
+      downloadUrl,
+    }: { downloads: LeadMagnetDownload[]; downloadUrl: string } =
+      await response.json();
+    expect(downloads.map(({ label }) => label)).toEqual(
       files.map(([, label]) => label),
     );
     expect(downloadUrl).toBe(downloads[0].url);
@@ -345,12 +350,10 @@ describe("POST /api/lead-magnet", () => {
 
     expect(mockDeliveryEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        downloads: downloads.map(
-          ({ label, url }: { label: string; url: string }) => ({
-            label,
-            url: `https://boximity.ca${url}`,
-          }),
-        ),
+        downloads: downloads.map(({ label, url }) => ({
+          label,
+          url: `https://boximity.ca${url}`,
+        })),
       }),
     );
   });

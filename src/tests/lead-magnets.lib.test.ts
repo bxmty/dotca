@@ -137,6 +137,8 @@ describe("getLeadMagnetBySlug", () => {
     "guide.exe",
     "guide.pdf/../../../.env",
     "guide.pdf.exe",
+    "Guide.pdf",
+    "guide.PDF",
   ])(
     "rejects an assetFile of %p that is not a bare PDF filename",
     (assetFile) => {
@@ -214,6 +216,11 @@ describe("multiple assets", () => {
     ["a wrong extension", ["  - file: guide.exe", "    label: Bad"]],
     ["a missing label", ["  - file: guide.pdf"]],
     ["a missing file", ["  - label: No file"]],
+    ["an uppercase name", ["  - file: Guide.docx", "    label: Bad"]],
+    [
+      "assetFile declared as well",
+      ["  - file: guide.pdf", "    label: One", "assetFile: test-guide.pdf"],
+    ],
     [
       "duplicate filenames",
       [

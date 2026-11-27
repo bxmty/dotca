@@ -36,8 +36,18 @@ export function getLeadMagnetAssetsDir(): string {
 // Same guard blog.ts uses against path traversal, kept case-sensitive so a
 // slug maps to exactly one file on case-sensitive and case-insensitive disks.
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
-// Asset files are joined onto the assets directory, so each must be a bare filename.
-const ASSET_FILE_PATTERN = /^[a-z0-9-]+\.(pdf|docx)$/i;
+// Asset files are joined onto the assets directory, so each must be a bare
+// filename; lowercase for the same one-file-per-name reason as slugs.
+const ASSET_FILE_PATTERN = /^[a-z0-9-]+\.(pdf|docx)$/;
+const ASSET_CONTENT_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+};
+
+/** Content-Type for an asset filename the loader has already validated. */
+export function getAssetContentType(file: string): string {
+  return ASSET_CONTENT_TYPES[path.extname(file).slice(1)];
+}
 
 export function isLeadMagnetSlug(slug: string): boolean {
   return SLUG_PATTERN.test(slug);
@@ -71,6 +81,11 @@ function parseLeadMagnet(slug: string): LeadMagnet | null {
       !(data.assetFile || data.assetFiles)
     ) {
       console.warn(`Lead magnet ${slug} is missing required frontmatter`);
+      return null;
+    }
+
+    if (data.assetFile && data.assetFiles) {
+      console.warn(`Lead magnet ${slug} sets both assetFile and assetFiles`);
       return null;
     }
 
