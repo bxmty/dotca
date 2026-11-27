@@ -46,6 +46,12 @@ on:
         type: boolean
         default: false
 
+# Staging pushes queue: a running deploy finishes, and a newer push replaces any
+# queued one, so a burst of merges costs one extra deploy. Other runs never share a group.
+concurrency:
+  group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' && 'deploy-staging-push' || format('deploy-{0}', github.run_id) }}
+  cancel-in-progress: false
+
 # Global environment variables
 env:
   REGISTRY: ghcr.io
