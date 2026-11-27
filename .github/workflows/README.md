@@ -48,29 +48,6 @@ Code Changes → Unified Deploy Workflow → Environment Deployment
   - Comprehensive rollback reporting
   - Notification integration
 
-### 📊 Monitoring & Analytics
-
-#### `deployment-dashboard.yml`
-
-**Purpose**: Deployment status monitoring and basic dashboard
-
-- **Triggers**: Post-deployment, manual refresh
-- **Features**: Environment status tracking, deployment history
-
-#### `deployment-metrics.yml`
-
-**Purpose**: Collect and analyze deployment metrics
-
-- **Triggers**: Post-deployment, scheduled daily
-- **Features**: Success rates, deployment times, environment metrics
-
-#### `log-aggregation.yml`
-
-**Purpose**: Aggregate and analyze deployment logs
-
-- **Triggers**: Post-deployment, scheduled cleanup
-- **Features**: Log collection, error pattern analysis, cleanup
-
 ### 🛠️ Maintenance Workflows
 
 #### `docker-build.yml`
@@ -145,7 +122,6 @@ Environment-specific configurations in `.github/workflows/environments/`:
 - `SSH_PRIVATE_KEY` - Server access key
 - `SSH_KEY_FINGERPRINT` - SSH key fingerprint
 - `SPACES_ACCESS_ID/SECRET_KEY` - Object storage
-- `BREVO_API_KEY` - Email service
 - `STRIPE_SECRET_KEY` - Payment processing
 - `GITHUB_TOKEN` - GitHub API access
 
@@ -164,7 +140,6 @@ Environment-specific configurations in `.github/workflows/environments/`:
 - `SSH_PRIVATE_KEY`: SSH key for server access
 - `SSH_KEY_FINGERPRINT`: SSH key fingerprint
 - `SPACES_ACCESS_ID`/`SPACES_SECRET_KEY`: DigitalOcean Spaces
-- `BREVO_API_KEY`: Email service
 - `STRIPE_SECRET_KEY`/`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`: Payment processing
 - `NEXT_PUBLIC_PRODUCTION_GA_ID`: Google Analytics
 
@@ -185,27 +160,16 @@ graph TD
 
     G[Manual Trigger] --> H[rollback.yml]
     G --> I[environment-destroy.yml]
-
-    B --> J[deployment-dashboard.yml]
-    B --> K[deployment-metrics.yml]
-    B --> L[log-aggregation.yml]
-
-    H --> J
-    H --> K
-    H --> L
 ```
 
 ## 🚦 Workflow States & Triggers
 
-| Workflow                 | Automatic | Manual | Branch-based                  | Scheduled  |
-| ------------------------ | --------- | ------ | ----------------------------- | ---------- |
-| deploy.yml               | ✅        | ✅     | ✅ (main/staging/renovations) | ❌         |
-| rollback.yml             | ❌        | ✅     | ❌                            | ❌         |
-| deployment-dashboard.yml | ✅        | ✅     | ❌                            | ❌         |
-| deployment-metrics.yml   | ✅        | ❌     | ❌                            | ✅ (daily) |
-| log-aggregation.yml      | ✅        | ✅     | ❌                            | ✅ (daily) |
-| docker-build.yml         | ✅        | ✅     | ✅ (main/staging)             | ❌         |
-| dependency-check.yml     | ❌        | ✅     | ❌                            | ❌         |
+| Workflow             | Automatic | Manual | Branch-based                  | Scheduled |
+| -------------------- | --------- | ------ | ----------------------------- | --------- |
+| deploy.yml           | ✅        | ✅     | ✅ (main/staging/renovations) | ❌        |
+| rollback.yml         | ❌        | ✅     | ❌                            | ❌        |
+| docker-build.yml     | ✅        | ✅     | ✅ (main/staging)             | ❌        |
+| dependency-check.yml | ❌        | ✅     | ❌                            | ❌        |
 
 ## 🎯 Usage Guidelines
 
@@ -263,10 +227,8 @@ graph TD
 ### Best Practices
 
 - Always test changes in staging before production
-- Monitor deployment dashboard for status updates
 - Use manual dispatch for emergency deployments when needed
 - Keep environment configurations updated
-- Regularly review deployment metrics
 
 ### Health Check Endpoints
 

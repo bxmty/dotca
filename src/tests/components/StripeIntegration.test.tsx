@@ -53,12 +53,6 @@ describe("Stripe Integration", () => {
       ok: true,
       json: () => Promise.resolve({ clientSecret: "test_client_secret" }),
     } as unknown as Response);
-
-    // Mock window.location.origin
-    delete (window as unknown as { location?: Location }).location;
-    (window as unknown as { location: { origin: string } }).location = {
-      origin: "https://test.example.com",
-    };
   });
 
   afterAll(() => {

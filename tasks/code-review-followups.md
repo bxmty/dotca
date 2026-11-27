@@ -6,20 +6,21 @@ secret baked into Docker image, Umami removal.
 
 ## High priority
 
-1. [ ] **Unit tests never gate CI.** `npm run test` uses
-       `--testFailureExitCode=0`, so it exits 0 even when tests or coverage
-       fail, and `deploy.yml` runs lint + typecheck but no jest step before
-       deploying. Remove the flag, add a unit-test step to the build job, and
-       note that coverage is currently below the thresholds in
-       `jest.config.cjs` (58% statements vs 70% minimum) — either raise
-       coverage or lower the thresholds honestly.
+1. [x] **Unit tests never gate CI.** `npm run test` used
+       `--testFailureExitCode=0`, so it exited 0 even when tests or coverage
+       failed. Fixed in #569: the flag is gone from the test script and the
+       pre-commit hook, `deploy.yml` runs the unit suite and its
+       fail-on-test-failures gate is now reachable. Thresholds were set to
+       measured coverage in #566 as a ratchet baseline; #570 covers the
+       structured-data builders, the OG image renderer and the pages-router
+       shell, which carries all four metrics past the 65/70 target.
 2. [ ] **Rotate the Stripe secret key.** Previously built images have
        `STRIPE_SECRET_KEY` recoverable via `docker inspect`. After the
        Dockerfile fix deploys, rotate the key in Stripe and update the GitHub
        Environment secret (see docs/secrets-rotation-guide.md).
 3. [ ] **Waitlist submissions never record the selected plan.**
        `WaitlistForm.tsx` sends `planName`, but `api/contact/route.ts`
-       destructures `plan`, so Brevo's `PLAN_NAME` attribute is always empty.
+       destructures `plan`, so the CRM's plan attribute is always empty.
        Align the field names and add a regression test.
 
 ## Medium priority
@@ -32,10 +33,10 @@ secret baked into Docker image, Umami removal.
        Restructure when the payment path is re-enabled.
 6. [x] **`npm install --frozen-lockfile` in Dockerfile.** npm ignores that
        flag (it's yarn/pnpm); use `npm ci` to actually enforce the lockfile.
-7. [x] **Contact route error handling.** The `throw` for Brevo API errors at
+7. [x] **Contact route error handling.** The `throw` for CRM API errors at
        `api/contact/route.ts` is caught by its own JSON-parse `catch` and
        relabeled; non-string `phone` input causes a 500 instead of a 400; the
-       dev-only fallback to `NEXT_PUBLIC_BREVO_API_KEY` invites bundling a
+       dev-only fallback to a `NEXT_PUBLIC_` CRM key invites bundling a
        secret into client JS — remove it.
 8. [x] **Blog slug hardening.** `getBlogPostBySlug` joins the URL slug into a
        filesystem path unvalidated (add `/^[a-z0-9-]+$/i`) and does not filter

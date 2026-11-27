@@ -45,6 +45,7 @@ help:
     @echo "  just deploy ENVIRONMENT=production # Deploy to production"
     @echo "  just destroy ENVIRONMENT=staging   # Destroy staging environment"
     @echo "  just status ENVIRONMENT=staging    # Check environment status"
+    @echo "  just sdr-link NAME=\"Alex Doe\" ENVIRONMENT=production  # Print an SDR call console link"
     @echo "  just terraform-plan ENVIRONMENT=staging  # Plan terraform changes"
     @echo "  just terraform-apply ENVIRONMENT=staging BACKEND=local  # Apply with local backend"
     @echo
@@ -74,9 +75,6 @@ validate: _check-env-file
         if [ -z "$DO_TOKEN" ]; then \
             echo "{{RED}}Error: DO_TOKEN not set in .env.local{{NC}}" && exit 1; \
         fi && \
-        if [ -z "$BREVO_API_KEY" ]; then \
-            echo "{{RED}}Error: BREVO_API_KEY not set in .env.local{{NC}}" && exit 1; \
-        fi && \
         if [ -z "$STRIPE_SECRET_KEY" ]; then \
             echo "{{RED}}Error: STRIPE_SECRET_KEY not set in .env.local{{NC}}" && exit 1; \
         fi && \
@@ -95,6 +93,8 @@ validate: _check-env-file
         if [ -z "$WEBMASTER_EMAIL" ]; then \
             echo "{{RED}}Error: WEBMASTER_EMAIL not set in .env.local{{NC}}" && exit 1; \
         fi && \
+        {{SCRIPTS_DIR}}/check-lead-magnet-secret.sh {{ENVIRONMENT}} && \
+        {{SCRIPTS_DIR}}/check-sdr-link-secret.sh {{ENVIRONMENT}} && \
         echo "{{GREEN}}✓ Environment variables configured{{NC}}"
     @# Test SSH agent
     @ssh-add -l >/dev/null 2>&1 || echo "{{YELLOW}}⚠ SSH agent not running or no keys loaded{{NC}}"
@@ -119,6 +119,41 @@ deploy: _check-deploy-script
         {{ if BACKEND != "" { "--backend " + BACKEND } else { "" } }} \
         {{ if DRY_RUN == "true" { "--dry-run" } else { "" } }} \
         {{ if VERBOSE == "true" { "--verbose" } else { "" } }}
+
+# Print a signed SDR call console link, using the secret from 1Password
+[no-exit-message]
+sdr-link ASSIGNMENT_ONE="" ASSIGNMENT_TWO="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SDR_NAME=""
+    SDR_ENVIRONMENT={{quote(ENVIRONMENT)}}
+    # Parameters, not just's own overrides: those only work before the recipe
+    # name, and this reads as `just sdr-link NAME="Alex Doe" ENVIRONMENT=staging`.
+    for argument in {{quote(ASSIGNMENT_ONE)}} {{quote(ASSIGNMENT_TWO)}}; do
+        case "$argument" in
+            NAME=*) SDR_NAME="${argument#NAME=}" ;;
+            ENVIRONMENT=*) SDR_ENVIRONMENT="${argument#ENVIRONMENT=}" ;;
+            "") ;;
+            *)
+                echo "Unexpected argument: $argument" >&2
+                exit 1
+                ;;
+        esac
+    done
+    if [[ -z "$SDR_NAME" ]]; then
+        echo 'Usage: just sdr-link NAME="Alex Doe" ENVIRONMENT=staging|production' >&2
+        exit 1
+    fi
+    case "$SDR_ENVIRONMENT" in
+        staging) item="DotCA-SDR-Link-Signing-Secret-Staging" ;;
+        production) item="DotCA-SDR-Link-Signing-Secret-Production" ;;
+        *)
+            echo "ENVIRONMENT must be staging or production, got: $SDR_ENVIRONMENT" >&2
+            exit 1
+            ;;
+    esac
+    SDR_LINK_SIGNING_SECRET="op://Boximity/$item/password" \
+        op run -- node {{SCRIPTS_DIR}}/sdr-link.ts "$SDR_NAME" "$SDR_ENVIRONMENT"
 
 # Destroy recipe - Environment cleanup
 destroy: _check-destroy-script _confirm-destroy
@@ -253,49 +288,51 @@ ansible-syntax:
     @echo "{{GREEN}}✓ Syntax check passed{{NC}}"
 
 # Development Docker Compose recipes
+# --renew-anon-volumes: a fresh /app/node_modules on every start, so a
+# dependency change in the rebuilt image isn't hidden behind the old volume
 dev-up: _check-docker-compose-dev
     @echo "{{BLUE}}Starting local development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml up --build -d
+    @docker compose -f docker-compose.dev.yml up --build -d --renew-anon-volumes
     @echo "{{GREEN}}✓ Development environment started{{NC}}"
     @echo "{{BLUE}}Application available at: http://localhost:3000{{NC}}"
 
 dev-down: _check-docker-compose-dev
     @echo "{{BLUE}}Stopping local development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml down
+    @docker compose -f docker-compose.dev.yml down
     @echo "{{GREEN}}✓ Development environment stopped{{NC}}"
 
 dev-build: _check-docker-compose-dev
     @echo "{{BLUE}}Building development Docker images...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml build
+    @docker compose -f docker-compose.dev.yml build
     @echo "{{GREEN}}✓ Development images built{{NC}}"
 
 dev-logs:
     @echo "{{BLUE}}Showing development environment logs...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml logs -f
+    @docker compose -f docker-compose.dev.yml logs -f
 
 dev-restart:
     @echo "{{BLUE}}Restarting development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml restart
+    @docker compose -f docker-compose.dev.yml restart
     @echo "{{GREEN}}✓ Development environment restarted{{NC}}"
 
 dev-clean: _confirm-dev-clean
     @echo "{{RED}}WARNING: This will remove all development containers, volumes, and images{{NC}}"
     @echo "{{BLUE}}Cleaning up development environment...{{NC}}"
-    @docker-compose -f docker-compose.dev.yml down -v --rmi all
+    @docker compose -f docker-compose.dev.yml down -v --rmi all
     @docker system prune -f
     @echo "{{GREEN}}✓ Development environment cleaned{{NC}}"
 
 dev-test: _check-docker-compose-dev
     @echo "{{BLUE}}Running unit tests (Jest)...{{NC}}"
     @if command -v npm >/dev/null 2>&1; then \
-        npm test; \
+        npm run test:coverage; \
     else \
         echo "{{RED}}Error: npm not found{{NC}}" && exit 1; \
     fi
     @echo "{{GREEN}}✓ Unit tests completed{{NC}}"
     @echo
     @echo "{{BLUE}}Running E2E tests (Playwright)...{{NC}}"
-    @if docker-compose -f docker-compose.dev.yml ps | grep -q "web"; then \
+    @if docker compose -f docker-compose.dev.yml ps | grep -q "web"; then \
         if command -v npx >/dev/null 2>&1; then \
             npx playwright test; \
         else \
@@ -326,7 +363,7 @@ dev-lint:
 
 dev-status:
     @echo "{{BLUE}}Development environment status:{{NC}}"
-    @docker-compose -f docker-compose.dev.yml ps
+    @docker compose -f docker-compose.dev.yml ps
 
 # Private helper recipes
 _check-setup-script:
@@ -381,3 +418,21 @@ _confirm-dev-clean:
             echo "{{YELLOW}}Cleanup cancelled{{NC}}" && exit 0; \
         fi \
     fi
+
+# Run Stryker mutation testing in a detached tmux session, archiving the report per commit
+mutation *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v tmux >/dev/null 2>&1 || { echo "Error: tmux not found"; exit 1; }
+    if tmux has-session -t stryker 2>/dev/null; then
+        echo "A Stryker run is already going: tmux attach -t stryker"
+        exit 1
+    fi
+    archive="reports/mutation-runs/$(git rev-parse --short HEAD)"
+    mkdir -p "${archive}"
+    tmux new-session -d -s stryker bash -c \
+        "npm run test:mutation -- {{ARGS}} 2>&1 | tee '${archive}/stryker.log'; echo \"exit=\${PIPESTATUS[0]}\" >> '${archive}/stryker.log'; cp reports/mutation/mutation.json '${archive}/'"
+    echo "Stryker started in tmux session 'stryker'"
+    echo "  Watch:   tmux attach -t stryker"
+    echo "  Log:     ${archive}/stryker.log (ends with exit=<code>)"
+    echo "  Report:  ${archive}/mutation.json (copied when the run ends)"

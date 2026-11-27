@@ -3,13 +3,35 @@ import { Resend } from "resend";
 /**
  * Webmaster notification email — the redundancy path for form submissions.
  *
- * Fires alongside the Brevo write so a Brevo outage can't silently lose a
- * lead. Never throws: callers branch on the returned boolean to build the
- * success/failure matrix, so a Resend outage must surface as `false`, not
- * as an exception that masks the Brevo result.
+ * Fires alongside the Syncro lead write so a Syncro outage can't silently
+ * lose a lead. Never throws: callers branch on the returned boolean to build
+ * the success/failure matrix, so a Resend outage must surface as `false`, not
+ * as an exception that masks the Syncro result.
  */
 
-export type NotificationFormType = "Contact" | "Onboarding" | "Paid signup";
+export type NotificationFormType =
+  | "Contact"
+  | "Onboarding"
+  | "Paid signup"
+  | "Lead magnet"
+  | "Security assessment"
+  | "Discovery call assessment"
+  // A joiner/leaver request from a client's authorized contact (#565)
+  | "Service request";
+
+/**
+ * Whether a service request's submitter was checked against the client's
+ * authorized contacts. "unverified": Syncro could not say, so the request
+ * went out by email alone and its subject line is flagged.
+ */
+export type SubmitterAuthorization = "verified" | "unverified";
+
+/**
+ * Leads the subject line, not the body, so a service request nobody could
+ * check against the client's authorized contacts is never mistaken for a
+ * verified one in an inbox listing.
+ */
+const AUTHORIZATION_UNVERIFIED_FLAG = "[AUTHORIZATION UNVERIFIED]";
 
 function escapeHtml(value: string): string {
   return value
@@ -19,26 +41,71 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export async function sendWebmasterNotification({
-  formType,
-  submitterName,
-  fields,
+/**
+ * The one Resend send path both public functions share: env check, send,
+ * error handling. Never throws; every failure is logged under `purpose` and
+ * returned as `false`.
+ */
+async function sendResendEmail({
+  purpose,
+  senderName,
+  to,
+  subject,
+  html,
+  text,
 }: {
-  formType: NotificationFormType;
-  submitterName: string;
-  fields: Record<string, string>;
+  /** Names the email in log lines, e.g. "Webmaster notification". */
+  purpose: string;
+  senderName: string;
+  /** Unset when the recipient's own env var is missing. */
+  to: string | undefined;
+  subject: string;
+  html: string;
+  text: string;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM_EMAIL;
-  const webmasterEmail = process.env.WEBMASTER_EMAIL;
 
-  if (!apiKey || !fromEmail || !webmasterEmail) {
+  if (!apiKey || !fromEmail || !to) {
     console.error(
-      "Webmaster notification skipped: RESEND_API_KEY, RESEND_FROM_EMAIL, or WEBMASTER_EMAIL is not set",
+      `${purpose} skipped: RESEND_API_KEY, RESEND_FROM_EMAIL, or the recipient is not set`,
     );
     return false;
   }
 
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: `${senderName} <${fromEmail}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
+    if (error) {
+      console.error(`${purpose} failed:`, error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(`${purpose} failed:`, error);
+    return false;
+  }
+}
+
+export async function sendWebmasterNotification({
+  formType,
+  submitterName,
+  fields,
+  authorization = "verified",
+}: {
+  formType: NotificationFormType;
+  submitterName: string;
+  fields: Record<string, string>;
+  /** Service requests only; every other form leaves it out. */
+  authorization?: SubmitterAuthorization;
+}): Promise<boolean> {
+  const subject = `New ${formType} submission — ${submitterName}`;
   const rows = Object.entries(fields).filter(([, value]) => value !== "");
 
   const text = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
@@ -53,22 +120,58 @@ export async function sendWebmasterNotification({
     "</table>",
   ].join("\n");
 
-  try {
-    const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({
-      from: `Boximity Website <${fromEmail}>`,
-      to: webmasterEmail,
-      subject: `New ${formType} submission — ${submitterName}`,
-      html,
-      text,
-    });
-    if (error) {
-      console.error("Webmaster notification failed:", error);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("Webmaster notification failed:", error);
-    return false;
-  }
+  return sendResendEmail({
+    purpose: "Webmaster notification",
+    senderName: "Boximity Website",
+    // WEBMASTER_EMAIL is part of this email's env contract.
+    to: process.env.WEBMASTER_EMAIL,
+    subject:
+      authorization === "unverified"
+        ? `${AUTHORIZATION_UNVERIFIED_FLAG} ${subject}`
+        : subject,
+    html,
+    text,
+  });
+}
+
+/**
+ * Lead magnet delivery email — the durable copy of the download link, sent to
+ * the submitter (the page shows the same link immediately). Same Resend
+ * client and the same never-throws contract as sendWebmasterNotification:
+ * the lead already exists by the time this sends, so a Resend outage must
+ * surface as `false`, never fail the capture.
+ */
+export async function sendLeadMagnetDeliveryEmail({
+  to,
+  downloadUrl,
+  title,
+}: {
+  to: string;
+  downloadUrl: string;
+  title: string;
+}): Promise<boolean> {
+  const text = [
+    `Here's your copy of ${title}:`,
+    "",
+    downloadUrl,
+    "",
+    "The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.",
+    "",
+    "— Boximity",
+  ].join("\n");
+  const html = [
+    `<p>Here's your copy of <strong>${escapeHtml(title)}</strong>:</p>`,
+    `<p><a href="${escapeHtml(downloadUrl)}">Download ${escapeHtml(title)}</a></p>`,
+    "<p>The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.</p>",
+    "<p>— Boximity</p>",
+  ].join("\n");
+
+  return sendResendEmail({
+    purpose: "Lead magnet delivery email",
+    senderName: "Boximity",
+    to,
+    subject: `Your download: ${title}`,
+    html,
+    text,
+  });
 }

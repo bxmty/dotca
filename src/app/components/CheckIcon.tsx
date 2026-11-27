@@ -4,15 +4,15 @@
  */
 export default function CheckIcon({
   size = 24,
-  filled = false,
+  isFilled = false,
   className = "text-success-emphasis flex-shrink-0 me-2",
 }: {
   size?: number;
   /** Filled circle-less glyph used on service pages; stroke check elsewhere */
-  filled?: boolean;
+  isFilled?: boolean;
   className?: string;
 }) {
-  if (filled) {
+  if (isFilled) {
     return (
       <svg
         aria-hidden="true"

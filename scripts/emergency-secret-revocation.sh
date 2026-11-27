@@ -60,16 +60,6 @@ revoke_stripe_keys() {
     log_success "Stripe key revocation logged (manual action required)"
 }
 
-# Revoke Brevo keys
-revoke_brevo_keys() {
-    log_info "Revoking Brevo API keys..."
-
-    log_warning "MANUAL ACTION REQUIRED: Log in to Brevo dashboard and revoke API key:"
-    log_warning "- API Key: ${BREVO_API_KEY:0:20}..."
-
-    log_success "Brevo key revocation logged (manual action required)"
-}
-
 # Revoke DigitalOcean token
 revoke_digitalocean_token() {
     log_info "Revoking DigitalOcean token..."
@@ -153,7 +143,6 @@ Reason: Security incident - potential secret compromise
 
 ACTIONS TAKEN:
 - Stripe API keys flagged for revocation
-- Brevo API keys flagged for revocation
 - DigitalOcean token flagged for revocation
 - Spaces credentials flagged for revocation
 - GitHub Actions workflows flagged for disable
@@ -214,7 +203,6 @@ main() {
 
     # Revoke external service keys
     revoke_stripe_keys
-    revoke_brevo_keys
     revoke_digitalocean_token
     revoke_spaces_credentials
 

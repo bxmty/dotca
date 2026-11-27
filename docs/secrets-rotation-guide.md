@@ -53,7 +53,7 @@ The DotCA project uses multiple types of secrets across different systems. Prope
 
 ### 3. API Keys and Tokens
 
-- **Services**: Stripe, Brevo, Resend, Google Analytics
+- **Services**: Stripe, Resend, Google Analytics
 - **Rotation**: Every 90 days
 - **Impact**: Affects payment processing, emails, analytics
 
@@ -165,9 +165,15 @@ After successful verification (minimum 24 hours):
 | `SSH_KEY_FINGERPRINT`                | Terraform validation             | Medium          |
 | `SPACES_ACCESS_ID`                   | Object storage access            | Medium          |
 | `SPACES_SECRET_KEY`                  | Object storage secret            | Medium          |
-| `BREVO_API_KEY`                      | Email service                    | Medium          |
-| `RESEND_API_KEY`                     | Webmaster notification           | Medium          |
+| `RESEND_API_KEY`                     | Full access: send and contacts   | Medium          |
+| `RESEND_MONTHLY_BRIEF_SEGMENT_ID`    | Monthly security brief segment   | Low             |
+| `RESEND_MONTHLY_BRIEF_TOPIC_ID`      | Monthly security brief topic     | Low             |
 | `RESEND_FROM_EMAIL`                  | Webmaster notification sender    | Low             |
+| `LEAD_MAGNET_SIGNING_SECRET`         | Lead magnet download links       | Low             |
+| `SDR_LINK_SIGNING_SECRET`            | SDR call console links           | Medium          |
+| `SYNCRO_SUBDOMAIN`                   | Syncro account subdomain         | Low             |
+| `SYNCRO_API_KEY`                     | Scoped Syncro API token          | High            |
+| `SYNCRO_FREE_INSTALLER_URL`          | Free-tier agent installer link   | High            |
 | `WEBMASTER_EMAIL`                    | Webmaster notification recipient | Low             |
 | `STRIPE_SECRET_KEY`                  | Payment processing               | Critical        |
 | `STRIPE_WEBHOOK_SECRET`              | Webhook signature verification   | High            |
@@ -285,49 +291,83 @@ copy one environment's value into another — signature verification will
    - Redeploy the environment (runtime secret — no rebuild needed)
    - Confirm webhook deliveries return 200 in Workbench → Webhooks
 
-### Brevo (Sendinblue) API Keys
-
-1. **Generate New API Key**
-   - Log in to Brevo dashboard
-   - Go to SMTP & API → API Keys
-   - Create new API key with appropriate permissions
-
-2. **Update Secrets**
-
-   ```bash
-   # Update GitHub secret
-   gh secret set BREVO_API_KEY -R owner/repo --body "new_brevo_api_key"
-
-   # Test deployment
-   gh workflow run deploy.yml -f promoted_image_tag=main
-   ```
-
-3. **Clean Up**
-   - Delete old API key after verification
-
 ### Resend API Keys
 
-1. **Generate New API Key**
-   - Log in to Resend dashboard
-   - Go to API Keys → Create API Key
-   - Create new API key with appropriate permissions (sending scope)
+`RESEND_API_KEY` has to be **Full access**. A sending-only key can send mail but fails contact, segment, and topic writes with `restricted_api_key`. Staging and production each have their own key. Local `.env.local` uses the staging key.
 
-2. **Update Secrets**
+`RESEND_MONTHLY_BRIEF_SEGMENT_ID` and `RESEND_MONTHLY_BRIEF_TOPIC_ID` identify the `Monthly security brief` segment and topic. They are IDs, not keys, so rotating `RESEND_API_KEY` does not change them. Staging, production, and `.env.local` carry the same IDs. The topic's default subscription is Opt-out and cannot be changed after creation.
+
+To raise an existing key from Sending access to Full access, change its permission in the Resend dashboard. The secret value stays the same, so there is nothing to store or revoke. Mint a replacement only to rotate:
+
+1. **Generate a replacement in Resend.** API Keys → Create API Key. Permission: Full access. Name it for the environment (`dotca-staging` or `dotca-production`).
+2. **Update that environment's secret.** `gh` prompts for the value, so the key never lands in shell history:
 
    ```bash
-   # Update GitHub secret
-   gh secret set RESEND_API_KEY -R owner/repo --body "re_xxxxxxxxxxxx"
-
-   # WEBMASTER_EMAIL is not a secret; update in environment variables
-   # If stored as secret, update via GitHub:
-   gh secret set WEBMASTER_EMAIL -R owner/repo --body "webmaster@example.com"
+   gh secret set RESEND_API_KEY --env staging -R bxmty/dotca
+   gh secret set RESEND_API_KEY --env production -R bxmty/dotca
    ```
 
-3. **Update Deployment Configuration**
-   - Deploy and verify webmaster notification emails are delivered
+   When the staging key changes, update `RESEND_API_KEY` in `.env.local` too.
 
-4. **Clean Up**
-   - Revoke old API key in Resend dashboard after verification
+3. **Redeploy** that environment and confirm a webmaster notification still arrives.
+4. **Revoke the previous key** in the Resend dashboard after that deploy succeeds.
+
+### Syncro API Token
+
+`SYNCRO_SUBDOMAIN` and `SYNCRO_API_KEY` let website leads be written to Syncro, and let the joiner/leaver intake (`/service-request/<token>`) read customers and contacts and create tickets. Both are required at the deploy gate, so a missing value fails the deploy.
+
+1. **Create a replacement token in Syncro** with the same scoped permissions as the current one. The site creates leads, lists customers, lists and creates contacts, and creates tickets, and nothing else. Syncro files contact writes under **Customers - Edit**, not a Contacts permission: without it every new hire's contact create returns HTTP 401 (the ticket is still filed). Do not use a full-admin token.
+2. **Update each environment that holds the old token** (`gh` prompts for the value):
+
+   ```bash
+   gh secret set SYNCRO_API_KEY --env staging -R bxmty/dotca
+   gh secret set SYNCRO_API_KEY --env production -R bxmty/dotca
+   ```
+
+3. **Redeploy staging**, submit a test lead, and confirm it appears in Syncro Leads. Open a client's intake link and confirm the form loads: a token without the customer-read permission shows the "temporarily unavailable" page instead. Then redeploy production.
+4. **Revoke the previous token** in Syncro after both deploys succeed.
+
+### Free-tier Syncro Installer Link
+
+`SYNCRO_FREE_INSTALLER_URL` is the agent installer for the Free-tier Syncro customer only. Anyone with the URL can enroll a device into the RMM. Never point it at a paying customer's folder or policy, and never paste it into an issue, a commit, or a chat.
+
+A weekly review of new assets on the Free-tier customer is the standing check when no Syncro alert is configured. If an unknown device shows up, rotate the link:
+
+1. **Generate a new RMM Agent Installer link in Syncro** from the Free-tier organization's restricted policy folder.
+2. **Check the dialog for an expiry.** Syncro's Linux agent docs say a copied link stays active for 7 days. If the link expires, rotate it on that schedule as well as when an unknown device appears.
+3. **Update the secret in both environments.** Staging and production carry the same link:
+
+   ```bash
+   gh secret set SYNCRO_FREE_INSTALLER_URL --env staging -R bxmty/dotca
+   gh secret set SYNCRO_FREE_INSTALLER_URL --env production -R bxmty/dotca
+   ```
+
+4. **Redeploy staging and production** so `/install` serves the new link.
+5. **Retire the previous installer link in Syncro** after both deploys succeed, so it can no longer enroll devices.
+
+### SDR Link Signing Secret
+
+`SDR_LINK_SIGNING_SECRET` signs the 90-day links that open the discovery-call console (`/security-assessment/call`) and authorize its saves. Links are stateless, so this secret is the only revocation there is: **rotating it revokes every SDR link at once, not just one person's. Reissue a link to everyone on the team afterwards.** It never affects lead-magnet or `/install` links, which use `LEAD_MAGNET_SIGNING_SECRET`.
+
+Rotate when an SDR leaves or a link leaks. Each environment has its own value. Do staging first, then production:
+
+1. Generate a value with `openssl rand -hex 32` and save it in 1Password → Boximity → `DotCA-SDR-Link-Signing-Secret-Staging` (`-Production` for production), field `password`.
+2. Set it in the GitHub environment:
+
+   ```bash
+   gh secret set SDR_LINK_SIGNING_SECRET --env staging
+   ```
+
+3. Redeploy that environment. Old links now 404, and any call open in a console can't save until the SDR opens a new link.
+4. Mint and send a new link for each SDR:
+
+   ```bash
+   just sdr-link NAME="Alex Doe" ENVIRONMENT=staging
+   ```
+
+5. Open a new link to confirm it reaches the console, and an old one to confirm it 404s.
+
+Links also expire by themselves after 90 days, so reissue them on that schedule even without a rotation.
 
 ### Google Analytics
 
@@ -486,7 +526,6 @@ gh secret set SSH_KEY_FINGERPRINT -R owner/repo --body "$FINGERPRINT"
 ```bash
 # Restore previous API keys from backup
 gh secret set STRIPE_SECRET_KEY -R owner/repo --body "$BACKUP_STRIPE_KEY"
-gh secret set BREVO_API_KEY -R owner/repo --body "$BACKUP_BREVO_KEY"
 gh secret set RESEND_API_KEY -R owner/repo --body "$BACKUP_RESEND_KEY"
 
 # Deploy with backup keys
@@ -528,7 +567,7 @@ gh workflow run deploy.yml -f promoted_image_tag=main -f skip_user_tests=false
 - [ ] SSH access to production servers works
 - [ ] Deployment pipeline completes successfully
 - [ ] Payment processing works (Stripe)
-- [ ] Email delivery works (Brevo, Resend webmaster notifications)
+- [ ] Email delivery works (Resend webmaster notifications)
 - [ ] Analytics tracking works (GA)
 - [ ] Application loads without errors
 - [ ] Database connections work
@@ -551,12 +590,6 @@ fi
 # Check Stripe key format
 if [[ ! $STRIPE_SECRET_KEY =~ ^sk_(test|live)_ ]]; then
   echo "❌ Invalid Stripe secret key format"
-  exit 1
-fi
-
-# Check Brevo API key format (should be base64-like)
-if [[ ! $BREVO_API_KEY =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
-  echo "❌ Invalid Brevo API key format"
   exit 1
 fi
 

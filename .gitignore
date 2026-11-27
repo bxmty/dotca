@@ -14,13 +14,22 @@
 /coverage
 playwright-report/
 test-results/
+# Stryker mutation testing: sandbox and report output
+/.stryker-tmp/
+/reports/
 
 # next.js
 /.next/
+# Alternate build dirs (e.g. .next-local, .next-verify). Unanchored, matching
+# the nested-path behaviour of the per-directory entries this replaced.
+.next-*/
 /out/
 
 # production
 /build
+
+# agent worktrees: full checkouts of other branches
+.claude/worktrees/
 
 # misc
 .DS_Store
@@ -46,9 +55,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# claude
-CLAUDE.md
 
 # Terraform
 **/.terraform/*
@@ -109,5 +115,3 @@ logs/*
 
 # bugs
 docs/bugs/*
-.next-local/
-.next-verify/

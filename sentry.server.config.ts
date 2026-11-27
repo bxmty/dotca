@@ -3,12 +3,13 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubLinkTokens } from "./src/lib/sentry-scrub";
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
 
   // Environment tagging for better issue organization
-  environment: process.env.NODE_ENV,
+  environment: process.env.NEXT_PUBLIC_ENVIRONMENT,
 
   // Release tracking for better error grouping and deployment tracking
   release: process.env.NEXT_PUBLIC_COMMIT_HASH,
@@ -16,10 +17,22 @@ Sentry.init({
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
+  // v11 collects user info, cookies, and request data by default, which
+  // matches the previous sendDefaultPii: true setting.
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  // Links carry a token in the URL (`?t=`, or the intake link's path
+  // segment), which spans and events record. The scrubber also drops the
+  // request body the SDK captures for the intake submission route.
+  beforeSend: (event) => scrubLinkTokens(event),
+  beforeSendTransaction: (event) => scrubLinkTokens(event),
+  beforeSendSpan: Sentry.withStreamedSpan((span) => scrubLinkTokens(span)),
+
+  // Bots/scanners probe for Next.js Server Actions with a bogus Next-Action
+  // header even though this app defines none; Next.js's fallback error
+  // handling for that case throws this pair of framework-internal errors.
+  // Not actionable, so keep them out of the issue stream.
+  ignoreErrors: [
+    /Failed to find Server Action/,
+    /Expected RSC response, got text\/plain/,
+  ],
 });

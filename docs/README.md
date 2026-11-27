@@ -19,6 +19,7 @@ Comprehensive documentation for the image promotion CI/CD pipeline.
 - **[Component Interactions](./component-interaction-diagram.md)** - System architecture and data flow
 - **[SSH Key Management](./ssh-key-management.md)** - Secure key management and access control
 - **[Secrets Rotation Guide](./secrets-rotation-guide.md)** - Comprehensive secret rotation procedures and security practices
+- **[Perf Gate](./perf-gate.md)** - Manual Lighthouse before/after gate for releases, and how to rerun one configuration
 
 ## 🚀 Quick Start
 

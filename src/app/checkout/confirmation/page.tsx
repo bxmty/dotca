@@ -1,5 +1,8 @@
-import Link from "next/link";
 import type { Metadata } from "next";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
+import { ButtonLink } from "../../components/Button";
+import StatusNote from "../../components/StatusNote";
+import StatusPage from "../../components/StatusPage";
 
 export const metadata: Metadata = {
   title: "Payment Confirmation",
@@ -20,7 +23,7 @@ interface PageProps {
 interface ConfirmationContent {
   heading: string;
   message: string;
-  showRetry: boolean;
+  shouldShowRetry: boolean;
 }
 
 // Stripe redirects back with redirect_status describing the payment outcome
@@ -33,14 +36,14 @@ function getConfirmationContent(
         heading: "Payment Successful",
         message:
           "Thank you for your purchase! A receipt has been sent to your email address. Our team will reach out shortly to get you onboarded.",
-        showRetry: false,
+        shouldShowRetry: false,
       };
     case "processing":
       return {
         heading: "Payment Processing",
         message:
           "Your payment is being processed. We will email you a confirmation as soon as it completes — no further action is needed.",
-        showRetry: false,
+        shouldShowRetry: false,
       };
     case "requires_payment_method":
     case "failed":
@@ -48,14 +51,13 @@ function getConfirmationContent(
         heading: "Payment Unsuccessful",
         message:
           "Your payment could not be completed. No charge was made. Please return to checkout and try again with a different payment method.",
-        showRetry: true,
+        shouldShowRetry: true,
       };
     default:
       return {
         heading: "Order Received",
-        message:
-          "We have received your order. If you do not receive a confirmation email shortly, please contact us at hi@boximity.ca or (289) 539-0098.",
-        showRetry: false,
+        message: `We have received your order. If you do not receive a confirmation email shortly, please contact us at hi@boximity.ca or ${COMPANY_PHONE_DISPLAY}.`,
+        shouldShowRetry: false,
       };
   }
 }
@@ -64,44 +66,34 @@ export default async function CheckoutConfirmationPage({
   searchParams,
 }: PageProps) {
   const { redirect_status: redirectStatus } = await searchParams;
-  const { heading, message, showRetry } =
+  const { heading, message, shouldShowRetry } =
     getConfirmationContent(redirectStatus);
 
+  // A failed payment is the one outcome drawn as an error status (danger is
+  // for field errors and failed payments only); the others read as copy.
   return (
-    <div className="min-vh-100 d-flex flex-column">
-      <header className="py-4 px-3 px-md-5 d-flex align-items-center justify-content-between">
-        <Link
-          href="/"
-          className="fs-4 fw-semibold text-decoration-none text-body"
-        >
-          boximity msp
-        </Link>
-      </header>
-
-      <section className="py-5 py-md-7 flex-grow-1">
-        <div className="container text-center">
-          <h1 className="fs-1 fw-light mb-4 border-bottom pb-3">{heading}</h1>
-          <p className="lead text-body-secondary mb-4">{message}</p>
-          {showRetry ? (
-            <Link href="/checkout" className="btn btn-dark px-4 py-2">
-              Return to Checkout
-            </Link>
-          ) : (
-            <Link href="/" className="btn btn-dark px-4 py-2">
-              Back to Home
-            </Link>
-          )}
-        </div>
-      </section>
-
-      <footer className="py-4 py-md-5 border-top mt-auto">
-        <div className="container text-center">
-          <div className="fs-4 fw-semibold mb-2">boximity msp</div>
-          <p className="small text-body-secondary mb-0">
-            © 2025 boximity msp. All rights reserved.
-          </p>
-        </div>
-      </footer>
-    </div>
+    <StatusPage
+      kicker="Checkout"
+      heading={heading}
+      action={
+        shouldShowRetry ? (
+          <ButtonLink variant="secondary" href="/checkout">
+            Return to Checkout
+          </ButtonLink>
+        ) : (
+          <ButtonLink variant="secondary" href="/">
+            Back to Home
+          </ButtonLink>
+        )
+      }
+    >
+      {shouldShowRetry ? (
+        <StatusNote tone="error" label="Error">
+          <p className="m-0 text-ink">{message}</p>
+        </StatusNote>
+      ) : (
+        <p className="m-0">{message}</p>
+      )}
+    </StatusPage>
   );
 }

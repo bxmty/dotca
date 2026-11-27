@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Boximity MSP — IT That Just Works",
     short_name: "Boximity MSP",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: "/favicon.ico",
-        sizes: "48x48",
+        sizes: "16x16 32x32 48x48",
         type: "image/x-icon",
       },
       {
@@ -25,6 +25,12 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icon-512.png",
         sizes: "512x512",
         type: "image/png",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

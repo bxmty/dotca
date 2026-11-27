@@ -1,0 +1,1044 @@
+# SMB Cybersecurity Assessment — quiz content & scoring config
+#
+# This file is the single source of truth for the /security-assessment quiz.
+# Marketing can edit questions, answers, scoring, tier copy, and CTAs here
+# without touching application code. The app validates this file at load
+# time and fails loudly on structural mistakes.
+#
+# Structure:
+#   landing     — copy on the quiz landing screen
+#   segments    — the three business-size segments (set by the first question)
+#   tiers       — risk tier labels + results-page copy (worst → best)
+#   thresholds  — per-segment minimum score for each tier (score >= value).
+#                 Anything below the "reactive" threshold is "exposed".
+#   sections    — labels (and optional blurbs) for progress grouping
+#   categories  — one entry per question category; weakCopy is shown on the
+#                 results page when the respondent picked a risk answer
+#   questions   — the shared question bank. Each question lists which
+#                 segments see it. Answer points: higher = better posture.
+#                 risk: true marks a risk-indicating answer (drives weakCopy
+#                 and lead tagging).
+#   ctas        — results-page call to action per segment x tier
+#   sdr         — SDR-only discovery-call content (talk tracks, next steps,
+#                 discovery questions). Never sent to the public quiz; see
+#                 the block at the end of this file.
+
+landing:
+  title: "How exposed is your business?"
+  intro: >-
+    Answer a few plain-language questions about how your business handles
+    security — no jargon, no trick questions — and get a personalized
+    read on where you stand, plus the specific gaps worth closing first.
+  timeEstimate: "Takes about 3 minutes"
+  startLabel: "Start the assessment"
+
+segments:
+  solo:
+    label: "Solopreneur"
+    description: "Just me, plus contractors (1 person)"
+  small_team:
+    label: "Small team"
+    description: "2–20 employees"
+  growing:
+    label: "Growing business"
+    description: "21–50+ employees"
+
+sizeQuestion: "How big is your business?"
+
+sections:
+  essentials:
+    label: "Security essentials"
+    blurb: >-
+      The fundamentals every business needs — passwords, backups, devices,
+      and the scams that target them.
+  team_practices:
+    label: "Team & access"
+    blurb: >-
+      How accounts, policies, and people change as more than one person
+      touches your systems.
+  security_program:
+    label: "Security program"
+    blurb: >-
+      The practices that keep posture strong as the business scales —
+      response plans, vendors, and ongoing discipline.
+
+tiers:
+  exposed:
+    label: "Exposed"
+    headline: "Your business is running without a safety net"
+    body: >-
+      Several security fundamentals are missing, which leaves you open to
+      even opportunistic, untargeted attacks. The good news: the basics
+      are the fastest and cheapest wins, and closing the gaps below would
+      remove most of that risk quickly.
+  reactive:
+    label: "Reactive"
+    headline: "Real protections are in place — but so are real gaps"
+    body: >-
+      You've clearly invested in security, but a few gaps and the lack of
+      a formal plan mean an incident would still hurt more than it should.
+      Closing the specific gaps below would move you into solid territory.
+  managed:
+    label: "Managed"
+    headline: "Solid fundamentals, with room to tighten"
+    body: >-
+      You're doing most things right — the fundamentals are covered and
+      an attacker would have to work for it. The areas below are where
+      tightening up would give you the most return.
+  resilient:
+    label: "Resilient"
+    headline: "Strong security posture across the board"
+    body: >-
+      You're ahead of the large majority of businesses your size. The work
+      now is keeping it that way as tools, staff, and threats change —
+      posture erodes quietly when nobody owns it.
+
+# Minimum score to reach each tier, per segment. Scores below the
+# "reactive" value fall into "exposed". Max possible scores at 3 points
+# per question: solo 18 (6 questions), small_team 33 (11), growing 54 (18).
+thresholds:
+  solo:
+    reactive: 7
+    managed: 12
+    resilient: 16
+  small_team:
+    reactive: 12
+    managed: 22
+    resilient: 29
+  growing:
+    reactive: 20
+    managed: 36
+    resilient: 48
+
+categories:
+  password_mfa:
+    section: essentials
+    label: "Passwords & MFA"
+    weakCopy: >-
+      Reused passwords and patchy multi-factor authentication are the most
+      common way small businesses get breached — one leaked password can
+      open several doors at once.
+  phishing:
+    section: essentials
+    label: "Phishing awareness"
+    weakCopy: >-
+      Phishing is the number-one entry point for attacks on small
+      businesses, and spam filters alone miss the well-crafted ones.
+  backups:
+    section: essentials
+    label: "Backups"
+    weakCopy: >-
+      Without tested backups, a single ransomware incident can become an
+      existential event instead of a bad afternoon.
+  patching:
+    section: essentials
+    label: "Software updates"
+    weakCopy: >-
+      Postponed updates leave known, already-fixed holes open — and
+      attackers actively scan for exactly those.
+  device_security:
+    section: essentials
+    label: "Device security"
+    weakCopy: >-
+      A lost or stolen device without encryption or remote wipe becomes a
+      data breach, not just a hardware loss.
+  invoice_fraud:
+    section: essentials
+    label: "Payment fraud"
+    weakCopy: >-
+      Payment-redirect fraud — fake "our banking details changed" emails —
+      is now one of the most costly scams hitting SMBs. A simple
+      call-back verification habit stops it cold.
+  cloud_accounts:
+    section: team_practices
+    label: "Cloud account security"
+    weakCopy: >-
+      Shared logins make it impossible to know who did what, and a single
+      leaked password exposes everyone at once.
+  written_policy:
+    section: team_practices
+    label: "Written security policy"
+    weakCopy: >-
+      Without even a one-page written policy, security depends on memory
+      and goodwill — and new hires inherit neither.
+  offboarding:
+    section: team_practices
+    label: "Employee offboarding"
+    weakCopy: >-
+      Lingering accounts from former staff are a quiet, common source of
+      breaches and of data walking out the door.
+  staff_training:
+    section: team_practices
+    label: "Security training"
+    weakCopy: >-
+      Your team is your biggest attack surface — untrained staff click
+      the links that tools don't catch.
+  email_security:
+    section: team_practices
+    label: "Email security"
+    weakCopy: >-
+      Without SPF/DKIM/DMARC and real filtering, attackers can spoof your
+      domain and land in your customers' inboxes looking exactly like you.
+  incident_response:
+    section: security_program
+    label: "Incident response plan"
+    weakCopy: >-
+      The first hours of a breach decide most of its cost — a written,
+      rehearsed plan is the difference between a response and a scramble.
+  cyber_insurance:
+    section: security_program
+    label: "Cyber insurance"
+    weakCopy: >-
+      Without cyber coverage — or without meeting your policy's security
+      conditions — a serious incident lands entirely on your balance sheet.
+  vendor_risk:
+    section: security_program
+    label: "Vendor risk"
+    weakCopy: >-
+      Your security is only as strong as the vendors with access to your
+      data — unvetted third parties are an invisible extension of your
+      network.
+  rbac:
+    section: security_program
+    label: "Access control"
+    weakCopy: >-
+      When most people can reach most things, any single compromised
+      account can reach your most sensitive data.
+  endpoint_protection:
+    section: security_program
+    label: "Endpoint protection"
+    weakCopy: >-
+      Modern attacks routinely slip past free antivirus, and unmanaged
+      endpoints mean nobody sees the early warning signs.
+  compliance:
+    section: security_program
+    label: "Compliance obligations"
+    weakCopy: >-
+      Unmapped compliance obligations tend to surface at the worst
+      possible moment — after an incident, or during a deal's due
+      diligence.
+  training_cadence:
+    section: security_program
+    label: "Training cadence"
+    weakCopy: >-
+      Security awareness fades within months — one-time training quietly
+      expires.
+
+questions:
+  # ---- Core hygiene: all segments ----
+  - id: password_mfa
+    category: password_mfa
+    segments: [solo, small_team, growing]
+    text: >-
+      How are passwords and multi-factor authentication (MFA) handled for
+      your important accounts — email, banking, cloud tools?
+    answers:
+      - text: >-
+          Unique passwords from a password manager, with MFA turned on
+          everywhere that supports it
+        points: 3
+      - text: >-
+          MFA protects the most important accounts, but passwords are
+          sometimes reused
+        points: 2
+      - text: >-
+          Passwords are reused across accounts; MFA is only on where a
+          service forced it
+        points: 1
+        risk: true
+      - text: >-
+          The same few passwords everywhere, and I'm not sure where MFA
+          is set up
+        points: 0
+        risk: true
+
+  - id: phishing
+    category: phishing
+    segments: [solo, small_team, growing]
+    text: >-
+      If a convincing but fake email asked you (or a teammate) to click a
+      link or open an attachment today, how confident are you it would be
+      caught?
+    answers:
+      - text: >-
+          Very — we know the warning signs and verify unexpected requests
+          through a second channel
+        points: 3
+      - text: "Fairly — we're cautious, but nobody has ever really tested us"
+        points: 2
+      - text: "Not very — we rely on the spam filter to catch bad emails"
+        points: 1
+        risk: true
+      - text: "Honestly, someone would probably click it"
+        points: 0
+        risk: true
+
+  - id: backups
+    category: backups
+    segments: [solo, small_team, growing]
+    text: >-
+      If ransomware locked every file you rely on tomorrow, what would
+      recovery look like?
+    answers:
+      - text: >-
+          Restore from automatic backups we've actually tested, including
+          a copy kept offline or offsite
+        points: 3
+      - text: "We have automatic backups, but we've never tested a restore"
+        points: 2
+      - text: "Some things get backed up manually now and then"
+        points: 1
+        risk: true
+      - text: "There's no real backup — we'd lose the files"
+        points: 0
+        risk: true
+
+  - id: patching
+    category: patching
+    segments: [solo, small_team, growing]
+    text: >-
+      How do operating system and software updates get applied on the
+      machines you work from?
+    answers:
+      - text: >-
+          Automatic updates are on everywhere, and we check that they
+          actually applied
+        points: 3
+      - text: >-
+          Automatic where possible; the rest happens when someone gets
+          to it
+        points: 2
+      - text: "Updates get installed when the reminders become annoying enough"
+        points: 1
+        risk: true
+      - text: >-
+          Updates are often postponed indefinitely — some software is
+          well behind
+        points: 0
+        risk: true
+
+  - id: device_security
+    category: device_security
+    segments: [solo, small_team, growing]
+    text: >-
+      Think about the laptops and phones used for work. What happens if
+      one is lost or stolen?
+    answers:
+      - text: >-
+          Every device has a strong lock and disk encryption, and can be
+          remotely wiped
+        points: 3
+      - text: >-
+          Devices are locked and mostly encrypted, but there's no remote
+          wipe
+        points: 2
+      - text: "Devices have a PIN or password, and that's about it"
+        points: 1
+        risk: true
+      - text: >-
+          Some devices have no lock, or work data sits on personal devices
+          nobody manages
+        points: 0
+        risk: true
+
+  - id: invoice_fraud
+    category: invoice_fraud
+    segments: [solo, small_team, growing]
+    text: >-
+      A supplier emails saying their banking details have changed and the
+      next payment should go to a new account. What happens?
+    answers:
+      - text: >-
+          We always verify banking changes by phone, using a number we
+          already had on file
+        points: 3
+      - text: >-
+          We'd be suspicious and probably double-check, but there's no
+          set rule
+        points: 2
+      - text: "It would depend entirely on who read the email that day"
+        points: 1
+        risk: true
+      - text: "We'd likely update the details and pay — it looks legitimate"
+        points: 0
+        risk: true
+
+  # ---- Small team + growing ----
+  - id: cloud_accounts
+    category: cloud_accounts
+    segments: [small_team, growing]
+    text: >-
+      How does your team access shared cloud services — email, file
+      storage, business apps?
+    answers:
+      - text: >-
+          Everyone has their own account, with only the access their role
+          needs
+        points: 3
+      - text: >-
+          Individual accounts, but permissions are broader than they need
+          to be
+        points: 2
+      - text: "A few shared logins are still in use for some services"
+        points: 1
+        risk: true
+      - text: >-
+          Shared logins are the norm — passwords live in a spreadsheet or
+          chat thread
+        points: 0
+        risk: true
+
+  - id: written_policy
+    category: written_policy
+    segments: [small_team, growing]
+    text: >-
+      Is there any written guidance — even a single page — on how your
+      business handles security (passwords, devices, data)?
+    answers:
+      - text: "Yes — it's written down, and staff actually see it when they join"
+        points: 3
+      - text: >-
+          There's something written, but it's out of date or rarely
+          referenced
+        points: 2
+      - text: "It's understood verbally — nothing is written down"
+        points: 1
+        risk: true
+      - text: "No — everyone handles security their own way"
+        points: 0
+        risk: true
+
+  - id: offboarding
+    category: offboarding
+    segments: [small_team, growing]
+    text: >-
+      When someone leaves the company, what happens to their accounts and
+      access?
+    answers:
+      - text: >-
+          Same day: a checklist covers every account, device, and shared
+          credential
+        points: 3
+      - text: >-
+          Access gets removed within a week or so, from memory rather
+          than a list
+        points: 2
+      - text: "It happens eventually, but accounts sometimes linger for months"
+        points: 1
+        risk: true
+      - text: "Former staff probably still have working logins right now"
+        points: 0
+        risk: true
+
+  - id: staff_training
+    category: staff_training
+    segments: [small_team, growing]
+    text: >-
+      Have your staff had any security awareness training — spotting
+      phishing, handling sensitive data?
+    answers:
+      - text: "Yes — everyone has been trained, including new hires"
+        points: 3
+      - text: "Some staff have, informally or ad hoc"
+        points: 2
+      - text: "We've mentioned it in passing, but nothing structured"
+        points: 1
+        risk: true
+      - text: "No training of any kind so far"
+        points: 0
+        risk: true
+
+  - id: email_security
+    category: email_security
+    segments: [small_team, growing]
+    text: >-
+      Beyond the default spam filter, is your company email protected —
+      advanced filtering, and sender authentication (SPF/DKIM/DMARC) on
+      your domain?
+    answers:
+      - text: >-
+          Yes — advanced filtering is in place, and SPF/DKIM/DMARC are
+          configured and monitored
+        points: 3
+      - text: >-
+          SPF/DKIM exist (perhaps set up by our provider), but nobody
+          monitors them
+        points: 2
+      - text: "Just whatever came with the email service by default"
+        points: 1
+        risk: true
+      - text: "I don't know what any of that is"
+        points: 0
+        risk: true
+
+  # ---- Growing only ----
+  - id: incident_response
+    category: incident_response
+    segments: [growing]
+    text: >-
+      If you discovered a breach at 9 a.m. tomorrow — an attacker in your
+      email, or client data leaked — does a written plan say who does
+      what?
+    answers:
+      - text: >-
+          Yes — a written incident response plan with named owners, and
+          we've walked through it
+        points: 3
+      - text: "A rough plan exists, but it's never been rehearsed"
+        points: 2
+      - text: >-
+          We'd figure it out as we went, leaning on whoever knows the
+          most
+        points: 1
+        risk: true
+      - text: "No plan — it would be chaos for at least the first day"
+        points: 0
+        risk: true
+
+  - id: cyber_insurance
+    category: cyber_insurance
+    segments: [growing]
+    text: >-
+      Does the business carry cyber insurance — and do you know what the
+      policy requires of you?
+    answers:
+      - text: "Yes, and we meet the security controls the policy requires"
+        points: 3
+      - text: "Yes, but I couldn't say what the policy actually requires"
+        points: 2
+      - text: "We've looked into it but never purchased"
+        points: 1
+        risk: true
+      - text: "No cyber coverage"
+        points: 0
+        risk: true
+
+  - id: vendor_risk
+    category: vendor_risk
+    segments: [growing]
+    text: >-
+      How do you assess the security of vendors and third parties that
+      touch your data or systems?
+    answers:
+      - text: >-
+          We review security before signing, and keep a list of who has
+          access to what
+        points: 3
+      - text: >-
+          We ask important vendors informal questions, but nothing is
+          documented
+        points: 2
+      - text: "We assume reputable vendors are fine"
+        points: 1
+        risk: true
+      - text: "We've never considered vendor security"
+        points: 0
+        risk: true
+
+  - id: rbac
+    category: rbac
+    segments: [growing]
+    text: >-
+      Who can access your most sensitive systems and data — finance, HR
+      records, admin consoles?
+    answers:
+      - text: >-
+          Access is role-based, reviewed periodically, and admin rights
+          are rare
+        points: 3
+      - text: >-
+          Roughly role-based, but reviews don't happen and old access
+          accumulates
+        points: 2
+      - text: "Most staff can reach most things; it hasn't caused a problem yet"
+        points: 1
+        risk: true
+      - text: "Nearly everyone has admin-level access somewhere"
+        points: 0
+        risk: true
+
+  - id: endpoint_protection
+    category: endpoint_protection
+    segments: [growing]
+    text: >-
+      What's running on company computers to detect and stop malware?
+    answers:
+      - text: >-
+          Managed EDR/endpoint protection on every device, with alerts
+          someone actually watches
+        points: 3
+      - text: >-
+          Paid antivirus on most machines, but nobody reviews alerts
+          centrally
+        points: 2
+      - text: "The built-in or free antivirus that came with the machine"
+        points: 1
+        risk: true
+      - text: "I'm not sure anything is installed or running"
+        points: 0
+        risk: true
+
+  - id: compliance
+    category: compliance
+    segments: [growing]
+    text: >-
+      Does your industry impose data protection or compliance obligations
+      (PIPEDA, PHIPA, PCI, client security requirements) — and are you
+      meeting them?
+    answers:
+      - text: "Yes — we know our obligations and audit ourselves against them"
+        points: 3
+      - text: >-
+          We know they exist, but haven't formally verified that we
+          comply
+        points: 2
+      - text: "There probably are obligations, but we've never mapped them"
+        points: 1
+        risk: true
+      - text: "No idea what applies to us"
+        points: 0
+        risk: true
+
+  - id: training_cadence
+    category: training_cadence
+    segments: [growing]
+    text: >-
+      How often does security training happen — once, or on a recurring
+      schedule?
+    answers:
+      - text: >-
+          Recurring — at least annually, with periodic phishing
+          simulations
+        points: 3
+      - text: "It's happened more than once, but with no fixed schedule"
+        points: 2
+      - text: "One-time training, a while ago"
+        points: 1
+        risk: true
+      - text: "It hasn't happened"
+        points: 0
+        risk: true
+
+# Results-page CTA per segment x tier. Marketing can change offers, copy,
+# and destinations here without touching quiz logic. Buttons accept any
+# internal path or full URL.
+ctas:
+  solo:
+    exposed:
+      heading: "Start with the 10-point security checklist"
+      body: >-
+        You don't need an IT department to close these gaps — most of
+        them take an evening. Our free checklist walks you through the
+        fixes in priority order.
+      buttonLabel: "Get the free checklist"
+      buttonHref: "/security-assessment/checklist"
+    reactive:
+      heading: "Close the last gaps with the security checklist"
+      body: >-
+        You're closer than most — the checklist will help you knock out
+        the remaining weak spots in priority order, no jargon involved.
+      buttonLabel: "Get the free checklist"
+      buttonHref: "/security-assessment/checklist"
+    managed:
+      heading: "Keep sharpening"
+      body: >-
+        You're in good shape. Our blog covers practical security topics
+        for businesses like yours — worth a skim now and then.
+      buttonLabel: "Browse the resources"
+      buttonHref: "/blog"
+    resilient:
+      heading: "You're ahead of the pack — stay there"
+      body: >-
+        Posture like yours is rare. Follow along with our practical
+        security writing to keep it that way.
+      buttonLabel: "Browse the resources"
+      buttonHref: "/blog"
+  small_team:
+    exposed:
+      heading: "Get the checklist — and a second pair of eyes"
+      body: >-
+        Start with our free 10-point checklist. If you'd rather have
+        someone walk your setup with you, a no-pressure consultation
+        takes half an hour.
+      buttonLabel: "Get the free checklist"
+      buttonHref: "/security-assessment/checklist"
+      secondaryLabel: "Book a free consultation"
+      secondaryHref: "/#contact"
+    reactive:
+      heading: "A few fixes from solid — want help prioritizing?"
+      body: >-
+        The checklist covers the basics; a short consultation can help
+        you sequence the bigger items without over-buying.
+      buttonLabel: "Get the free checklist"
+      buttonHref: "/security-assessment/checklist"
+      secondaryLabel: "Book a free consultation"
+      secondaryHref: "/#contact"
+    managed:
+      heading: "Keep the momentum"
+      body: >-
+        You're doing the fundamentals well. Our blog digs into the
+        next-level topics — worth following as you grow.
+      buttonLabel: "Browse the resources"
+      buttonHref: "/blog"
+    resilient:
+      heading: "Strong work — keep it maintained"
+      body: >-
+        You're well ahead of most teams your size. Follow our resources
+        to stay current as threats shift.
+      buttonLabel: "Browse the resources"
+      buttonHref: "/blog"
+  growing:
+    exposed:
+      heading: "Book a risk assessment"
+      body: >-
+        At your size, these gaps are the kind attackers and insurers both
+        notice. A structured risk assessment gives you a prioritized,
+        costed plan — book a call and we'll set it up.
+      buttonLabel: "Book a risk assessment"
+      buttonHref: "/#contact"
+    reactive:
+      heading: "Book a risk assessment"
+      body: >-
+        You've outgrown ad-hoc security. A structured risk assessment
+        turns the gaps below into a prioritized, costed plan for the
+        next two quarters.
+      buttonLabel: "Book a risk assessment"
+      buttonHref: "/#contact"
+    managed:
+      heading: "Book a call to pressure-test your setup"
+      body: >-
+        You're in good shape — a short call with our team can validate
+        what's working and flag anything your growth is about to strain.
+      buttonLabel: "Book a call"
+      buttonHref: "/#contact"
+    resilient:
+      heading: "Talk shop with us"
+      body: >-
+        Posture like yours usually means someone's doing things right.
+        If you ever want a second opinion or co-managed support, we're
+        easy to talk to.
+      buttonLabel: "Book a call"
+      buttonHref: "/#contact"
+
+# ---------------------------------------------------------------------------
+# SDR-ONLY CONTENT (discovery-call console, #710 / #712)
+#
+# DRAFT, pending sales sign-off (same status as the quiz copy above).
+# Flip `status` to "approved" once sales has signed off.
+#
+# Everything under `sdr` is for the SDR's private console tab only. The
+# loader splits it off before the public quiz sees the config, so none of
+# it ever reaches /security-assessment or the shared presenter tab.
+#
+#   talkTracks  — one per posture question id: why it matters (say it in
+#                 your own words) and a follow-up probe to dig past the
+#                 picked answer
+#   nextSteps   — per segment x tier: what to propose and which service
+#                 to pitch. Replaces the public CTA on the console results.
+#   discovery   — unscored questions, asked conversationally. group is
+#                 "opening" (context, before the posture questions) or
+#                 "closing" (buying, after the results). kind is "choice"
+#                 (choices plus a free-text note) or "text" (note only).
+#                 Ids must not clash with posture question ids.
+# ---------------------------------------------------------------------------
+sdr:
+  status: draft
+
+  talkTracks:
+    password_mfa:
+      whyItMatters: >-
+        Stolen or reused passwords are one of the most common ways small
+        firms get breached. MFA stops most of those logins, even when the
+        password has already leaked.
+      probe: >-
+        Which account would hurt most if someone else got into it: email,
+        banking, or your practice software? Is MFA on that one today?
+    phishing:
+      whyItMatters: >-
+        Phishing gets past filters every day, and it only takes one click.
+        A habit of checking unexpected requests through a second channel
+        stops most of it.
+      probe: >-
+        Has anyone on the team clicked something they shouldn't have? What
+        happened next, and who did they tell?
+    backups:
+      whyItMatters: >-
+        Ransomware often goes after backups too. A backup you've never
+        restored from is a hope, not a plan, and an offsite copy is what
+        gets you back to work.
+      probe: >-
+        When did you last restore a file from backup? How long would it
+        take to get the whole office working again?
+    patching:
+      whyItMatters: >-
+        Many attacks use holes that already have a fix. Machines that put
+        off updates are the easy targets attackers scan for.
+      probe: >-
+        Is anyone running an older version of Windows, or software you've
+        been told is out of support?
+    device_security:
+      whyItMatters: >-
+        A lost laptop with client files on it can become a privacy breach
+        you may have to report, not just a hardware cost. Encryption and
+        remote wipe help keep it a hardware cost.
+      probe: >-
+        Do people work from personal phones or home computers? Is client
+        data stored on any of them?
+    invoice_fraud:
+      whyItMatters: >-
+        Fake "our banking details changed" emails cost businesses real
+        money, and once it's sent it can be hard to get back. A call-back
+        rule costs nothing.
+      probe: >-
+        Who can approve a payment or a change to banking details? Has a
+        request like this ever come in?
+    cloud_accounts:
+      whyItMatters: >-
+        Shared logins mean you can't tell who did what, and you can't
+        remove one person's access without changing it for everyone.
+      probe: >-
+        Are there any shared logins left, like an "office@" or "admin"
+        account several people use?
+    written_policy:
+      whyItMatters: >-
+        Without anything written down, security depends on memory. New
+        hires pick up whatever habits are around them.
+      probe: >-
+        When someone new starts, what are they told about passwords,
+        devices and client data, and who tells them?
+    offboarding:
+      whyItMatters: >-
+        Former staff with working logins are a quiet, common source of
+        data leaving the firm, even when nobody means any harm.
+      probe: >-
+        Think of the last person who left. How sure are you every account
+        they had is closed, including the shared ones?
+    staff_training:
+      whyItMatters: >-
+        Your team is the last line of defence when a scam gets past the
+        filter. Short, regular training is cheap compared with one bad
+        click.
+      probe: >-
+        Would your team know how to report a suspicious email, and who
+        they'd report it to?
+    email_security:
+      whyItMatters: >-
+        Without SPF, DKIM and DMARC, anyone can send email that looks like
+        it came from your domain, to your own clients.
+      probe: >-
+        Who set up your email and domain, and is that person or company
+        still looking after it?
+    incident_response:
+      whyItMatters: >-
+        The first few hours of a breach decide most of the cost. A
+        one-page plan with names on it beats working it out under
+        pressure.
+      probe: >-
+        If you found an attacker in your email tomorrow, who's the first
+        person you'd call?
+    cyber_insurance:
+      whyItMatters: >-
+        Insurers now set conditions like MFA, backups and EDR. If the
+        controls aren't in place, a claim can be denied.
+      probe: >-
+        When does your policy renew, and did the last application ask
+        security questions you weren't sure how to answer?
+    vendor_risk:
+      whyItMatters: >-
+        Every vendor with access to your systems is part of your security.
+        A breach at a supplier can become a breach at your firm.
+      probe: >-
+        Which outside companies can log in to your systems or hold your
+        client data?
+    rbac:
+      whyItMatters: >-
+        When everyone can reach everything, one compromised account
+        exposes all of it, including finance and HR files.
+      probe: >-
+        Who has admin rights today, and do they use that account for
+        everyday email and browsing?
+    endpoint_protection:
+      whyItMatters: >-
+        Modern attacks get past free antivirus. Managed endpoint
+        protection catches what slips through, and someone actually sees
+        the alert.
+      probe: >-
+        If a laptop got infected tonight, how would anyone find out, and
+        how fast?
+    compliance:
+      whyItMatters: >-
+        PIPEDA, provincial privacy rules, professional bodies and client
+        contracts all set expectations. They tend to come up after an
+        incident or during due diligence.
+      probe: >-
+        Have any clients, your insurer or your regulator asked about your
+        security in the last year?
+    training_cadence:
+      whyItMatters: >-
+        Awareness fades within months. Regular short sessions and phishing
+        tests keep it fresh as staff change.
+      probe: >-
+        When was the last training, and did everyone hired since then get
+        it too?
+
+  nextSteps:
+    solo:
+      exposed:
+        propose: >-
+          Book a short setup session to turn on MFA and set up a password
+          manager, then talk through a backup option and ongoing
+          monitoring.
+        service: "Managed IT, Basic plan"
+      reactive:
+        propose: >-
+          Send the 10-point checklist and offer a short call to close the
+          remaining gaps together.
+        service: "Managed IT, Basic plan"
+      managed:
+        propose: >-
+          Send the checklist link and book a check-in for when they hire or
+          their insurance renews.
+        service: "Managed IT, Free plan (device monitoring and updates)"
+      resilient:
+        propose: >-
+          No hard pitch. Leave the door open and offer to help if they hire
+          or take on clients with security requirements.
+        service: "None for now, keep in touch"
+    small_team:
+      exposed:
+        propose: >-
+          Book a 30-minute walkthrough of their setup, then propose
+          onboarding to managed IT with MFA, backups and device management
+          as the first month's work.
+        service: "Managed IT, Standard plan"
+      reactive:
+        propose: >-
+          Book a follow-up call to prioritize the gaps from today and send
+          a quote for managed IT that covers them.
+        service: "Managed IT, Standard plan"
+      managed:
+        propose: >-
+          Offer a quarterly IT assessment to keep posture from slipping as
+          the team grows.
+        service: "Managed IT, Standard plan"
+      resilient:
+        propose: >-
+          Offer a second opinion on anything they're unsure of, and
+          co-managed support if their IT person is stretched.
+        service: "Co-managed IT support"
+    growing:
+      exposed:
+        propose: >-
+          Book a structured security risk assessment that ends in a costed,
+          prioritized plan, then managed IT to carry it out.
+        service: "Security risk assessment, then Managed IT, Premium plan"
+      reactive:
+        propose: >-
+          Book a security risk assessment to turn today's gaps into a
+          two-quarter plan, with a proposal for managed IT alongside it.
+        service: "Security risk assessment, then Managed IT, Premium plan"
+      managed:
+        propose: >-
+          Book a call to pressure-test the setup against their insurer's
+          and clients' requirements, and look at what growth will strain.
+        service: "Security risk assessment"
+      resilient:
+        propose: >-
+          Offer co-managed support or an outside review to back up their
+          internal IT, especially around incident response.
+        service: "Co-managed IT support"
+
+  discovery:
+    # ---- Opening: context, before the posture questions ----
+    - id: why_now
+      group: opening
+      kind: text
+      text: >-
+        What made you want to look at this now? Was there something that
+        happened, or something coming up?
+    - id: current_it
+      group: opening
+      kind: choice
+      text: "Who looks after your IT today?"
+      choices:
+        - "Nobody in particular, we manage ourselves"
+        - "Someone in-house"
+        - "Another IT company or MSP"
+        - "A friend or family member"
+    - id: user_count
+      group: opening
+      kind: choice
+      text: >-
+        Roughly how many people use computers or email for the business,
+        and about how many devices do they use?
+      choices:
+        - "Just me"
+        - "2–5"
+        - "6–20"
+        - "21–50"
+        - "More than 50"
+    - id: email_platform
+      group: opening
+      kind: choice
+      text: "What do you use for email and files?"
+      choices:
+        - "Microsoft 365"
+        - "Google Workspace"
+        - "Both"
+        - "Something else"
+        - "Not sure"
+    - id: recent_incidents
+      group: opening
+      kind: choice
+      text: >-
+        Have you had any security scares in the last couple of years, like
+        a hacked account, a scam payment or lost data?
+      choices:
+        - "None that we know of"
+        - "Yes, a near miss"
+        - "Yes, it cost us time or money"
+        - "Something is going on right now"
+
+    # ---- Closing: buying, after the results ----
+    - id: decision_maker
+      group: closing
+      kind: choice
+      text: >-
+        If you decided to make a change, who else would be part of that
+        decision?
+      choices:
+        - "Just me"
+        - "Me and a partner or co-owner"
+        - "The partners or a committee"
+        - "Someone else decides"
+    - id: timeline
+      group: closing
+      kind: choice
+      text: "When would you want to have this sorted?"
+      choices:
+        - "Right away"
+        - "This quarter"
+        - "Later this year"
+        - "No plan yet"
+    - id: budget
+      group: closing
+      kind: choice
+      text: >-
+        Do you have a rough monthly budget in mind for IT and security
+        support?
+      choices:
+        - "Under $250 a month"
+        - "$250–$1,000 a month"
+        - "$1,000–$3,000 a month"
+        - "Over $3,000 a month"
+        - "Haven't thought about it yet"
+    - id: agreed_next_step
+      group: closing
+      kind: choice
+      text: "What's the next step we've agreed on?"
+      choices:
+        - "Book a follow-up call or walkthrough"
+        - "Send a proposal or quote"
+        - "Book a security risk assessment"
+        - "Send the checklist and check in later"
+        - "Not a fit right now"

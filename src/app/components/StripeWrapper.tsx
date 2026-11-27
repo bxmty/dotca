@@ -3,6 +3,10 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { getStripe } from "../../lib/stripe";
+import { parseGa4CookieIds } from "../../lib/ga4Cookies";
+import { getStripeAppearance, STRIPE_FONTS } from "../../lib/stripeAppearance";
+import { useColorScheme } from "../../lib/useColorScheme";
+import StatusNote from "./StatusNote";
 
 export interface CheckoutCustomer {
   name: string;
@@ -21,6 +25,8 @@ interface StripeWrapperProps {
   employeeCount: number;
   billingCycle: string;
   customer: CheckoutCustomer;
+  /** The monthly brief opt-in; create-subscription carries it in metadata. */
+  wantsBrief: boolean;
 }
 
 export default function StripeWrapper({
@@ -29,24 +35,33 @@ export default function StripeWrapper({
   employeeCount,
   billingCycle,
   customer,
+  wantsBrief,
 }: StripeWrapperProps) {
   const [clientSecret, setClientSecret] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
 
   // One key per distinct order, so a re-render or double-fire can only
   // replay the same subscription create, never mint a second one.
   const idempotencyKey = useMemo(
     () => globalThis.crypto.randomUUID(),
-    [plan, employeeCount, billingCycle, customer],
+    [plan, employeeCount, billingCycle, customer, wantsBrief],
   );
 
   useEffect(() => {
     // Create the subscription as soon as the order details are confirmed
     const createSubscription = async () => {
       try {
-        setLoading(true);
+        setIsLoading(true);
         setError(null);
+
+        // Read synchronously from document.cookie rather than the async
+        // gtag('get', ...) callback: if that callback hasn't fired by
+        // submit time, the identifier would be silently lost. Absent
+        // cookies (ad blocker, consent declined) just omit the fields below.
+        const { clientId: gaClientId, sessionId: gaSessionId } =
+          parseGa4CookieIds(document.cookie);
 
         // The server resolves the price from these order details;
         // no amount is sent from the client.
@@ -58,7 +73,10 @@ export default function StripeWrapper({
             employeeCount,
             billingCycle,
             customer,
+            wantsBrief,
             idempotencyKey,
+            ...(gaClientId ? { ga_client_id: gaClientId } : {}),
+            ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
           }),
         });
 
@@ -81,53 +99,53 @@ export default function StripeWrapper({
             : "Failed to initialize payment. Please try again.",
         );
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     createSubscription();
-  }, [plan, employeeCount, billingCycle, customer, idempotencyKey]);
+  }, [plan, employeeCount, billingCycle, customer, wantsBrief, idempotencyKey]);
 
+  // Elements re-themes the mounted Payment Element when appearance changes,
+  // so an OS theme switch restyles it without a new subscription.
   const options = {
     clientSecret,
-    appearance: {
-      theme: "flat" as const,
-      variables: {
-        colorPrimary: "#198754", // Bootstrap success color
-        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-        borderRadius: "0.375rem", // Match Bootstrap's border-radius
-      },
-    },
+    appearance: getStripeAppearance(colorScheme),
+    fonts: STRIPE_FONTS,
   };
 
-  if (loading) {
-    return <div className="text-center py-3">Loading payment form...</div>;
+  if (isLoading) {
+    return (
+      <p role="status" className="m-0 py-3 font-mono text-label text-muted">
+        Loading payment form...
+      </p>
+    );
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger">
-        <p className="mb-2 fw-bold">Something went wrong!</p>
-        <p className="mb-0">{error}</p>
+      <StatusNote tone="error" label="Error">
+        <p className="m-0 font-semibold">Something went wrong!</p>
+        <p className="m-0">{error}</p>
         {process.env.NEXT_PUBLIC_ENVIRONMENT === "staging" && (
-          <p className="mt-2 small text-muted">
+          <p className="m-0 font-mono text-label text-muted">
             Environment: {process.env.NEXT_PUBLIC_ENVIRONMENT}, API URL:{" "}
             {process.env.NEXT_PUBLIC_API_URL}, Stripe Key Set:{" "}
             {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "Yes" : "No"}
           </p>
         )}
-      </div>
+      </StatusNote>
     );
   }
 
   if (!clientSecret) {
     return (
-      <div className="alert alert-danger">
-        <p className="mb-0">
+      <StatusNote tone="error" label="Error">
+        <p className="m-0">
           Failed to initialize payment. Please refresh the page or try again
           later.
         </p>
-      </div>
+      </StatusNote>
     );
   }
 

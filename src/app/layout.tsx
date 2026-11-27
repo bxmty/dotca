@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
 import Script from "next/script";
 import { Suspense } from "react";
-import BootstrapClient from "./components/BootstrapClient";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import SiteChrome from "./components/SiteChrome";
+import { IntakeFooter, IntakeHeader } from "./components/IntakeChrome";
 import WebVitalsReporter from "./components/WebVitalsReporter";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import JsonLd from "./components/JsonLd";
 import BreadcrumbSchema from "./components/BreadcrumbSchema";
 import { GA_MEASUREMENT_ID } from "../lib/gtag";
 import { getLocalBusinessSchema } from "../lib/schema";
+import { fontVariableClassNames } from "../lib/fonts";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     default: "Boximity MSP — IT That Just Works",
   },
   description:
-    "For businesses that live outside the office, Boximity MSP replaces break-fix firefighting with technology that just works — one flat price, no surprises.",
+    "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
   keywords: [
     "IT Services",
     "MSP",
@@ -63,7 +64,7 @@ export const metadata: Metadata = {
     url: "https://boximity.ca",
     title: "Boximity MSP — IT That Just Works",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
     siteName: "Boximity MSP",
     images: [
       {
@@ -78,7 +79,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Boximity MSP — IT That Just Works",
     description:
-      "For businesses that live outside the office, we replace break-fix firefighting with technology that just works — one flat price, no surprises.",
+      "Enter it once. Get it right. Bill it on time. Managed IT that connects your business.",
     images: ["/images/twitter-image.jpg"],
   },
 };
@@ -89,15 +90,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={fontVariableClassNames}>
       <head>
-        {/* Set the Bootstrap color mode before first paint to avoid a flash
-            of the wrong theme. BootstrapClient keeps it in sync afterwards. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `document.documentElement.setAttribute("data-bs-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");`,
-          }}
-        />
         <link
           rel="alternate"
           type="application/rss+xml"
@@ -133,20 +127,26 @@ export default function RootLayout({
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           />
         )}
-        <BootstrapClient />
         <Suspense fallback={null}>
           <GoogleAnalytics />
         </Suspense>
         <WebVitalsReporter />
-        <a className="visually-hidden-focusable" href="#main-content">
+        <a
+          className="sr-only bg-bg px-4 py-3 text-ink focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+          href="#main-content"
+        >
           Skip to main content
         </a>
-        <div className="min-vh-100 d-flex flex-column">
-          <Navbar />
-          <main id="main-content" className="flex-grow-1">
+        <div className="flex min-h-screen flex-col">
+          <SiteChrome intake={<IntakeHeader />}>
+            <Navbar />
+          </SiteChrome>
+          <main id="main-content" className="grow">
             {children}
           </main>
-          <Footer />
+          <SiteChrome intake={<IntakeFooter />}>
+            <Footer />
+          </SiteChrome>
         </div>
       </body>
     </html>

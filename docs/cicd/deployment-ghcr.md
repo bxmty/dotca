@@ -38,7 +38,6 @@ GITHUB_USERNAME=your_github_username
 DOCKER_IMAGE=ghcr.io/your_username/dotca:staging
 
 # All your existing environment variables
-BREVO_API_KEY=your_brevo_key
 STRIPE_SECRET_KEY=your_stripe_secret
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable
 GA_STAGING_ID=your_ga_staging_id
@@ -395,7 +394,6 @@ docker push ghcr.io/your_username/dotca:staging
 - [ ] Update docker-compose.yml to use GHCR images
 - [ ] Modify Ansible playbooks to pull images from GHCR
 - [ ] Verify unified deployment workflow handles both staging and production
-- [ ] Set up notification workflows (`.github/workflows/deployment-dashboard.yml`)
 
 ### Testing and Validation:
 

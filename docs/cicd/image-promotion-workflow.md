@@ -333,8 +333,6 @@ The actual workflow has more granular states than basic promotion steps:
 ### GitHub Actions Ecosystem
 
 - **deploy.yml**: Unified workflow that builds environment-specific images
-- **deployment-dashboard.yml**: Provides deployment status and notifications
-- **deployment-metrics.yml**: Tracks deployment metrics and performance
 - **rollback.yml**: Emergency rollback capability integration
 - **deployment-notifications.yml**: Centralized notification system (reusable workflow)
 - **workflow-coordinator.yml**: Validates workflow dependencies and sequencing
@@ -363,7 +361,6 @@ The actual workflow has more granular states than basic promotion steps:
 
 ### External Service Integration
 
-- **Brevo (Email)**: Transactional email notifications
 - **Stripe**: Payment processing (if applicable)
 - **Google Analytics**: Usage tracking and analytics
 - **DigitalOcean Spaces**: Object storage for backups and assets

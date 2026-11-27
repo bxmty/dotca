@@ -1,4 +1,6 @@
-const SITE_URL = "https://boximity.ca";
+import { COMPANY_PHONE_DISPLAY } from "@/lib/company-phone";
+
+export const SITE_URL = "https://boximity.ca";
 
 export function getLocalBusinessSchema() {
   return {
@@ -6,9 +8,9 @@ export function getLocalBusinessSchema() {
     "@type": "LocalBusiness",
     name: "Boximity MSP",
     description:
-      "Managed IT for Ontario professional services firms (5–10 users). Enterprise-grade security, Law Society & PIPEDA compliance.",
+      "Managed IT for Ontario firms. Enterprise-grade security, Law Society & PIPEDA compliance.",
     url: SITE_URL,
-    telephone: "(289) 539-0098",
+    telephone: COMPANY_PHONE_DISPLAY,
     email: "hi@boximity.ca",
     address: {
       "@type": "PostalAddress",

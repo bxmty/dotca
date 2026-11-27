@@ -1,28 +1,13 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
+import ErrorNotice from "./components/ErrorNotice";
 
 export default function Error({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
-  useEffect(() => {
-    // Report error to Sentry for monitoring and tracking
-    Sentry.captureException(error);
-    // Also log to console for local development
-    console.error(error);
-  }, [error]);
-
-  return (
-    <div className="container text-center my-5">
-      <h2>Something went wrong!</h2>
-      <button className="btn btn-primary mt-3" onClick={() => reset()}>
-        Try again
-      </button>
-    </div>
-  );
+  return <ErrorNotice error={error} retry={retry} />;
 }

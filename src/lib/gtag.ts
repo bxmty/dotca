@@ -71,8 +71,13 @@ export const initGA = () => {
     maskValue(GA_MEASUREMENT_ID),
   );
 
+  // Nothing to set up during server rendering
+  if (typeof window === "undefined") {
+    return;
+  }
+
   // Check if gtag is already available (script might be loaded)
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+  if (typeof window.gtag === "function") {
     console.log("GA script already loaded, configuring directly...");
     try {
       configureGA();
@@ -135,7 +140,7 @@ const configureGA = () => {
     window.gtag("config", GA_MEASUREMENT_ID, {
       send_page_view: false,
     });
-  } else if (isDevelopment && GA_MEASUREMENT_ID) {
+  } else {
     console.log("Configuring GA for development");
     window.gtag("config", GA_MEASUREMENT_ID, {
       debug_mode: true,
@@ -184,11 +189,14 @@ export const event = ({
   category,
   label,
   value,
+  params,
 }: {
   action: string;
   category: string;
   label: string;
   value?: number;
+  /** Extra event parameters (e.g. GA4 custom dimensions). Core fields win on key clashes. */
+  params?: Record<string, string | number>;
 }) => {
   if (!GA_MEASUREMENT_ID) {
     console.error("GA Measurement ID is missing. Event not tracked.");
@@ -208,6 +216,7 @@ export const event = ({
 
   try {
     const eventParams: GtagEventParams = {
+      ...params,
       event_category: category,
       event_label: label,
       value: value,
