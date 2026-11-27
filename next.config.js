@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -12,8 +12,15 @@ const nextConfig = {
   // from phones/other devices on the LAN. Allow private-network origins.
   // Patterns match hostname segments split on ".", so IPv4 needs one "*" per octet.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
-  // Enable CSS import in server components
-  transpilePackages: ["bootstrap"],
+  // The Docker image ships only .next/standalone, so files read at runtime must
+  // be traced. Lead magnet files are read via paths built at runtime (slug,
+  // frontmatter assetFile), which tracing can't follow, so include them
+  // explicitly for every route that reads them.
+  outputFileTracingIncludes: {
+    "/api/lead-magnet/download": ["./content/lead-magnets/**/*"],
+    "/api/lead-magnet": ["./content/lead-magnets/*.md"],
+    "/resources/[slug]": ["./content/lead-magnets/*.md"],
+  },
   // Image optimization configuration
   images: {
     domains: [],

@@ -5,7 +5,7 @@ services:
   web:
     image: "{{ docker_image }}"
     # "missing" (not "always"): the deploy playbook already runs an explicit
-    # `docker-compose pull web` with a live CI-issued GHCR login right before
+    # `docker pull` of this image with a live CI-issued GHCR login right before
     # `up`. A policy of "always" forces every *subsequent* `docker-compose up`
     # (cron-driven recovery, a manual restart, host reboot) to re-authenticate
     # to GHCR too — but those run long after the deploy job's GITHUB_TOKEN has
@@ -31,10 +31,20 @@ services:
       - STRIPE_SECRET_KEY={{ stripe_secret_key }}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ stripe_publishable_key }}
       - STRIPE_WEBHOOK_SECRET={{ stripe_webhook_secret }}
-      - BREVO_API_KEY={{ brevo_api_key }}
+      - GA4_MP_API_SECRET={{ ga4_mp_api_secret }}
       - RESEND_API_KEY={{ resend_api_key }}
       - RESEND_FROM_EMAIL={{ resend_from_email }}
       - WEBMASTER_EMAIL={{ webmaster_email }}
+      - LEAD_MAGNET_SIGNING_SECRET={{ lead_magnet_signing_secret }}
+      - SDR_LINK_SIGNING_SECRET={{ sdr_link_signing_secret }}
+      - SYNCRO_FREE_INSTALLER_URL={{ syncro_free_installer_url }}
+      - SYNCRO_SUBDOMAIN={{ syncro_subdomain }}
+      - SYNCRO_API_KEY={{ syncro_api_key }}
+      - RESEND_MONTHLY_BRIEF_SEGMENT_ID={{ resend_monthly_brief_segment_id }}
+      - RESEND_MONTHLY_BRIEF_TOPIC_ID={{ resend_monthly_brief_topic_id }}
+      - RESEND_OPTIN_EVENT={{ resend_optin_event }}
+      - RESEND_TEMPLATE_CONTACT_CONFIRMATION={{ resend_template_contact_confirmation }}
+      - RESEND_TEMPLATE_ONBOARDING_CONFIRMATION={{ resend_template_onboarding_confirmation }}
       - NEXT_PUBLIC_GA_ID={{ ga_id | default('') }}
       - HOST=0.0.0.0
       - HOSTNAME=0.0.0.0

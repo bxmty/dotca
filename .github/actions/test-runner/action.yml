@@ -3,7 +3,7 @@ description: "Reusable action for running various types of tests"
 
 inputs:
   test_type:
-    description: "Type of tests to run (unit, integration, e2e, smoke)"
+    description: "Type of tests to run (unit, e2e, smoke)"
     required: true
   environment:
     description: "Target environment (development, staging, production)"
@@ -13,13 +13,20 @@ inputs:
     description: "Application URL for integration/E2E tests"
     required: false
   fail_fast:
-    description: "Stop on first test failure"
+    description: "Stop on first test failure. Ignored for unit tests — a failing
+      unit suite always fails the step, and the caller decides whether to
+      forgive it (see the fail-on-test-failures gate in deploy.yml)."
     required: false
     default: "false"
   collect_coverage:
     description: "Collect test coverage reports"
     required: false
     default: "true"
+  e2e_grep:
+    description: "Playwright --grep pattern restricting which E2E tests run
+      (e.g. @read-only for production). Empty runs the whole chromium project."
+    required: false
+    default: ""
   timeout_minutes:
     description: "Test execution timeout in minutes"
     required: false
@@ -77,53 +84,30 @@ runs:
 
         START_TIME=$(date +%s)
 
-        # Run unit tests with coverage if requested
+        # Run unit tests with coverage if requested. The exit code is captured
+        # rather than allowed to abort the step, so the result summary below is
+        # still written on a failing run — but it is re-raised at the end: a
+        # failing unit suite must surface as a failed step so the caller's
+        # fail-on-test-failures gate can see it.
+        COVERAGE_FLAG=""
         if [ "${{ inputs.collect_coverage }}" = "true" ]; then
-          npm run test -- --coverage --watchAll=false --passWithNoTests
-        else
-          npm run test -- --watchAll=false --passWithNoTests
+          COVERAGE_FLAG="--coverage"
         fi
+
+        npm run test -- $COVERAGE_FLAG --watchAll=false --passWithNoTests \
+          && TEST_PASSED=true || TEST_PASSED=false
 
         END_TIME=$(date +%s)
         DURATION=$((END_TIME - START_TIME))
 
         # Generate test results summary
-        echo "{\"type\":\"unit\",\"passed\":true,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}" > test-results/unit-results.json
+        RESULTS="{\"type\":\"unit\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}"
+        echo "$RESULTS" > test-results/unit-results.json
 
-        echo "results={\"type\":\"unit\",\"passed\":true,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\"}" >> $GITHUB_OUTPUT
+        echo "results=$RESULTS" >> $GITHUB_OUTPUT
 
-    - name: Run integration tests
-      id: integration-tests
-      if: inputs.test_type == 'integration'
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      run: |
-        echo "🔗 Running integration tests..."
-
-        START_TIME=$(date +%s)
-
-        # Set application URL for integration tests
-        if [ -n "${{ inputs.app_url }}" ]; then
-          export APP_URL="${{ inputs.app_url }}"
-        fi
-
-        # Run integration tests
-        if npm run test:integration -- --watchAll=false --passWithNoTests 2>/dev/null; then
-          TEST_PASSED=true
-        else
-          TEST_PASSED=false
-        fi
-
-        END_TIME=$(date +%s)
-        DURATION=$((END_TIME - START_TIME))
-
-        # Generate test results summary
-        echo "{\"type\":\"integration\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" > test-results/integration-results.json
-
-        echo "results={\"type\":\"integration\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" >> $GITHUB_OUTPUT
-
-        # Exit with failure if tests failed and fail_fast is true
-        if [ "$TEST_PASSED" = "false" ] && [ "${{ inputs.fail_fast }}" = "true" ]; then
+        if [ "$TEST_PASSED" = "false" ]; then
+          echo "::error::Unit tests failed"
           exit 1
         fi
 
@@ -145,31 +129,42 @@ runs:
       if: inputs.test_type == 'e2e'
       shell: bash
       working-directory: ${{ inputs.working_directory }}
-      continue-on-error: true
+      env:
+        APP_URL: ${{ inputs.app_url }}
+        E2E_GREP: ${{ inputs.e2e_grep }}
+        E2E_ENVIRONMENT: ${{ inputs.environment }}
       run: |
         echo "🎭 Running E2E tests..."
 
         START_TIME=$(date +%s)
+        mkdir -p test-results
 
-        # Set application URL for E2E tests
-        if [ -n "${{ inputs.app_url }}" ]; then
-          export APP_URL="${{ inputs.app_url }}"
+        # Only the chromium project runs post-deploy: discovery-call needs a
+        # local server and signing secret. stderr stays visible, and the
+        # step fails when Playwright does.
+        ARGS=(--project=chromium)
+        if [ -n "$E2E_GREP" ]; then
+          ARGS+=(--grep "$E2E_GREP")
         fi
 
-        # Run E2E tests
-        if npm run test:e2e -- --passWithNoTests 2>/dev/null; then
-          TEST_PASSED=true
-        else
-          TEST_PASSED=false
-        fi
+        set +e
+        npm run test:e2e -- "${ARGS[@]}"
+        EXIT_CODE=$?
+        set -e
+
+        if [ "$EXIT_CODE" -eq 0 ]; then TEST_PASSED=true; else TEST_PASSED=false; fi
 
         END_TIME=$(date +%s)
         DURATION=$((END_TIME - START_TIME))
 
-        # Generate test results summary
-        echo "{\"type\":\"e2e\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" > test-results/e2e-results.json
+        RESULTS="{\"type\":\"e2e\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"$E2E_ENVIRONMENT\",\"app_url\":\"$APP_URL\"}"
+        echo "$RESULTS" > test-results/e2e-results.json
+        echo "results=$RESULTS" >> "$GITHUB_OUTPUT"
 
-        echo "results={\"type\":\"e2e\",\"passed\":$TEST_PASSED,\"duration\":$DURATION,\"environment\":\"${{ inputs.environment }}\",\"app_url\":\"${{ inputs.app_url }}\"}" >> $GITHUB_OUTPUT
+        if [ "$TEST_PASSED" = "false" ]; then
+          echo "::error::E2E tests failed (exit $EXIT_CODE)"
+          exit "$EXIT_CODE"
+        fi
 
     - name: Run smoke tests
       id: smoke-tests
@@ -262,9 +257,13 @@ runs:
         # Check all test result files
         for result_file in test-results/*.json; do
           if [ -f "$result_file" ]; then
-            # Extract duration and passed status
+            # Extract duration and passed status. `.passed // true` cannot be
+            # used here: jq's alternative operator treats `false` as absent, so
+            # it rewrote every failed run into a pass. Default on null only, and
+            # fall back to "false" if jq itself fails — an unreadable result
+            # file is a result we cannot vouch for, not a pass.
             DURATION=$(jq -r '.duration // 0' "$result_file" 2>/dev/null || echo "0")
-            PASSED=$(jq -r '.passed // true' "$result_file" 2>/dev/null || echo "true")
+            PASSED=$(jq -r 'if .passed == null then true else .passed end' "$result_file" 2>/dev/null || echo "false")
 
             TOTAL_DURATION=$((TOTAL_DURATION + DURATION))
 

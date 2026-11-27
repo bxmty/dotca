@@ -45,7 +45,6 @@ secrets:
   - SPACES_SECRET_KEY
 
   # Application secrets (test values)
-  - BREVO_API_KEY
   - STRIPE_SECRET_KEY
 
   # GitHub

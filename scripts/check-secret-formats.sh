@@ -161,9 +161,6 @@ main() {
     check_env_var_format "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}" '^pk_(test|live)_[A-Za-z0-9]{20,}$' "Stripe publishable key"
     check_env_var_format "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET:-}" '^whsec_[A-Za-z0-9]{20,}$' "Stripe webhook signing secret"
 
-    # Brevo key
-    check_env_var_format "BREVO_API_KEY" "${BREVO_API_KEY:-}" '^[A-Za-z0-9_-]{20,}$' "Brevo API key"
-
     # Resend (email redundancy)
     check_env_var_format "RESEND_API_KEY" "${RESEND_API_KEY:-}" '^re_[A-Za-z0-9_]{16,}$' "Resend API key"
     check_env_var_format "RESEND_FROM_EMAIL" "${RESEND_FROM_EMAIL:-}" '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' "Resend from address"
@@ -185,7 +182,6 @@ main() {
     check_github_secret_access "DO_TOKEN" "DigitalOcean"
     check_github_secret_access "SSH_PRIVATE_KEY" "SSH private key"
     check_github_secret_access "STRIPE_SECRET_KEY" "Stripe secret"
-    check_github_secret_access "BREVO_API_KEY" "Brevo API"
 
     # 1Password access
     log_info "Checking 1Password access..."

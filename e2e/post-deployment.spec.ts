@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Post-Deployment Navigation Tests", () => {
+test.describe("Post-Deployment Navigation Tests @read-only", () => {
   test("Homepage loads and renders correctly", async ({ page }) => {
     await page.goto("/");
 
@@ -8,7 +8,7 @@ test.describe("Post-Deployment Navigation Tests", () => {
     await page.waitForLoadState("networkidle");
 
     // Check that the page has loaded by verifying key elements
-    await expect(page).toHaveTitle(/IT That Just Works/);
+    await expect(page).toHaveTitle(/Managed IT That Connects Your Business/);
 
     // Verify main navigation exists
     const nav = page.locator("nav, header nav, .navbar");
@@ -28,10 +28,9 @@ test.describe("Post-Deployment Navigation Tests", () => {
 
     // Test desktop navigation links
     const navLinks = [
-      { text: "Solutions", selector: 'a[href*="#solutions"]' },
-      { text: "Benefits", selector: 'a[href*="#benefits"]' },
-      { text: "Process", selector: 'a[href*="#process"]' },
+      { text: "Services", selector: 'a[href*="/services/"]' },
       { text: "Pricing", selector: 'a[href*="/pricing"]' },
+      { text: "Blog", selector: 'a[href*="/blog"]' },
       { text: "Contact", selector: 'a[href*="#contact"]' },
     ];
 
@@ -53,7 +52,7 @@ test.describe("Post-Deployment Navigation Tests", () => {
 
         // Verify we're on the pricing page
         await expect(page).toHaveURL(/.*pricing.*/);
-        await expect(page.locator("h1, .display-4").first()).toContainText(
+        await expect(page.getByRole("heading", { level: 1 })).toContainText(
           /Technology Solutions|Pricing/,
         );
 
@@ -71,8 +70,11 @@ test.describe("Post-Deployment Navigation Tests", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // The navbar is a Bootstrap collapse: the toggler opens #navbarNav
-    const mobileToggle = page.locator(".navbar-toggler");
+    // The navbar toggle is a React disclosure button labelled Menu/Close
+    const mobileToggle = page.getByRole("button", {
+      name: "Menu",
+      exact: true,
+    });
     await expect(mobileToggle).toBeVisible();
     await mobileToggle.click();
 
@@ -92,21 +94,27 @@ test.describe("Post-Deployment Navigation Tests", () => {
     await page.waitForLoadState("networkidle");
 
     // Verify page title/content
-    await expect(page.locator("h1, .display-4").first()).toContainText(
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
       /Technology Solutions|Pricing/,
     );
 
-    // Verify pricing plans are displayed
-    const pricingCards = page.locator(
-      '.card, [class*="pricing"], [class*="plan"]',
-    );
-    await expect(pricingCards.first()).toBeVisible();
+    // Plans render as a table on wide screens and as stacked blocks below
+    // 900px; only one of the two is visible at a time.
+    const plans = page.getByRole("region", { name: "Plans" });
+    await expect(
+      plans
+        .locator('table, [data-testid="plan-block"]')
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible();
 
-    // Verify at least one pricing plan shows pricing information
-    const priceElements = page.locator(
-      '[class*="price"], .fs-2, .h3:has-text("$")',
-    );
-    await expect(priceElements.first()).toBeVisible();
+    // Verify at least one plan shows a monthly price
+    await expect(
+      plans
+        .getByText(/^\$\d+\.\d{2}$/)
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible();
   });
 
   test("Page sections are accessible via anchor links", async ({ page }) => {

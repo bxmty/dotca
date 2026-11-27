@@ -93,9 +93,6 @@ graph TD
 
 ### 2. Supporting Workflows
 
-- **`deployment-dashboard.yml`**: Status monitoring and dashboard updates
-- **`deployment-metrics.yml`**: Performance analytics and metrics collection
-- **`log-aggregation.yml`**: Centralized log management
 - **`image-cleanup.yml`**: Automated image retention and cleanup
 - **`dependency-check.yml`**: Dependency vulnerability scanning
 

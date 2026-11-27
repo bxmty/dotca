@@ -1,46 +1,22 @@
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { searchAddresses } from "@/lib/nominatim";
-import { getClientIp } from "@/lib/rate-limit";
+import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
 
+// Stryker disable next-line StringLiteral: Next.js route-segment config, not read under jest
 export const dynamic = "force-dynamic";
 
 // Autocomplete fires far more often than a form submit, so this gets its own
 // looser window rather than sharing the 5-per-10-minutes contact/onboarding limiter.
-const WINDOW_MS = 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 30;
-const MAX_TRACKED_IPS = 10_000;
-
-const requestTimesByIp = new Map<string, number[]>();
-
-function isAutocompleteRateLimited(ip: string): boolean {
-  const now = Date.now();
-
-  if (requestTimesByIp.size >= MAX_TRACKED_IPS) {
-    for (const [trackedIp, times] of requestTimesByIp) {
-      if (times.every((time) => now - time >= WINDOW_MS)) {
-        requestTimesByIp.delete(trackedIp);
-      }
-    }
-  }
-
-  const recentTimes = (requestTimesByIp.get(ip) ?? []).filter(
-    (time) => now - time < WINDOW_MS,
-  );
-
-  if (recentTimes.length >= MAX_REQUESTS_PER_WINDOW) {
-    requestTimesByIp.set(ip, recentTimes);
-    return true;
-  }
-
-  recentTimes.push(now);
-  requestTimesByIp.set(ip, recentTimes);
-  return false;
-}
+const autocompleteLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxPerWindow: 30,
+  maxTrackedIps: 10_000,
+});
 
 /** Test hook: clear tracked per-IP request timestamps. */
 export function resetGeocodeRateLimits(): void {
-  requestTimesByIp.clear();
+  autocompleteLimiter.reset();
 }
 
 export async function GET(request: Request) {
@@ -52,7 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [] });
   }
 
-  if (isAutocompleteRateLimited(getClientIp(request))) {
+  if (autocompleteLimiter.isRateLimited(getClientIp(request))) {
     return NextResponse.json(
       { error: "Too many address lookups. Please slow down." },
       { status: 429 },

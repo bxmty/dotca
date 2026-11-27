@@ -1,0 +1,136 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`comparePerfReports Markdown output should render the whole report: verdict, table, warnings and the rerun command 1`] = `
+"## Perf gate: FAIL
+
+4 of 80 checks failed. Before: 2026-10-05T10:00:00.000Z @ 0123456. After: 2026-10-05T11:30:00.000Z. Lighthouse 13.5.0, https://staging.boximity.ca.
+
+| Configuration | Check | Before | After | Limit | Result |
+|---|---|---|---|---|---|
+| mobile-light:/ | Perf score | 90 | 90 | ≥ 87 | PASS |
+| mobile-light:/ | LCP vs before | 1800 ms | 1800 ms | ≤ 1950 ms | PASS |
+| mobile-light:/ | LCP cap | 1800 ms | 1800 ms | ≤ 2000 ms | PASS |
+| mobile-light:/ | TBT vs before | 100 ms | 100 ms | ≤ 150 ms | PASS |
+| mobile-light:/ | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-light:/ | FCP vs before | 1200 ms | 1200 ms | ≤ 1350 ms | PASS |
+| mobile-light:/ | Net bytes vs bytes-ref | 156.3 KiB | 156.3 KiB | ≤ 156.3 KiB | PASS |
+| mobile-light:/ | CSS bytes | 29.3 KiB | 29.3 KiB | ≤ 35.0 KiB | PASS |
+| mobile-light:/ | First-party JS vs before | 87.9 KiB | 87.9 KiB | ≤ 87.9 KiB | PASS |
+| mobile-light:/ | Font bytes | 39.1 KiB | 39.1 KiB | ≤ 60.0 KiB | PASS |
+| mobile-light:/ | Font files | 2 | 2 | ≤ 2 | PASS |
+| desktop-light:/ | Perf score | 99 | 97 | ≥ 98 | FAIL |
+| desktop-light:/ | LCP vs before | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/ | LCP cap | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/ | TBT cap | 20 ms | 20 ms | ≤ 50 ms | PASS |
+| desktop-light:/ | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| desktop-light:/ | FCP vs before | 500 ms | 500 ms | ≤ 600 ms | PASS |
+| mobile-light:/services/managed-it-services-ontario | Perf score | 90 | 90 | ≥ 87 | PASS |
+| mobile-light:/services/managed-it-services-ontario | LCP vs before | 1800 ms | 1800 ms | ≤ 1950 ms | PASS |
+| mobile-light:/services/managed-it-services-ontario | LCP cap | 1800 ms | 1800 ms | ≤ 2000 ms | PASS |
+| mobile-light:/services/managed-it-services-ontario | TBT vs before | 100 ms | 100 ms | ≤ 150 ms | PASS |
+| mobile-light:/services/managed-it-services-ontario | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-light:/services/managed-it-services-ontario | FCP vs before | 1200 ms | 1200 ms | ≤ 1350 ms | PASS |
+| mobile-light:/services/managed-it-services-ontario | Net bytes vs bytes-ref | 156.3 KiB | 156.3 KiB | ≤ 156.3 KiB | PASS |
+| mobile-light:/services/managed-it-services-ontario | CSS bytes | 29.3 KiB | 29.3 KiB | ≤ 35.0 KiB | PASS |
+| mobile-light:/services/managed-it-services-ontario | First-party JS vs before | 87.9 KiB | 87.9 KiB | ≤ 87.9 KiB | PASS |
+| mobile-light:/services/managed-it-services-ontario | Font bytes | 39.1 KiB | 39.1 KiB | ≤ 60.0 KiB | PASS |
+| mobile-light:/services/managed-it-services-ontario | Font files | 2 | 2 | ≤ 2 | PASS |
+| desktop-light:/services/managed-it-services-ontario | Perf score | 99 | 99 | ≥ 98 | PASS |
+| desktop-light:/services/managed-it-services-ontario | LCP vs before | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/services/managed-it-services-ontario | LCP cap | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/services/managed-it-services-ontario | TBT cap | 20 ms | 20 ms | ≤ 50 ms | PASS |
+| desktop-light:/services/managed-it-services-ontario | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| desktop-light:/services/managed-it-services-ontario | FCP vs before | 500 ms | 500 ms | ≤ 600 ms | PASS |
+| mobile-light:/pricing | Perf score | 90 | 90 | ≥ 87 | PASS |
+| mobile-light:/pricing | LCP vs before | 1800 ms | 2050 ms | ≤ 1950 ms | FAIL |
+| mobile-light:/pricing | LCP cap | 1800 ms | 2050 ms | ≤ 2000 ms | FAIL |
+| mobile-light:/pricing | TBT vs before | 100 ms | 100 ms | ≤ 150 ms | PASS |
+| mobile-light:/pricing | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-light:/pricing | FCP vs before | 1200 ms | 1200 ms | ≤ 1350 ms | PASS |
+| mobile-light:/pricing | Net bytes vs bytes-ref | 156.3 KiB | 156.3 KiB | ≤ 156.3 KiB | PASS |
+| mobile-light:/pricing | CSS bytes | 29.3 KiB | 29.3 KiB | ≤ 35.0 KiB | PASS |
+| mobile-light:/pricing | First-party JS vs before | 87.9 KiB | 87.9 KiB | ≤ 87.9 KiB | PASS |
+| mobile-light:/pricing | Font bytes | 39.1 KiB | 39.1 KiB | ≤ 60.0 KiB | PASS |
+| mobile-light:/pricing | Font files | 2 | 2 | ≤ 2 | PASS |
+| desktop-light:/pricing | Perf score | 99 | 99 | ≥ 98 | PASS |
+| desktop-light:/pricing | LCP vs before | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/pricing | LCP cap | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/pricing | TBT cap | 20 ms | 20 ms | ≤ 50 ms | PASS |
+| desktop-light:/pricing | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| desktop-light:/pricing | FCP vs before | 500 ms | 500 ms | ≤ 600 ms | PASS |
+| mobile-light:/blog/backups | Perf score | 90 | 90 | ≥ 87 | PASS |
+| mobile-light:/blog/backups | LCP vs before | 1800 ms | 1800 ms | ≤ 1950 ms | PASS |
+| mobile-light:/blog/backups | LCP cap | 1800 ms | 1800 ms | ≤ 2000 ms | PASS |
+| mobile-light:/blog/backups | TBT vs before | 100 ms | 100 ms | ≤ 150 ms | PASS |
+| mobile-light:/blog/backups | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-light:/blog/backups | FCP vs before | 1200 ms | 1200 ms | ≤ 1350 ms | PASS |
+| mobile-light:/blog/backups | Net bytes vs bytes-ref | 156.3 KiB | 156.3 KiB | ≤ 156.3 KiB | PASS |
+| mobile-light:/blog/backups | CSS bytes | 29.3 KiB | 29.3 KiB | ≤ 35.0 KiB | PASS |
+| mobile-light:/blog/backups | First-party JS vs before | 87.9 KiB | 87.9 KiB | ≤ 87.9 KiB | PASS |
+| mobile-light:/blog/backups | Font bytes | 39.1 KiB | 39.1 KiB | ≤ 60.0 KiB | PASS |
+| mobile-light:/blog/backups | Font files | 2 | 2 | ≤ 2 | PASS |
+| desktop-light:/blog/backups | Perf score | 99 | 99 | ≥ 98 | PASS |
+| desktop-light:/blog/backups | LCP vs before | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/blog/backups | LCP cap | 700 ms | 700 ms | ≤ 800 ms | PASS |
+| desktop-light:/blog/backups | TBT cap | 20 ms | 20 ms | ≤ 50 ms | PASS |
+| desktop-light:/blog/backups | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| desktop-light:/blog/backups | FCP vs before | 500 ms | 500 ms | ≤ 600 ms | PASS |
+| mobile-dark:/ | Measured | yes | missing | in after report | FAIL |
+| mobile-dark:/pricing | Perf score | 90 | 90 | ≥ 87 | PASS |
+| mobile-dark:/pricing | LCP vs before | 1800 ms | 1800 ms | ≤ 1950 ms | PASS |
+| mobile-dark:/pricing | LCP cap | 1800 ms | 1800 ms | ≤ 2000 ms | PASS |
+| mobile-dark:/pricing | TBT vs before | 100 ms | 100 ms | ≤ 150 ms | PASS |
+| mobile-dark:/pricing | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-dark:/pricing | FCP vs before | 1200 ms | 1200 ms | ≤ 1350 ms | PASS |
+| mobile-dark:/pricing | Dark render proven | yes | yes | before and after dark | PASS |
+| mobile-light-fonts-blocked:/ | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-light-fonts-blocked:/ | Page renders | yes | yes | every pass paints | PASS |
+| mobile-light-fonts-blocked:/pricing | CLS | 0.010 | 0.010 | ≤ 0.020 | PASS |
+| mobile-light-fonts-blocked:/pricing | Page renders | yes | yes | every pass paints | PASS |
+
+### Warnings
+
+- Lighthouse versions differ: before 13.4.0, after 13.5.0.
+- mobile-light-fonts-blocked:/ still loaded 39.1 KiB of font files; the block patterns did not match them, so this pass did not test fallback fonts.
+- mobile-light-fonts-blocked:/pricing still loaded 39.1 KiB of font files; the block patterns did not match them, so this pass did not test fallback fonts.
+
+### Rerun failing configurations
+
+One rerun (fresh passes) is allowed; a failure after it blocks unless waived in the PR.
+
+\`\`\`sh
+npm run perf:gate -- measure --base-url https://staging.boximity.ca --out perf/after.json --only desktop-light:/ --only mobile-light:/pricing --only mobile-dark:/
+\`\`\`
+"
+`;
+
+exports[`parsePerfGateArguments should document both commands and every configuration key 1`] = `
+"Usage:
+  npm run perf:gate -- measure --base-url <url> --out <file.json>
+      [--only <configuration-key>]... [--passes <n>] [--commit <sha>]
+      [--chrome-path <path>]
+  npm run perf:gate -- compare --before <file.json> --after <file.json>
+      [--bytes-ref <file.json>]
+
+measure   Runs 12 configurations x --passes (default 5) Lighthouse passes against
+          --base-url and writes per-configuration medians plus raw runs.
+          With --only and an existing --out file, re-measures just those
+          configurations and merges them in (the targeted rerun).
+compare   Prints a Markdown pass/fail table; exits 1 if any check fails.
+
+Configuration keys:
+  mobile-light:/
+  desktop-light:/
+  mobile-light:/services/managed-it-services-ontario
+  desktop-light:/services/managed-it-services-ontario
+  mobile-light:/pricing
+  desktop-light:/pricing
+  mobile-light:/blog/backups
+  desktop-light:/blog/backups
+  mobile-dark:/
+  mobile-dark:/pricing
+  mobile-light-fonts-blocked:/
+  mobile-light-fonts-blocked:/pricing
+
+See docs/perf-gate.md for the before -> deploy -> after procedure."
+`;

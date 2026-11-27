@@ -25,6 +25,15 @@ describe("ContactForm Component", () => {
     jest.clearAllMocks();
   });
 
+  it("links to the /book redirect for self-serve scheduling", () => {
+    render(<ContactForm />);
+
+    const link = screen.getByTestId("contact-book-link");
+    expect(link).toHaveAttribute("href", "/book");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  });
+
   it("updates input values on change", async () => {
     render(<ContactForm />);
     const user = userEvent.setup();
@@ -75,6 +84,7 @@ describe("ContactForm Component", () => {
           email: "test@example.com",
           phone: "+1234567890",
           website: "",
+          wantsBrief: false,
         }),
       });
     });
@@ -124,6 +134,7 @@ describe("ContactForm Component", () => {
         screen.getByText(/Server configuration error - missing API key/),
       ).toBeInTheDocument();
     });
+    expect(screen.getByRole("alert")).toHaveTextContent(/^Error/);
   });
 
   it("shows success message and does not redirect when API returns a message", async () => {
@@ -169,6 +180,124 @@ describe("ContactForm Component", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  describe("inline validation", () => {
+    let alertSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      alertSpy.mockRestore();
+    });
+
+    function expectFieldError(input: HTMLElement, message: RegExp) {
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      const describedBy = input.getAttribute("aria-describedby");
+      expect(describedBy).toBeTruthy();
+      const messageElement = document.getElementById(describedBy as string);
+      expect(messageElement).toHaveTextContent(message);
+      expect(messageElement).toHaveClass("text-danger");
+      expect(input).toHaveAccessibleDescription(message);
+    }
+
+    it("shows an inline error per empty field, without alert() or a request", async () => {
+      render(<ContactForm />);
+
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+      expectFieldError(screen.getByLabelText(/Name/i), /enter your name/i);
+      expectFieldError(screen.getByLabelText(/Email/i), /enter your email/i);
+      expectFieldError(screen.getByLabelText(/Phone/i), /enter a phone/i);
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("moves focus to the first invalid field", () => {
+      render(<ContactForm />);
+
+      fireEvent.change(screen.getByLabelText(/Name/i), {
+        target: { value: "Test User" },
+      });
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+      expect(screen.getByLabelText(/Email/i)).toHaveFocus();
+    });
+
+    it("flags only the field that is wrong, worded as the fix", () => {
+      render(<ContactForm />);
+
+      fireEvent.change(screen.getByLabelText(/Name/i), {
+        target: { value: "Test User" },
+      });
+      fireEvent.change(screen.getByLabelText(/Email/i), {
+        target: { value: "dana@" },
+      });
+      fireEvent.change(screen.getByLabelText(/Phone/i), {
+        target: { value: "123-456-7890" },
+      });
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+      expectFieldError(
+        screen.getByLabelText(/Email/i),
+        /enter the full address, like/i,
+      );
+      expect(screen.getByLabelText(/Name/i)).not.toHaveAttribute(
+        "aria-invalid",
+      );
+      expect(screen.getByLabelText(/Name/i)).not.toHaveAttribute(
+        "aria-describedby",
+      );
+      expect(screen.getByLabelText(/Phone/i)).not.toHaveAttribute(
+        "aria-invalid",
+      );
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("clears a field's error once it is edited", () => {
+      render(<ContactForm />);
+
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+      const nameInput = screen.getByLabelText(/Name/i);
+      expect(nameInput).toHaveAttribute("aria-invalid", "true");
+
+      fireEvent.change(nameInput, { target: { value: "T" } });
+
+      expect(nameInput).not.toHaveAttribute("aria-invalid");
+      expect(screen.queryByText(/enter your name/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("sits on the page ground, not in a dark box", () => {
+    const { container } = render(<ContactForm />);
+
+    expect(container.innerHTML).not.toMatch(/bg-dark/);
+    expect(screen.getByLabelText(/Name/i)).toHaveClass(
+      "rounded-ctl",
+      "border-field",
+      "bg-cell",
+    );
+  });
+
+  it("announces the submission result as a status line", async () => {
+    render(<ContactForm />);
+
+    fireEvent.change(screen.getByLabelText(/Name/i), {
+      target: { value: "Test User" },
+    });
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/Phone/i), {
+      target: { value: "123-456-7890" },
+    });
+    fireEvent.click(screen.getByTestId("contact-submit-button"));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /Sent.*Thank you!/,
+    );
+  });
+
   it("disables the submit button while submitting", async () => {
     // Mock fetch to take some time
     (global.fetch as jest.Mock).mockImplementationOnce(
@@ -202,5 +331,60 @@ describe("ContactForm Component", () => {
     // Check if button is disabled and shows loading text
     expect(screen.getByTestId("contact-submit-button")).toBeDisabled();
     expect(screen.getByText("Submitting...")).toBeInTheDocument();
+  });
+
+  describe("monthly brief opt-in", () => {
+    const OPT_IN_COPY =
+      "Send me Boximity's monthly security brief and occasional tips and offers";
+
+    function fillAndSubmit() {
+      fireEvent.change(screen.getByLabelText(/Name/i), {
+        target: { value: "Test User" },
+      });
+      fireEvent.change(screen.getByLabelText(/Email/i), {
+        target: { value: "test@example.com" },
+      });
+      fireEvent.change(screen.getByLabelText(/Phone/i), {
+        target: { value: "123-456-7890" },
+      });
+      fireEvent.click(screen.getByTestId("contact-submit-button"));
+    }
+
+    function getSentBody() {
+      return JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    }
+
+    it("offers an unticked checkbox naming what they'll receive", () => {
+      render(<ContactForm />);
+
+      expect(
+        screen.getByRole("checkbox", { name: OPT_IN_COPY }),
+      ).not.toBeChecked();
+    });
+
+    it("sends wantsBrief: true once the box is ticked", async () => {
+      render(<ContactForm />);
+      await userEvent
+        .setup()
+        .click(screen.getByRole("checkbox", { name: OPT_IN_COPY }));
+
+      fillAndSubmit();
+
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      expect(getSentBody()).toEqual(
+        expect.objectContaining({ wantsBrief: true }),
+      );
+    });
+
+    it("sends wantsBrief: false when the box is left unticked", async () => {
+      render(<ContactForm />);
+
+      fillAndSubmit();
+
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      expect(getSentBody()).toEqual(
+        expect.objectContaining({ wantsBrief: false }),
+      );
+    });
   });
 });

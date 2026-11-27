@@ -23,14 +23,12 @@ export interface UnifiedEventData {
 }
 
 export interface AnalyticsConfig {
-  enableGoogleAnalytics: boolean;
-  debug: boolean;
+  isGoogleAnalyticsEnabled: boolean;
 }
 
 // Default configuration - can be overridden by environment variables
 const getAnalyticsConfig = (): AnalyticsConfig => ({
-  enableGoogleAnalytics: !!GA_MEASUREMENT_ID,
-  debug: process.env.NODE_ENV === "development",
+  isGoogleAnalyticsEnabled: !!GA_MEASUREMENT_ID,
 });
 
 // Global analytics state
@@ -47,17 +45,10 @@ export const __resetAnalyticsState = () => {
 export const initializeAnalytics = (): void => {
   const config = getAnalyticsConfig();
 
-  if (config.debug) {
-    console.log("🔧 Analytics Configuration:", config);
-  }
-
   // Initialize Google Analytics if enabled and available
-  if (config.enableGoogleAnalytics) {
+  if (config.isGoogleAnalyticsEnabled) {
     try {
       initGA();
-      if (config.debug) {
-        console.log("✅ Google Analytics initialized");
-      }
     } catch (error) {
       console.error("❌ Failed to initialize Google Analytics:", error);
     }
@@ -69,23 +60,15 @@ export const initializeAnalytics = (): void => {
 /**
  * Track a page view across all enabled analytics providers
  * @param url - The page URL/path to track
- * @param title - Optional page title
  */
-export const trackPageView = async (
-  url: string,
-  title?: string,
-): Promise<void> => {
+export const trackPageView = async (url: string): Promise<void> => {
   const config = getAnalyticsConfig();
 
   if (!isInitialized) {
     initializeAnalytics();
   }
 
-  if (config.debug) {
-    console.log(`📊 Tracking pageview: ${url}`, title ? { title } : {});
-  }
-
-  if (config.enableGoogleAnalytics) {
+  if (config.isGoogleAnalyticsEnabled) {
     try {
       gaPageview(url);
     } catch (error) {
@@ -107,11 +90,7 @@ export const trackEvent = async (
     initializeAnalytics();
   }
 
-  if (config.debug) {
-    console.log(`📊 Tracking event:`, eventData);
-  }
-
-  if (config.enableGoogleAnalytics) {
+  if (config.isGoogleAnalyticsEnabled) {
     try {
       gaEvent({
         action: eventData.action,
@@ -130,12 +109,6 @@ export const trackEvent = async (
  * @param formName - Name/identifier of the form
  */
 export const trackFormSubmit = async (formName: string): Promise<void> => {
-  const config = getAnalyticsConfig();
-
-  if (config.debug) {
-    console.log(`📝 Tracking form submission: ${formName}`);
-  }
-
   await trackEvent({
     action: "form_submit",
     category: "forms",
@@ -146,21 +119,8 @@ export const trackFormSubmit = async (formName: string): Promise<void> => {
 /**
  * Track a button click event
  * @param buttonName - Name/identifier of the button
- * @param buttonContext - Optional context where the button was clicked
  */
-export const trackButtonClick = async (
-  buttonName: string,
-  buttonContext?: string,
-): Promise<void> => {
-  const config = getAnalyticsConfig();
-
-  if (config.debug) {
-    console.log(
-      `👆 Tracking button click: ${buttonName}`,
-      buttonContext ? { context: buttonContext } : {},
-    );
-  }
-
+export const trackButtonClick = async (buttonName: string): Promise<void> => {
   await trackEvent({
     action: "button_click",
     category: "interaction",
@@ -171,18 +131,8 @@ export const trackButtonClick = async (
 /**
  * Track user engagement events
  * @param action - The engagement action (scroll, time_on_page, etc.)
- * @param details - Optional details about the engagement
  */
-export const trackEngagement = async (
-  action: string,
-  details?: Record<string, unknown>,
-): Promise<void> => {
-  const config = getAnalyticsConfig();
-
-  if (config.debug) {
-    console.log(`🎯 Tracking engagement: ${action}`, details);
-  }
-
+export const trackEngagement = async (action: string): Promise<void> => {
   await trackEvent({
     action: `engagement_${action}`,
     category: "engagement",
@@ -194,17 +144,17 @@ export const trackEngagement = async (
  * Check if analytics tracking is properly configured
  */
 export const isAnalyticsConfigured = (): boolean => {
-  return getAnalyticsConfig().enableGoogleAnalytics;
+  return getAnalyticsConfig().isGoogleAnalyticsEnabled;
 };
 
 /**
  * Get current analytics configuration (for debugging)
  */
 export const getAnalyticsStatus = (): AnalyticsConfig & {
-  initialized: boolean;
+  isInitialized: boolean;
 } => ({
   ...getAnalyticsConfig(),
-  initialized: isInitialized,
+  isInitialized,
 });
 
 // Export convenience functions for common use cases

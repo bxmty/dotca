@@ -228,7 +228,7 @@ create_env_template() {
 
     log_success "Created .env.local from .env.example"
     log_warning "IMPORTANT: Edit .env.local with your actual values before deploying!"
-    log_info "Required: DO_TOKEN, BREVO_API_KEY, STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+    log_info "Required: DO_TOKEN, STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
 }
 
 # Test DigitalOcean access

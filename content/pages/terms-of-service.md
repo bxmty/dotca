@@ -51,11 +51,13 @@ In these Conditions, the Rate Schedule and every Quote, Order, Plan contract, or
 
 **4.1** You may terminate upon ninety (90) days written notice if We materially fail to fulfil obligations and don't cure within thirty (30) days.
 
-**4.2** We may terminate upon ninety (90) days written notice.
+**4.2** You may also terminate for any reason upon ninety (90) days written notice.
 
-**4.3** We will assist with orderly termination and You agree to pay for such assistance at Our normal rates.
+**4.3** We may terminate upon ninety (90) days written notice.
 
-**4.4** Early termination requires payment of all remaining payments as liquidated damages.
+**4.4** We will assist with orderly termination and You agree to pay for such assistance at Our normal rates.
+
+**4.5** If You terminate under clause 4.2 during the minimum term set out in Our Quote, You agree to pay the lesser of (a) all remaining payments owing for that minimum term, or (b) three (3) months of Your then-current fees, as liquidated damages. No liquidated damages apply to termination occurring after the minimum term has expired.
 
 ### 5. REPRESENTATIONS
 
@@ -437,7 +439,7 @@ In these Conditions, the Rate Schedule and every Quote, Order, Plan contract, or
 
 ### SERVICE REQUEST LODGEMENT PROCESS
 
-**Phone:** 289 539-0098
+**Phone:** (289) 539-0098
 
 **Email:** hd@boximity.ca
 
@@ -458,7 +460,7 @@ In these Conditions, the Rate Schedule and every Quote, Order, Plan contract, or
 
 **After Hours Support:**
 
-- Call 289 539-0098 for immediate attention
+- Call (289) 539-0098 for immediate attention
 - Additional charges apply for After Hours work
 - Email requests reviewed next Business Day unless After Hours arrangement agreed
 

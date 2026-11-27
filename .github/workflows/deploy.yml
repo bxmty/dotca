@@ -16,10 +16,13 @@ on:
       - "Dockerfile"
       - "next.config.js"
       - "tsconfig.json"
-      - "jest.config.js"
-      - "eslint.config.mjs"
+      - "jest.config.cjs"
+      - "eslint.config.js"
       - ".github/workflows/deploy.yml"
-      - ".github/actions/deploy/action.yml"
+      - "scripts/build-image-tag.cjs"
+      # All composite actions, not just deploy: a change to the test-runner is a
+      # change to the gate itself, and must be able to trigger this workflow.
+      - ".github/actions/**"
       - "terraform/**"
       - "ansible/**"
 
@@ -74,7 +77,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for changes
-        uses: dorny/paths-filter@v4.0.2
+        uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -94,6 +97,7 @@ jobs:
               - 'ansible/**'
               - '.github/workflows/**'
               - '.github/actions/**'
+              - 'scripts/build-image-tag.cjs'
 
   # Environment detection and setup
   detect-environment:
@@ -258,10 +262,23 @@ jobs:
     # Set the environment for this job
     environment: ${{ needs.detect-environment.outputs.environment }}
 
+    # Browser Sentry DSN, resolved once so the guard step and the image build
+    # arg below cannot drift apart. Environment-scoped under a single unsuffixed
+    # name, exactly as NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is: the job runs under
+    # `environment:` above, so GitHub resolves the right one. Deliberately has no
+    # fallback to the legacy SENTRY_DSN_* secrets — this value is inlined into
+    # the public client bundle, so a cross-environment fallback would ship the
+    # staging DSN to production browsers.
+    env:
+      BROWSER_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+
     outputs:
-      image_tag: ${{ github.ref_name }}-${{ github.sha }}
+      # <branch>-<full sha>-<run id>-<run attempt>, from scripts/build-image-tag.cjs.
+      # A commit SHA alone is not a build: the same commit rebuilt later (new
+      # secret, rotated key, changed build arg) must not reuse the tag (#586).
+      image_tag: ${{ steps.image_identity.outputs.image_tag }}
       image_digest: ${{ steps.build.outputs.digest }}
-      test_results: ${{ steps.test.outputs.results }}
+      test_results: ${{ steps.test.outputs.test_results }}
       build_success: ${{ steps.build.outcome }}
 
     steps:
@@ -280,11 +297,23 @@ jobs:
         with:
           fetch-depth: 0 # Full history for proper tagging
 
+      - name: Name this build
+        id: image_identity
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: |
+          tag="$(node scripts/build-image-tag.cjs \
+            --branch "${{ github.ref_name }}" \
+            --commit-sha "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}")"
+          echo "image_tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Build identity tag: ${tag}"
+
       - name: Setup Node.js
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
-          node-version: "24.18.1"
+          node-version: "26.12.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -294,6 +323,10 @@ jobs:
       - name: Run linting
         if: needs.detect-environment.outputs.should_build == 'true'
         run: npm run lint
+
+      - name: Check formatting
+        if: needs.detect-environment.outputs.should_build == 'true'
+        run: npm run format:check
 
       - name: Validate blog content
         if: needs.detect-environment.outputs.should_build == 'true'
@@ -308,9 +341,14 @@ jobs:
         run: npm audit --audit-level moderate
         continue-on-error: true
 
+      # continue-on-error is what makes the gate below reachable, not a way to
+      # forgive failures. Without it a failing suite aborts the job here, the
+      # gate step never runs, and force_deploy cannot forgive anything. With it
+      # the step still records outcome == 'failure'; the gate decides.
       - name: Run unit tests
         id: test
         if: needs.detect-environment.outputs.should_build == 'true' && github.event.inputs.skip_tests != 'true'
+        continue-on-error: true
         uses: ./.github/actions/test-runner
         with:
           test_type: unit
@@ -320,7 +358,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: test-results-${{ needs.detect-environment.outputs.environment }}
           path: |
@@ -334,6 +372,11 @@ jobs:
         run: |
           echo "::error::Unit tests failed and force_deploy is not enabled"
           exit 1
+
+      - name: Warn that failing tests were forced through
+        if: needs.detect-environment.outputs.should_build == 'true' && steps.test.outcome == 'failure' && github.event.inputs.force_deploy == 'true'
+        run: |
+          echo "::warning::Unit tests failed but force_deploy is enabled — deploying anyway"
 
       # NEXT_PUBLIC_* vars are baked into the client bundle at build time, so a
       # missing or wrong-mode publishable key ships a broken card element that
@@ -363,6 +406,21 @@ jobs:
               ;;
           esac
 
+      # The failure this guards against is silent: Sentry.init with an empty DSN
+      # disables the SDK without erroring, so browser errors simply stop arriving
+      # and nothing reports it. Warn loudly rather than fail — a missing DSN
+      # degrades observability, it does not break the site.
+      - name: Check browser Sentry DSN is available for this environment
+        if: needs.detect-environment.outputs.should_build == 'true'
+        env:
+          TARGET_ENV: ${{ needs.detect-environment.outputs.environment }}
+        run: |
+          if [ -z "$BROWSER_SENTRY_DSN" ]; then
+            echo "::warning::No Sentry DSN available for the '$TARGET_ENV' environment. Browser error tracking and session replay will be silently disabled in this build. Set NEXT_PUBLIC_SENTRY_DSN as an environment secret."
+          else
+            echo "✅ Browser Sentry DSN present; client error tracking will be enabled"
+          fi
+
       - name: Log in to Container Registry
         if: needs.detect-environment.outputs.should_build == 'true'
         run: |
@@ -374,20 +432,26 @@ jobs:
         uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Branch (`staging` / `main`) and `latest` stay moving pointers.
+          # The raw tag is the one deploy uses. A tag of only the commit SHA
+          # is not: a rebuild of that commit overwrites it (#586).
           tags: |
             type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=raw,value=${{ steps.image_identity.outputs.image_tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Set up Docker Buildx
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.4.1
 
       - name: Build and push Docker image
         id: build
         if: needs.detect-environment.outputs.should_build == 'true'
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         # Optimized for performance: scoped caching, inline cache, fast compression
+        # Next.js inlines only NEXT_PUBLIC_-prefixed values into the client
+        # bundle, so the unprefixed SENTRY_DSN reaches the server and edge
+        # runtimes only; the browser needs its own public DSN (#567).
         with:
           context: .
           # Build amd64 only; DigitalOcean droplets use x86. arm64 via QEMU is slow and can timeout.
@@ -408,6 +472,7 @@ jobs:
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             NEXT_PUBLIC_COMMIT_HASH=${{ github.sha }}
             SENTRY_DSN=${{ needs.detect-environment.outputs.environment == 'production' && secrets.SENTRY_DSN_PRODUCTION || secrets.SENTRY_DSN_STAGING }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ env.BROWSER_SENTRY_DSN }}
           outputs: type=image,push=true,compression=zstd,compression-level=3
           provenance: false
 
@@ -459,7 +524,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: "1.15.8"
+          terraform_version: "v1.17.1"
 
       - name: Set deployment image tag
         id: image_tag
@@ -517,12 +582,22 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
           AWS_REGION: tor1
           AWS_DEFAULT_REGION: tor1
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          GA4_MP_API_SECRET: ${{ secrets.GA4_MP_API_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
           WEBMASTER_EMAIL: ${{ secrets.WEBMASTER_EMAIL }}
+          LEAD_MAGNET_SIGNING_SECRET: ${{ secrets.LEAD_MAGNET_SIGNING_SECRET }}
+          SDR_LINK_SIGNING_SECRET: ${{ secrets.SDR_LINK_SIGNING_SECRET }}
+          SYNCRO_FREE_INSTALLER_URL: ${{ secrets.SYNCRO_FREE_INSTALLER_URL }}
+          SYNCRO_SUBDOMAIN: ${{ secrets.SYNCRO_SUBDOMAIN }}
+          SYNCRO_API_KEY: ${{ secrets.SYNCRO_API_KEY }}
+          RESEND_MONTHLY_BRIEF_SEGMENT_ID: ${{ secrets.RESEND_MONTHLY_BRIEF_SEGMENT_ID }}
+          RESEND_MONTHLY_BRIEF_TOPIC_ID: ${{ secrets.RESEND_MONTHLY_BRIEF_TOPIC_ID }}
+          RESEND_OPTIN_EVENT: ${{ secrets.RESEND_OPTIN_EVENT }}
+          RESEND_TEMPLATE_CONTACT_CONFIRMATION: ${{ secrets.RESEND_TEMPLATE_CONTACT_CONFIRMATION }}
+          RESEND_TEMPLATE_ONBOARDING_CONFIRMATION: ${{ secrets.RESEND_TEMPLATE_ONBOARDING_CONFIRMATION }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_STAGING_GA_ID: ${{ secrets.GA_STAGING_ID }}
           NEXT_PUBLIC_PRODUCTION_GA_ID: ${{ secrets.GA_PRODUCTION_ID }}
@@ -541,6 +616,7 @@ jobs:
           | Target Environment | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deploy Target | \`${{ needs.detect-environment.outputs.deploy_target }}\` |
           | Image Tag Used | \`${{ steps.image_tag.outputs.image_tag }}\` |
+          | Image Digest | \`${{ needs.quality-and-build.outputs.image_digest }}\` |
           | Image Built For | \`${{ needs.detect-environment.outputs.environment }}\` |
           | Deployment Status | \$DEPLOY_STATUS |
 
@@ -550,9 +626,9 @@ jobs:
             echo "**🌐 Application URL:** https://${{ needs.detect-environment.outputs.environment == 'production' && 'boximity.ca' || needs.detect-environment.outputs.environment == 'staging' && 'staging.boximity.ca' || 'dev.boximity.ca' }}" >> \$GITHUB_STEP_SUMMARY
           fi
 
-  # Integration testing
+  # Post-deploy E2E testing
   integration-tests:
-    name: Integration Tests
+    name: Post-deploy E2E Tests
     runs-on: ubuntu-latest
     needs: [detect-environment, deploy]
     if: needs.detect-environment.outputs.should_test == 'true' && github.event.inputs.skip_tests != 'true'
@@ -561,19 +637,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
 
-      - name: Run integration tests
-        uses: ./.github/actions/test-runner
-        with:
-          test_type: integration
-          environment: ${{ needs.detect-environment.outputs.environment }}
-          app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
-          fail_fast: false
-          timeout_minutes: 15
-
+      # Production runs only specs tagged @read-only (explicit allowlist: a new
+      # spec stays off prod until tagged). Staging runs the whole project.
       - name: Run E2E tests
+        id: e2e
         uses: ./.github/actions/test-runner
         with:
           test_type: e2e
+          e2e_grep: ${{ needs.detect-environment.outputs.environment == 'production' && '@read-only' || '' }}
           environment: ${{ needs.detect-environment.outputs.environment }}
           app_url: ${{ needs.detect-environment.outputs.environment == 'production' && 'https://boximity.ca' || 'https://staging.boximity.ca' }}
           fail_fast: false
@@ -581,7 +652,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: e2e-results-${{ github.run_id }}
           path: |
@@ -592,7 +663,7 @@ jobs:
       - name: Update testing summary
         if: always()
         run: |
-          TEST_STATUS="${{ job.status == 'success' && '✅ Passed' || job.status == 'failure' && '❌ Failed' || '⏳ Running' }}"
+          E2E_STATUS="${{ steps.e2e.outcome == 'success' && '✅ Passed' || steps.e2e.outcome == 'failure' && '❌ Failed' || steps.e2e.outcome == 'skipped' && '⏭️ Skipped' || '⏳ Running' }}"
           DETECTED_ENV="${{ needs.detect-environment.outputs.environment }}"
 
           # Determine test URL based on detected environment
@@ -607,8 +678,7 @@ jobs:
           ### 🧪 Integration Testing Status
           | Test Type | Status |
           |-----------|--------|
-          | Integration Tests | \$TEST_STATUS |
-          | E2E Tests | \$TEST_STATUS |
+          | E2E Tests | \$E2E_STATUS |
           | Test Environment | \`$DETECTED_ENV\` |
           | Test URL | \$TEST_URL |
 
@@ -640,7 +710,7 @@ jobs:
               "environment": "${{ needs.detect-environment.outputs.environment }}",
               "branch": "${{ github.ref_name }}",
               "build_success": "${{ needs.quality-and-build.outputs.build_success }}",
-              "integration_tests": "${{ needs.integration-tests.result || 'skipped' }}",
+              "e2e_tests": "${{ needs.integration-tests.result || 'skipped' }}",
               "timestamp": "${{ github.event.head_commit.timestamp }}"
             }
 
@@ -663,12 +733,13 @@ jobs:
           | Environment Detection | ✅ Completed |
           | Quality Checks & Build | ${{ needs.quality-and-build.result == 'success' && '✅ Success' || needs.quality-and-build.result == 'failure' && '❌ Failed' || needs.quality-and-build.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Deployment | ${{ needs.deploy.result == 'success' && '✅ Success' || needs.deploy.result == 'failure' && '❌ Failed' || needs.deploy.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
-          | Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
+          | Post-deploy E2E Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || needs.integration-tests.result == 'failure' && '❌ Failed' || needs.integration-tests.result == 'skipped' && '⏭️ Skipped' || '⏳ Running' }} |
           | Notifications | ${{ job.status == 'success' && '✅ Sent' || '❌ Failed' }} |
 
           ### 📊 Key Information
           - **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
           - **Image Tag:** \`${{ needs.quality-and-build.outputs.image_tag || 'N/A' }}\`
+          - **Image digest:** \`${{ needs.quality-and-build.outputs.image_digest }}\`
           - **Commit:** \`${{ github.sha }}\`
           - **Triggered by:** ${{ github.actor }}
 

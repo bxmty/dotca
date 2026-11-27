@@ -1,21 +1,31 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import StripeWrapper, {
   type CheckoutCustomer,
 } from "@/app/components/StripeWrapper";
 import { getStripe } from "@/lib/stripe";
+import { getStripeAppearance } from "@/lib/stripeAppearance";
 
 // Mock the stripe module
 jest.mock("@/lib/stripe", () => ({
   getStripe: jest.fn().mockReturnValue({}),
 }));
 
-// Mock the Elements component from @stripe/react-stripe-js
+// Mock the Elements component from @stripe/react-stripe-js, recording the
+// options of each render
+const mockElementsOptions: jest.Mock = jest.fn();
 jest.mock("@stripe/react-stripe-js", () => ({
-  Elements: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="stripe-elements">{children}</div>
-  ),
+  Elements: ({
+    children,
+    options,
+  }: {
+    children: React.ReactNode;
+    options: unknown;
+  }) => {
+    mockElementsOptions(options);
+    return <div data-testid="stripe-elements">{children}</div>;
+  },
 }));
 
 describe("StripeWrapper", () => {
@@ -26,6 +36,12 @@ describe("StripeWrapper", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    document.cookie.split(";").forEach((c) => {
+      const name = c.split("=")[0]?.trim();
+      if (name) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    });
   });
 
   afterAll(() => {
@@ -48,6 +64,7 @@ describe("StripeWrapper", () => {
     employeeCount: 5,
     billingCycle: "monthly",
     customer,
+    wantsBrief: false,
   };
 
   function lastFetchBody(): Record<string, unknown> {
@@ -103,11 +120,95 @@ describe("StripeWrapper", () => {
       employeeCount: 5,
       billingCycle: "monthly",
       customer,
+      wantsBrief: false,
       idempotencyKey: expect.any(String),
     });
 
     // Verify getStripe was called
     expect(getStripe).toHaveBeenCalled();
+  });
+
+  it("passes a ticked brief opt-in to create-subscription", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(
+      <StripeWrapper {...orderProps} wantsBrief>
+        {mockChildComponent}
+      </StripeWrapper>,
+    );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(lastFetchBody()).toEqual(
+      expect.objectContaining({ wantsBrief: true }),
+    );
+  });
+
+  it("includes ga_client_id and ga_session_id when both GA cookies are present", async () => {
+    const originalEnv = process.env.NEXT_PUBLIC_DEV_GA_ID;
+    process.env.NEXT_PUBLIC_DEV_GA_ID = "G-TESTID";
+    document.cookie = "_ga=GA1.1.111111111.222222222";
+    document.cookie = "_ga_TESTID=GS1.1.333333333.4.1.444444444.0.0.0";
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+    });
+
+    expect(lastFetchBody()).toEqual(
+      expect.objectContaining({
+        ga_client_id: "111111111.222222222",
+        ga_session_id: "333333333",
+      }),
+    );
+
+    process.env.NEXT_PUBLIC_DEV_GA_ID = originalEnv;
+  });
+
+  it("omits ga_client_id and ga_session_id from the request when both GA cookies are absent", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+    });
+
+    const body = lastFetchBody();
+    expect(body).not.toHaveProperty("ga_client_id");
+    expect(body).not.toHaveProperty("ga_session_id");
+  });
+
+  it("includes only ga_client_id when the session cookie is absent", async () => {
+    document.cookie = "_ga=GA1.1.111111111.222222222";
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ clientSecret: "test_secret" }),
+    } as unknown as Response);
+
+    render(<StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+    });
+
+    const body = lastFetchBody();
+    expect(body).toEqual(
+      expect.objectContaining({ ga_client_id: "111111111.222222222" }),
+    );
+    expect(body).not.toHaveProperty("ga_session_id");
   });
 
   it("sends the order details for a different plan and billing cycle", async () => {
@@ -201,6 +302,77 @@ describe("StripeWrapper", () => {
       expect(
         screen.getByText("Failed to initialize payment. Please try again."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("appearance", () => {
+    const originalMatchMedia = window.matchMedia;
+    let prefersDark: boolean;
+    let listeners: Set<() => void>;
+
+    beforeEach(() => {
+      prefersDark = false;
+      listeners = new Set();
+      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+        get matches() {
+          return query === "(prefers-color-scheme: dark)" && prefersDark;
+        },
+        media: query,
+        addEventListener: (_: string, listener: () => void) =>
+          listeners.add(listener),
+        removeEventListener: (_: string, listener: () => void) =>
+          listeners.delete(listener),
+      }));
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ clientSecret: "test_secret" }),
+      } as unknown as Response);
+    });
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    function lastAppearance() {
+      const calls = mockElementsOptions.mock.calls;
+      return (calls[calls.length - 1][0] as { appearance: unknown }).appearance;
+    }
+
+    function changeScheme(isDark: boolean) {
+      prefersDark = isDark;
+      act(() => listeners.forEach((listener) => listener()));
+    }
+
+    it("themes the Payment Element for the OS scheme when it mounts", async () => {
+      prefersDark = true;
+      render(
+        <StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+      });
+      expect(lastAppearance()).toEqual(getStripeAppearance("dark"));
+    });
+
+    it("switches the appearance when the OS scheme changes while open", async () => {
+      render(
+        <StripeWrapper {...orderProps}>{mockChildComponent}</StripeWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("stripe-elements")).toBeInTheDocument();
+      });
+      expect(lastAppearance()).toEqual(getStripeAppearance("light"));
+
+      changeScheme(true);
+      expect(lastAppearance()).toEqual(getStripeAppearance("dark"));
+
+      changeScheme(false);
+      expect(lastAppearance()).toEqual(getStripeAppearance("light"));
+      // A scheme change re-themes the element; it never creates a second
+      // subscription.
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 });

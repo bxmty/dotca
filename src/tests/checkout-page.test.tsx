@@ -2,7 +2,9 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { BRIEF_OPT_IN_LABEL } from "@/app/components/BriefOptInCheckbox";
 import CheckoutPage from "@/app/checkout/page";
+import { findPlanByName } from "@/lib/plan-catalog";
 
 // Mock next/navigation
 const mockReplace = jest.fn();
@@ -13,18 +15,14 @@ jest.mock("next/navigation", () => ({
 
 // Mock the PlanSelector component
 let mockOnPlanSelected: ((plan: unknown) => void) | null = null;
-let mockPricingPlans: { name: string }[] = [];
 
 jest.mock("@/app/checkout/PlanSelector", () => {
   return function MockPlanSelector({
     onPlanSelected,
-    pricingPlans,
   }: {
     onPlanSelected: (plan: unknown) => void;
-    pricingPlans: { name: string }[];
   }) {
     mockOnPlanSelected = onPlanSelected;
-    mockPricingPlans = pricingPlans;
 
     return null;
   };
@@ -39,15 +37,18 @@ jest.mock("@/app/components/StripeWrapper", () => ({
     employeeCount,
     billingCycle,
     customer,
+    wantsBrief,
   }: {
     children: React.ReactNode;
     plan: string;
     employeeCount: number;
     billingCycle: string;
     customer: { name: string; email: string };
+    wantsBrief: boolean;
   }) => (
     <div
       data-testid="stripe-wrapper"
+      data-wants-brief={String(wantsBrief)}
       data-plan={plan}
       data-employee-count={employeeCount}
       data-billing-cycle={billingCycle}
@@ -83,8 +84,7 @@ jest.mock("next/link", () => {
 });
 
 function selectBasicPlan() {
-  const basic = mockPricingPlans.find((plan) => plan.name === "Basic");
-  mockOnPlanSelected!(basic);
+  mockOnPlanSelected!(findPlanByName("Basic"));
 }
 
 async function fillCustomerInformation() {
@@ -135,8 +135,7 @@ describe("CheckoutPage Component", () => {
   it("redirects the Free plan to onboarding", async () => {
     render(<CheckoutPage />);
 
-    const free = mockPricingPlans.find((plan) => plan.name === "Free");
-    mockOnPlanSelected!(free);
+    mockOnPlanSelected!(findPlanByName("Free"));
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith("/onboarding");
@@ -203,7 +202,7 @@ describe("CheckoutPage Component", () => {
     );
   });
 
-  it("blocks continuing to payment until required fields are filled", async () => {
+  it("blocks continuing to payment with an inline error on each empty field", async () => {
     const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<CheckoutPage />);
 
@@ -213,17 +212,62 @@ describe("CheckoutPage Component", () => {
       expect(screen.getByTestId("continue-to-payment")).toBeInTheDocument();
     });
 
-    const form = screen
-      .getByLabelText("First Name*")
-      .closest("form") as HTMLFormElement;
-    fireEvent.submit(form);
+    fireEvent.click(screen.getByTestId("continue-to-payment"));
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Please fill in all required fields"),
+    const expectedErrors: [string, string][] = [
+      ["First Name*", "Fix: enter your first name"],
+      ["Last Name*", "Fix: enter your last name"],
+      ["Email Address*", "Fix: enter your email address"],
+      ["Company Name", "Fix: enter your company name"],
+      ["Address", "Fix: enter your street address"],
+      ["City", "Fix: enter your city"],
+      ["Province/State", "Fix: enter your province or state"],
+      ["Postal Code", "Fix: enter your postal code"],
+    ];
+    for (const [label, message] of expectedErrors) {
+      const field = screen.getByLabelText(label);
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAccessibleDescription(message);
+    }
+    expect(document.getElementById("phone")).toHaveAccessibleDescription(
+      "Fix: enter a phone number we can reach you on",
     );
+
+    expect(screen.getByLabelText("First Name*")).toHaveFocus();
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId("stripe-wrapper")).not.toBeInTheDocument();
 
     alertSpy.mockRestore();
+  });
+
+  it("asks for a full email address and clears an error once the field is edited", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("First Name*")).toBeInTheDocument();
+    });
+
+    await fillCustomerInformation();
+    fireEvent.change(screen.getByLabelText("Email Address*"), {
+      target: { value: "john@" },
+    });
+    fireEvent.click(screen.getByTestId("continue-to-payment"));
+
+    const email = screen.getByLabelText("Email Address*");
+    expect(email).toHaveAccessibleDescription(
+      "Fix: enter the full address, like dana@company.ca",
+    );
+    expect(email).toHaveFocus();
+    expect(screen.getByLabelText("First Name*")).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expect(screen.queryByTestId("stripe-wrapper")).not.toBeInTheDocument();
+
+    fireEvent.change(email, { target: { value: "john@example.com" } });
+    expect(email).not.toHaveAttribute("aria-invalid");
+    expect(email).not.toHaveAccessibleDescription();
   });
 
   it("mounts the payment form with the confirmed customer snapshot", async () => {
@@ -338,7 +382,7 @@ describe("CheckoutPage Component", () => {
       expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
     });
 
-    const monthlyRadio = screen.getByLabelText("Monthly");
+    const monthlyRadio = screen.getByLabelText(/^Monthly/);
     const annualRadio = screen.getByLabelText(/^Annual/);
 
     expect(monthlyRadio).toBeChecked();
@@ -354,6 +398,43 @@ describe("CheckoutPage Component", () => {
     fireEvent.click(monthlyRadio);
     expect(monthlyRadio).toBeChecked();
     expect(annualRadio).not.toBeChecked();
+  });
+
+  it("itemises the annual discount in the order summary", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    await waitFor(() => {
+      expect(screen.getByText("Your Selected Plan")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("Basic Plan ($99.00 × 5 employees)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Annual Discount/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/^Annual/));
+
+    expect(screen.getByLabelText(/^Annual/)).toHaveAccessibleName(/save 10%/);
+    expect(
+      screen.getByText("Basic Plan ($99.00 × 5 employees × 12 months)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$5,940.00")).toBeInTheDocument();
+    expect(screen.getByText("Annual Discount (10%)")).toBeInTheDocument();
+    expect(screen.getByText("-$594.00")).toBeInTheDocument();
+  });
+
+  it("limits the employee count input to the bounds the server accepts", async () => {
+    render(<CheckoutPage />);
+
+    selectBasicPlan();
+
+    const employeeInput = await screen.findByLabelText(
+      "Number of Employees (minimum 5)",
+    );
+    expect(employeeInput).toHaveValue(5);
+    expect(employeeInput).toHaveAttribute("min", "5");
+    expect(employeeInput).toHaveAttribute("max", "20");
   });
 
   it("shows purchase terms instead of waitlist terms", async () => {
@@ -400,5 +481,63 @@ describe("CheckoutPage Component", () => {
         "Please select a plan from our pricing page to proceed with checkout.",
       ),
     ).toBeInTheDocument();
+  });
+
+  describe("monthly brief opt-in", () => {
+    async function renderCustomerStep() {
+      render(<CheckoutPage />);
+      selectBasicPlan();
+      await waitFor(() => {
+        expect(screen.getByLabelText("First Name*")).toBeInTheDocument();
+      });
+      await fillCustomerInformation();
+    }
+
+    function continueToPayment() {
+      fireEvent.click(screen.getByTestId("continue-to-payment"));
+      return screen.findByTestId("stripe-wrapper");
+    }
+
+    it("offers an unticked checkbox naming what they'll receive", async () => {
+      await renderCustomerStep();
+
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Send me Boximity's monthly security brief and occasional tips and offers",
+        }),
+      ).not.toBeChecked();
+    });
+
+    it("hands a ticked opt-in to the payment step", async () => {
+      await renderCustomerStep();
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: BRIEF_OPT_IN_LABEL }),
+      );
+
+      const wrapper = await continueToPayment();
+
+      expect(wrapper).toHaveAttribute("data-wants-brief", "true");
+    });
+
+    it("hands an unticked opt-in to the payment step as false", async () => {
+      await renderCustomerStep();
+
+      const wrapper = await continueToPayment();
+
+      expect(wrapper).toHaveAttribute("data-wants-brief", "false");
+    });
+
+    it("unmounts the payment form when the opt-in changes", async () => {
+      await renderCustomerStep();
+      await continueToPayment();
+
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: BRIEF_OPT_IN_LABEL }),
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("stripe-wrapper")).not.toBeInTheDocument();
+      });
+    });
   });
 });

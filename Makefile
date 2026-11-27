@@ -92,10 +92,6 @@ validate: ## Validate local environment and prerequisites
 			echo "$(RED)Error: DO_TOKEN not set in .env.local$(NC)"; \
 			exit 1; \
 		fi && \
-		if [ -z "$$BREVO_API_KEY" ]; then \
-			echo "$(RED)Error: BREVO_API_KEY not set in .env.local$(NC)"; \
-			exit 1; \
-		fi && \
 		if [ -z "$$STRIPE_SECRET_KEY" ]; then \
 			echo "$(RED)Error: STRIPE_SECRET_KEY not set in .env.local$(NC)"; \
 			exit 1; \
