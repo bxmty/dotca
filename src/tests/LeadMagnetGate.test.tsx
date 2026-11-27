@@ -104,7 +104,10 @@ describe("LeadMagnetGate", () => {
 
   it("posts the trimmed email", async () => {
     mockFetch.mockImplementationOnce(() =>
-      respondWith(200, { success: true, downloadUrl: "/d" }),
+      respondWith(200, {
+        success: true,
+        downloads: [{ label: "Get the checklist", url: "/d" }],
+      }),
     );
     const user = renderGate();
 
@@ -136,7 +139,11 @@ describe("LeadMagnetGate", () => {
   it("unlocks the download link on success", async () => {
     const downloadUrl = "/api/lead-magnet/download?slug=test-guide&token=t";
     mockFetch.mockImplementationOnce(() =>
-      respondWith(200, { success: true, downloadUrl }),
+      respondWith(200, {
+        success: true,
+        downloadUrl,
+        downloads: [{ label: "Get the checklist", url: downloadUrl }],
+      }),
     );
     const user = renderGate();
 
@@ -152,6 +159,30 @@ describe("LeadMagnetGate", () => {
     expect(screen.getByText("We also emailed you a copy.")).toBeInTheDocument();
     expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+  });
+
+  it("unlocks one labelled link per file", async () => {
+    const downloads = [
+      { label: "Download the staff page", url: "/d?file=staff.pdf" },
+      { label: "Download the owner's notes", url: "/d?file=notes.pdf" },
+      { label: "Download the Word version", url: "/d?file=staff.docx" },
+    ];
+    mockFetch.mockImplementationOnce(() =>
+      respondWith(200, { success: true, downloads }),
+    );
+    const user = renderGate();
+
+    await user.type(screen.getByLabelText(/email/i), "jane@example.com");
+    await user.click(
+      screen.getByRole("button", { name: /get the checklist/i }),
+    );
+
+    await screen.findByText("We also emailed you a copy.");
+    expect(
+      screen
+        .getAllByRole("link")
+        .map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual(downloads.map(({ label, url }) => [label, url]));
   });
 
   it("falls back to the default button label", () => {

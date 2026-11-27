@@ -185,8 +185,12 @@ describe("sendWebmasterNotification", () => {
 describe("sendLeadMagnetDeliveryEmail", () => {
   const delivery = {
     to: "jane.doe@example.com",
-    downloadUrl:
-      "https://boximity.ca/api/lead-magnet/download?slug=test-guide&token=abc",
+    downloads: [
+      {
+        label: "Download the guide",
+        url: "https://boximity.ca/api/lead-magnet/download?slug=test-guide&token=abc",
+      },
+    ],
     title: "The Test Guide",
   };
 
@@ -218,7 +222,7 @@ describe("sendLeadMagnetDeliveryEmail", () => {
       }),
     );
     const { html, text } = mockSend.mock.calls[0][0];
-    expect(text).toContain(delivery.downloadUrl);
+    expect(text).toContain(delivery.downloads[0].url);
     expect(html).toContain(
       'href="https://boximity.ca/api/lead-magnet/download?slug=test-guide&amp;token=abc"',
     );
@@ -254,12 +258,56 @@ describe("sendLeadMagnetDeliveryEmail", () => {
     await sendLeadMagnetDeliveryEmail({
       ...delivery,
       title: 'The "Test" Guide',
-      downloadUrl: 'https://boximity.ca/x?a="onclick="alert(1)',
+      downloads: [
+        {
+          label: "Download the guide",
+          url: 'https://boximity.ca/x?a="onclick="alert(1)',
+        },
+      ],
     });
 
     const { html } = mockSend.mock.calls[0][0];
     expect(html).toContain(
       '<a href="https://boximity.ca/x?a=&quot;onclick=&quot;alert(1)">Download The &quot;Test&quot; Guide</a>',
+    );
+  });
+
+  it("lists one labelled link per file when the magnet has several", async () => {
+    await sendLeadMagnetDeliveryEmail({
+      ...delivery,
+      downloads: [
+        {
+          label: "Download the staff page",
+          url: "https://boximity.ca/d?file=a",
+        },
+        {
+          label: "Download the owner's <notes>",
+          url: "https://boximity.ca/d?file=b&x=1",
+        },
+      ],
+    });
+
+    const { html, text } = mockSend.mock.calls[0][0];
+    expect(text).toBe(
+      [
+        "Here's your copy of The Test Guide:",
+        "",
+        "Download the staff page: https://boximity.ca/d?file=a",
+        "Download the owner's <notes>: https://boximity.ca/d?file=b&x=1",
+        "",
+        "The links work for 24 hours. If they have expired, enter your email on the guide's page again and we'll send fresh ones.",
+        "",
+        "— Boximity",
+      ].join("\n"),
+    );
+    expect(html).toBe(
+      [
+        "<p>Here's your copy of <strong>The Test Guide</strong>:</p>",
+        '<p><a href="https://boximity.ca/d?file=a">Download the staff page</a></p>',
+        `<p><a href="https://boximity.ca/d?file=b&amp;x=1">Download the owner's &lt;notes&gt;</a></p>`,
+        "<p>The links work for 24 hours. If they have expired, enter your email on the guide's page again and we'll send fresh ones.</p>",
+        "<p>— Boximity</p>",
+      ].join("\n"),
     );
   });
 

@@ -143,26 +143,37 @@ export async function sendWebmasterNotification({
  */
 export async function sendLeadMagnetDeliveryEmail({
   to,
-  downloadUrl,
+  downloads,
   title,
 }: {
   to: string;
-  downloadUrl: string;
+  /** One labelled link per file, in the magnet's order. */
+  downloads: { label: string; url: string }[];
   title: string;
 }): Promise<boolean> {
+  // A single-file magnet keeps the pre-#704 wording; several files are labelled.
+  const isSingle = downloads.length === 1;
+  const expiry = isSingle
+    ? "The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one."
+    : "The links work for 24 hours. If they have expired, enter your email on the guide's page again and we'll send fresh ones.";
   const text = [
     `Here's your copy of ${title}:`,
     "",
-    downloadUrl,
+    ...downloads.map(({ label, url }) => (isSingle ? url : `${label}: ${url}`)),
     "",
-    "The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.",
+    expiry,
     "",
     "— Boximity",
   ].join("\n");
   const html = [
     `<p>Here's your copy of <strong>${escapeHtml(title)}</strong>:</p>`,
-    `<p><a href="${escapeHtml(downloadUrl)}">Download ${escapeHtml(title)}</a></p>`,
-    "<p>The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.</p>",
+    ...downloads.map(
+      ({ label, url }) =>
+        `<p><a href="${escapeHtml(url)}">${escapeHtml(
+          isSingle ? `Download ${title}` : label,
+        )}</a></p>`,
+    ),
+    `<p>${expiry}</p>`,
     "<p>— Boximity</p>",
   ].join("\n");
 
