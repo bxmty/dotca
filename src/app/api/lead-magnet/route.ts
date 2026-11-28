@@ -8,6 +8,7 @@ import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { deliverLead } from "@/lib/lead-delivery";
 import { subscribeToMonthlyBrief } from "@/lib/resend-optin";
 import { SITE_URL } from "@/lib/schema";
+import type { LeadMagnetDownload } from "@/types/leadMagnet";
 import { SERVICE_UNAVAILABLE_MESSAGE } from "@/lib/service-unavailable";
 
 /**
@@ -125,22 +126,36 @@ export async function POST(request: Request) {
         { status: 503 },
       );
     }
-    const downloadUrl = `/api/lead-magnet/download?${new URLSearchParams({
-      slug: magnet.slug,
-      token,
-    })}`;
+    // One link per file, all sharing the slug-scoped token.
+    const downloads: LeadMagnetDownload[] = magnet.frontmatter.assets.map(
+      ({ file, label }) => ({
+        label,
+        url: `/api/lead-magnet/download?${new URLSearchParams({
+          slug: magnet.slug,
+          token,
+          file,
+        })}`,
+      }),
+    );
 
-    // The durable copy of the link. The lead already exists, so this can't
+    // The durable copy of the links. The lead already exists, so this can't
     // fail the response: settled, in case the never-throws contract breaks.
     await Promise.allSettled([
       sendLeadMagnetDeliveryEmail({
         to: email,
-        downloadUrl: `${SITE_URL}${downloadUrl}`,
+        downloads: downloads.map(({ label, url }) => ({
+          label,
+          url: `${SITE_URL}${url}`,
+        })),
         title,
       }),
     ]);
 
-    return NextResponse.json({ success: true, downloadUrl });
+    return NextResponse.json({
+      success: true,
+      downloadUrl: downloads[0].url,
+      downloads,
+    });
   } catch (error) {
     console.error("Lead magnet submission error:", error);
     return NextResponse.json(

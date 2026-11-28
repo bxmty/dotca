@@ -13,6 +13,7 @@ import {
 } from "@/lib/notify";
 import { verifyLeadMagnetToken } from "@/lib/lead-magnet-token";
 import { resetRateLimits } from "@/lib/rate-limit";
+import type { LeadMagnetDownload } from "@/types/leadMagnet";
 
 jest.mock("@sentry/nextjs", () => ({
   captureMessage: jest.fn(),
@@ -287,9 +288,17 @@ describe("POST /api/lead-magnet", () => {
       fs.readFileSync(path.join(FIXTURE_DIR, "assets", `${SLUG}.pdf`)),
     );
 
+    expect(body.downloads).toEqual([
+      { label: "Download the fixture", url: body.downloadUrl },
+    ]);
     expect(mockDeliveryEmail).toHaveBeenCalledWith({
       to: EMAIL,
-      downloadUrl: `https://boximity.ca${body.downloadUrl}`,
+      downloads: [
+        {
+          label: "Download the fixture",
+          url: `https://boximity.ca${body.downloadUrl}`,
+        },
+      ],
       title: TITLE,
     });
     expect(mockWebmasterNotification).toHaveBeenCalledWith({
@@ -303,6 +312,50 @@ describe("POST /api/lead-magnet", () => {
       },
     });
     expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
+
+  it("returns and emails one labelled link per file of a multi-file magnet, each downloading its file", async () => {
+    const multiSlug = "multi-asset-fixture-guide";
+    const files = [
+      ["multi-asset-fixture-staff.pdf", "Download the staff page"],
+      ["multi-asset-fixture-notes.pdf", "Download the owner's notes"],
+      ["multi-asset-fixture-staff.docx", "Download the Word version"],
+    ];
+
+    const response = await post({ slug: multiSlug, email: EMAIL });
+
+    expect(response.status).toBe(200);
+    const {
+      downloads,
+      downloadUrl,
+    }: { downloads: LeadMagnetDownload[]; downloadUrl: string } =
+      await response.json();
+    expect(downloads.map(({ label }) => label)).toEqual(
+      files.map(([, label]) => label),
+    );
+    expect(downloadUrl).toBe(downloads[0].url);
+    const tokens = new Set<string | null>();
+    for (const [index, [file]] of files.entries()) {
+      const url = new URL(downloads[index].url, "https://boximity.ca");
+      expect(url.searchParams.get("slug")).toBe(multiSlug);
+      expect(url.searchParams.get("file")).toBe(file);
+      tokens.add(url.searchParams.get("token"));
+      const download = await GET(
+        new Request(`http://localhost${downloads[index].url}`),
+      );
+      expect(download.status).toBe(200);
+      expect(download.headers.get("Content-Disposition")).toContain(file);
+    }
+    expect(tokens.size).toBe(1);
+
+    expect(mockDeliveryEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        downloads: downloads.map(({ label, url }) => ({
+          label,
+          url: `https://boximity.ca${url}`,
+        })),
+      }),
+    );
   });
 
   it("logs one structured line for a recorded lead", async () => {

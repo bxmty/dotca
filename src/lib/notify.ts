@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import type { LeadMagnetDownload } from "@/types/leadMagnet";
 
 /**
  * Webmaster notification email — the redundancy path for form submissions.
@@ -143,26 +144,53 @@ export async function sendWebmasterNotification({
  */
 export async function sendLeadMagnetDeliveryEmail({
   to,
-  downloadUrl,
+  downloads,
   title,
 }: {
   to: string;
-  downloadUrl: string;
+  /** One labelled link per file, in the magnet's order. */
+  downloads: LeadMagnetDownload[];
   title: string;
 }): Promise<boolean> {
+  // The one place single vs several is decided. A single-file magnet keeps the
+  // pre-#704 wording: a bare URL in text, linked as "Download <title>".
+  const { links, expiry } =
+    downloads.length === 1
+      ? {
+          links: [
+            {
+              ...downloads[0],
+              label: `Download ${title}`,
+              textLine: downloads[0].url,
+            },
+          ],
+          expiry:
+            "The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.",
+        }
+      : {
+          links: downloads.map((download) => ({
+            ...download,
+            textLine: `${download.label}: ${download.url}`,
+          })),
+          expiry:
+            "The links work for 24 hours. If they have expired, enter your email on the guide's page again and we'll send fresh ones.",
+        };
   const text = [
     `Here's your copy of ${title}:`,
     "",
-    downloadUrl,
+    ...links.map(({ textLine }) => textLine),
     "",
-    "The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.",
+    expiry,
     "",
     "— Boximity",
   ].join("\n");
   const html = [
     `<p>Here's your copy of <strong>${escapeHtml(title)}</strong>:</p>`,
-    `<p><a href="${escapeHtml(downloadUrl)}">Download ${escapeHtml(title)}</a></p>`,
-    "<p>The link works for 24 hours. If it has expired, enter your email on the guide's page again and we'll send a fresh one.</p>",
+    ...links.map(
+      ({ label, url }) =>
+        `<p><a href="${escapeHtml(url)}">${escapeHtml(label)}</a></p>`,
+    ),
+    `<p>${expiry}</p>`,
     "<p>— Boximity</p>",
   ].join("\n");
 

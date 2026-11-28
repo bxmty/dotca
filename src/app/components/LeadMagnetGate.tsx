@@ -10,6 +10,7 @@ import {
   isEmailAddress,
 } from "../../lib/formValidation";
 import { DEFAULT_LEAD_MAGNET_ASSET_LABEL } from "../../lib/lead-magnet-labels";
+import type { LeadMagnetDownload } from "../../types/leadMagnet";
 
 const EMAIL_FIELD_ID = "lead-magnet-email";
 const BRIEF_FIELD_ID = "lead-magnet-brief";
@@ -38,7 +39,7 @@ export default function LeadMagnetGate({
   const [emailError, setEmailError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloads, setDownloads] = useState<LeadMagnetDownload[]>([]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -71,14 +72,14 @@ export default function LeadMagnetGate({
       });
       const responseData = await response.json().catch(() => null);
 
-      if (!response.ok || !responseData?.downloadUrl) {
+      if (!response.ok || !responseData?.downloads?.length) {
         throw new Error(
           responseData?.error ??
             "Something went wrong. Please try again in a moment.",
         );
       }
 
-      setDownloadUrl(responseData.downloadUrl);
+      setDownloads(responseData.downloads);
     } catch (error) {
       console.error("Lead magnet submission error:", error);
       setErrorMessage(
@@ -91,7 +92,7 @@ export default function LeadMagnetGate({
     }
   };
 
-  if (downloadUrl) {
+  if (downloads.length > 0) {
     return (
       <section
         className="grid max-w-[560px] content-start gap-4.5"
@@ -100,12 +101,18 @@ export default function LeadMagnetGate({
         <StatusNote tone="ok" label="Unlocked">
           <p className="m-0">Your copy of {title} is ready.</p>
         </StatusNote>
-        <a
-          href={downloadUrl}
-          className={getButtonClassName({ variant: "primary", isBlock: true })}
-        >
-          {assetLabel}
-        </a>
+        {downloads.map(({ label, url }) => (
+          <a
+            key={url}
+            href={url}
+            className={getButtonClassName({
+              variant: "primary",
+              isBlock: true,
+            })}
+          >
+            {label}
+          </a>
+        ))}
         <p className="m-0 text-small text-muted">We also emailed you a copy.</p>
       </section>
     );
