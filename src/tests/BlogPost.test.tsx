@@ -171,13 +171,14 @@ describe("BlogPost", () => {
       ).toHaveAttribute("href", "/book");
     });
 
-    it("offers the guide with the end CTA's label and target", () => {
+    it("offers the guide with a short label and the end CTA's target", () => {
       renderPost(
         {},
         {
           type: "lead-magnet",
           slug: "backup-checklist",
           title: "Backup checklist",
+          assetLabel: "Download the one-page AI rule (PDF)",
         },
       );
 
@@ -189,9 +190,12 @@ describe("BlogPost", () => {
       const boxLink = within(box).getByRole("link");
       const endLink = within(endCta).getByRole("link");
       expect(boxLink).toHaveAttribute("href", "/resources/backup-checklist");
-      expect(boxLink).toHaveAccessibleName("Download the guide");
+      // The 220-260 px rail can't fit a full asset label on a one-line button.
+      expect(boxLink).toHaveAccessibleName("Get the guide");
       expect(endLink).toHaveAttribute("href", "/resources/backup-checklist");
-      expect(endLink).toHaveAccessibleName("Download the guide");
+      expect(endLink).toHaveAccessibleName(
+        "Download the one-page AI rule (PDF)",
+      );
     });
 
     it("shows no box when the cta is suppressed", () => {

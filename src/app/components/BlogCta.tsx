@@ -47,7 +47,12 @@ function getCtaContent(offer: ShownBlogOffer): CtaContent {
         lede: "A free guide. Keep a copy.",
         label,
       },
-      rail: { regionName: "Free guide offer", text: offer.title, label },
+      // Fixed short label: an asset label overflows the narrow rail's one-line button.
+      rail: {
+        regionName: "Free guide offer",
+        text: offer.title,
+        label: "Get the guide",
+      },
     };
   }
 
